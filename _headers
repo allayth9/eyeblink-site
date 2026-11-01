@@ -1,0 +1,8 @@
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/videos/*
+  Cache-Control: public, max-age=2592000
+
+/projects.json
+  Cache-Control: no-cache
