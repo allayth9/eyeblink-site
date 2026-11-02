@@ -663,3 +663,10 @@ select{cursor:pointer}
   .lightbox .box{width:min(100%,calc(78vh * var(--arn)))}
   .lightbox .bar2 h3{font-size:16px}
 }
+
+/* ===== mobile: the home screen is the home screen; every section lives on its own page (dock) ===== */
+@media (max-width:860px){
+  .teaser{display:none!important}
+  body:has(.hero) main{min-height:calc(100svh - 120px)}
+  .hero{padding-bottom:12px}
+}

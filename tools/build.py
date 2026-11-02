@@ -87,16 +87,16 @@ def p_index(U, lang):
   </div>
 </div></section>
 <section class="block" style="padding-top:0" data-show="showStats"><div class="wrap"><div class="stats" data-list="stats"></div></div></section>
-<section class="block"><div class="wrap">
+<section class="block teaser"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">SERVICES</span><h2 data-t="servicesIntro.h"></h2></div><p data-t="servicesIntro.p"></p></div>
   <div class="grid3" data-list="services-cards" data-mode="teaser"></div>
 </div></section>
-<section class="block" data-show="showWorkTeaser"><div class="wrap">
+<section class="block teaser" data-show="showWorkTeaser"><div class="wrap">
   <div class="head rv" id="workHead"><div><span class="eyebrow">SHOWREEL • COMING SOON</span><h2 data-t="work.h"></h2></div><p data-t="work.p"></p></div>
   <div class="grid3" id="workGrid" data-limit="3">{slots(U)}</div>
   <div class="center"><a class="btn btn-glass glass" href="work.html"><span class="dot"></span>{U["all_work"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></section>
-<section class="block" data-show="showPackagesTeaser"><div class="wrap">
+<section class="block teaser" data-show="showPackagesTeaser"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PRICING</span><h2 data-t="packages.h"></h2></div><p data-t="packages.p"></p></div>
   <div class="pkgs" data-list="packages-teaser"></div>
   <div class="center"><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{U["all_pkgs"]} <span class="arr">{U["arrow"]}</span></a></div>
