@@ -1,7 +1,7 @@
 """Generates every page shell (Arabic at the root, English in /en) from content.json.
 Text lives in content.json and is edited from /admin; this file holds layout and interface labels only.
 Run from the project folder:  python tools/build.py"""
-import json, os, sys
+import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from worlds import WORLDS
 
@@ -339,5 +339,10 @@ if __name__ == "__main__":
     sm = "".join(f'<url><loc>{url(l, p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="{url("ar", p)}"/><xhtml:link rel="alternate" hreflang="en" href="{url("en", p)}"/></url>' for p in pub for l in ("ar", "en"))
     open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' + sm + '</urlset>\n')
     open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account.html\nDisallow: /en/account.html\n\nSitemap: {SITE}/sitemap.xml\n")
+    # the admin page is hand-written: stamp its css/js with content hashes so a new version is never served from cache
+    ap = os.path.join(ROOT, "admin/index.html"); ah = open(ap, encoding="utf-8").read()
+    ah = re.sub(r'href="admin\.css(\?v=\w+)?"', f'href="admin.css?v={_v("admin/admin.css")}"', ah)
+    ah = re.sub(r'src="admin\.js(\?v=\w+)?"', f'src="admin.js?v={_v("admin/admin.js")}"', ah)
+    open(ap, "w", encoding="utf-8").write(ah)
     open(os.path.join(ROOT, "content.js"), "w", encoding="utf-8").write("window.EB_SEED=" + json.dumps(CONTENT, ensure_ascii=False) + ";\n")
     print("built", n, "pages + content.js")

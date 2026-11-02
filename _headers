@@ -24,3 +24,6 @@
 
 /videos/*
   Cache-Control: public, max-age=2592000
+
+/admin/*
+  Cache-Control: no-cache
