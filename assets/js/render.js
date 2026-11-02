@@ -175,7 +175,7 @@
     var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
     if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16);
     if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
-    lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false;
+    lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
     var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
     vimeoAsk(lbFrame.querySelector('iframe')); waves(true);
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden';
@@ -202,23 +202,28 @@
       var W=c.clientWidth, H=c.clientHeight; if(c.width!==Math.round(W*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); }
       x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
       var fr=lbFrame.getBoundingClientRect(), lr=c.getBoundingClientRect();
-      var cx=fr.left+fr.width/2-lr.left, cy=fr.top+fr.height/2-lr.top, r0=Math.min(fr.width,fr.height)*.42, R=Math.hypot(W,H)*.6;
-      var t=(now-t0)/1000, N=6, period=5.5;
-      for(var i=0;i<N;i++){
-        var k=((t/period)+i/N)%1, r=r0+(R-r0)*k, a=Math.pow(1-k,1.6)*.32;
-        x.lineWidth=1;
-        // the ring breathes a little, like a carrier signal
-        x.beginPath();
-        for(var j=0;j<=180;j++){ var th=j/180*Math.PI*2, rr=r+Math.sin(th*12+t*2+i)*2.2*(1-k); var px=cx+Math.cos(th)*rr, py=cy+Math.sin(th)*rr; j?x.lineTo(px,py):x.moveTo(px,py); }
-        var g=x.createLinearGradient(cx-r,cy-r,cx+r,cy+r); g.addColorStop(0,'rgba(63,224,232,'+a+')'); g.addColorStop(.5,'rgba(46,98,255,'+(a*.8)+')'); g.addColorStop(1,'rgba(139,92,255,'+a+')');
-        x.strokeStyle=g; x.stroke();
+      var cx=fr.left+fr.width/2-lr.left, cy=fr.top+fr.height/2-lr.top, r0=Math.min(fr.width,fr.height)*.45, R=Math.hypot(W,H)*.62;
+      var t=(now-t0)/1000, beat=3.2, life=7.5;            // a heartbeat every 3.2s, each wave lives 7.5s
+      for(var n=Math.floor((t-life)/beat);n<=Math.floor(t/beat);n++){
+        [0,.34].forEach(function(off,j){                   // lub … dub
+          var age=t-(n*beat+off); if(age<0||age>life) return;
+          var k=age/life, e=1-Math.pow(1-k,2.2), r=r0+(R-r0)*e, band=18+60*k;
+          var a=(j?0.10:0.15)*Math.pow(1-k,1.5);
+          var g=x.createRadialGradient(cx,cy,Math.max(0,r-band),cx,cy,r+band*.35);
+          g.addColorStop(0,'rgba(46,98,255,0)');
+          g.addColorStop(.62,'rgba(63,224,232,'+(a*.55).toFixed(3)+')');
+          g.addColorStop(.86,'rgba(110,140,255,'+a.toFixed(3)+')');
+          g.addColorStop(1,'rgba(139,92,255,0)');
+          x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r+band*.35,0,Math.PI*2); x.fill();
+        });
       }
       wv.raf=requestAnimationFrame(frame);
     }
     wv.raf=requestAnimationFrame(frame);
   }
   function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
-  function closeLB(){ waves(false); lb.hidden=true; lbFrame.innerHTML=''; document.body.style.overflow=''; if(lastFocus) lastFocus.focus(); }
+  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; lb.classList.remove('show');
+    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; if(lastFocus) lastFocus.focus(); },520); }
 
   /* ---------------- order ---------------- */
   var selected=null;
