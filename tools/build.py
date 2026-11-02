@@ -191,7 +191,7 @@ def p_pricing(U, lang):
 </div></section>
 <section class="block" data-show="showPayments"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PAYMENT</span><h2 data-t="payments.h"></h2></div><p data-t="payments.p"></p></div>
-  <ul class="paylist" data-list="payments"></ul>
+  <ul class="paylist rv" data-list="payments"></ul>
 </div></section>'''
 
 def p_about(U, lang):

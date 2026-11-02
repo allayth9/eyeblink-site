@@ -215,7 +215,7 @@
   window.EB=window.EB||{};
   EB.refresh=function(){
     [].forEach.call(document.querySelectorAll('.glass'),bindGlass);
-    [].forEach.call(document.querySelectorAll('.card,.slot,.step,.principle,.brief li,.proj,.pkg,.stat,.deliver li,.paym'),tilt);
+    [].forEach.call(document.querySelectorAll('.card,.slot,.step,.principle,.brief li,.proj,.pkg,.stat,.deliver li'),tilt);
     collect(); onScroll(); if(!reduce){ targets(); kick(); }
   };
   EB.blink=blink;

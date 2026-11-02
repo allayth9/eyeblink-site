@@ -52,7 +52,7 @@
     values:function(el){ el.innerHTML=(L(C.about&&C.about.values)||[]).map(function(v){return '<li class="glass">'+esc(v)+'</li>'}).join(''); },
     bio:function(el){ el.innerHTML=(L(C.about&&C.about.bio)||[]).map(function(p){return '<p>'+esc(p)+'</p>'}).join(''); },
     payments:function(el){ var m=((C.payments&&C.payments.methods)||[]).filter(function(x){return x.enabled!==false});
-      el.innerHTML=m.map(function(x){ return '<li class="paym glass rv" title="'+esc(x.name)+'"><span class="pic">'+payIcon(x)+'</span><span class="pname">'+esc(x.name)+'</span></li>'; }).join(''); },
+      el.innerHTML=m.map(function(x){ return '<li class="paym" title="'+esc(x.name)+'"><span class="pic">'+payIcon(x)+'</span><span class="pname">'+esc(x.name)+'</span></li>'; }).join(''); },
     'pay-strip':function(el){ var m=((C.payments&&C.payments.methods)||[]).filter(function(x){return x.enabled!==false});
       el.innerHTML=m.map(function(x){ return '<li title="'+esc(x.name)+'" aria-label="'+esc(x.name)+'">'+payIcon(x)+'</li>'; }).join(''); },
     markP:function(el){ el.innerHTML=(L(C.about&&C.about.markP)||[]).map(function(p){return '<p>'+esc(p)+'</p>'}).join(''); },

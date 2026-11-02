@@ -735,3 +735,19 @@ select{cursor:pointer}
   .desk .play{opacity:1;transform:none}
 }
 @media (prefers-reduced-motion:reduce){.desk .pol,.desk .sheet,.desk .prop,.desk .prop *{transition:none}}
+
+/* ===== payment methods: one static glass bar ===== */
+.paylist{display:flex;flex-wrap:nowrap;justify-content:stretch;gap:1px;border-radius:22px;overflow:hidden;background:rgba(190,210,255,.1);
+  box-shadow:inset 0 0 0 1px rgba(190,210,255,.13),0 20px 40px -24px rgba(0,0,0,.6)}
+.paylist .paym{flex:1 1 0;min-width:0;height:auto;padding:24px 12px 20px;border-radius:0;display:flex;flex-direction:column;align-items:center;gap:10px;
+  background:linear-gradient(170deg,rgba(22,30,78,.92),rgba(8,12,40,.94));transform:none!important;cursor:default}
+.paylist .paym .pic{width:auto;height:auto;background:none;box-shadow:none;border-radius:0}
+.paylist .paym .pic svg{width:24px;height:24px}
+.paylist .paym .pic img{max-width:60px;max-height:24px}
+.paylist .paym .pname{font-size:13px;letter-spacing:.06em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media (max-width:620px){
+  .paylist{display:grid;grid-template-columns:1fr 1fr;border-radius:18px}
+  .paylist .paym{padding:18px 10px 16px}
+  .paylist .paym:nth-child(odd):last-child{grid-column:1/-1}
+  .paylist .paym .pname{font-size:12px}
+}
