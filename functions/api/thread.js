@@ -105,7 +105,7 @@ function mail(lang, title, bodyHtml, cta, link){
   const rtl = lang !== "en";
   return `<!doctype html><html dir="${rtl?"rtl":"ltr"}"><body style="margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif">
 <div style="max-width:520px;margin:0 auto;background:#0b1236;border-radius:18px;padding:28px;color:#EEF2F6;text-align:${rtl?"right":"left"}">
-<div style="font:600 12px/1 Arial,sans-serif;letter-spacing:4px;color:#3FE0E8;margin-bottom:18px;direction:ltr;text-align:${rtl?"right":"left"}">EYEBLINK STUDIO</div>
+<div style="margin:0 0 22px;text-align:${rtl?"right":"left"}"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="220" alt="EYEBLINK STUDIO" style="display:inline-block;width:220px;max-width:70%;height:auto;border:0"></a></div>
 <h1 style="font-size:20px;margin:0 0 14px;color:#fff">${h(title)}</h1><div style="font-size:15px;line-height:1.8;color:#AEBBD2">${bodyHtml}</div>
 ${cta?`<a href="${link}" style="display:inline-block;margin-top:22px;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${h(cta)}</a>`:""}
 </div><p style="text-align:center;color:#6F7FA0;font-size:12px;margin-top:16px">eyeblinkstudio.com</p></body></html>`;
