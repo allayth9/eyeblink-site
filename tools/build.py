@@ -15,7 +15,7 @@ import hashlib
 def _v(path):
     return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
 ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/img/favicon.svg"]}
-PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account"]
+PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "privacy"]
 
 UI = {
  "ar": {"dir": "rtl", "arrow": "←", "nav": [("services", "الخدمات"), ("work", "أعمالنا"), ("pricing", "الباقات"), ("about", "من نحن"), ("contact", "تواصل")],
@@ -26,7 +26,7 @@ UI = {
         "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام للتواصل الخارجي (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
         "f_link": "رابط المواد (اختياري)", "f_deadline": "الموعد المستهدف (اختياري)", "send": "أرسل الطلب", "copy": "نسخ التفاصيل", "open_ig": "افتح إنستغرام", "again": "طلب جديد",
         "soon": "قريباً", "ig_follow": "تابع الجديد على إنستغرام", "closed_h": "الطلبات متوقفة مؤقتاً", "closed_p": "نستقبل الطلبات حالياً عبر إنستغرام فقط.", "home_l": "الرئيسية",
-        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي"},
+        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي", "privacy": "سياسة الخصوصية"},
         "slots": [("EDITING", "أعمال المونتاج"), ("MOTION", "أعمال الموشن غرافيك"), ("FILMS", "الأفلام والإعلانات")]},
  "en": {"dir": "ltr", "arrow": "→", "nav": [("services", "Services"), ("work", "Work"), ("pricing", "Pricing"), ("about", "About"), ("contact", "Contact")],
         "cta": "Start a project", "menu": "Menu", "lang_label": "العربية", "lang_short": "ع", "home": "Eyeblink Studio — home", "quick": "Quick links",
@@ -36,7 +36,7 @@ UI = {
         "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram for outside contact (optional)", "f_details": "Project details: type of video, length, idea",
         "f_link": "Link to materials (optional)", "f_deadline": "Target date (optional)", "send": "Send request", "copy": "Copy details", "open_ig": "Open Instagram", "again": "New request",
         "soon": "Coming soon", "ig_follow": "Follow new work on Instagram", "closed_h": "Requests are paused", "closed_p": "For now we take requests on Instagram only.", "home_l": "Home",
-        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account"},
+        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account", "privacy": "Privacy policy"},
         "slots": [("EDITING", "Editing work"), ("MOTION", "Motion graphics work"), ("FILMS", "Films & ads")]},
 }
 IG = "https://instagram.com/" + CONTENT["site"]["instagram"]
@@ -218,6 +218,25 @@ def p_contact(U, lang):
   <ul class="brief" data-list="brief"></ul>
 </div></section>'''
 
+PRIVACY = {
+ "ar": [("ما نجمعه", ["عند إنشاء حساب أو إرسال طلب نحفظ: اسمك، بريدك الإلكتروني، تفاصيل الطلب التي تكتبها، والرسائل بينك وبيننا داخل الموقع.", "إن سجّلت عبر Google نستلم من Google اسمك وبريدك الإلكتروني فقط، ولا نصل إلى أي بيانات أخرى في حسابك.", "كلمة السر تُحفظ مشفّرة، ولا يمكن لأحد قراءتها، بما في ذلك نحن."]),
+        ("لماذا نجمعه", ["لتنفيذ طلبك، والتواصل معك بخصوصه، وإظهار حالته في حسابك. لا نستخدم بياناتك لأي غرض آخر."]),
+        ("مع من نشاركها", ["لا نبيع بياناتك ولا نشاركها مع أي طرف. تُخزَّن على خوادم Cloudflare التي تستضيف الموقع."]),
+        ("ملفات تعريف الارتباط", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات."]),
+        ("حقوقك", ["يمكنك طلب نسخة من بياناتك أو حذف حسابك وكل ما يتعلق به في أي وقت عبر البريد: hello@eyeblinkstudio.com"]),
+        ("التحديثات", ["قد نحدّث هذه السياسة عند الحاجة، وتظهر أحدث نسخة دائماً في هذه الصفحة. آخر تحديث: نوفمبر 2026."])],
+ "en": [("What we collect", ["When you create an account or send a request we store your name, email address, the request details you write, and the messages between you and us on the site.", "If you sign in with Google we receive only your name and email address from Google. We cannot access anything else in your Google account.", "Passwords are stored hashed. Nobody can read them, including us."]),
+        ("Why", ["To deliver your request, talk to you about it, and show its progress in your account. We do not use your data for anything else."]),
+        ("Sharing", ["We do not sell or share your data with anyone. It is stored on Cloudflare, which hosts this site."]),
+        ("Cookies", ["We use one essential cookie that keeps you signed in. No tracking or advertising cookies."]),
+        ("Your rights", ["You can ask for a copy of your data or have your account and everything linked to it deleted at any time: hello@eyeblinkstudio.com"]),
+        ("Updates", ["We may update this policy when needed; the latest version always lives on this page. Last updated: November 2026."])]}
+
+def p_privacy(U, lang):
+    body = "".join(f'<h2>{h}</h2>' + "".join(f"<p>{x}</p>" for x in ps) for h, ps in PRIVACY[lang])
+    return f'''<section class="page-hero"><div class="wrap intro"><span class="eyebrow crumb">EYEBLINK <b>/ PRIVACY</b></span><h1>{U["titles"]["privacy"]}</h1></div></section>
+<section class="block" style="padding-top:0"><div class="wrap"><div class="legal glass">{body}</div></div></section>'''
+
 def p_account(U, lang):
     return '<section class="page-hero acct-page"><div class="wrap"><div id="acct" class="acct"></div></div></section>'
 
@@ -283,7 +302,7 @@ def build(lang, page):
 <footer><div class="wrap row">
   <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
   <nav aria-label="{U["quick"]}">{foot_nav}</nav>
-  <a class="c" href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a>
+  <span class="c"><a href="privacy.html">{U["titles"]["privacy"]}</a> · <a href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a></span>
 </div><div class="wrap"><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></footer>
 <nav class="dock glass" aria-label="{U["menu"]}">{dock}</nav>
 <script type="application/json" id="eb-seed">{seed()}</script>

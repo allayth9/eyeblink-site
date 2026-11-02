@@ -897,3 +897,10 @@ select{cursor:pointer}
   #workGrid{display:grid!important;grid-template-columns:1fr;overflow:visible;margin-inline:0;padding-inline:0;gap:16px}
   #workGrid>*{flex:none;width:100%;max-width:520px;justify-self:center}
 }
+
+/* ===== legal pages ===== */
+.legal{padding:clamp(24px,4vw,48px);border-radius:28px;max-width:820px}
+.legal h2{font-size:clamp(20px,2.4vw,26px);margin:26px 0 8px}
+.legal h2:first-child{margin-top:0}
+.legal p{color:var(--mist);margin:0 0 10px;line-height:1.8}
+footer .c a{color:inherit}
