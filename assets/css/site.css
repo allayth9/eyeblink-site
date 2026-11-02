@@ -904,3 +904,7 @@ select{cursor:pointer}
 .legal h2:first-child{margin-top:0}
 .legal p{color:var(--mist);margin:0 0 10px;line-height:1.8}
 footer .c a{color:inherit}
+/* Google's button lives in an iframe: match its colour scheme so the frame stays transparent (no white box) */
+.auth .gbtn iframe{color-scheme:light}
+.auth .gbtn>div{margin-inline:auto}
+#order,#orderDone,.odetail{scroll-margin-top:96px}
