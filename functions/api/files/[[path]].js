@@ -101,9 +101,10 @@ async function sendMail(env, to, subject, html){
     body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <hello@eyeblinkstudio.com>", to:[to], subject, html }) }); return r.ok; } catch { return false; }
 }
 async function telegram(env, text){
-  if (!env.TELEGRAM_TOKEN || !env.TELEGRAM_CHAT) return;
-  try { await fetch("https://api.telegram.org/bot"+env.TELEGRAM_TOKEN+"/sendMessage", { method:"POST", headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT, text: text.slice(0, 3900), disable_web_page_preview: true }) }); } catch {}
+  if (!env.TELEGRAM_TOKEN || !env.TELEGRAM_CHAT) return { ok:false, description:"TELEGRAM_TOKEN or TELEGRAM_CHAT is not set" };
+  const token = String(env.TELEGRAM_TOKEN).trim().replace(/^bot/i, ""), chat = String(env.TELEGRAM_CHAT).trim();
+  try { const r = await fetch("https://api.telegram.org/bot"+token+"/sendMessage", { method:"POST", headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ chat_id: chat, text: text.slice(0, 3900), disable_web_page_preview: true }) }); return await r.json(); } catch (e) { return { ok:false, description:String(e) }; }
 }
 function mail(lang, title, bodyHtml, cta, link){
   const rtl = lang !== "en";
