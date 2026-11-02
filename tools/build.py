@@ -222,7 +222,8 @@ def build(lang, page):
     desc = L(CONTENT["hero"]["lead"], lang)
     body = (p_service(U, lang, sid) if sid else globals()["p_" + page](U, lang))
     lb = f'''<div class="lightbox" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
-  <div class="lb-pattern" aria-hidden="true"><span>{"EYEBLINK STUDIO · " * 14}</span><span>{"EYEBLINK STUDIO · " * 14}</span></div>
+  <div class="lb-pattern" aria-hidden="true"><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div></div>
+  <canvas class="lb-waves" aria-hidden="true"></canvas>
   <div class="box"><div class="bar2"><h3 id="lbTitle"></h3><button class="close glass" id="lbClose" aria-label="{U["close"]}">×</button></div><div class="frame" id="lbFrame"></div></div>
 </div>''' if page in ("index", "work") else ""
     foot_nav = "".join(f'<a href="{k}.html">{v}</a>' for k, v in U["nav"])
