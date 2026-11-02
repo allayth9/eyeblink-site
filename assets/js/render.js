@@ -124,6 +124,32 @@
     fetch('https://vimeo.com/api/oembed.json?width=1280&url='+encodeURIComponent(u)).then(function(r){return r.ok?r.json():null})
       .then(function(j){ if(j&&j.thumbnail_url) img.src=j.thumbnail_url.replace(/_\d+x\d+/,'_1280'); }).catch(function(){});
   }
+  function shape(r){ var a=ratio(r).split('/'), k=(+a[0])/(+a[1]); return k<.95?'tall':k>1.05?'wide':'sq'; }
+  /* desk props beside the printed photo, one per service */
+  var PROPS={
+    films:'<svg class="prop clap" viewBox="0 0 120 100" aria-hidden="true"><g class="arm"><rect x="8" y="20" width="104" height="15" rx="2" fill="#141831"/><path d="M22 20h14l-9 15H13zM50 20h14l-9 15H41zM78 20h14l-9 15H69zM106 20h6v5l-6 10H97z" fill="#EEF2F6"/></g>'+
+      '<rect x="8" y="38" width="104" height="58" rx="3" fill="#141831"/><path d="M8 38h104v13H8z" fill="#1d2244"/><path d="M22 38h14l-9 13H13zM50 38h14l-9 13H41zM78 38h14l-9 13H69zM106 38h6v4l-6 9H97z" fill="#EEF2F6"/>'+
+      '<path d="M14 66h92M60 58v32" stroke="#EEF2F6" stroke-opacity=".35"/><text x="18" y="64" font-size="6" fill="#AEBBD2" font-family="Oswald,sans-serif" letter-spacing="1">SCENE</text><text x="66" y="64" font-size="6" fill="#AEBBD2" font-family="Oswald,sans-serif" letter-spacing="1">TAKE</text>'+
+      '<text x="18" y="84" font-size="15" fill="#EEF2F6" font-family="Oswald,sans-serif">01</text><text x="66" y="84" font-size="15" fill="#3FE0E8" font-family="Oswald,sans-serif">03</text><circle cx="16" cy="44" r="0"/></svg>',
+    editing:'<svg class="prop tline" viewBox="0 0 150 76" aria-hidden="true"><rect x="1" y="1" width="148" height="74" rx="7" fill="#0b0f26" stroke="#2a3366"/>'+
+      '<path d="M10 14h130" stroke="#2a3366"/><path d="M10 10v4M30 11v3M50 10v4M70 11v3M90 10v4M110 11v3M130 10v4" stroke="#6F7FA0"/>'+
+      '<rect x="10" y="22" width="38" height="16" rx="3" fill="#2E62FF"/><rect x="50" y="22" width="26" height="16" rx="3" fill="#8B5CFF"/><rect x="78" y="22" width="52" height="16" rx="3" fill="#2E62FF" fill-opacity=".8"/>'+
+      '<rect x="22" y="42" width="44" height="12" rx="3" fill="#3FE0E8" fill-opacity=".75"/><rect x="96" y="42" width="34" height="12" rx="3" fill="#E07BE0" fill-opacity=".7"/>'+
+      '<path d="M12 64q4-6 8 0t8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0 8 0" fill="none" stroke="#3FE0E8" stroke-opacity=".45" stroke-width="1.4"/>'+
+      '<g class="head"><path d="M40 6h8l-4 6z" fill="#E07BE0"/><path d="M44 12v58" stroke="#E07BE0" stroke-width="1.6"/></g>'+
+      '<g class="razor"><path d="M118 44l18-12 6 8-18 12z" fill="#EEF2F6"/><path d="M124 48l6-4" stroke="#0b0f26" stroke-width="2"/></g></svg>',
+    motion:'<svg class="prop graph" viewBox="0 0 130 92" aria-hidden="true"><rect x="1" y="1" width="128" height="90" rx="7" fill="#0b0f26" stroke="#2a3366"/>'+
+      '<path d="M12 24h106M12 46h106M12 68h106M38 10v72M64 10v72M90 10v72" stroke="#1d2550"/>'+
+      '<path d="M16 76C56 76 64 16 112 16" fill="none" stroke="#2E62FF" stroke-width="2.2"/>'+
+      '<path class="trace" pathLength="1" d="M16 76C56 76 64 16 112 16" fill="none" stroke="#3FE0E8" stroke-width="2.4" stroke-linecap="round"/>'+
+      '<path d="M16 76H52M112 16H74" stroke="#AEBBD2" stroke-opacity=".6"/><circle cx="52" cy="76" r="2.6" fill="#AEBBD2"/><circle cx="74" cy="16" r="2.6" fill="#AEBBD2"/>'+
+      '<rect class="kf" x="11" y="71" width="10" height="10" fill="#E07BE0" transform="rotate(45 16 76)"/><rect class="kf k2" x="107" y="11" width="10" height="10" fill="#E07BE0" transform="rotate(45 112 16)"/></svg>',
+    social:'<svg class="prop phone" viewBox="0 0 70 124" aria-hidden="true"><defs><linearGradient id="ebph" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E62FF"/><stop offset="1" stop-color="#8B5CFF"/></linearGradient></defs>'+
+      '<rect x="2" y="2" width="66" height="120" rx="12" fill="#0b0f26" stroke="#3a4278" stroke-width="2"/><rect x="7" y="8" width="56" height="108" rx="8" fill="url(#ebph)"/><rect x="26" y="11" width="18" height="4" rx="2" fill="#0b0f26"/>'+
+      '<path d="M14 98h26M14 104h18" stroke="#EEF2F6" stroke-opacity=".7" stroke-width="2.4" stroke-linecap="round"/><path d="M28 50l14 9-14 9z" fill="#EEF2F6" fill-opacity=".85"/>'+
+      '<g class="heart"><path d="M52 92c-6-4-8-7-8-10a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 3-2 6-8 10z" fill="#E07BE0"/></g>'+
+      '<g class="hearts"><path d="M50 70c-3-2-4-3.5-4-5a2 2 0 0 1 4-.5 2 2 0 0 1 4 .5c0 1.5-1 3-4 5z" fill="#EEF2F6"/><path d="M56 58c-2.4-1.6-3.2-2.8-3.2-4a1.6 1.6 0 0 1 3.2-.4 1.6 1.6 0 0 1 3.2.4c0 1.2-.8 2.4-3.2 4z" fill="#E07BE0"/></g></svg>'
+  };
   function renderWork(){
     var grid=document.getElementById('workGrid'); if(!grid) return;
     var list=(C.projects||[]).filter(function(p){return p&&L(p.title)&&(p.preview||p.poster||vid(p.full))});
@@ -139,7 +165,9 @@
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
       return '<button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
-        '<div class="frame media">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
+        '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
+          '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
+          '<span class="cap">'+esc(lab+(p.year?' · '+p.year:''))+'</span></div>'+PROPS[PROPS[p.service]?p.service:'films']+'</div>'+
         '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+'</div></button>';
     }).join('');
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
@@ -154,6 +182,10 @@
       filters.onclick=function(e){var bt=e.target.closest('button'); if(!bt)return;
         [].forEach.call(filters.children,function(x){x.setAttribute('aria-pressed',x===bt)});
         [].forEach.call(grid.children,function(c){c.hidden=!(bt.dataset.f==='all'||c.dataset.service===bt.dataset.f)});};
+    }
+    if('IntersectionObserver' in window){   /* touch screens: the photo straightens when the card is in view */
+      var cio=new IntersectionObserver(function(es){es.forEach(function(en){en.target.classList.toggle('in',en.isIntersecting)})},{threshold:.6});
+      [].forEach.call(grid.querySelectorAll('.proj'),function(c){cio.observe(c)});
     }
     bindLB();
   }
