@@ -129,3 +129,11 @@ textarea{min-height:76px;resize:vertical;line-height:1.6}
 .clients{display:grid;gap:10px}
 .client{display:grid;gap:6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line)}
 .newpw{padding:8px 12px;border-radius:10px;background:rgba(63,224,232,.1)}
+.afile{display:block;max-width:240px;max-height:200px;border-radius:10px;margin-top:6px}
+video.afile{max-width:320px}
+.adoc{display:inline-block;margin-top:6px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.06);text-decoration:none}
+.tcode{display:inline-block;padding:0 6px;border-radius:6px;background:rgba(63,224,232,.18);color:var(--horizon);font-weight:500}
+.areview{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(224,123,224,.1);box-shadow:inset 0 0 0 1px rgba(224,123,224,.25)}
+.areview b{color:#ffd76a}.areview p{margin:6px 0}
+.apend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.asend label.btn{align-self:flex-end}

@@ -22,7 +22,7 @@ UI = {
         "cta": "ابدأ مشروعك", "menu": "القائمة", "lang_label": "English", "lang_short": "EN", "home": "Eyeblink Studio — الصفحة الرئيسية", "quick": "روابط سريعة",
         "explore": "استكشف الخدمات", "all_work": "كل الأعمال", "all_pkgs": "كل الباقات", "close": "إغلاق",
         "tools": "الأدوات التي نعمل بها", "deliver": "ماذا تستلم", "svc_pkgs": "باقات هذه الخدمة", "others": "خدمات أخرى", "see_pkgs": "شاهد الباقات",
-        "order_h": "طلبك", "sel": "اخترت", "svc_h": "اطلب خدمة", "svc_p": "سعر واضح لكل فيديو. اختر الخدمة، أضف ما تحتاجه، وأرسل الطلب.", "acct": "حسابي", "f_step1": "ماذا تحتاج؟", "f_step2": "تفاصيل المشروع", "addons": "إضافات", "total": "المجموع التقديري",
+        "reel": "شاهد الشوريل", "order_h": "طلبك", "sel": "اخترت", "svc_h": "اطلب خدمة", "svc_p": "سعر واضح لكل فيديو. اختر الخدمة، أضف ما تحتاجه، وأرسل الطلب.", "acct": "حسابي", "f_step1": "ماذا تحتاج؟", "f_step2": "تفاصيل المشروع", "addons": "إضافات", "total": "المجموع التقديري",
         "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام للتواصل الخارجي (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
         "f_link": "رابط المواد (اختياري)", "f_deadline": "الموعد المستهدف (اختياري)", "send": "أرسل الطلب", "copy": "نسخ التفاصيل", "open_ig": "افتح إنستغرام", "again": "طلب جديد",
         "soon": "قريباً", "ig_follow": "تابع الجديد على إنستغرام", "closed_h": "الطلبات متوقفة مؤقتاً", "closed_p": "نستقبل الطلبات حالياً عبر إنستغرام فقط.", "home_l": "الرئيسية",
@@ -32,7 +32,7 @@ UI = {
         "cta": "Start a project", "menu": "Menu", "lang_label": "العربية", "lang_short": "ع", "home": "Eyeblink Studio — home", "quick": "Quick links",
         "explore": "Explore services", "all_work": "All work", "all_pkgs": "All packages", "close": "Close",
         "tools": "Tools we work with", "deliver": "What you get", "svc_pkgs": "Packages for this service", "others": "Other services", "see_pkgs": "See packages",
-        "order_h": "Your request", "sel": "You picked", "svc_h": "Order a service", "svc_p": "A clear price per video. Pick the service, add what you need, and send the request.", "acct": "My account", "f_step1": "What do you need?", "f_step2": "Project details", "addons": "Add-ons", "total": "Estimated total",
+        "reel": "Watch the showreel", "order_h": "Your request", "sel": "You picked", "svc_h": "Order a service", "svc_p": "A clear price per video. Pick the service, add what you need, and send the request.", "acct": "My account", "f_step1": "What do you need?", "f_step2": "Project details", "addons": "Add-ons", "total": "Estimated total",
         "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram for outside contact (optional)", "f_details": "Project details: type of video, length, idea",
         "f_link": "Link to materials (optional)", "f_deadline": "Target date (optional)", "send": "Send request", "copy": "Copy details", "open_ig": "Open Instagram", "again": "New request",
         "soon": "Coming soon", "ig_follow": "Follow new work on Instagram", "closed_h": "Requests are paused", "closed_p": "For now we take requests on Instagram only.", "home_l": "Home",
@@ -58,6 +58,12 @@ def seed():
 
 def L(v, lang): return v.get(lang) or v.get("ar") if isinstance(v, dict) else v
 
+def reviews_block(U):
+    return '''<section class="block" hidden><div class="wrap">
+  <div class="head rv"><div><span class="eyebrow">REVIEWS</span><h2 data-t="reviews.h"></h2></div></div>
+  <div class="revs" data-list="reviews"></div>
+</div></section>'''
+
 def cta_band(U):
     return f'''<section class="block"><div class="wrap"><div class="cta glass rv">
   <div><span class="eyebrow">CONTACT</span><h2 data-t="contact.h"></h2><p data-t="contact.p"></p></div>
@@ -80,11 +86,13 @@ def p_index(U, lang):
     <span class="eyebrow" data-t="hero.eyebrow"></span>
     <h1 data-t="hero.h1"></h1>
     <p class="lead" data-t="hero.lead"></p>
-    <div class="actions"><a class="btn btn-primary" href="pricing.html">{U["cta"]}</a><a class="btn btn-glass glass" href="services.html"><span class="dot"></span>{U["explore"]}</a></div>
+    <div class="actions"><a class="btn btn-primary" href="pricing.html">{U["cta"]}</a><a class="btn btn-glass glass" href="services.html"><span class="dot"></span>{U["explore"]}</a>
+      <button class="btn btn-glass glass reel-btn" type="button" id="reelBtn" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>{U["reel"]}</button></div>
   </div>
   <div class="stage" data-field-anchor aria-hidden="true">
     <svg class="ring" viewBox="0 0 400 400" direction="ltr" style="direction:ltr"><defs><path id="rp" d="M200,200 m-186,0 a186,186 0 1,1 372,0 a186,186 0 1,1 -372,0"/></defs><text><textPath href="#rp" textLength="1160" lengthAdjust="spacing">EYEBLINK STUDIO • VIDEO EDIT • MOTION GRAPHICS • FILM •</textPath></text></svg>
     <div class="orb glass opening">{HERO_MARK}</div>
+    <button class="reel-card glass" type="button" id="reelCard" hidden aria-label="{U["reel"]}"><video muted loop playsinline autoplay preload="metadata"></video><span><i></i>SHOWREEL</span></button>
   </div>
 </div></section>
 <section class="block" style="padding-top:0" data-show="showStats"><div class="wrap"><div class="stats" data-list="stats"></div></div></section>
@@ -102,6 +110,7 @@ def p_index(U, lang):
   <div class="pkgs" data-list="packages-teaser"></div>
   <div class="center"><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{U["all_pkgs"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></section>
+{reviews_block(U)}
 {cta_band(U)}'''
 
 def p_services(U, lang):
@@ -195,6 +204,11 @@ def p_pricing(U, lang):
 <section class="block" data-show="showPayments"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PAYMENT</span><h2 data-t="payments.h"></h2></div><p data-t="payments.p"></p></div>
   <ul class="paylist rv" data-list="payments"></ul>
+</div></section>
+{reviews_block(U)}
+<section class="block"><div class="wrap">
+  <div class="head rv"><div><span class="eyebrow">FAQ</span><h2 data-t="faq.h"></h2></div></div>
+  <div class="faq" data-list="faq"></div>
 </div></section>'''
 
 def p_about(U, lang):
@@ -257,7 +271,7 @@ def build(lang, page):
     lb = f'''<div class="lightbox" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
   <div class="lb-pattern" aria-hidden="true"><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div></div>
   <canvas class="lb-waves" aria-hidden="true"></canvas>
-  <div class="box"><div class="bar2"><h3 id="lbTitle"></h3><button class="close glass" id="lbClose" aria-label="{U["close"]}">×</button></div><div class="frame" id="lbFrame"></div></div>
+  <div class="box"><div class="bar2"><h3 id="lbTitle"></h3><button class="close glass" id="lbClose" aria-label="{U["close"]}">×</button></div><div class="frame" id="lbFrame"></div><div class="lb-case" id="lbCase" hidden></div></div>
 </div>''' if page in ("index", "work") else ""
     foot_nav = "".join(f'<a href="{k}.html">{v}</a>' for k, v in U["nav"])
     labels = dict(U["nav"]); labels["index"] = U["home_l"]

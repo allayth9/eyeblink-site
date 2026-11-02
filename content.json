@@ -14,7 +14,12 @@
   "lead": {
    "ar": "استوديو إبداعي مستقل متخصص في المونتاج الاحترافي والموشن غرافيك والإنتاج السينمائي. نمنح قصّتك الإيقاع والحركة والهوية البصرية التي تستحقها، بدقة في التفاصيل، وبساطة في الأسلوب، والتزام كامل بالمواعيد.",
    "en": "An independent creative studio for professional editing, motion graphics and film production. We give your story the rhythm, motion and visual identity it deserves: precise in detail, simple in style, and fully committed to deadlines."
-  }
+  },
+  "reel": {
+   "type": "vimeo",
+   "id": ""
+  },
+  "reelPreview": ""
  },
  "stats": [
   {
@@ -658,7 +663,7 @@
   "showPayments": true,
   "ordersOpen": true,
   "whatsapp": "",
-  "email": ""
+  "email": "hello@eyeblinkstudio.com"
  },
  "contact": {
   "h": {
@@ -705,6 +710,80 @@
     "p": {
      "ar": "متى تحتاج التسليم النهائي؟",
      "en": "When do you need the final delivery?"
+    }
+   }
+  ]
+ },
+ "reviews": {
+  "h": {
+   "ar": "ماذا يقول عملاؤنا",
+   "en": "What clients say"
+  }
+ },
+ "faq": {
+  "h": {
+   "ar": "أسئلة شائعة",
+   "en": "Common questions"
+  },
+  "items": [
+   {
+    "q": {
+     "ar": "كم يستغرق التسليم؟",
+     "en": "How long does delivery take?"
+    },
+    "a": {
+     "ar": "يختلف حسب الخدمة: الريل خلال 3 أيام، فيديو الموشن خلال 5 أيام، والأفلام حسب خطة الإنتاج التي نتفق عليها. التسليم المستعجل خلال 48 ساعة متاح كإضافة.",
+     "en": "It depends on the service: a reel in 3 days, a motion video in 5 days, and films follow the production plan we agree on. Rush delivery within 48 hours is available as an add-on."
+    }
+   },
+   {
+    "q": {
+     "ar": "كم جولة تعديل أحصل عليها؟",
+     "en": "How many revision rounds do I get?"
+    },
+    "a": {
+     "ar": "عدد الجولات مذكور في كل خدمة. أي تعديلات إضافية بعدها نتفق على سعرها حسب حجمها قبل البدء.",
+     "en": "Each service lists its revision rounds. Anything beyond that is priced by size, and agreed before we start."
+    }
+   },
+   {
+    "q": {
+     "ar": "ماذا أحتاج أن أرسل لكم؟",
+     "en": "What do I need to send you?"
+    },
+    "a": {
+     "ar": "فكرة الفيديو، المواد المتوفرة لديك (لقطات، شعار، خطوط، ألوان)، أمثلة تعجبك، والموعد المطلوب. ترفع الملفات مباشرة داخل محادثة طلبك، أو ترسل رابطاً لها.",
+     "en": "The idea, any material you have (footage, logo, fonts, colours), examples you like, and your deadline. Upload files straight into your request conversation, or send a link."
+    }
+   },
+   {
+    "q": {
+     "ar": "كيف يتم الدفع؟",
+     "en": "How does payment work?"
+    },
+    "a": {
+     "ar": "بعد مراجعة طلبك نؤكد السعر النهائي، ونرسل لك تفاصيل الدفع بالطريقة التي تختارها من الطرق المعروضة في هذه الصفحة.",
+     "en": "After we review your request we confirm the final price and send payment details for the method you choose from those listed on this page."
+    }
+   },
+   {
+    "q": {
+     "ar": "كيف أتابع طلبي؟",
+     "en": "How do I follow my request?"
+    },
+    "a": {
+     "ar": "من صفحة «حسابي»: ترى مرحلة العمل الحالية، وتتحدث معنا مباشرة، وتستلم النسخ للمراجعة حتى التسليم النهائي.",
+     "en": "From “My account”: you see the current stage, talk to us directly, and receive drafts for review until final delivery."
+    }
+   },
+   {
+    "q": {
+     "ar": "هل تعملون مع عملاء من دول أخرى؟",
+     "en": "Do you work with clients in other countries?"
+    },
+    "a": {
+     "ar": "نعم، نعمل عن بُعد مع عملاء في الخليج والمنطقة العربية، والتواصل كله يتم عبر الموقع أو إنستغرام.",
+     "en": "Yes. We work remotely with clients across the Gulf and the Arab region; everything happens through the site or Instagram."
     }
    }
   ]

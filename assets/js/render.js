@@ -10,12 +10,12 @@
         svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب البريف',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
-        pickFirst:'اختر خدمة أولاً',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون'},
+        pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',challenge:'التحدي',idea:'الفكرة',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون'},
     en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
         offline:'Your request is ready',offlineP:'We copied your request details. Send them to us on Instagram and we will reply with a clear plan.',copy:'Copy details',copied:'Copied',openIG:'Open Instagram',
-        pickFirst:'Choose a service first',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None'}
+        pickFirst:'Choose a service first',reel:'Showreel',watchReel:'Watch the showreel',challenge:'Challenge',idea:'Idea',result:'Result',wa:'Message us on WhatsApp',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None'}
   }[lang];
   var ICON={
     editing:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="7.5" height="4.5" rx="1.2"/><rect x="12.5" y="6" width="8.5" height="4.5" rx="1.2"/><rect x="3" y="13.5" width="11" height="4.5" rx="1.2"/><rect x="16" y="13.5" width="5" height="4.5" rx="1.2"/><path d="M11.5 4.2v16.3"/><path class="fill" d="M9.9 2.8h3.2l-1.6 1.9z"/></svg>',
@@ -31,7 +31,7 @@
   function money(c,n){ return AR? n+' '+c : c+n; }
   function ratio(r){ var m=/^(\d+(?:\.\d+)?)[:\/](\d+(?:\.\d+)?)$/.exec(r||''); return m?m[1]+'/'+m[2]:'16/10'; }
 
-  var C=null;
+  var C=null, REV=null;
   try{ C=JSON.parse(document.getElementById('eb-seed').textContent); }catch(e){ C={}; }
   var isDraft=false;
   try{ if(localStorage.getItem('eb-preview')==='1'){ var d=JSON.parse(localStorage.getItem('eb-draft')||'null'); if(d){ C=d; isDraft=true; } } }catch(e){}
@@ -64,6 +64,16 @@
     'svc-packages':function(el,s){ var items=((C.packages&&C.packages.items)||[]).filter(function(p){return p.service===s.id});
       el.innerHTML=items.map(function(p){return pkgCard(p,true)}).join(''); el.closest('section').hidden=!items.length; },
     'svc-nav':function(el,s){ el.innerHTML=(C.services||[]).map(function(x){return '<a class="glass" href="service-'+esc(x.id)+'.html"'+(x.id===s.id?' aria-current="page"':'')+'>'+esc(L(x.name))+'</a>'}).join(''); },
+    faq:function(el){ var it=(C.faq&&C.faq.items)||[]; el.innerHTML=it.map(function(f,i){ return '<details class="qa glass rv"'+(i===0?' open':'')+'><summary><span>'+esc(L(f.q))+'</span><i aria-hidden="true"></i></summary><div class="a">'+esc(L(f.a)).replace(/\n/g,'<br>')+'</div></details>'; }).join('');
+      var s=el.closest('section'); if(s) s.hidden=!it.length; },
+    reviews:function(el){ var s=el.closest('section'); if(s&&!REV) s.hidden=true;
+      var draw=function(){ var list=(REV||[]).slice(0,9); if(s) s.hidden=!list.length;
+        el.innerHTML=list.map(function(r){ return '<figure class="rev glass rv"><div class="stars" aria-label="'+r.stars+'/5">'+'★★★★★'.slice(0,r.stars)+'<span>'+'★★★★★'.slice(r.stars)+'</span></div>'+
+          (r.text?'<blockquote>'+esc(r.text)+'</blockquote>':'')+'<figcaption><b>'+esc(r.name)+'</b>'+(r.service?'<span>'+esc(r.service)+'</span>':'')+'</figcaption></figure>'; }).join('');
+        if(window.EB&&EB.refresh) EB.refresh(); };
+      if(REV) return draw();
+      if(!/^https?:/.test(location.protocol)) return;
+      fetch(BASE+'api/reviews').then(function(r){ return r.ok?r.json():[]; }).then(function(j){ REV=Array.isArray(j)?j:[]; draw(); }).catch(function(){}); },
     packages:function(el){ var k=el.dataset.kind, it=((C.packages&&C.packages.items)||[]).filter(function(p){return !k||kind(p)===k});
       el.innerHTML=it.map(function(p){return pkgCard(p,false,k==='package')}).join(''); el.hidden=!it.length; },
     'packages-teaser':function(el){ var it=((C.packages&&C.packages.items)||[]).slice(0,3); el.innerHTML=it.map(function(p){return pkgCard(p,true)}).join(''); }
@@ -109,6 +119,17 @@
     if(of&&oc){ var open=S.ordersOpen!==false; of.hidden=!open; oc.hidden=open; }
     var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt) document.title=tt;
     window.EBC=C;
+    // floating WhatsApp button (only when a number is set)
+    var wa=String(S.whatsapp||'').replace(/[^0-9]/g,''), wf=document.querySelector('.wa-float');
+    if(wa && !document.querySelector('.acct-page')){ if(!wf){ wf=document.createElement('a'); wf.className='wa-float'; wf.target='_blank'; wf.rel='noopener'; document.body.appendChild(wf); }
+      wf.href='https://wa.me/'+wa; wf.setAttribute('aria-label',UI.wa); wf.title=UI.wa;
+      wf.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3.2a8.7 8.7 0 0 0-7.5 13.1L3.3 20.7l4.5-1.2A8.7 8.7 0 1 0 12 3.2z"/><path d="M8.9 7.9c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.7c.1.2 0 .4-.1.6l-.5.6c-.1.1-.2.3 0 .5.4.8 1 1.5 1.7 2 .6.4 1 .6 1.3.7.2.1.3 0 .4-.1l.7-.8c.2-.2.3-.2.6-.1l1.6.8c.3.1.4.3.4.5 0 .5-.2 1.2-.7 1.5-.6.4-1.4.6-2.4.3-1.1-.3-2.6-1-3.9-2.3-1.3-1.3-2.1-2.8-2.4-3.8-.2-.9 0-1.6.4-2z" class="f"/></svg>'; }
+    else if(wf) wf.remove();
+    // showreel: a button in the hero, plus a small autoplaying preview when one is uploaded
+    var H=C.hero||{}, reel=H.reel||{}, rb=document.getElementById('reelBtn'), rc=document.getElementById('reelCard');
+    var hasReel=!!(vid(reel)||(reel.type==='mp4'&&reel.src));
+    if(rb){ rb.hidden=!hasReel; rb.onclick=function(){ bindLB(); openLB({title:{ar:UI.reel,en:UI.reel},full:reel,ratio:'16:9',poster:H.reelPoster||''}); }; }
+    if(rc){ rc.hidden=!(hasReel&&H.reelPreview); if(!rc.hidden){ var rv=rc.querySelector('video'); if(rv.getAttribute('src')!==url(H.reelPreview)) rv.src=url(H.reelPreview); rc.onclick=function(){ rb&&rb.onclick(); }; } }
     renderWork(); setupOrder();
     if(window.EB&&EB.refresh) EB.refresh();
   }
@@ -215,6 +236,8 @@
     var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
     if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16);
     if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
+    var cs=document.getElementById('lbCase'), parts=[['challenge',UI.challenge],['idea',UI.idea],['result',UI.result]].filter(function(k){ return L(p[k[0]]); });
+    if(cs){ cs.hidden=!parts.length; cs.innerHTML=parts.map(function(k){ return '<div><span class="k">'+k[1]+'</span><p>'+esc(L(p[k[0]]))+'</p></div>'; }).join(''); lb.classList.toggle('has-case',!!parts.length); }
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
     var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
     vimeoAsk(lbFrame.querySelector('iframe')); waves(true); fadeAudio(0,1,1400,0);
@@ -371,7 +394,9 @@
     bar.querySelector('a').addEventListener('click',function(e){ e.preventDefault(); try{ localStorage.removeItem('eb-preview'); }catch(_){} location.reload(); }); }
   else if(/^https?:/.test(location.protocol)){
     fetch(BASE+'api/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json():null; }).then(function(j){
-      if(j && j.services && JSON.stringify(j)!==JSON.stringify(C)){ C=j; renderAll(); }
+      if(j && j.services){ var sd={}; try{ sd=JSON.parse(document.getElementById('eb-seed').textContent); }catch(_){}
+        for(var k in sd) if(!(k in j)) j[k]=sd[k];                 // sections added after the last publish keep their defaults
+        if(JSON.stringify(j)!==JSON.stringify(C)){ C=j; renderAll(); } }
       window.EBLive=true; document.dispatchEvent(new Event('eb:content'));
     }).catch(function(){});
   }

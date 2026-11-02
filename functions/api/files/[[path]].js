@@ -1,0 +1,134 @@
+// POST /api/files — upload one file into an order's conversation: raw body + headers x-code (EB-XXXXX) and x-filename.
+//                   Allowed for the signed-in client who owns the order, or the admin. Max 20 MB.
+// GET  /api/files/<key> — the file (keys are long and random, so a link is the permission). Supports byte ranges for video.
+const TYPES = /^(image\/(jpeg|png|webp|gif|avif|heic|heif)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|aac|ogg)|application\/(pdf|zip|x-zip-compressed)|text\/plain)$/;
+export async function onRequestGet({ request, params, env }) {
+  const key = (params.path || []).join("/");
+  if (!/^[a-z0-9][a-z0-9.\-_]{10,120}$/.test(key)) return new Response("not found", { status: 404 });
+  const { value, metadata } = await env.EB.getWithMetadata("file:" + key, { type: "arrayBuffer" });
+  if (!value) return new Response("not found", { status: 404 });
+  const size = value.byteLength, type = metadata?.type || "application/octet-stream";
+  const head = { "content-type": type, "accept-ranges": "bytes", "cache-control": "private, max-age=86400",
+    "content-disposition": (/^(image|video|audio)\//.test(type) || type === "application/pdf" ? "inline" : "attachment") + "; filename*=UTF-8''" + encodeURIComponent(metadata?.name || key) };
+  const m = /bytes=(\d*)-(\d*)/.exec(request.headers.get("range") || "");
+  if (m) {
+    let a = m[1] === "" ? size - +m[2] : +m[1], b = m[1] === "" || m[2] === "" ? size - 1 : Math.min(+m[2], size - 1);
+    if (a < 0) a = 0;
+    if (a >= size || a > b) return new Response(null, { status: 416, headers: { "content-range": "bytes */" + size } });
+    return new Response(value.slice(a, b + 1), { status: 206, headers: { ...head, "content-range": `bytes ${a}-${b}/${size}`, "content-length": String(b - a + 1) } });
+  }
+  return new Response(value, { headers: { ...head, "content-length": String(size) } });
+}
+export async function onRequestPost({ request, env }) {
+  const admin = await isAdmin(request, env);
+  const code = String(request.headers.get("x-code") || "").toUpperCase();
+  const okey = await env.EB.get("code:" + code); const ov = okey && await env.EB.get(okey);
+  if (!ov) return json({ ok: false, error: "order" }, 404);
+  const o = JSON.parse(ov);
+  if (!admin) {
+    const u = await currentUser(request, env);
+    if (!u || u.email !== o.email) return json({ ok: false }, 401);
+    if (o.status === "delivered" || o.status === "cancelled") return json({ ok: false, error: "closed" }, 403);
+    if (await limited(env, "frl:" + u.email, 30, 3600)) return json({ ok: false, error: "too many files" }, 429);
+  }
+  const type = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  if (!TYPES.test(type)) return json({ ok: false, error: "type" }, 415);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json({ ok: false }, 400);
+  if (buf.byteLength > 20 * 1024 * 1024) return json({ ok: false, error: "size" }, 413);
+  const raw = decodeURIComponent(request.headers.get("x-filename") || "file");
+  const safe = raw.toLowerCase().replace(/[^a-z0-9.\-_]/g, "-").replace(/-+/g, "-").slice(-50) || "file";
+  const key = randHex(12) + "-" + safe.replace(/^[^a-z0-9]+/, "");
+  await env.EB.put("file:" + key, buf, { metadata: { type, size: buf.byteLength, name: raw.slice(0, 120), code } });
+  return json({ ok: true, file: { url: "/api/files/" + key, name: raw.slice(0, 120), type, size: buf.byteLength } });
+}
+
+// ---- shared auth (same block in every route) ----
+// Password: a hash saved from the admin panel (KV "auth:hash"), or else the ADMIN_PASSWORD secret.
+// More than 10 wrong attempts from one address locks it for an hour.
+async function sha256(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function same(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }
+async function isAdmin(req, env){
+  const h=req.headers.get("authorization")||""; const pw=h.startsWith("Bearer ")?h.slice(7):"";
+  if(!pw) return false;
+  const ip=req.headers.get("cf-connecting-ip")||"x", fk="fail:"+ip, fails=+(await env.EB.get(fk)||0);
+  if(fails>=10) return false;
+  const stored=await env.EB.get("auth:hash");
+  const ok= stored ? same(await sha256(pw), stored) : (!!env.ADMIN_PASSWORD && same(pw, env.ADMIN_PASSWORD));
+  if(!ok) await env.EB.put(fk, String(fails+1), { expirationTtl: 3600 });
+  return ok;
+}
+const json=(o,s=200,h={})=>new Response(JSON.stringify(o),{status:s,headers:Object.assign({"content-type":"application/json; charset=utf-8","cache-control":"no-store"},h)});
+
+// ---- client accounts (same block in every route that needs it) ----
+// Sessions: random token in an HttpOnly cookie "eb_s" → KV "sess:<token>" = email (30 days).
+const SESSION_DAYS = 30;
+function cookie(req, name){ const m=(req.headers.get("cookie")||"").match(new RegExp("(?:^|;\\s*)"+name+"=([^;]+)")); return m?m[1]:""; }
+function randHex(n){ return [...crypto.getRandomValues(new Uint8Array(n))].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+async function currentUser(req, env){
+  const t=cookie(req,"eb_s"); if(!/^[a-f0-9]{48}$/.test(t)) return null;
+  const email=await env.EB.get("sess:"+t); if(!email) return null;
+  const u=await env.EB.get("user:"+email); return u?JSON.parse(u):null;
+}
+async function startSession(env, email){
+  const t=randHex(24); await env.EB.put("sess:"+t, email, { expirationTtl: SESSION_DAYS*86400 });
+  return "eb_s="+t+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+(SESSION_DAYS*86400);
+}
+async function pbkdf2(pw, salt){
+  const k=await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const b=await crypto.subtle.deriveBits({ name:"PBKDF2", hash:"SHA-256", salt:new TextEncoder().encode(salt), iterations:100000 }, k, 256);
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0); if(n>=max) return true; await env.EB.put(key,String(n+1),{expirationTtl:ttl}); return false; }
+function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
+  return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
+function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined})), unread:unreadFor(o,"client"),
+  name:o.name, email:o.email, method:o.method, review:o.review||null }; }
+// attachments must point at files uploaded through /api/files
+function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
+  .map(f=>({url:f.url, name:String(f.name||"file").slice(0,120), type:String(f.type||"").slice(0,80), size:+f.size||0})); }
+
+// ---- notifications: Resend e-mail + Telegram (each one is skipped quietly until its secrets are set) ----
+const SITE = "https://eyeblinkstudio.com";
+const ST_AR = {"new":"استلمنا الطلب","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
+const ST_EN = {"new":"Request received","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
+function h(t){ return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+async function siteSettings(env){ try { return (JSON.parse(await env.EB.get("content")||"{}").settings)||{}; } catch { return {}; } }
+async function sendMail(env, to, subject, html){
+  if (!env.RESEND_API_KEY || !to) return false;
+  try { const r = await fetch("https://api.resend.com/emails", { method:"POST", headers:{ authorization:"Bearer "+env.RESEND_API_KEY, "content-type":"application/json" },
+    body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <hello@eyeblinkstudio.com>", to:[to], subject, html }) }); return r.ok; } catch { return false; }
+}
+async function telegram(env, text){
+  if (!env.TELEGRAM_TOKEN || !env.TELEGRAM_CHAT) return;
+  try { await fetch("https://api.telegram.org/bot"+env.TELEGRAM_TOKEN+"/sendMessage", { method:"POST", headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT, text: text.slice(0, 3900), disable_web_page_preview: true }) }); } catch {}
+}
+function mail(lang, title, bodyHtml, cta, link){
+  const rtl = lang !== "en";
+  return `<!doctype html><html dir="${rtl?"rtl":"ltr"}"><body style="margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif">
+<div style="max-width:520px;margin:0 auto;background:#0b1236;border-radius:18px;padding:28px;color:#EEF2F6;text-align:${rtl?"right":"left"}">
+<div style="font:600 12px/1 Arial,sans-serif;letter-spacing:4px;color:#3FE0E8;margin-bottom:18px;direction:ltr;text-align:${rtl?"right":"left"}">EYEBLINK STUDIO</div>
+<h1 style="font-size:20px;margin:0 0 14px;color:#fff">${h(title)}</h1><div style="font-size:15px;line-height:1.8;color:#AEBBD2">${bodyHtml}</div>
+${cta?`<a href="${link}" style="display:inline-block;margin-top:22px;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${h(cta)}</a>`:""}
+</div><p style="text-align:center;color:#6F7FA0;font-size:12px;margin-top:16px">eyeblinkstudio.com</p></body></html>`;
+}
+// to the studio: e-mail (to the address in the site settings) + Telegram
+async function notifyStudio(env, subject, text){
+  const s = await siteSettings(env), to = env.NOTIFY_EMAIL || s.email;
+  await Promise.all([ sendMail(env, to, subject, mail("ar", subject, h(text).replace(/\n/g,"<br>"), "افتح لوحة التحكم", SITE+"/admin/")),
+    telegram(env, "🔔 "+subject+"\n\n"+text+"\n\n"+SITE+"/admin/") ]);
+}
+// to the client: new message from the studio / status change / request received
+async function notifyClient(env, o, kind, text){
+  if (!o.email) return;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+  const T = en ? { message:"New message about your request "+o.code, status:"Update on your request "+o.code, received:"We received your request "+o.code, cta:"Open my account",
+                   statusP:"Your request is now: ", receivedP:"Thank you! We will review the details and reply in your account within 24 hours." }
+               : { message:"رسالة جديدة بخصوص طلبك "+o.code, status:"تحديث على طلبك "+o.code, received:"استلمنا طلبك "+o.code, cta:"افتح حسابي",
+                   statusP:"حالة طلبك الآن: ", receivedP:"شكراً لك! سنراجع التفاصيل ونرد عليك في حسابك خلال 24 ساعة." };
+  const body = kind==="message" ? h(text).replace(/\n/g,"<br>") : kind==="status" ? h(T.statusP) + "<b style=\"color:#fff\">"+h((en?ST_EN:ST_AR)[text]||text)+"</b>" : h(T.receivedP);
+  await sendMail(env, o.email, T[kind], mail(en?"en":"ar", T[kind], body, T.cta, link));
+}
+function later(ctx, p){ if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p); else return p; }

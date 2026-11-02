@@ -20,7 +20,12 @@
         {p:'hero.lead', t:'bita', l:'الفقرة تحت العنوان'} ]},
       {h:'خانة الأرقام', hint:'تظهر تحت العنوان في الصفحة الرئيسية. اكتب أرقاماً دقيقة فقط.', rep:{p:'stats', name:function(x){return (x.value||'')+' '+((x.label&&x.label.ar)||'')}, add:function(){return {value:'',label:bi()}},
         fields:[{p:'value', t:'text', l:'الرقم', ltr:1},{p:'label', t:'bi', l:'الوصف'}]}},
-      {h:'مقدمة الخدمات', fields:[{p:'servicesIntro.h', t:'bi', l:'العنوان'},{p:'servicesIntro.p', t:'bita', l:'الوصف'}]} ]},
+      {h:'الشوريل', hint:'يظهر زر «شاهد الشوريل» في الواجهة عند وضع رابط. المعاينة القصيرة (اختيارية) تعمل تلقائياً بلا صوت بجانب الشعار: 6–10 ثوانٍ، أقل من 5MB.', fields:[
+        {row:[{p:'hero.reel.type', t:'select', l:'مصدر الفيديو', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4']]}},{p:'hero.reel.id', t:'text', l:'رابط الشوريل على Vimeo أو YouTube', ltr:1}]},
+        {p:'hero.reel.src', t:'media', l:'ملف MP4 (فقط إذا اخترت MP4)', accept:'video/mp4'},
+        {p:'hero.reelPreview', t:'media', l:'معاينة قصيرة بلا صوت', accept:'video/mp4,video/webm'} ]},
+      {h:'مقدمة الخدمات', fields:[{p:'servicesIntro.h', t:'bi', l:'العنوان'},{p:'servicesIntro.p', t:'bita', l:'الوصف'}]},
+      {h:'آراء العملاء', hint:'تظهر في الرئيسية وصفحة الأسعار فقط بعد أن يقيّم عميل طلبه المسلَّم، يوافق على النشر، وتفعّل أنت التقييم من صندوق الطلبات.', fields:[{p:'reviews.h', t:'bi', l:'عنوان القسم'}]} ]},
     {id:'services', title:'الخدمات', secs:[
       {h:'الخدمات الأربع', hint:'لكل خدمة صفحة خاصة بعالمها البصري. إضافة نوع خدمة جديد بالكامل يحتاج تصميم صفحته.', rep:{p:'services', fixed:1, name:function(x){return (x.name&&x.name.ar)||x.id}, fields:[
         {p:'label', t:'text', l:'التسمية اللاتينية الصغيرة', ltr:1},
@@ -42,7 +47,9 @@
           {p:'id', t:'text', l:'المعرّف (يظهر في الرابط)', ltr:1} ]}},
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return ((x.name&&x.name.ar)||'إضافة')+' · '+(x.type==='percent'?x.price+'%':x.price)},
         add:function(){return {id:'add-'+Date.now().toString(36),name:bi('إضافة','Add-on'),price:10,type:'fixed'}},
-        fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}} ]},
+        fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}},
+      {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'}, add:function(){return {q:bi(),a:bi()}},
+        fields:[{p:'q', t:'bi', l:'السؤال'},{p:'a', t:'bita', l:'الجواب'}]}} ]},
     {id:'work', title:'الأعمال', secs:[
       {h:'نصوص القسم', fields:[{p:'work.h', t:'bi', l:'العنوان قبل إضافة أعمال'},{p:'work.p', t:'bita', l:'الوصف قبل إضافة أعمال'},{p:'work.filledH', t:'bi', l:'العنوان بعد إضافة أعمال'},{p:'work.filledP', t:'bita', l:'الوصف بعد إضافة أعمال'}]},
       {h:'المشاريع', hint:'أول 3 مشاريع تظهر في الرئيسية. المعاينة: 6–8 ثوانٍ بدون صوت، حتى 5MB. الفيديو الكامل الأفضل على Vimeo أو YouTube.', rep:{p:'projects',
@@ -50,6 +57,7 @@
         fields:[{p:'title', t:'bi', l:'اسم المشروع'},
           {row:[{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'ratio', t:'select', l:'المقاس', opts:function(){return [['16:9','أفقي 16:9'],['9:16','عمودي 9:16'],['1:1','مربع 1:1'],['4:5','4:5']]}},{p:'year', t:'text', l:'السنة', ltr:1}]},
           {p:'summary', t:'bi', l:'سطر عن المشروع'},{p:'client', t:'text', l:'العميل (اختياري)'},
+          {p:'challenge', t:'bita', l:'دراسة الحالة — التحدي (اختياري)'},{p:'idea', t:'bita', l:'الفكرة (اختياري)'},{p:'result', t:'bita', l:'النتيجة، بالأرقام إن أمكن (اختياري)', hint:'تظهر الثلاثة تحت الفيديو عند فتحه. اتركها فارغة لعرض الفيديو فقط.'},
           {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm'},
           {p:'poster', t:'media', l:'صورة الغلاف', accept:'image/*'},
           {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
@@ -247,7 +255,9 @@
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
           (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
-            '<div class="asend"><textarea data-msg dir="auto" placeholder="'+(o.status==='delivered'||o.status==='cancelled'?'المحادثة مغلقة عند العميل بعد التسليم، لكن رسالتك ستظهر له':'اكتب رداً للعميل…')+'"></textarea><button class="btn primary sm" type="button" data-osend="'+k+'">إرسال</button></div>':'')+
+            (o.review?'<div class="areview"><b>تقييم العميل: '+'★★★★★'.slice(0,o.review.stars)+'<span style="opacity:.3">'+'★★★★★'.slice(o.review.stars)+'</span></b>'+(o.review.text?'<p>'+esc(o.review.text)+'</p>':'')+
+              (o.review.publish?'<label class="check"><input type="checkbox" data-rapprove="'+k+'"'+(o.review.approved?' checked':'')+'> اعرضه على الموقع</label>':'<span class="muted small">العميل لم يوافق على النشر.</span>')+'</div>':'')+
+            '<div class="apend" hidden></div><div class="asend"><label class="btn sm" title="إرفاق ملف (حتى 20MB)">📎<input type="file" multiple hidden data-oup="'+k+'"></label><textarea data-msg dir="auto" placeholder="'+(o.status==='delivered'||o.status==='cancelled'?'المحادثة مغلقة عند العميل بعد التسليم، لكن رسالتك ستظهر له':'اكتب رداً للعميل…')+'"></textarea><button class="btn primary sm" type="button" data-osend="'+k+'">إرسال</button></div>':'')+
           '<div class="small muted" style="margin-top:8px">السجل</div><div class="small">'+(o.history||[]).map(function(h){return esc(ST[h.status]||h.status)+' · '+esc(new Date(h.at).toLocaleString('ar'))}).join('<br>')+'</div>'+
         '</div><div class="ofields">'+
           '<div class="row"><div class="field"><label>الحالة</label><select data-of="status">'+Object.keys(ST).map(function(s2){return '<option value="'+s2+'"'+(s2===o.status?' selected':'')+'>'+ST[s2]+'</option>'}).join('')+'</select></div>'+
@@ -264,14 +274,29 @@
   }
   function thread(o){
     var m=o.messages||[]; if(!m.length) return '<div class="muted small">لا رسائل بعد. العميل يرى رسالة ترحيب تلقائية بأنكم سترسلون السعر خلال 24 ساعة.</div>';
-    return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+'"><div>'+esc(x.text).replace(/\n/g,'<br>')+'</div><small>'+(x.from==='client'?'العميل':'أنت')+' · '+esc(new Date(x.at).toLocaleString('ar'))+'</small></div>'; }).join('');
+    return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+'">'+(x.text?'<div>'+esc(x.text).replace(/\n/g,'<br>').replace(/\[(\d{1,2}:\d{2})\]/g,'<b class="tcode">⏱ $1</b>')+'</div>':'')+
+      (x.files||[]).map(function(f){ var u=esc(abs(f.url.replace(/^\//,''))); return /^image\//.test(f.type)?'<a href="'+u+'" target="_blank"><img class="afile" src="'+u+'" alt=""></a>'
+        : /^video\//.test(f.type)?'<video class="afile" src="'+u+'" controls preload="metadata"></video>' : '<a class="adoc" href="'+u+'" target="_blank">📎 '+esc(f.name)+'</a>'; }).join('')+
+      '<small>'+(x.from==='client'?'العميل':'أنت')+' · '+esc(new Date(x.at).toLocaleString('ar'))+'</small></div>'; }).join('');
   }
-  function sendMsg(key,text,btn){
-    var o=orderOf(key); text=String(text||'').trim(); if(!o||!text) return;
-    var add=function(){ (o.messages=o.messages||[]).push({from:'studio',text:text,at:new Date().toISOString()}); o.unread=0; renderOrders(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; var th=d.querySelector('.athread'); if(th) th.scrollTop=th.scrollHeight; } toast('وصلت الرسالة إلى حساب العميل'); };
+  var PEND={};   // files uploaded and waiting to be sent, per order
+  function drawPend(key){ var d=document.querySelector('[data-okey="'+key+'"] .apend'); if(!d) return; var l=PEND[key]||[]; d.hidden=!l.length; d.innerHTML=l.map(function(f){ return '<span class="pill">📎 '+esc(f.name)+'</span>'; }).join(''); }
+  document.addEventListener('change',function(e){ var inp=e.target; if(!inp.dataset||!inp.dataset.oup) return; var key=inp.dataset.oup, o=orderOf(key), list=[].slice.call(inp.files); inp.value='';
+    if(!LIVE||o.demo){ toast('رفع الملفات يعمل على الموقع المنشور.',true); return; }
+    list.forEach(function(file){ if(file.size>20*1024*1024){ toast('الحد 20MB للملف. للأكبر أرسل رابط Drive أو WeTransfer.',true); return; }
+      toast('جارٍ رفع '+file.name+'…');
+      fetch(API+'/files',{method:'POST',headers:headers({'content-type':file.type||'application/octet-stream','x-code':o.code,'x-filename':encodeURIComponent(file.name)}),body:file})
+        .then(function(r){ return r.json(); }).then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); (PEND[key]=PEND[key]||[]).push(j.file); drawPend(key); toast('جاهز للإرسال: '+file.name); })
+        .catch(function(err){ toast('تعذّر رفع '+file.name+(err.message==='type'?' (نوع غير مدعوم)':''),true); }); }); });
+  document.addEventListener('change',function(e){ var c=e.target; if(!c.dataset||!c.dataset.rapprove) return; var o=orderOf(c.dataset.rapprove);
+    if(!LIVE||o.demo){ o.review.approved=c.checked; return; }
+    fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:o.key,reviewApproved:c.checked})}).then(function(r){ if(!r.ok) throw 0; o.review.approved=c.checked; toast(c.checked?'التقييم ظاهر على الموقع':'أُخفي التقييم'); }).catch(function(){ c.checked=!c.checked; toast('تعذّر الحفظ',true); }); });
+  function sendMsg(key,text,btn,files){
+    var o=orderOf(key); text=String(text||'').trim(); files=files||[]; if(!o||(!text&&!files.length)) return;
+    var add=function(){ (o.messages=o.messages||[]).push({from:'studio',text:text,at:new Date().toISOString(),files:files.length?files:undefined}); delete PEND[key]; o.unread=0; renderOrders(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; var th=d.querySelector('.athread'); if(th) th.scrollTop=th.scrollHeight; } toast('وصلت الرسالة إلى حساب العميل'); };
     if(!LIVE||o.demo){ add(); return; }
     if(btn) btn.disabled=true;
-    fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:key,message:text})}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:key,message:text,files:files})}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(j){ if(j.order){ j.order.messages=(j.order.messages||[]).slice(0,-1); Object.assign(o,j.order); } add(); }).catch(function(){ if(btn) btn.disabled=false; toast('تعذّر الإرسال',true); });
   }
   document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.okey||!d.open) return; var o=orderOf(d.dataset.okey);
@@ -283,7 +308,7 @@
   document.addEventListener('click',function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
-    if(b.dataset.osend){ sendMsg(b.dataset.osend, b.closest('.asend').querySelector('textarea').value, b); return; }
+    if(b.dataset.osend){ sendMsg(b.dataset.osend, b.closest('.asend').querySelector('textarea').value, b, PEND[b.dataset.osend]); return; }
     if(b.dataset.sendreply){ sendMsg(b.dataset.sendreply, b.closest('.replybox').querySelector('textarea').value, b); return; }
     if(b.dataset.osave){ var box=b.closest('.order'), d=readOrderForm(box), o=orderOf(b.dataset.osave);
       var apply=function(){ if(d.status!==o.status){ (o.history=o.history||[]).push({at:new Date().toISOString(),status:d.status}); } Object.assign(o,d); renderOrders(); toast('حُفظ الطلب'); };
@@ -388,6 +413,7 @@
     };
     var p= LIVE? fetch(API+'/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json() : fromFile(); }).catch(fromFile) : fromFile();
     return p.then(function(j){
+      if(window.EB_SEED) for(var sk in EB_SEED) if(!(sk in j)) j[sk]=JSON.parse(JSON.stringify(EB_SEED[sk]));   // sections added since the last publish
       SAVED=JSON.stringify(j);
       var draft=null; try{ draft=JSON.parse(localStorage.getItem('eb-draft')||'null'); }catch(_){}
       C= (draft && JSON.stringify(draft)!==SAVED && !LIVE)? draft : j;

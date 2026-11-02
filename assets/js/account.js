@@ -8,7 +8,7 @@
         login:'دخول',register:'حساب جديد',name:'الاسم أو اسم الجهة',email:'البريد الإلكتروني',pw:'كلمة السر',pwHint:'8 أحرف على الأقل',
         doLogin:'دخول',doRegister:'إنشاء الحساب',or:'أو',wait:'لحظة…',close:'إغلاق',
         e:{exists:'هذا البريد مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك.',wrong:'البريد أو كلمة السر غير صحيحة.',google:'هذا الحساب مسجّل عبر Google، استخدم زر Google.',
-           email:'اكتب بريداً إلكترونياً صحيحاً.',password:'كلمة السر 8 أحرف على الأقل.',name:'اكتب اسمك.','too many attempts':'محاولات كثيرة، جرّب بعد قليل.',net:'تعذّر الاتصال، حاول مرة أخرى.'},
+           email:'اكتب بريداً إلكترونياً صحيحاً.',code:'الرمز غير صحيح أو انتهت صلاحيته.',password:'كلمة السر 8 أحرف على الأقل.',name:'اكتب اسمك.','too many attempts':'محاولات كثيرة، جرّب بعد قليل.',net:'تعذّر الاتصال، حاول مرة أخرى.'},
         hi:'أهلاً، ',logout:'خروج',newOrder:'طلب جديد',orders:'طلباتك',none:'لا توجد طلبات بعد.',noneP:'اختر خدمة من صفحة الأسعار وأرسل طلبك، وستتابعه من هنا.',seePricing:'تصفّح الخدمات',
         st:{'new':'استلمنا الطلب','confirmed':'تأكيد التفاصيل','awaiting-payment':'بانتظار الدفع','paid':'تم الدفع','in-progress':'قيد التنفيذ','review':'بانتظار مراجعتك','delivered':'تم التسليم','cancelled':'ملغى'},
         steps:['استلام الطلب','تأكيد التفاصيل','الدفع','التنفيذ','مراجعتك','التسليم'],
@@ -16,12 +16,18 @@
         chat:'المحادثة',write:'اكتب رسالتك…',send:'إرسال',you:'أنت',studio:'Eyeblink',
         hello:'استلمنا طلبك. سنراجع التفاصيل ونرد عليك هنا خلال 24 ساعة بالسعر النهائي وخطوات العمل.',
         closed:'أُغلقت المحادثة بعد التسليم. للتواصل استخدم الوسائل الخارجية.',cancelled:'أُلغي هذا الطلب.',
+        attach:'إرفاق ملف',uploading:'جارٍ رفع ',tooBig:'الحد 20MB للملف. للملفات الأكبر أرسل رابط Google Drive أو WeTransfer.',badType:'نوع الملف غير مدعوم. أرسل صوراً، فيديو، صوتاً، PDF أو ZIP.',
+        tc:'علّق على هذه اللحظة',tcHint:'شغّل الفيديو، أوقفه عند اللحظة، ثم اكتب ملاحظتك',invoice:'الفاتورة',
+        rate:'كيف كانت تجربتك؟',rateP:'رأيك يهمنا، ويساعد عملاء جدد على الثقة بنا.',publish:'أوافق على عرض تقييمي على الموقع باسمي الأول فقط',sendRate:'أرسل التقييم',thanks:'شكراً لتقييمك',
+        forgot:'نسيت كلمة السر؟',forgotH:'استعادة كلمة السر',forgotP:'اكتب بريدك، وسنرسل لك رمزاً من 6 أرقام.',sendCode:'أرسل الرمز',codeSent:'إن كان البريد مسجلاً لدينا، وصلك رمز الآن. تحقق من البريد غير المرغوب أيضاً.',
+        code:'الرمز',newPw:'كلمة السر الجديدة',saveIn:'حفظ والدخول',backIn:'رجوع لتسجيل الدخول',mailOff:'الاستعادة التلقائية غير مفعّلة بعد. راسلنا على إنستغرام ونعيد تعيينها لك فوراً.',
+        inv:{t:'فاتورة',no:'رقم',date:'التاريخ',to:'إلى',item:'البند',amount:'المبلغ',total:'الإجمالي',paid:'مدفوعة',unpaid:'غير مدفوعة بعد',method:'طريقة الدفع',thanks:'شكراً لثقتك بنا.'},
         ext:'تواصل خارجي',extP:'تفضّل محادثة أسرع؟ راسلنا وأرفق رقم طلبك.',ig:'إنستغرام',wa:'واتساب',mail:'إيميل',back:'كل الطلبات',paid:'مدفوع',unread:'رسائل جديدة'},
     en:{inH:'Sign in to follow your request',inP:'One account to track your order and talk to us directly until delivery.',
         login:'Sign in',register:'New account',name:'Your name or company',email:'Email',pw:'Password',pwHint:'At least 8 characters',
         doLogin:'Sign in',doRegister:'Create account',or:'or',wait:'One moment…',close:'Close',
         e:{exists:'This email already has an account. Sign in instead.',wrong:'Wrong email or password.',google:'This account uses Google. Use the Google button.',
-           email:'Enter a valid email.',password:'Password needs at least 8 characters.',name:'Enter your name.','too many attempts':'Too many attempts. Try again shortly.',net:'Could not connect. Try again.'},
+           email:'Enter a valid email.',code:'Wrong or expired code.',password:'Password needs at least 8 characters.',name:'Enter your name.','too many attempts':'Too many attempts. Try again shortly.',net:'Could not connect. Try again.'},
         hi:'Hi, ',logout:'Sign out',newOrder:'New request',orders:'Your requests',none:'No requests yet.',noneP:'Pick a service on the pricing page and send your request. You will follow it here.',seePricing:'Browse services',
         st:{'new':'Request received','confirmed':'Details confirmed','awaiting-payment':'Awaiting payment','paid':'Paid','in-progress':'In production','review':'Awaiting your review','delivered':'Delivered','cancelled':'Cancelled'},
         steps:['Received','Confirmed','Payment','Production','Your review','Delivered'],
@@ -29,6 +35,12 @@
         chat:'Conversation',write:'Write a message…',send:'Send',you:'You',studio:'Eyeblink',
         hello:'We received your request. We will review it and reply here within 24 hours with the final price and next steps.',
         closed:'This conversation closed after delivery. Use the links below to reach us.',cancelled:'This request was cancelled.',
+        attach:'Attach a file',uploading:'Uploading ',tooBig:'20 MB per file. For bigger files send a Google Drive or WeTransfer link.',badType:'File type not supported. Send images, video, audio, PDF or ZIP.',
+        tc:'Comment on this moment',tcHint:'Play the video, pause on the moment, then write your note',invoice:'Invoice',
+        rate:'How was your experience?',rateP:'Your opinion matters, and it helps new clients trust us.',publish:'Show my review on the site with my first name only',sendRate:'Send review',thanks:'Thank you for your review',
+        forgot:'Forgot your password?',forgotH:'Reset your password',forgotP:'Enter your email and we will send you a 6-digit code.',sendCode:'Send code',codeSent:'If this email has an account, a code is on its way. Check spam too.',
+        code:'Code',newPw:'New password',saveIn:'Save and sign in',backIn:'Back to sign in',mailOff:'Automatic reset is not on yet. Message us on Instagram and we will reset it right away.',
+        inv:{t:'Invoice',no:'No.',date:'Date',to:'Bill to',item:'Item',amount:'Amount',total:'Total',paid:'Paid',unpaid:'Not paid yet',method:'Payment method',thanks:'Thank you for working with us.'},
         ext:'Reach us elsewhere',extP:'Prefer a faster chat? Message us and include your request number.',ig:'Instagram',wa:'WhatsApp',mail:'Email',back:'All requests',paid:'Paid',unread:'new messages'}
   }[lang];
   var STEP={'new':0,'confirmed':1,'awaiting-payment':2,'paid':3,'in-progress':3,'review':4,'delivered':5};
@@ -64,11 +76,13 @@
       '<form class="form" novalidate><label class="nm">'+T.name+'<input name="name" autocomplete="name" required></label>'+
       '<label>'+T.email+'<input name="email" type="email" dir="ltr" autocomplete="email" required></label>'+
       '<label>'+T.pw+' <small class="muted">'+T.pwHint+'</small><input name="password" type="password" dir="ltr" autocomplete="new-password" minlength="8" required></label>'+
-      '<button class="btn btn-primary" type="submit" style="justify-content:center">'+T.doRegister+'</button><p class="msg" role="alert"></p></form></div>';
+      '<button class="btn btn-primary" type="submit" style="justify-content:center">'+T.doRegister+'</button><p class="msg" role="alert"></p>'+
+      '<button type="button" class="linkbtn forgot" hidden>'+T.forgot+'</button></form></div>';
     var f=host.querySelector('form'), msg=host.querySelector('.msg');
     function setMode(m){ mode=m; [].forEach.call(host.querySelectorAll('.seg button'),function(b){ b.setAttribute('aria-selected',b.dataset.m===m); });
       f.querySelector('.nm').hidden=m!=='register'; f.elements.name.required=m==='register'; f.elements.password.autocomplete=m==='register'?'new-password':'current-password';
-      f.querySelector('button[type=submit]').textContent=m==='register'?T.doRegister:T.doLogin; msg.textContent=''; }
+      f.querySelector('button[type=submit]').textContent=m==='register'?T.doRegister:T.doLogin; msg.textContent=''; f.querySelector('.forgot').hidden=m!=='login'; }
+    f.querySelector('.forgot').onclick=function(){ forgotBox(host,done,compact,f.elements.email.value.trim()); };
     host.querySelector('.seg').onclick=function(e){ var b=e.target.closest('button'); if(b) setMode(b.dataset.m); };
     function finish(j,btn,old){
       if(btn){ btn.disabled=false; btn.textContent=old; }
@@ -90,6 +104,29 @@
       google.accounts.id.initialize({client_id:gid, callback:function(r){ msg.textContent=T.wait; api('account',{action:'google',credential:r.credential}).then(function(j){ finish(j); }); }});
       google.accounts.id.renderButton(el,{theme:'filled_black',size:'large',shape:'pill',text:'continue_with',locale:lang,width:Math.min(380,el.clientWidth||320)});
     }).catch(function(){ var el=host.querySelector('.gbtn'); if(el){ el.remove(); var o=host.querySelector('.or'); if(o) o.remove(); } }); }
+  }
+  // forgot password: e-mail → 6-digit code → new password (signs in)
+  function forgotBox(host,done,compact,email){
+    host.innerHTML='<div class="auth"><h2>'+T.forgotH+'</h2><p class="muted">'+T.forgotP+'</p>'+
+      '<form class="form s1" novalidate><label>'+T.email+'<input name="email" type="email" dir="ltr" autocomplete="email" value="'+esc(email||'')+'"></label>'+
+      '<button class="btn btn-primary" type="submit" style="justify-content:center">'+T.sendCode+'</button></form>'+
+      '<form class="form s2" novalidate hidden><p class="note">'+T.codeSent+'</p><label>'+T.code+'<input name="code" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6" class="otp"></label>'+
+      '<label>'+T.newPw+' <small class="muted">'+T.pwHint+'</small><input name="password" type="password" dir="ltr" autocomplete="new-password" minlength="8"></label>'+
+      '<button class="btn btn-primary" type="submit" style="justify-content:center">'+T.saveIn+'</button></form>'+
+      '<p class="msg" role="alert"></p><button type="button" class="linkbtn back">'+T.backIn+'</button></div>';
+    var s1=host.querySelector('.s1'), s2=host.querySelector('.s2'), msg=host.querySelector('.msg'), em='';
+    host.querySelector('.back').onclick=function(){ authBox(host,done,compact); };
+    s1.onsubmit=function(e){ e.preventDefault(); em=s1.elements.email.value.trim();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){ msg.textContent=T.e.email; return; }
+      var b=s1.querySelector('button'); b.disabled=true; msg.textContent='';
+      api('account',{action:'forgot',email:em,lang:lang}).then(function(j){ b.disabled=false;
+        if(j.ok){ s1.hidden=true; s2.hidden=false; s2.elements.code.focus(); }
+        else msg.textContent= j.error==='mail off'? T.mailOff : (T.e[j.error]||T.e.net); }); };
+    s2.onsubmit=function(e){ e.preventDefault(); var c=s2.elements.code.value.trim(), pw=s2.elements.password.value;
+      if(pw.length<8){ msg.textContent=T.e.password; return; }
+      var b=s2.querySelector('button'); b.disabled=true;
+      api('account',{action:'reset',email:em,code:c,password:pw}).then(function(j){ b.disabled=false;
+        if(j.ok) me().then(function(){ done(ME); }); else msg.textContent=T.e[j.error]||T.e.net; }); };
   }
   function modal(done){
     var m=document.createElement('div'); m.className='acct-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
@@ -145,39 +182,108 @@
   }
   function refresh(){ if(!CUR||document.hidden) return; var code=CUR;
     api('thread?code='+encodeURIComponent(code)).then(function(j){ if(j.ok&&CUR===code) detail(j.order,false); }); }
+  function size(n){ return n>1048576? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB'; }
+  function fileHTML(f){
+    var u=esc(f.url), n=esc(f.name);
+    if(/^image\//.test(f.type)) return '<a class="att img" href="'+u+'" target="_blank" rel="noopener"><img src="'+u+'" alt="'+n+'" loading="lazy"></a>';
+    if(/^video\//.test(f.type)) return '<div class="att vid"><video src="'+u+'" controls playsinline preload="metadata"></video><small>'+n+'</small></div>';
+    if(/^audio\//.test(f.type)) return '<div class="att aud"><audio src="'+u+'" controls preload="none"></audio><small>'+n+'</small></div>';
+    return '<a class="att doc" href="'+u+'" target="_blank" rel="noopener"><i>'+esc((f.name.split('.').pop()||'FILE').slice(0,4).toUpperCase())+'</i><span>'+n+'<small>'+size(f.size||0)+'</small></span></a>';
+  }
+  // [1:23] in a message becomes a button that jumps the latest video to that moment
+  function tcText(t){ return linkify(t||'').replace(/\[(\d{1,2}):([0-5]\d)\]/g,function(_,m,s){ return '<button type="button" class="tstamp" data-t="'+(+m*60+ +s)+'">▶ '+m+':'+s+'</button>'; }); }
+  function msgHTML(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+'">'+(m.text?'<div class="b">'+tcText(m.text)+'</div>':'')+
+    ((m.files||[]).length?'<div class="atts">'+m.files.map(fileHTML).join('')+'</div>':'')+'<small>'+(m.from==='client'?T.you:T.studio)+' · '+esc(time(m.at))+'</small></div>'; }
+  function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid; }
+  var lastVid=null;
   function detail(o,full){
     var host=box.querySelector('.odetail'), closed=o.status==='delivered'||o.status==='cancelled';
     var msgs=[{from:'studio',text:T.hello,at:o.createdAt}].concat(o.messages||[]);
-    var chat=msgs.map(function(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+'"><div class="b">'+linkify(m.text)+'</div><small>'+(m.from==='client'?T.you:T.studio)+' · '+esc(time(m.at))+'</small></div>'; }).join('');
-    if(!full && host.querySelector('.thread')){   // just new messages / status: keep what the client is typing
+    if(!full && host.querySelector('.thread')){   // poll: touch nothing unless something changed (keeps videos playing and the draft typed)
+      if(host.dataset.sig===sig(o)) return;
+      var wasClosed=!host.querySelector('form.send'), prev=(host.dataset.sig||'').split('|');
+      if(wasClosed!==closed || prev[2]!==o.status || prev[3]!==(o.review?'1':'0') || prev[4]!==String(o.price) || prev[5]!==String(o.paid)) return detail(o,true);
       var th=host.querySelector('.thread'), atEnd=th.scrollHeight-th.scrollTop-th.clientHeight<40;
-      th.innerHTML=chat; if(atEnd) th.scrollTop=th.scrollHeight;
-      host.querySelector('.track').outerHTML=track(o); host.querySelector('.od-head .pill').outerHTML=pill(o); return;
+      th.innerHTML=msgs.map(msgHTML).join(''); if(atEnd) th.scrollTop=th.scrollHeight; host.dataset.sig=sig(o); toggleTc(); return;
     }
     var S=C().settings||{}, ig=(C().site||{}).instagram||'eyeblnk', note=encodeURIComponent((AR?'طلب ':'Request ')+o.code);
     var wa=String(S.whatsapp||'').replace(/[^0-9]/g,''), mail=S.email||'';
+    var review= o.status!=='delivered'? '' : o.review? '<div class="rate done"><b>'+T.thanks+'</b><div class="stars">'+'★★★★★'.slice(0,o.review.stars)+'<span>'+'★★★★★'.slice(o.review.stars)+'</span></div></div>'
+      : '<form class="rate"><b>'+T.rate+'</b><p class="muted">'+T.rateP+'</p><div class="pick" role="radiogroup">'+[1,2,3,4,5].map(function(n){ return '<button type="button" data-s="'+n+'" aria-label="'+n+'">★</button>'; }).join('')+'</div>'+
+        '<textarea name="r" rows="3" dir="auto"></textarea><label class="chk"><input type="checkbox" name="pub" checked> '+T.publish+'</label><button class="btn btn-primary" type="submit" disabled>'+T.sendRate+'</button></form>';
     host.innerHTML='<div class="od glass">'+
       '<div class="od-head"><div><span class="c">'+esc(o.code)+'</span><h2>'+esc(o.packageName||'')+'</h2></div>'+pill(o)+'</div>'+
       track(o)+
-      '<div class="od-body"><div class="chat"><h3>'+T.chat+'</h3><div class="thread" aria-live="polite">'+chat+'</div>'+
-        (closed? '<p class="closed">'+(o.status==='cancelled'?T.cancelled:T.closed)+'</p>'
-               : '<form class="send"><textarea name="t" rows="1" placeholder="'+T.write+'" dir="auto" required></textarea><button class="btn btn-primary" type="submit">'+T.send+'</button></form>')+
+      '<div class="od-body"><div class="chat"><h3>'+T.chat+'</h3><div class="thread" aria-live="polite">'+msgs.map(msgHTML).join('')+'</div>'+
+        (closed? '<p class="closed">'+(o.status==='cancelled'?T.cancelled:T.closed)+'</p>'+review
+               : '<div class="pending" hidden></div><form class="send"><label class="clip" title="'+T.attach+'" aria-label="'+T.attach+'"><input type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.zip,.txt"><svg viewBox="0 0 24 24"><path d="M20.5 11.5 12 20a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.7a1.7 1.7 0 0 1-2.4-2.4L15 7.6"/></svg></label>'+
+                 '<textarea name="t" rows="1" placeholder="'+T.write+'" dir="auto"></textarea><button class="btn btn-primary" type="submit">'+T.send+'</button></form>'+
+                 '<button type="button" class="tcbtn" hidden title="'+T.tcHint+'">⏱ '+T.tc+'</button>')+
       '</div><aside class="side"><h3>'+T.sum+'</h3><dl>'+
         (o.price?'<dt>'+T.final+'</dt><dd dir="ltr">'+esc(o.price)+(o.paid?' <span class="pill paid">'+T.paid+'</span>':'')+'</dd>':(o.total?'<dt>'+T.est+'</dt><dd dir="ltr">'+esc(o.total)+'</dd>':''))+
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
         (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
         '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(o.link)+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
+        (o.price?'<button type="button" class="btn btn-glass glass inv">🧾 '+T.invoice+'</button>':'')+
         '<div class="ext"><h3>'+T.ext+'</h3><p class="muted">'+T.extP+'</p><div class="actions">'+
           '<a class="btn btn-glass glass" href="https://ig.me/m/'+esc(ig)+'" target="_blank" rel="noopener">'+T.ig+'</a>'+
           (wa?'<a class="btn btn-glass glass" href="https://wa.me/'+wa+'?text='+note+'" target="_blank" rel="noopener">'+T.wa+'</a>':'')+
           (mail?'<a class="btn btn-glass glass" href="mailto:'+esc(mail)+'?subject='+note+'">'+T.mail+'</a>':'')+
         '</div></div></aside></div></div>';
+    host.dataset.sig=sig(o);
     var th=host.querySelector('.thread'); th.scrollTop=th.scrollHeight;
+    var ib=host.querySelector('.inv'); if(ib) ib.onclick=function(){ invoice(o); };
+    var rf=host.querySelector('form.rate');
+    if(rf){ var stars=0, pk=rf.querySelector('.pick');
+      pk.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; stars=+b.dataset.s; [].forEach.call(pk.children,function(x){ x.classList.toggle('on',+x.dataset.s<=stars); }); rf.querySelector('[type=submit]').disabled=false; };
+      rf.onsubmit=function(e){ e.preventDefault(); if(!stars) return; var b=rf.querySelector('[type=submit]'); b.disabled=true;
+        api('thread',{code:o.code,review:{stars:stars,text:rf.r.value,publish:rf.pub.checked}}).then(function(j){ if(j.ok) detail(j.order,true); else b.disabled=false; }); }; }
     var f=host.querySelector('form.send'); if(!f) return;
-    var ta=f.t; ta.addEventListener('input',function(){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,160)+'px'; });
+    var ta=f.t, pend=host.querySelector('.pending'), files=[], busy=0, tcb=host.querySelector('.tcbtn');
+    ta.addEventListener('input',function(){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,160)+'px'; });
     ta.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&innerWidth>860){ e.preventDefault(); f.requestSubmit(); } });
-    f.onsubmit=function(e){ e.preventDefault(); var t=ta.value.trim(); if(!t) return; var b=f.querySelector('button'); b.disabled=true;
-      api('thread',{code:o.code,text:t}).then(function(j){ b.disabled=false; if(j.ok){ ta.value=''; ta.style.height=''; detail(j.order,false); th.scrollTop=th.scrollHeight; } else if(j.error==='closed') open(o.code); }); };
+    function drawPend(){ pend.hidden=!files.length&&!busy; pend.innerHTML=files.map(function(x,i){ return '<span class="chip">'+esc(x.name)+'<button type="button" data-i="'+i+'" aria-label="×">×</button></span>'; }).join('')+(busy?'<span class="chip busy">'+T.uploading+'…</span>':''); }
+    pend.onclick=function(e){ var b=e.target.closest('button[data-i]'); if(b){ files.splice(+b.dataset.i,1); drawPend(); } };
+    f.querySelector('input[type=file]').onchange=function(){ var list=[].slice.call(this.files); this.value='';
+      list.forEach(function(file){
+        if(file.size>20*1024*1024){ toast(T.tooBig); return; }
+        busy++; drawPend();
+        fetch(API+'files',{method:'POST',credentials:'same-origin',headers:{'content-type':file.type||'application/octet-stream','x-code':o.code,'x-filename':encodeURIComponent(file.name)},body:file})
+          .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ j._s=r.status; return j; }); })
+          .then(function(j){ busy--; if(j.ok) files.push(j.file); else toast(j._s===415?T.badType:j._s===413?T.tooBig:T.e.net); drawPend(); })
+          .catch(function(){ busy--; toast(T.e.net); drawPend(); }); }); };
+    f.onsubmit=function(e){ e.preventDefault(); var t=ta.value.trim(); if((!t&&!files.length)||busy) return; var b=f.querySelector('button[type=submit]'); b.disabled=true;
+      api('thread',{code:o.code,text:t,files:files}).then(function(j){ b.disabled=false; if(j.ok){ ta.value=''; ta.style.height=''; files=[]; drawPend(); detail(j.order,false); var th2=host.querySelector('.thread'); th2.scrollTop=th2.scrollHeight; } else if(j.error==='closed') open(o.code); }); };
+    tcb.onclick=function(){ var v=lastVid&&lastVid.isConnected? lastVid : [].slice.call(host.querySelectorAll('.thread video')).pop(); if(!v) return;
+      v.pause(); var s=Math.floor(v.currentTime||0), stamp='['+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'] ';
+      ta.value=stamp+ta.value.replace(/^\[\d{1,2}:\d{2}\]\s*/,''); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); ta.dispatchEvent(new Event('input')); };
+    toggleTc();
+  }
+  function toggleTc(){ var tcb=box.querySelector('.tcbtn'); if(tcb) tcb.hidden=!box.querySelector('.thread video'); }
+  // remember which review video the client last touched; [m:ss] buttons jump it
+  document.addEventListener('play',function(e){ if(e.target.closest&&e.target.closest('.thread')) lastVid=e.target; },true);
+  document.addEventListener('click',function(e){ var b=e.target.closest('.thread .tstamp'); if(!b) return;
+    var v=lastVid&&lastVid.isConnected? lastVid : [].slice.call(document.querySelectorAll('.thread video')).pop(); if(!v) return;
+    v.currentTime=+b.dataset.t; v.scrollIntoView({behavior:'smooth',block:'center'}); var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); });
+  function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3200); }
+  // a clean printable invoice (the browser's print dialog saves it as PDF)
+  function invoice(o){
+    var I=T.inv, S=C().settings||{}, m=((C().payments||{}).methods||[]).filter(function(x){return x.id===o.method})[0];
+    var d=new Date(), w=window.open('','_blank'); if(!w) return;
+    w.document.write('<!doctype html><html lang="'+lang+'" dir="'+(AR?'rtl':'ltr')+'"><head><meta charset="utf-8"><title>'+I.t+' '+esc(o.code)+'</title><style>'+
+      'body{font-family:Tahoma,Arial,sans-serif;color:#0b1236;margin:0;padding:48px;background:#fff}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0b1236;padding-bottom:18px}'+
+      '.brand{font:700 18px Arial;letter-spacing:5px;direction:ltr}.brand small{display:block;font-weight:400;letter-spacing:1px;color:#6F7FA0;margin-top:6px}h1{margin:0;font-size:30px;letter-spacing:2px}'+
+      '.meta{display:flex;gap:40px;margin:26px 0}.meta div{font-size:14px}.meta b{display:block;color:#6F7FA0;font-weight:400;font-size:12px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}'+
+      'th{text-align:start;font-size:12px;color:#6F7FA0;font-weight:400;border-bottom:1px solid #d8deea;padding:10px 0}td{padding:14px 0;border-bottom:1px solid #eef1f6;font-size:15px}td.n,th.n{text-align:end}'+
+      '.tot{display:flex;justify-content:flex-end;gap:30px;margin-top:20px;font-size:20px;font-weight:700}.st{display:inline-block;margin-top:24px;padding:6px 14px;border-radius:99px;font-size:13px;background:'+(o.paid?'#dcf7e6;color:#127a3a':'#fde8ef;color:#a3215a')+'}'+
+      '.foot{margin-top:60px;color:#6F7FA0;font-size:13px;border-top:1px solid #eef1f6;padding-top:16px}@media print{body{padding:24px}}</style></head><body>'+
+      '<div class="top"><div class="brand">EYEBLINK STUDIO<small>eyeblinkstudio.com'+(S.email?' · '+esc(S.email):'')+'</small></div><h1>'+I.t+'</h1></div>'+
+      '<div class="meta"><div><b>'+I.no+'</b>'+esc(o.code)+'</div><div><b>'+I.date+'</b>'+d.toLocaleDateString(AR?'ar':'en',{year:'numeric',month:'long',day:'numeric'})+'</div><div><b>'+I.to+'</b>'+esc(o.name||'')+'<br><span dir="ltr">'+esc(o.email||'')+'</span></div></div>'+
+      '<table><tr><th>'+I.item+'</th><th class="n">'+I.amount+'</th></tr><tr><td>'+esc(o.packageName||'')+((o.addons||[]).length?'<br><small style="color:#6F7FA0">+ '+esc(o.addons.join('، '))+'</small>':'')+'</td><td class="n" dir="ltr">'+esc(o.price)+'</td></tr></table>'+
+      '<div class="tot"><span>'+I.total+'</span><span dir="ltr">'+esc(o.price)+'</span></div>'+
+      '<span class="st">'+(o.paid?I.paid+' ✓':I.unpaid)+'</span>'+(m?'<div style="margin-top:12px;font-size:14px;color:#6F7FA0">'+I.method+': '+esc(m.name)+'</div>':'')+
+      '<div class="foot">'+I.thanks+'</div><script>setTimeout(function(){print()},300)<\/script></body></html>');
+    w.document.close();
   }
   function pill(o){ return '<span class="pill '+esc(o.status)+'">'+esc(T.st[o.status]||o.status)+'</span>'; }
   function track(o){

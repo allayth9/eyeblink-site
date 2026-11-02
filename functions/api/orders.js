@@ -1,9 +1,10 @@
 // POST   /api/orders — signed-in client: sends a request (it then lives in their account with a chat thread)
 // GET    /api/orders — admin: list requests (newest first)
-// PATCH  /api/orders — admin: { key, status?, price?, method?, paid?, paidAmount?, notes?, message?, seen? }
+// PATCH  /api/orders — admin: { key, status?, price?, method?, paid?, paidAmount?, notes?, message?, files?, seen?, reviewApproved? }
 // DELETE /api/orders?key=... — admin
 const STATUSES = ["new", "confirmed", "awaiting-payment", "paid", "in-progress", "review", "delivered", "cancelled"];
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost(ctx) {
+  const { request, env } = ctx;
   let d; try { d = await request.json(); } catch { return json({ ok: false }, 400); }
   if (d.website) return json({ ok: true, code: "EB-00000" });
   const user = await currentUser(request, env);
@@ -25,6 +26,8 @@ export async function onRequestPost({ request, env }) {
   await env.EB.put(key, JSON.stringify(order));
   await env.EB.put("code:" + code, key);
   (user.orders ||= []).push(key); await env.EB.put("user:" + user.email, JSON.stringify(user));
+  later(ctx, Promise.all([ notifyStudio(env, "طلب جديد "+code+" — "+order.packageName, order.name+" · "+order.email+(order.contact?" · "+order.contact:"")+"\n"+order.total+"\n\n"+order.details),
+    notifyClient(env, order, "received") ]));
   return json({ ok: true, code });
 }
 export async function onRequestGet({ request, env }) {
@@ -38,23 +41,29 @@ export async function onRequestGet({ request, env }) {
   out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   return json({ ok: true, orders: out });
 }
-export async function onRequestPatch({ request, env }) {
+export async function onRequestPatch(ctx) {
+  const { request, env } = ctx;
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const d = await request.json().catch(() => ({}));
   if (!d.key?.startsWith("order:")) return json({ ok: false }, 400);
   const v = await env.EB.get(d.key); if (!v) return json({ ok: false }, 404);
   const o = JSON.parse(v), clip = (x, m) => String(x ?? "").slice(0, m);
-  if (d.status !== undefined) { if (!STATUSES.includes(d.status)) return json({ ok: false }, 400); if (d.status !== o.status) (o.history ||= []).push({ at: new Date().toISOString(), status: d.status }); o.status = d.status; }
+  let changed = false;
+  if (d.status !== undefined) { if (!STATUSES.includes(d.status)) return json({ ok: false }, 400); if (d.status !== o.status) { (o.history ||= []).push({ at: new Date().toISOString(), status: d.status }); changed = true; } o.status = d.status; }
   if (d.price !== undefined) o.price = clip(d.price, 40);
   if (d.method !== undefined) o.method = clip(d.method, 60);
   if (d.paid !== undefined) o.paid = !!d.paid;
   if (d.paidAmount !== undefined) o.paidAmount = clip(d.paidAmount, 40);
   if (d.notes !== undefined) o.notes = clip(d.notes, 4000);
   const now = new Date().toISOString();
-  if (d.message) { (o.messages ||= []).push({ from: "studio", text: clip(d.message, 4000), at: now }); o.seenAdmin = now; }
+  const files = cleanFiles(d.files);
+  if (d.message || files.length) { (o.messages ||= []).push({ from: "studio", text: clip(d.message, 4000), at: now, ...(files.length ? { files } : {}) }); o.seenAdmin = now; }
   if (d.seen) o.seenAdmin = now;
+  if (d.reviewApproved !== undefined && o.review) { o.review.approved = !!d.reviewApproved; await syncReviews(env, o); }
   o.updatedAt = new Date().toISOString();
   await env.EB.put(d.key, JSON.stringify(o));
+  if (d.message || files.length) later(ctx, notifyClient(env, o, "message", (d.message || "") + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
+  else if (changed) later(ctx, notifyClient(env, o, "status", o.status));
   return json({ ok: true, order: o });
 }
 export async function onRequestDelete({ request, env }) {
@@ -65,6 +74,14 @@ export async function onRequestDelete({ request, env }) {
   if (v) { const o = JSON.parse(v); await env.EB.delete("code:" + o.code); }
   await env.EB.delete(key);
   return json({ ok: true });
+}
+
+// the public list of approved reviews lives in one KV value so the home page reads it in one go
+async function syncReviews(env, o){
+  let list = []; try { list = JSON.parse(await env.EB.get("reviews") || "[]"); } catch {}
+  list = list.filter(r => r.code !== o.code);
+  if (o.review && o.review.approved && o.review.publish) list.unshift({ code: o.code, name: String(o.name || "").split(/\s+/)[0], stars: o.review.stars, text: o.review.text, service: o.packageName, at: o.review.at });
+  await env.EB.put("reviews", JSON.stringify(list.slice(0, 60)));
 }
 
 // ---- shared auth (same block in every route) ----
@@ -107,4 +124,52 @@ async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0);
 function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
-  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at})), unread:unreadFor(o,"client") }; }
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined})), unread:unreadFor(o,"client"),
+  name:o.name, email:o.email, method:o.method, review:o.review||null }; }
+// attachments must point at files uploaded through /api/files
+function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
+  .map(f=>({url:f.url, name:String(f.name||"file").slice(0,120), type:String(f.type||"").slice(0,80), size:+f.size||0})); }
+
+// ---- notifications: Resend e-mail + Telegram (each one is skipped quietly until its secrets are set) ----
+const SITE = "https://eyeblinkstudio.com";
+const ST_AR = {"new":"استلمنا الطلب","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
+const ST_EN = {"new":"Request received","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
+function h(t){ return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+async function siteSettings(env){ try { return (JSON.parse(await env.EB.get("content")||"{}").settings)||{}; } catch { return {}; } }
+async function sendMail(env, to, subject, html){
+  if (!env.RESEND_API_KEY || !to) return false;
+  try { const r = await fetch("https://api.resend.com/emails", { method:"POST", headers:{ authorization:"Bearer "+env.RESEND_API_KEY, "content-type":"application/json" },
+    body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <hello@eyeblinkstudio.com>", to:[to], subject, html }) }); return r.ok; } catch { return false; }
+}
+async function telegram(env, text){
+  if (!env.TELEGRAM_TOKEN || !env.TELEGRAM_CHAT) return;
+  try { await fetch("https://api.telegram.org/bot"+env.TELEGRAM_TOKEN+"/sendMessage", { method:"POST", headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT, text: text.slice(0, 3900), disable_web_page_preview: true }) }); } catch {}
+}
+function mail(lang, title, bodyHtml, cta, link){
+  const rtl = lang !== "en";
+  return `<!doctype html><html dir="${rtl?"rtl":"ltr"}"><body style="margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif">
+<div style="max-width:520px;margin:0 auto;background:#0b1236;border-radius:18px;padding:28px;color:#EEF2F6;text-align:${rtl?"right":"left"}">
+<div style="font:600 12px/1 Arial,sans-serif;letter-spacing:4px;color:#3FE0E8;margin-bottom:18px;direction:ltr;text-align:${rtl?"right":"left"}">EYEBLINK STUDIO</div>
+<h1 style="font-size:20px;margin:0 0 14px;color:#fff">${h(title)}</h1><div style="font-size:15px;line-height:1.8;color:#AEBBD2">${bodyHtml}</div>
+${cta?`<a href="${link}" style="display:inline-block;margin-top:22px;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${h(cta)}</a>`:""}
+</div><p style="text-align:center;color:#6F7FA0;font-size:12px;margin-top:16px">eyeblinkstudio.com</p></body></html>`;
+}
+// to the studio: e-mail (to the address in the site settings) + Telegram
+async function notifyStudio(env, subject, text){
+  const s = await siteSettings(env), to = env.NOTIFY_EMAIL || s.email;
+  await Promise.all([ sendMail(env, to, subject, mail("ar", subject, h(text).replace(/\n/g,"<br>"), "افتح لوحة التحكم", SITE+"/admin/")),
+    telegram(env, "🔔 "+subject+"\n\n"+text+"\n\n"+SITE+"/admin/") ]);
+}
+// to the client: new message from the studio / status change / request received
+async function notifyClient(env, o, kind, text){
+  if (!o.email) return;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+  const T = en ? { message:"New message about your request "+o.code, status:"Update on your request "+o.code, received:"We received your request "+o.code, cta:"Open my account",
+                   statusP:"Your request is now: ", receivedP:"Thank you! We will review the details and reply in your account within 24 hours." }
+               : { message:"رسالة جديدة بخصوص طلبك "+o.code, status:"تحديث على طلبك "+o.code, received:"استلمنا طلبك "+o.code, cta:"افتح حسابي",
+                   statusP:"حالة طلبك الآن: ", receivedP:"شكراً لك! سنراجع التفاصيل ونرد عليك في حسابك خلال 24 ساعة." };
+  const body = kind==="message" ? h(text).replace(/\n/g,"<br>") : kind==="status" ? h(T.statusP) + "<b style=\"color:#fff\">"+h((en?ST_EN:ST_AR)[text]||text)+"</b>" : h(T.receivedP);
+  await sendMail(env, o.email, T[kind], mail(en?"en":"ar", T[kind], body, T.cta, link));
+}
+function later(ctx, p){ if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p); else return p; }
