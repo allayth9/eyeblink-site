@@ -630,3 +630,36 @@ select{cursor:pointer}
   .cta{padding:24px}
   .timeline{margin-bottom:14px}
 }
+
+/* ===== player transition: clearer, smoother ===== */
+.lightbox{background:rgba(2,3,12,0);-webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);opacity:1;transition:background .7s cubic-bezier(.22,.9,.24,1),backdrop-filter .7s,-webkit-backdrop-filter .7s}
+.lightbox.show{background:rgba(2,3,12,.9);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.lightbox .box{opacity:0;transform:translateY(40px) scale(.86);filter:blur(14px);transition:opacity .7s cubic-bezier(.22,.9,.24,1),transform .85s cubic-bezier(.16,1,.3,1),filter .7s cubic-bezier(.22,.9,.24,1),width .5s cubic-bezier(.22,.9,.24,1)}
+.lightbox.show .box{opacity:1;transform:none;filter:none;transition-delay:.08s,.08s,.08s,0s}
+.lightbox .frame{clip-path:inset(46% 0 46% 0 round 18px);transition:clip-path .9s cubic-bezier(.16,1,.3,1) .12s}
+.lightbox.show .frame{clip-path:inset(0 0 0 0 round 18px)}
+.lightbox .lb-pattern,.lightbox .lb-waves{transition:opacity 1.2s .15s}
+@media (prefers-reduced-motion:reduce){ .lightbox .box,.lightbox .frame{transition:none} }
+
+/* ===== mobile, full pass ===== */
+@media (max-width:860px){
+  .dock{background:rgba(10,14,42,.78);-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(190,210,255,.12),0 18px 40px -16px rgba(0,0,0,.8)}
+  .dock::before,.dock::after,.dock .ripple-wrap{display:none!important}
+  .dock a{color:#9fb0cc}
+  .dock a[aria-current="page"]{color:#fff;background:rgba(120,150,255,.16);box-shadow:inset 0 0 0 1px rgba(120,160,255,.22)}
+  .dock a[aria-current="page"] svg{stroke:var(--horizon)}
+  .nav .bar{padding:6px 8px;padding-inline-start:14px}
+  .nav .bar::before{opacity:.15}
+  .hero .grid{gap:18px}
+  .stage{max-width:min(300px,78vw)}
+  .ring text{font-size:12.5px}
+  .hero h1{line-height:1.5;margin-block:10px 14px}
+  :lang(en) .hero h1{line-height:1.12}
+  .eyebrow{font-size:10.5px;letter-spacing:.24em}
+  .actions{gap:10px}
+  .actions .btn{padding:13px 18px}
+  .glass::before{opacity:.2}
+  .lightbox .box{width:min(100%,calc(78vh * var(--arn)))}
+  .lightbox .bar2 h3{font-size:16px}
+}

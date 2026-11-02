@@ -169,7 +169,7 @@
     var f=p.full||{}, src='', html='', title=L(p.title);
     var v=vid(f);
     if(v&&v.type==='vimeo') src='https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1';
-    else if(v&&v.type==='youtube') src='https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0';
+    else if(v&&v.type==='youtube') src='https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0&enablejsapi=1&playsinline=1';
     html= src? '<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(title)+'"></iframe>'
              : '<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
     var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
@@ -177,7 +177,7 @@
     if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
     var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
-    vimeoAsk(lbFrame.querySelector('iframe')); waves(true);
+    vimeoAsk(lbFrame.querySelector('iframe')); waves(true); fadeAudio(0,1,1400,0);
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden';
   }
   // ask the Vimeo player itself for the video size (works for private/unlisted videos too)
@@ -187,7 +187,7 @@
     var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
     if(!d) return;
     var f=lbFrame&&lbFrame.querySelector('iframe'); if(!f) return;
-    if(d.event==='ready'){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }); }
+    if(d.event==='ready'){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }); setVol(fa.cur); }
     if(d.method==='getVideoWidth'){ vw=+d.value; } if(d.method==='getVideoHeight'){ vh=+d.value; }
     if(vw&&vh){ setAR(vw,vh); vw=vh=0; }
   });
@@ -221,9 +221,28 @@
     }
     wv.raf=requestAnimationFrame(frame);
   }
+  // sound fades in when a film opens and out when it closes
+  var fa={raf:0,cur:1};
+  function setVol(v){
+    var f=lbFrame&&lbFrame.querySelector('iframe'), el=lbFrame&&lbFrame.querySelector('video');
+    if(el){ el.volume=Math.max(0,Math.min(1,v)); }
+    if(f){ try{
+      if(/vimeo/.test(f.src)) f.contentWindow.postMessage(JSON.stringify({method:'setVolume',value:v}),'*');
+      else if(/youtube/.test(f.src)) f.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[Math.round(v*100)]}),'*');
+    }catch(_){} }
+    fa.cur=v;
+  }
+  function fadeAudio(from,to,ms){
+    cancelAnimationFrame(fa.raf); var a=from==null?fa.cur:from, t0=performance.now();
+    setVol(a);
+    (function step(now){ var k=Math.min(1,(now-t0)/ms), e=k*k*(3-2*k); setVol(a+(to-a)*e); if(k<1) fa.raf=requestAnimationFrame(step); })(t0);
+    if(to>0){ // players load a moment later: keep the ramp honest for the first second
+      var tries=0, iv=setInterval(function(){ if(++tries>8||lb.hidden){ clearInterval(iv); return; } if(fa.cur<to) setVol(fa.cur); },150);
+    }
+  }
   function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
-  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; lb.classList.remove('show');
-    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; if(lastFocus) lastFocus.focus(); },520); }
+  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; fadeAudio(null,0,650,0); lb.classList.remove('show');
+    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; if(lastFocus) lastFocus.focus(); },760); }
 
   /* ---------------- order ---------------- */
   var selected=null;

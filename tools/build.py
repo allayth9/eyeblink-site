@@ -10,6 +10,10 @@ MARK = open(os.path.join(ROOT, "assets/img/mark.svg"), encoding="utf-8").read()
 CONTENT = json.load(open(os.path.join(ROOT, "content.json"), encoding="utf-8"))
 THREE = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
 SERVICES = [s["id"] for s in CONTENT["services"]]
+import hashlib
+def _v(path):
+    return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact"]
 
 UI = {
@@ -241,7 +245,7 @@ def build(lang, page):
 <link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
 <link rel="alternate" hreflang="{"ar" if en else "en"}" href="{other}">
 <meta property="og:type" content="website"><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:image" content="{A}assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="{A}assets/css/site.css">
+<link rel="stylesheet" href="{A}assets/css/site.css?v={ASSET_V["assets/css/site.css"]}">
 <script>document.documentElement.classList.add('js');try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
 </head>
 <body data-base="{A}"{f' data-service="{sid}"' if sid else ""}>
@@ -270,9 +274,9 @@ def build(lang, page):
 <nav class="dock glass" aria-label="{U["menu"]}">{dock}</nav>
 <script type="application/json" id="eb-seed">{seed()}</script>
 <script src="{THREE}"></script>
-<script src="{A}assets/js/bg.js"></script>
-<script src="{A}assets/js/render.js"></script>
-<script src="{A}assets/js/site.js"></script>
+<script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
+<script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
+<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>
 </body>
 </html>
 '''
