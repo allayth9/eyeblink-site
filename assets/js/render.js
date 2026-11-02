@@ -133,11 +133,14 @@
     if(head){ var e=head.querySelector('.eyebrow'); if(e) e.textContent='SELECTED WORK'; var h=head.querySelector('h1,h2'); if(h) h.textContent=L(C.work.filledH); var p=head.querySelector('p'); if(p) p.textContent=L(C.work.filledP); }
     grid.classList.add('has-projects');
     grid.innerHTML=list.map(function(p,i){
-      return '<button type="button" class="proj glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'"><div class="media" style="--ar:'+ratio(p.ratio)+'">'+
-        (p.preview?'<video muted loop playsinline preload="none" '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(p.preview))+'"></video>':'<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>')+
-        '<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
-        '<div class="meta"><h3>'+esc(L(p.title))+'</h3><span class="sv">'+esc(((C.services||[]).filter(function(s){return s.id===p.service})[0]||{}).label||'WORK')+'</span></div>'+
-        (L(p.summary)?'<p>'+esc(L(p.summary))+(p.client?' · '+esc(L(p.client)):'')+(p.year?' · '+esc(p.year):'')+'</p>':'')+'</button>';
+      var lab=((C.services||[]).filter(function(x){return x.id===p.service})[0]||{}).label||'WORK';
+      var media=p.preview?'<video muted loop playsinline preload="none" '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(p.preview))+'"></video>'
+                         :'<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>';
+      var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
+      return '<button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
+        '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
+        '<div class="frame media">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
+        '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+'</div></button>';
     }).join('');
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     if('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -169,10 +172,14 @@
     else if(v&&v.type==='youtube') src='https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0';
     html= src? '<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(title)+'"></iframe>'
              : '<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
-    var ar=ratio(p.ratio), a=ar.split('/'); lbFrame.style.setProperty('--ar',ar); lb.classList.toggle('tall',+a[0]<+a[1]);
+    var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
+    if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16);
+    if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false;
+    var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden';
   }
+  function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
   function closeLB(){ lb.hidden=true; lbFrame.innerHTML=''; document.body.style.overflow=''; if(lastFocus) lastFocus.focus(); }
 
   /* ---------------- order ---------------- */
