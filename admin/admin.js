@@ -1,6 +1,6 @@
 /* Eyeblink admin — edits content.json through /api (Cloudflare) or, without a server, as a local draft. */
 (function(){
-  var API='../api', PW='', LIVE=false, C=null, SAVED='', TAB='home', ORDERS=[], P=null, PSAVED='', OFILTER='all';
+  var API='../api', PW='', LIVE=false, C=null, SAVED='', TAB='home', ORDERS=[], P=null, PSAVED='', OFILTER='all', USERS=null;
   var $=function(s,r){return (r||document).querySelector(s)};
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function toast(t,bad){ var d=$('#toast'); d.textContent=t; d.className='toast'+(bad?' bad':''); d.hidden=false; clearTimeout(d._t); d._t=setTimeout(function(){d.hidden=true},2600); }
@@ -33,10 +33,11 @@
     {id:'packages', title:'الباقات والأسعار', secs:[
       {h:'نصوص الصفحة', fields:[{p:'packages.h', t:'bi', l:'العنوان'},{p:'packages.p', t:'bita', l:'الوصف'},
         {p:'packages.currency', t:'text', l:'رمز العملة', ltr:1},{p:'packages.note', t:'bita', l:'ملاحظة الأسعار'},{p:'packages.payment', t:'bita', l:'طرق الدفع (تظهر بعد الطلب)'}]},
-      {h:'الباقات', rep:{p:'packages.items', name:function(x){return ((x.name&&x.name.ar)||'باقة')+(x.price!=null&&x.price!==''?' · '+x.price:' · عرض سعر')},
+      {h:'الخدمات والباقة', hint:'«خدمة» تظهر في شبكة «اطلب خدمة». «باقة» (مثل الشهرية) تظهر ببطاقة عريضة تحتها. السعر القديم اختياري: إن كان أعلى من السعر يظهر مشطوباً مع نسبة التوفير.', rep:{p:'packages.items', name:function(x){return ((x.name&&x.name.ar)||'باقة')+(x.price!=null&&x.price!==''?' · '+x.price:' · عرض سعر')+(+x.oldPrice>+x.price?' (بدل '+x.oldPrice+')':'')},
         add:function(){return {id:'pkg-'+Date.now().toString(36),service:'editing',featured:false,price:null,unit:bi('للفيديو','per video'),name:bi('باقة جديدة','New package'),desc:bi(),features:bi([],[])}},
         fields:[{p:'name', t:'bi', l:'اسم الباقة'},
-          {row:[{p:'price', t:'num', l:'السعر (اتركه فارغاً = عرض سعر)'},{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'featured', t:'check', l:'الأكثر طلباً'}]},
+          {row:[{p:'kind', t:'select', l:'النوع', opts:function(){return [['','تلقائي'],['service','خدمة'],['package','باقة']]}},{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'featured', t:'check', l:'الأكثر طلباً'}]},
+          {row:[{p:'price', t:'num', l:'السعر (اتركه فارغاً = عرض سعر)'},{p:'oldPrice', t:'num', l:'السعر القديم (يظهر مشطوباً)'}]},
           {p:'unit', t:'bi', l:'الوحدة (للفيديو، شهرياً…)'},{p:'desc', t:'bita', l:'وصف قصير'},{p:'features', t:'bilist', l:'المميزات', hint:'كل ميزة بسطر'},
           {p:'id', t:'text', l:'المعرّف (يظهر في الرابط)', ltr:1} ]}},
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return ((x.name&&x.name.ar)||'إضافة')+' · '+(x.type==='percent'?x.price+'%':x.price)},
@@ -71,8 +72,15 @@
       {h:'تفاصيل الدفع الخاصة', hint:'لا تظهر على الموقع أبداً. تُستخدم فقط في رسائل الرد على الطلبات (رقم المحفظة، البريد، بيانات الاستلام…).', priv:'payments'} ]},
     {id:'settings', title:'الإعدادات', settings:1},
     {id:'orders', title:'الطلبات', orders:1},
+    {id:'clients', title:'العملاء', clients:1},
     {id:'backup', title:'نسخ احتياطي', backup:1}
   ];
+
+  var PAGES=[['index','الرئيسية','Eyeblink Studio — مونتاج وموشن غرافيك وأفلام','Eyeblink Studio — Editing, Motion & Film'],['services','الخدمات','الخدمات — Eyeblink Studio','Services — Eyeblink Studio'],
+    ['service-editing','خدمة المونتاج','المونتاج الاحترافي — Eyeblink Studio','Video Editing — Eyeblink Studio'],['service-motion','خدمة الموشن','الموشن غرافيك — Eyeblink Studio','Motion Graphics — Eyeblink Studio'],
+    ['service-social','خدمة السوشال','إعلانات السوشال ميديا — Eyeblink Studio','Social Media Ads — Eyeblink Studio'],['service-films','خدمة الأفلام','الأفلام والإنتاج السينمائي — Eyeblink Studio','Film Production — Eyeblink Studio'],
+    ['work','أعمالنا','أعمالنا — Eyeblink Studio','Work — Eyeblink Studio'],['pricing','الأسعار','الباقات والأسعار — Eyeblink Studio','Packages & Pricing — Eyeblink Studio'],
+    ['about','من نحن','من نحن — Eyeblink Studio','About — Eyeblink Studio'],['contact','تواصل','تواصل — Eyeblink Studio','Contact — Eyeblink Studio'],['account','حساب العميل','حسابي — Eyeblink Studio','My account — Eyeblink Studio']];
 
   /* ---------------- field widgets ---------------- */
   function fid(){ return 'f'+Math.random().toString(36).slice(2,9); }
@@ -102,7 +110,7 @@
 
   /* ---------------- render ---------------- */
   function renderTabs(){
-    var newCount=ORDERS.filter(function(o){return o.status==='new'}).length;
+    var newCount=ORDERS.filter(function(o){return o.status==='new'||o.unread}).length;
     $('#tabs').innerHTML=TABS.map(function(t){ return '<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+'</button>'; }).join('');
   }
   function render(){
@@ -110,6 +118,7 @@
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
     $('#tabTitle').textContent=tab.title;
     if(tab.orders) return renderOrders();
+    if(tab.clients) return renderClients();
     if(tab.backup) return renderBackup();
     if(tab.settings) return renderSettings();
     $('#panel').innerHTML=tab.secs.map(function(s,si){
@@ -151,7 +160,7 @@
   });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;
-    if(b.dataset.tab){ TAB=b.dataset.tab; render(); if(TAB==='orders') loadOrders(); scrollTo(0,0); return; }
+    if(b.dataset.tab){ TAB=b.dataset.tab; render(); if(TAB==='orders') loadOrders(); if(TAB==='clients') loadUsers(); scrollTo(0,0); return; }
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
     if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr); render(); dirty(); saveDraft();
       var items=document.querySelectorAll('[data-rep="'+s.rep.p+'"] .item'); var last=items[items.length-1]; if(last){ last.open=true; last.scrollIntoView({block:'center'}); } return; }
@@ -202,7 +211,7 @@
 
   /* ---------------- orders ---------------- */
   var ST={'new':'جديد','confirmed':'مؤكَّد','awaiting-payment':'بانتظار الدفع','paid':'مدفوع','in-progress':'قيد التنفيذ','review':'بانتظار المراجعة','delivered':'مُسلَّم','cancelled':'ملغى'};
-  function sampleOrders(){ return [{key:'order:demo',code:'EB-DEMO1',status:'new',createdAt:new Date().toISOString(),name:'طلب تجريبي',contact:'@client.account',details:'فيديو موشن 45 ثانية لإطلاق منتج. (هذا طلب تجريبي ليظهر لك شكل الصندوق)',package:'motion',packageName:'فيديو موشن غرافيك',addons:['كتابة السكريبت'],total:'85 $',lang:'ar',price:'',method:'',paid:false,paidAmount:'',notes:'',history:[{at:new Date().toISOString(),status:'new'}],demo:true}]; }
+  function sampleOrders(){ return [{key:'order:demo',code:'EB-DEMO1',status:'new',createdAt:new Date().toISOString(),name:'طلب تجريبي',contact:'@client.account',details:'فيديو موشن 45 ثانية لإطلاق منتج. (هذا طلب تجريبي ليظهر لك شكل الصندوق)',package:'motion',packageName:'فيديو موشن غرافيك',addons:['كتابة السكريبت'],total:'85 $',lang:'ar',price:'',method:'',paid:false,paidAmount:'',notes:'',history:[{at:new Date().toISOString(),status:'new'}],email:'client@example.com',unread:1,messages:[{from:'client',text:'مرحباً، هل يمكن التسليم قبل نهاية الأسبوع؟',at:new Date().toISOString()}],demo:true}]; }
   function loadOrders(){
     if(!LIVE){ if(!ORDERS.length) ORDERS=sampleOrders(); if(TAB==='orders') renderOrders(); else renderTabs(); return; }
     fetch(API+'/orders',{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ ORDERS=j.orders||[]; if(TAB==='orders') renderOrders(); else renderTabs(); }).catch(function(){});
@@ -230,13 +239,15 @@
     if(!list.length){ $('#panel').innerHTML=head+'<div class="sec"><div class="empty">لا توجد طلبات هنا.</div></div>'; return; }
     $('#panel').innerHTML=head+'<div class="orders">'+list.map(function(o){
       var k=esc(o.key);
-      return '<details class="order item"'+(o.status==='new'?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span>'+(o.paid?'<span class="pill paid">مدفوع</span>':'')+
+      return '<details class="order item" data-okey="'+k+'"'+(o.status==='new'||o.unread?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span>'+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
         '<b>'+esc(o.name)+' · '+esc(o.packageName||o.package)+'</b><span class="muted small">'+esc(new Date(o.createdAt).toLocaleDateString('ar'))+'</span></summary><div class="body">'+
         '<div class="grid2"><div>'+
           '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+'</div>'+
-          '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+' — <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span></div>'+
+          '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
+          (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
+            '<div class="asend"><textarea data-msg dir="auto" placeholder="'+(o.status==='delivered'||o.status==='cancelled'?'المحادثة مغلقة عند العميل بعد التسليم، لكن رسالتك ستظهر له':'اكتب رداً للعميل…')+'"></textarea><button class="btn primary sm" type="button" data-osend="'+k+'">إرسال</button></div>':'')+
           '<div class="small muted" style="margin-top:8px">السجل</div><div class="small">'+(o.history||[]).map(function(h){return esc(ST[h.status]||h.status)+' · '+esc(new Date(h.at).toLocaleString('ar'))}).join('<br>')+'</div>'+
         '</div><div class="ofields">'+
           '<div class="row"><div class="field"><label>الحالة</label><select data-of="status">'+Object.keys(ST).map(function(s2){return '<option value="'+s2+'"'+(s2===o.status?' selected':'')+'>'+ST[s2]+'</option>'}).join('')+'</select></div>'+
@@ -247,15 +258,33 @@
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
           '<div class="small muted" style="margin-top:6px">رد سريع</div><div class="actions"><button class="btn sm" type="button" data-reply="confirm" data-ok="'+k+'">تأكيد + تفاصيل الدفع</button><button class="btn sm" type="button" data-reply="paid" data-ok="'+k+'">وصل الدفع</button><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">تم التسليم</button></div>'+
-          '<div class="replybox" hidden><textarea class="replytext" dir="auto"></textarea><div class="actions"><button class="btn sm primary" type="button" data-copyreply>نسخ الرسالة</button><a class="btn sm" data-openreply target="_blank" rel="noopener">افتح المحادثة</a></div></div>'+
+          '<div class="replybox" hidden><textarea class="replytext" dir="auto"></textarea><div class="actions">'+(o.email?'<button class="btn sm primary" type="button" data-sendreply="'+k+'">أرسل في محادثة الموقع</button>':'')+'<button class="btn sm" type="button" data-copyreply>نسخ الرسالة</button><a class="btn sm" data-openreply target="_blank" rel="noopener">افتح المحادثة الخارجية</a></div></div>'+
         '</div></div></div></details>';
     }).join('')+'</div>';
   }
+  function thread(o){
+    var m=o.messages||[]; if(!m.length) return '<div class="muted small">لا رسائل بعد. العميل يرى رسالة ترحيب تلقائية بأنكم سترسلون السعر خلال 24 ساعة.</div>';
+    return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+'"><div>'+esc(x.text).replace(/\n/g,'<br>')+'</div><small>'+(x.from==='client'?'العميل':'أنت')+' · '+esc(new Date(x.at).toLocaleString('ar'))+'</small></div>'; }).join('');
+  }
+  function sendMsg(key,text,btn){
+    var o=orderOf(key); text=String(text||'').trim(); if(!o||!text) return;
+    var add=function(){ (o.messages=o.messages||[]).push({from:'studio',text:text,at:new Date().toISOString()}); o.unread=0; renderOrders(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; var th=d.querySelector('.athread'); if(th) th.scrollTop=th.scrollHeight; } toast('وصلت الرسالة إلى حساب العميل'); };
+    if(!LIVE||o.demo){ add(); return; }
+    if(btn) btn.disabled=true;
+    fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:key,message:text})}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ if(j.order){ j.order.messages=(j.order.messages||[]).slice(0,-1); Object.assign(o,j.order); } add(); }).catch(function(){ if(btn) btn.disabled=false; toast('تعذّر الإرسال',true); });
+  }
+  document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.okey||!d.open) return; var o=orderOf(d.dataset.okey);
+    var th=d.querySelector('.athread'); if(th) th.scrollTop=th.scrollHeight;
+    if(o&&o.unread&&LIVE&&!o.demo){ fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:o.key,seen:true})}).then(function(){ o.unread=0; renderTabs(); var pl=d.querySelector('.pill.unread'); if(pl) pl.remove(); }).catch(function(){}); }
+  },true);
   function orderOf(key){ return ORDERS.filter(function(o){return o.key===key})[0]; }
   function readOrderForm(box){ var d={}; [].forEach.call(box.querySelectorAll('[data-of]'),function(el){ d[el.dataset.of]= el.type==='checkbox'? el.checked : el.value; }); return d; }
   document.addEventListener('click',function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
+    if(b.dataset.osend){ sendMsg(b.dataset.osend, b.closest('.asend').querySelector('textarea').value, b); return; }
+    if(b.dataset.sendreply){ sendMsg(b.dataset.sendreply, b.closest('.replybox').querySelector('textarea').value, b); return; }
     if(b.dataset.osave){ var box=b.closest('.order'), d=readOrderForm(box), o=orderOf(b.dataset.osave);
       var apply=function(){ if(d.status!==o.status){ (o.history=o.history||[]).push({at:new Date().toISOString(),status:d.status}); } Object.assign(o,d); renderOrders(); toast('حُفظ الطلب'); };
       if(!LIVE||o.demo){ apply(); return; }
@@ -276,13 +305,47 @@
       fetch(API+'/orders?key='+encodeURIComponent(key),{method:'DELETE',headers:headers({})}).then(function(r){ if(!r.ok) throw 0; rm(); }).catch(function(){ toast('تعذّر الحذف',true); }); }
   });
 
+  // new requests and client messages arrive without reloading (skipped while you are typing in an order)
+  setInterval(function(){ if(!LIVE||document.hidden) return; var a=document.activeElement; if(TAB==='orders'&&a&&a.closest&&a.closest('.order')) return; loadOrders(); },30000);
+
+  /* ---------------- clients ---------------- */
+  function loadUsers(){
+    if(!LIVE){ USERS=[{email:'client@example.com',name:'عميل تجريبي',provider:'password',hasPassword:true,createdAt:new Date().toISOString(),orders:1}]; renderClients(); return; }
+    fetch(API+'/users',{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ USERS=j.users||[]; if(TAB==='clients') renderClients(); }).catch(function(){});
+  }
+  function renderClients(){
+    var U=USERS;
+    if(!U){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; return; }
+    $('#panel').innerHTML='<section class="sec"><h3>حسابات العملاء ('+U.length+')</h3><p class="hint">كل من يرسل طلباً يسجّل بالإيميل أو Google. إن نسي أحدهم كلمة السر: اضغط «كلمة سر جديدة» وأرسلها له عبر التواصل الخارجي، ويقدر يدخل فيها فوراً.</p>'+
+      (U.length? '<div class="clients">'+U.map(function(u){ return '<div class="client"><div><b>'+esc(u.name)+'</b> <span dir="ltr" class="muted small" style="user-select:all">'+esc(u.email)+'</span></div>'+
+        '<span class="muted small">'+(u.google?'Google':'')+(u.google&&u.hasPassword?' + ':'')+(u.hasPassword?'كلمة سر':'')+' · '+u.orders+' طلب · '+esc(new Date(u.createdAt).toLocaleDateString('ar'))+'</span>'+
+        '<div class="actions"><button class="btn sm" type="button" data-upw="'+esc(u.email)+'">كلمة سر جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(u.email)+'">حذف الحساب</button></div><div class="newpw" hidden></div></div>'; }).join('')+'</div>'
+        : '<div class="empty">لا يوجد عملاء بعد.</div>')+'</section>';
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.upw){ var email=b.dataset.upw, pw=Math.random().toString(36).slice(2,7)+'-'+Math.random().toString(36).slice(2,7), box=b.closest('.client').querySelector('.newpw');
+      var show=function(){ box.hidden=false; box.innerHTML='كلمة السر الجديدة: <b dir="ltr" style="user-select:all">'+pw+'</b> — انسخها وأرسلها للعميل.'; };
+      if(!LIVE){ show(); return; }
+      fetch(API+'/users',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({email:email,password:pw})}).then(function(r){ if(!r.ok) throw 0; show(); }).catch(function(){ toast('تعذّر التغيير',true); }); return; }
+    if(b.dataset.udel){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف؟'; return; }
+      var em=b.dataset.udel, rm=function(){ USERS=USERS.filter(function(u){return u.email!==em}); renderClients(); };
+      if(!LIVE){ rm(); return; }
+      fetch(API+'/users?email='+encodeURIComponent(em),{method:'DELETE',headers:headers({})}).then(function(r){ if(!r.ok) throw 0; rm(); }).catch(function(){ toast('تعذّر الحذف',true); }); }
+  });
+
   /* ---------------- settings ---------------- */
   function renderSettings(){
     var S=C.settings=C.settings||{}; var T=(P&&P.templates)||DEFAULT_TPL;
     var tog=function(k,l){ return '<label class="check"><input type="checkbox" data-p="settings.'+k+'" data-t="check"'+(S[k]!==false?' checked':'')+'> '+l+'</label>'; };
     $('#panel').innerHTML=
       '<section class="sec"><h3>ما يظهر على الموقع</h3>'+tog('showStats','خانة الأرقام في الرئيسية')+tog('showWorkTeaser','الأعمال في الرئيسية')+tog('showPackagesTeaser','الباقات في الرئيسية')+tog('showPayments','طرق الدفع (صفحة الباقات وأسفل الموقع)')+tog('ordersOpen','استقبال الطلبات من صفحة الباقات')+'</section>'+
-      '<section class="sec"><h3>وسائل تواصل إضافية</h3><p class="hint">تظهر في صفحة التواصل إن كتبتها.</p><div class="row">'+
+      '<section class="sec"><h3>تسجيل العملاء عبر Google</h3><p class="hint">العملاء يسجّلون بالإيميل وكلمة السر دائماً. لإضافة زر «المتابعة عبر Google» الصق هنا الـ Client ID من Google Cloud (ينتهي بـ apps.googleusercontent.com) ثم انشر.</p>'+
+        '<div class="field"><label>Google Client ID</label><input data-p="settings.googleClientId" data-t="text" dir="ltr" value="'+esc(S.googleClientId||'')+'" placeholder="1234567890-xxxx.apps.googleusercontent.com"></div></section>'+
+      '<section class="sec"><h3>عنوان علامة التبويب لكل صفحة</h3><p class="hint">النص الذي يظهر في تبويب المتصفح. اتركه فارغاً ليبقى العنوان الافتراضي (الظاهر باهتاً).</p>'+
+        PAGES.map(function(pg){ var v=(C.titles&&C.titles[pg[0]])||{};
+          return '<div class="field"><label>'+esc(pg[1])+'</label><div class="bi"><div><small>عربي</small><input data-p="titles.'+pg[0]+'.ar" data-t="text" value="'+esc(v.ar||'')+'" placeholder="'+esc(pg[2])+'"></div><div><small>ENGLISH</small><input data-p="titles.'+pg[0]+'.en" data-t="text" dir="ltr" value="'+esc(v.en||'')+'" placeholder="'+esc(pg[3])+'"></div></div></div>'; }).join('')+'</section>'+
+      '<section class="sec"><h3>وسائل تواصل إضافية</h3><p class="hint">تظهر في صفحة التواصل، وكأزرار «تواصل خارجي» داخل حساب العميل.</p><div class="row">'+
         '<div class="field"><label>رقم واتساب (مع رمز الدولة)</label><input data-p="settings.whatsapp" data-t="text" dir="ltr" value="'+esc(S.whatsapp||'')+'" placeholder="+9715XXXXXXXX"></div>'+
         '<div class="field"><label>البريد الإلكتروني</label><input data-p="settings.email" data-t="text" dir="ltr" value="'+esc(S.email||'')+'"></div></div></section>'+
       '<section class="sec"><h3>رسائل الرد الجاهزة</h3><p class="hint">تُستخدم في صندوق الطلبات. المتغيرات: {name} {code} {package} {price} {method} {details} — و{details} تُملأ من «تفاصيل الدفع الخاصة».</p>'+

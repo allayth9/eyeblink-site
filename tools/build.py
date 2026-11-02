@@ -13,29 +13,29 @@ SERVICES = [s["id"] for s in CONTENT["services"]]
 import hashlib
 def _v(path):
     return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js"]}
-PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact"]
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/img/favicon.svg"]}
+PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account"]
 
 UI = {
  "ar": {"dir": "rtl", "arrow": "←", "nav": [("services", "الخدمات"), ("work", "أعمالنا"), ("pricing", "الباقات"), ("about", "من نحن"), ("contact", "تواصل")],
         "cta": "ابدأ مشروعك", "menu": "القائمة", "lang_label": "English", "lang_short": "EN", "home": "Eyeblink Studio — الصفحة الرئيسية", "quick": "روابط سريعة",
         "explore": "استكشف الخدمات", "all_work": "كل الأعمال", "all_pkgs": "كل الباقات", "close": "إغلاق",
         "tools": "الأدوات التي نعمل بها", "deliver": "ماذا تستلم", "svc_pkgs": "باقات هذه الخدمة", "others": "خدمات أخرى", "see_pkgs": "شاهد الباقات",
-        "order_h": "طلبك", "sel": "الباقة المختارة", "addons": "إضافات", "total": "المجموع التقديري",
-        "f_name": "الاسم أو اسم الجهة", "f_contact": "وسيلة التواصل (إنستغرام، واتساب، أو إيميل)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
+        "order_h": "طلبك", "sel": "اخترت", "svc_h": "اطلب خدمة", "svc_p": "سعر واضح لكل فيديو. اختر الخدمة، أضف ما تحتاجه، وأرسل الطلب.", "acct": "حسابي", "f_step1": "ماذا تحتاج؟", "f_step2": "تفاصيل المشروع", "addons": "إضافات", "total": "المجموع التقديري",
+        "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام للتواصل الخارجي (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
         "f_link": "رابط المواد (اختياري)", "f_deadline": "الموعد المستهدف (اختياري)", "send": "أرسل الطلب", "copy": "نسخ التفاصيل", "open_ig": "افتح إنستغرام", "again": "طلب جديد",
         "soon": "قريباً", "ig_follow": "تابع الجديد على إنستغرام", "closed_h": "الطلبات متوقفة مؤقتاً", "closed_p": "نستقبل الطلبات حالياً عبر إنستغرام فقط.", "home_l": "الرئيسية",
-        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل"},
+        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي"},
         "slots": [("EDITING", "أعمال المونتاج"), ("MOTION", "أعمال الموشن غرافيك"), ("FILMS", "الأفلام والإعلانات")]},
  "en": {"dir": "ltr", "arrow": "→", "nav": [("services", "Services"), ("work", "Work"), ("pricing", "Pricing"), ("about", "About"), ("contact", "Contact")],
         "cta": "Start a project", "menu": "Menu", "lang_label": "العربية", "lang_short": "ع", "home": "Eyeblink Studio — home", "quick": "Quick links",
         "explore": "Explore services", "all_work": "All work", "all_pkgs": "All packages", "close": "Close",
         "tools": "Tools we work with", "deliver": "What you get", "svc_pkgs": "Packages for this service", "others": "Other services", "see_pkgs": "See packages",
-        "order_h": "Your request", "sel": "Selected package", "addons": "Add-ons", "total": "Estimated total",
-        "f_name": "Your name or company", "f_contact": "How to reach you (Instagram, WhatsApp or email)", "f_details": "Project details: type of video, length, idea",
+        "order_h": "Your request", "sel": "You picked", "svc_h": "Order a service", "svc_p": "A clear price per video. Pick the service, add what you need, and send the request.", "acct": "My account", "f_step1": "What do you need?", "f_step2": "Project details", "addons": "Add-ons", "total": "Estimated total",
+        "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram for outside contact (optional)", "f_details": "Project details: type of video, length, idea",
         "f_link": "Link to materials (optional)", "f_deadline": "Target date (optional)", "send": "Send request", "copy": "Copy details", "open_ig": "Open Instagram", "again": "New request",
         "soon": "Coming soon", "ig_follow": "Follow new work on Instagram", "closed_h": "Requests are paused", "closed_p": "For now we take requests on Instagram only.", "home_l": "Home",
-        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact"},
+        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account"},
         "slots": [("EDITING", "Editing work"), ("MOTION", "Motion graphics work"), ("FILMS", "Films & ads")]},
 }
 IG = "https://instagram.com/" + CONTENT["site"]["instagram"]
@@ -159,24 +159,26 @@ def p_work(U, lang):
 def p_pricing(U, lang):
     return page_hero("PRICING", "packages.h", "packages.p") + f'''
 <section class="block" style="padding-top:0"><div class="wrap">
-  <div class="pkgs" data-list="packages"></div>
+  <div class="head rv"><div><span class="eyebrow">SERVICES</span><h2>{U["svc_h"]}</h2></div><p>{U["svc_p"]}</p></div>
+  <div class="pkgs" data-list="packages" data-kind="service"></div>
+  <div class="plan" data-list="packages" data-kind="package"></div>
   <div class="order glass" id="orderClosed" hidden><div><span class="eyebrow">ORDERS</span><h2>{U["closed_h"]}</h2><p class="muted" style="margin:0">{U["closed_p"]}</p></div><div class="handle"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div></div>
   <div class="order glass" id="order">
     <div>
       <span class="eyebrow">ORDER</span>
       <h2>{U["order_h"]}</h2>
-      <p class="muted" style="margin:0">{U["sel"]}: <b id="selName" style="color:var(--light)"></b></p>
+      <p class="muted sel" style="margin:0">{U["sel"]}: <b id="selName" style="color:var(--light)"></b></p>
       <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
       <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
       <p class="fine" id="priceNote" style="margin-top:12px"></p>
       <p class="fine" id="payNote" style="margin-top:6px"></p>
     </div>
     <form class="form" id="orderForm" novalidate>
-      <label>{U["f_name"]}<input id="f-name" name="name" required autocomplete="name"></label>
-      <label>{U["f_contact"]}<input id="f-contact" name="contact" required></label>
       <label>{U["f_details"]}<textarea id="f-details" name="details" required></textarea></label>
-      <div class="row2"><label>{U["f_link"]}<input id="f-link" name="link" type="url" inputmode="url"></label>
+      <div class="row2"><label>{U["f_link"]}<input id="f-link" name="link" type="url" inputmode="url" dir="ltr"></label>
       <label>{U["f_deadline"]}<input id="f-deadline" name="deadline" type="date"></label></div>
+      <label>{U["f_contact"]}<input id="f-contact" name="contact" dir="auto"></label>
+      <p class="who" id="who"></p>
       <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0">
       <button class="btn btn-primary" type="submit" style="justify-content:center">{U["send"]}</button>
     </form>
@@ -215,6 +217,9 @@ def p_contact(U, lang):
   <ul class="brief" data-list="brief"></ul>
 </div></section>'''
 
+def p_account(U, lang):
+    return '<section class="page-hero acct-page"><div class="wrap"><div id="acct" class="acct"></div></div></section>'
+
 def build(lang, page):
     U = UI[lang]; en = lang == "en"; A = "../" if en else ""
     other = f"../{page}.html" if en else f"en/{page}.html"
@@ -240,15 +245,16 @@ def build(lang, page):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{title}</title>
 <meta name="description" content="{desc}">
-<meta name="theme-color" content="#04061A">
-<link rel="icon" href="{A}assets/img/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page=="account" else ""}
+<link rel="icon" href="{A}assets/img/favicon.svg?v={ASSET_V["assets/img/favicon.svg"]}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
 <link rel="alternate" hreflang="{"ar" if en else "en"}" href="{other}">
 <meta property="og:type" content="website"><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:image" content="{A}assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="{A}assets/css/site.css?v={ASSET_V["assets/css/site.css"]}">
-<script>document.documentElement.classList.add('js');try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
+<script>document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
 </head>
-<body data-base="{A}"{f' data-service="{sid}"' if sid else ""}>
+<body data-base="{A}" data-page="{page}"{f' data-service="{sid}"' if sid else ""}>
+<div class="eb-intro" aria-hidden="true"><i class="seam"></i><i class="lid top"></i><i class="lid bot"></i></div>
 <div class="sky" aria-hidden="true"></div>
 <canvas id="field" aria-hidden="true"></canvas>
 <div class="grain" aria-hidden="true"></div>
@@ -258,6 +264,7 @@ def build(lang, page):
   <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
   <ul class="links" id="links">{nav}</ul>
   <a class="btn btn-primary" href="pricing.html">{U["cta"]}</a>
+  <a class="acct-link" href="account.html" aria-label="{U["acct"]}" title="{U["acct"]}"{" aria-current=\"page\"" if page=="account" else ""}><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 19.5c1.3-3.4 4-5 7.2-5s5.9 1.6 7.2 5"/></svg></a>
   <a class="lang{" ar" if en else ""}" href="{other}" hreflang="{"ar" if en else "en"}" lang="{"ar" if en else "en"}" aria-label="{U["lang_label"]}">{U["lang_short"]}</a>
   <button class="menu-btn" id="menuBtn" aria-label="{U["menu"]}" aria-expanded="false" aria-controls="links"><span></span><span></span></button>
 </div></div></header>
@@ -276,7 +283,7 @@ def build(lang, page):
 <script src="{THREE}"></script>
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
-<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>
+<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
 </body>
 </html>
 '''

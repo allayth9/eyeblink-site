@@ -6,16 +6,16 @@
   var BASE=document.body.getAttribute('data-base')||'';
   var SVC_ID=document.body.getAttribute('data-service')||'';
   var UI={
-    ar:{details:'التفاصيل',choose:'اختر هذه الباقة',chosen:'تم الاختيار',ask:'عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
+    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالإيميل أو Google، لتتابع طلبك وتتحدث معنا من حسابك.',goAcct:'افتح حسابي',ask:'عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
         svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب البريف',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
-        pickFirst:'اختر باقة أولاً',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون'},
-    en:{details:'Details',choose:'Choose this package',chosen:'Selected',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
+        pickFirst:'اختر خدمة أولاً',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون'},
+    en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
         offline:'Your request is ready',offlineP:'We copied your request details. Send them to us on Instagram and we will reply with a clear plan.',copy:'Copy details',copied:'Copied',openIG:'Open Instagram',
-        pickFirst:'Choose a package first',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None'}
+        pickFirst:'Choose a service first',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None'}
   }[lang];
   var ICON={
     editing:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="7.5" height="4.5" rx="1.2"/><rect x="12.5" y="6" width="8.5" height="4.5" rx="1.2"/><rect x="3" y="13.5" width="11" height="4.5" rx="1.2"/><rect x="16" y="13.5" width="5" height="4.5" rx="1.2"/><path d="M11.5 4.2v16.3"/><path class="fill" d="M9.9 2.8h3.2l-1.6 1.9z"/></svg>',
@@ -64,7 +64,8 @@
     'svc-packages':function(el,s){ var items=((C.packages&&C.packages.items)||[]).filter(function(p){return p.service===s.id});
       el.innerHTML=items.map(function(p){return pkgCard(p,true)}).join(''); el.closest('section').hidden=!items.length; },
     'svc-nav':function(el,s){ el.innerHTML=(C.services||[]).map(function(x){return '<a class="glass" href="service-'+esc(x.id)+'.html"'+(x.id===s.id?' aria-current="page"':'')+'>'+esc(L(x.name))+'</a>'}).join(''); },
-    packages:function(el){ el.innerHTML=((C.packages&&C.packages.items)||[]).map(function(p){return pkgCard(p,false)}).join(''); },
+    packages:function(el){ var k=el.dataset.kind, it=((C.packages&&C.packages.items)||[]).filter(function(p){return !k||kind(p)===k});
+      el.innerHTML=it.map(function(p){return pkgCard(p,false,k==='package')}).join(''); el.hidden=!it.length; },
     'packages-teaser':function(el){ var it=((C.packages&&C.packages.items)||[]).slice(0,3); el.innerHTML=it.map(function(p){return pkgCard(p,true)}).join(''); }
   };
   // generic method icons; an uploaded logo (admin → payment methods) replaces them
@@ -76,15 +77,20 @@
     mastercard:'<svg viewBox="0 0 24 24"><circle cx="9.5" cy="12" r="5"/><circle cx="14.5" cy="12" r="5"/></svg>',
     _:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12.5" rx="2.5"/><path d="M3 10h18"/></svg>'};
   function payIcon(x){ return x.logo? '<img alt="'+esc(x.name)+'" src="'+esc(url(x.logo))+'">' : (PAYI[x.id]||PAYI._); }
-  function pkgCard(p,link){
-    var cur=(C.packages&&C.packages.currency)||'$';
-    var price=p.price==null||p.price===''? '<b class="ask">'+UI.ask+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
+  // a "package" is a recurring plan; everything else on the price list is a single service
+  function kind(p){ return p.kind || (p.id==='monthly'||/month/i.test((p.unit&&p.unit.en)||'')? 'package':'service'); }
+  function pkgCard(p,link,wide){
+    var cur=(C.packages&&C.packages.currency)||'$', has=p.price!=null&&p.price!=='', isPkg=kind(p)==='package';
+    var was=has&&+p.oldPrice>+p.price? '<s class="was">'+esc(money(cur,p.oldPrice))+'</s><span class="off">'+UI.save+' <bdi>'+Math.round((1-p.price/p.oldPrice)*100)+'%</bdi></span>' : '';
+    var price=!has? '<b class="ask">'+UI.ask+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
     var tag=link?'a':'button', attr=link?' href="pricing.html#'+esc(p.id)+'"':' type="button" aria-pressed="false"';
-    return '<'+tag+' class="pkg glass rv'+(p.featured?' featured':'')+'" data-id="'+esc(p.id)+'"'+attr+'>'+
-      '<span class="pkg-top"><span class="k">'+esc(((C.services||[]).filter(function(s){return s.id===p.service})[0]||{}).label||'PACKAGE')+'</span>'+(p.featured?'<span class="badge">'+UI.featured+'</span>':'')+'</span><h3>'+esc(L(p.name))+'</h3>'+
-      '<div class="price">'+(p.price!=null&&p.price!==''?'<small>'+UI.from+'</small>':'')+price+'</div><p>'+esc(L(p.desc))+'</p>'+
-      '<ul>'+(L(p.features)||[]).map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul>'+
-      '<span class="btn '+(p.featured?'btn-primary':'btn-glass glass')+' pick">'+(link?UI.details+' <span class="arr">'+ARW+'</span>':UI.choose)+'</span></'+tag+'>';
+    var label=isPkg? UI.month : (((C.services||[]).filter(function(s){return s.id===p.service})[0]||{}).label||'SERVICE');
+    var top='<span class="pkg-top"><span class="k">'+esc(label)+'</span>'+(p.featured?'<span class="badge">'+UI.featured+'</span>':'')+'</span>';
+    var pr='<div class="price">'+(was?'<span class="wasrow">'+was+'</span>':'')+(has&&!isPkg?'<small>'+UI.from+'</small>':'')+price+'</div>';
+    var btn='<span class="btn '+(p.featured||isPkg?'btn-primary':'btn-glass glass')+' pick">'+(link?UI.details+' <span class="arr">'+ARW+'</span>':(isPkg?UI.choosePkg:UI.choose))+'</span>';
+    var feats='<ul>'+(L(p.features)||[]).map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul>';
+    if(wide) return '<'+tag+' class="pkg wide glass rv" data-id="'+esc(p.id)+'"'+attr+'><div class="w-main">'+top+'<h3>'+esc(L(p.name))+'</h3><p>'+esc(L(p.desc))+'</p>'+feats+'</div><div class="w-side">'+pr+btn+'</div></'+tag+'>';
+    return '<'+tag+' class="pkg glass rv'+(p.featured?' featured':'')+'" data-id="'+esc(p.id)+'"'+attr+'>'+top+'<h3>'+esc(L(p.name))+'</h3>'+pr+'<p>'+esc(L(p.desc))+'</p>'+feats+btn+'</'+tag+'>';
   }
 
   function renderAll(){
@@ -101,6 +107,8 @@
       el.innerHTML=h; el.hidden=!h; });
     var of=document.getElementById('order'), oc=document.getElementById('orderClosed');
     if(of&&oc){ var open=S.ordersOpen!==false; of.hidden=!open; oc.hidden=open; }
+    var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt) document.title=tt;
+    window.EBC=C;
     renderWork(); setupOrder();
     if(window.EB&&EB.refresh) EB.refresh();
   }
@@ -286,16 +294,18 @@
       return '<li><label><input type="checkbox" value="'+esc(a.id)+'"> <span>'+esc(L(a.name))+'</span><b>'+esc(pr)+'</b></label></li>'}).join('');
     document.getElementById('payNote').textContent=L(P.payment)||'';
     document.getElementById('priceNote').textContent=L(P.note)||'';
-    [].forEach.call(document.querySelectorAll('.pkgs .pkg'),function(b){ b.addEventListener('click',function(){ pick(b.dataset.id,true); }); });
+    [].forEach.call(document.querySelectorAll('[data-list="packages"] .pkg'),function(b){ b.addEventListener('click',function(){ pick(b.dataset.id,true); }); });
     addonsEl.onchange=calc;
     var want=(location.hash||'').slice(1) || selected;
-    if(want && (P.items||[]).some(function(p){return p.id===want})) pick(want,false); else calc();
+    if(want && (P.items||[]).some(function(p){return p.id===want})) pick(want,!selected); else { box.classList.add('idle'); calc(); }
+    who();
   }
   function pick(id,scroll){
     selected=id;
-    [].forEach.call(document.querySelectorAll('.pkgs .pkg'),function(b){ var on=b.dataset.id===id; b.setAttribute('aria-pressed',on); var pk=b.querySelector('.pick'); if(pk&&!b.classList.contains('featured')) pk.textContent=on?UI.chosen:UI.choose; else if(pk) pk.textContent=on?UI.chosen:UI.choose; });
+    [].forEach.call(document.querySelectorAll('[data-list="packages"] .pkg'),function(b){ var on=b.dataset.id===id; b.setAttribute('aria-pressed',on); var pk=b.querySelector('.pick'); if(pk) pk.textContent=on?UI.chosen:(b.classList.contains('wide')?UI.choosePkg:UI.choose); });
+    var o=document.getElementById('order'); if(o) o.classList.remove('idle');
     calc();
-    if(scroll){ var o=document.getElementById('order'); if(o) o.scrollIntoView({behavior:'smooth',block:'start'}); }
+    if(scroll&&o) setTimeout(function(){ o.scrollIntoView({behavior:'smooth',block:'start'}); },60);
   }
   function calc(){
     var P=C.packages||{}, cur=P.currency||'$', p=(P.items||[]).filter(function(x){return x.id===selected})[0];
@@ -308,16 +318,23 @@
     var sum=Math.round((base+fixed)*(1+pct/100));
     t.textContent=money(cur,sum);
   }
+  // who the request will be sent as (filled once the account script knows)
+  function who(){ var w=document.getElementById('who'); if(!w) return;
+    var A=window.EBAcct; if(!A){ w.textContent=UI.needAcct; return; }
+    var show=function(u){ w.innerHTML= u&&u.user? esc(UI.signedAs)+'<b dir="ltr">'+esc(u.user.email)+'</b>' : u===false? '' : esc(UI.needAcct); };
+    if(A.user===undefined) A.me().then(show); else show(A.user);
+  }
+  window.EBWho=who;
   document.addEventListener('submit',function(e){
     var f=e.target; if(f.id!=='orderForm') return; e.preventDefault();
     if(f.reportValidity && !f.reportValidity()) return;
     var P=C.packages||{}, p=(P.items||[]).filter(function(x){return x.id===selected})[0];
     if(!p){ toast(UI.pickFirst); document.querySelector('.pkgs').scrollIntoView({behavior:'smooth'}); return; }
     var adds=[].map.call(document.querySelectorAll('#addons input:checked'),function(i){ var a=(P.addons||[]).filter(function(x){return x.id===i.value})[0]; return a? L(a.name):i.value; });
-    var data={package:p.id, packageName:L(p.name), addons:adds, total:document.getElementById('total').textContent,
-      name:f.name.value.trim(), contact:f.contact.value.trim(), details:f.details.value.trim(), link:f.link.value.trim(), deadline:f.deadline.value, lang:lang, website:f.website?f.website.value:''};
+    var E=f.elements, data={package:p.id, packageName:L(p.name), addons:adds, total:document.getElementById('total').textContent,
+      contact:E.contact.value.trim(), details:E.details.value.trim(), link:E.link.value.trim(), deadline:E.deadline.value, lang:lang, website:E.website?E.website.value:''};
     var btn=f.querySelector('button[type=submit]'), old=btn.textContent; btn.disabled=true; btn.textContent=UI.sending;
-    var summary=[UI.pkg+': '+data.packageName, UI.addons+': '+(adds.join('، ')||UI.none), UI.total+': '+data.total, '—', data.name, data.contact, data.details, data.link, data.deadline].filter(Boolean).join('\n');
+    var summary=[UI.pkg+': '+data.packageName, UI.addons+': '+(adds.join('، ')||UI.none), UI.total+': '+data.total, '—', data.contact, data.details, data.link, data.deadline].filter(Boolean).join('\n');
     var done=function(ok,code){
       btn.disabled=false; btn.textContent=old;
       var box=document.getElementById('orderDone'); f.closest('.order').hidden=true; box.hidden=false;
@@ -329,11 +346,16 @@
       if(!ok){ try{ navigator.clipboard.writeText(ta.value).catch(function(){}); }catch(_){} }
       box.scrollIntoView({behavior:'smooth',block:'center'});
     };
-    if(/^https?:/.test(location.protocol) ){
-      fetch(BASE+'api/orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)})
-        .then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ done(true,j.code); })
-        .catch(function(){ done(false,'EB-'+Math.random().toString(36).slice(2,7).toUpperCase()); });
-    } else done(false,'EB-'+Math.random().toString(36).slice(2,7).toUpperCase());
+    var offline=function(){ done(false,'EB-'+Math.random().toString(36).slice(2,7).toUpperCase()); };
+    var send=function(){
+      fetch(BASE+'api/orders',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+        .then(function(r){ if(r.status===401) return 'login'; if(!r.ok) throw 0; return r.json(); })
+        .then(function(j){ if(j==='login'){ btn.disabled=false; btn.textContent=old; window.EBAcct.require(function(u){ if(u) send(); else if(u===false) offline(); }); return; }
+          location.href='account.html#'+j.code; })
+        .catch(offline);
+    };
+    if(!/^https?:/.test(location.protocol) || !window.EBAcct) return offline();
+    window.EBAcct.require(function(u){ who(); if(u) send(); else if(u===false) offline(); else { btn.disabled=false; btn.textContent=old; } });
   });
   document.addEventListener('click',function(e){
     var c=e.target.closest('#orderDone .copy'); if(!c) return;

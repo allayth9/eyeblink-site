@@ -115,3 +115,17 @@ textarea{min-height:76px;resize:vertical;line-height:1.6}
 .replybox textarea{min-height:140px}
 .order pre{margin:0;white-space:pre-wrap;font:inherit;color:var(--mist)}
 @media (max-width:860px){ .grid2{grid-template-columns:1fr} }
+
+/* chat with the client + clients list */
+.order .pill.unread{background:var(--horizon);color:var(--night);font-weight:600}
+.athread{max-height:320px;overflow:auto;display:grid;gap:8px;padding:10px;margin-top:6px;border-radius:14px;background:rgba(4,6,26,.5);box-shadow:inset 0 0 0 1px var(--line)}
+.amsg{max-width:85%;display:grid;gap:2px}
+.amsg>div{padding:8px 12px;border-radius:14px;white-space:normal;word-break:break-word}
+.amsg small{font-size:11px;color:var(--dim)}
+.amsg.c{justify-self:start}.amsg.c>div{background:rgba(255,255,255,.07)}
+.amsg.s{justify-self:end;text-align:end}.amsg.s>div{background:rgba(63,224,232,.16);box-shadow:inset 0 0 0 1px rgba(63,224,232,.3)}
+.asend{display:flex;gap:8px;align-items:flex-end;margin:8px 0 4px}
+.asend textarea{flex:1;min-height:44px;max-height:160px}
+.clients{display:grid;gap:10px}
+.client{display:grid;gap:6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line)}
+.newpw{padding:8px 12px;border-radius:10px;background:rgba(63,224,232,.1)}
