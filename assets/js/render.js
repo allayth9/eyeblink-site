@@ -372,6 +372,7 @@
   else if(/^https?:/.test(location.protocol)){
     fetch(BASE+'api/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json():null; }).then(function(j){
       if(j && j.services && JSON.stringify(j)!==JSON.stringify(C)){ C=j; renderAll(); }
+      window.EBLive=true; document.dispatchEvent(new Event('eb:content'));
     }).catch(function(){});
   }
 })();

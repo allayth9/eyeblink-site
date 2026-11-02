@@ -55,6 +55,9 @@
   function loadGoogle(){ if(gsi) return gsi; gsi=new Promise(function(res,rej){ var s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); return gsi; }
   function authBox(host,done,compact){
     var gid=((C().settings||{}).googleClientId||'').trim(), mode='register';
+    // the live settings (with the Google Client ID) can arrive a moment after this box is drawn: redraw once they do
+    if(!gid && !window.EBLive) document.addEventListener('eb:content',function again(){ document.removeEventListener('eb:content',again);
+      var g=((C().settings||{}).googleClientId||'').trim(); if(g && host.isConnected && host.querySelector('.auth') && !host.querySelector('.gbtn')) authBox(host,done,compact); });
     host.innerHTML='<div class="auth">'+(compact?'':'<span class="eyebrow">ACCOUNT</span>')+'<h2>'+T.inH+'</h2><p class="muted">'+T.inP+'</p>'+
       (gid?'<div class="gbtn" aria-live="polite"></div><div class="or"><span>'+T.or+'</span></div>':'')+
       '<div class="seg" role="tablist"><button type="button" data-m="register" aria-selected="true">'+T.register+'</button><button type="button" data-m="login" aria-selected="false">'+T.login+'</button></div>'+
