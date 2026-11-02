@@ -8,6 +8,7 @@ from worlds import WORLDS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MARK = open(os.path.join(ROOT, "assets/img/mark.svg"), encoding="utf-8").read()
 CONTENT = json.load(open(os.path.join(ROOT, "content.json"), encoding="utf-8"))
+SITE = "https://eyeblinkstudio.com"   # the one official address; other hosts redirect here
 THREE = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
 SERVICES = [s["id"] for s in CONTENT["services"]]
 import hashlib
@@ -220,6 +221,10 @@ def p_contact(U, lang):
 def p_account(U, lang):
     return '<section class="page-hero acct-page"><div class="wrap"><div id="acct" class="acct"></div></div></section>'
 
+def url(lang, page):
+    path = ("en/" if lang == "en" else "") + ("" if page == "index" else page + ".html")
+    return f"{SITE}/{path}"
+
 def build(lang, page):
     U = UI[lang]; en = lang == "en"; A = "../" if en else ""
     other = f"../{page}.html" if en else f"en/{page}.html"
@@ -248,10 +253,12 @@ def build(lang, page):
 <meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page=="account" else ""}
 <link rel="icon" href="{A}assets/img/favicon.svg?v={ASSET_V["assets/img/favicon.svg"]}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
-<link rel="alternate" hreflang="{"ar" if en else "en"}" href="{other}">
-<meta property="og:type" content="website"><meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:image" content="{A}assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="{url(lang, page)}">
+<link rel="alternate" hreflang="ar" href="{url("ar", page)}"><link rel="alternate" hreflang="en" href="{url("en", page)}"><link rel="alternate" hreflang="x-default" href="{url("ar", page)}">
+<meta property="og:type" content="website"><meta property="og:url" content="{url(lang, page)}"><meta property="og:site_name" content="Eyeblink Studio"><meta property="og:locale" content="{"en_US" if en else "ar_AR"}">
+<meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:image" content="{SITE}/assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}/assets/img/og.jpg">
 <link rel="stylesheet" href="{A}assets/css/site.css?v={ASSET_V["assets/css/site.css"]}">
-<script>document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
+<script>if(/(^|\\.)pages\\.dev$|^www\\./.test(location.hostname)&&!/--|^[0-9a-f]{{8}}\\./.test(location.hostname))location.replace("{SITE}"+location.pathname+location.search+location.hash);document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
 </head>
 <body data-base="{A}" data-page="{page}"{f' data-service="{sid}"' if sid else ""}>
 <div class="eb-intro" aria-hidden="true"><i class="seam"></i><i class="lid top"></i><i class="lid bot"></i></div>
@@ -294,5 +301,10 @@ if __name__ == "__main__":
         for page in PAGES:
             out = os.path.join(ROOT, "en" if lang == "en" else "", f"{page}.html")
             open(out, "w", encoding="utf-8").write(build(lang, page)); n += 1
+    # search engines: every public page in both languages; account + admin stay out
+    pub = [p for p in PAGES if p != "account"]
+    sm = "".join(f'<url><loc>{url(l, p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="{url("ar", p)}"/><xhtml:link rel="alternate" hreflang="en" href="{url("en", p)}"/></url>' for p in pub for l in ("ar", "en"))
+    open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' + sm + '</urlset>\n')
+    open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account.html\nDisallow: /en/account.html\n\nSitemap: {SITE}/sitemap.xml\n")
     open(os.path.join(ROOT, "content.js"), "w", encoding="utf-8").write("window.EB_SEED=" + json.dumps(CONTENT, ensure_ascii=False) + ";\n")
     print("built", n, "pages + content.js")
