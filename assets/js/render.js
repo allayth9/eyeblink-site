@@ -108,7 +108,7 @@
     behance:function(b){ return '<rect width="24" height="24" rx="6" fill="#1769FF"/>'+sg(b,.62,'#fff'); },
     vimeo:function(b){ return '<rect width="24" height="24" rx="6" fill="#17D5FF"/>'+sg(b,.6,'#fff'); }};
   function brand(k){ var b=BR[k]; if(!b) return '';
-    if(SOC[k]) return '<i class="bt soc"><svg viewBox="0 0 24 24" aria-hidden="true">'+SOC[k](b)+'</svg></i>'; return '<i class="bt'+(lum(b.h)<.28?' lt':'')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path style="fill:'+b.h+'" d="'+b.p+'"/></svg></i>'; }
+    if(SOC[k]) return '<i class="bt soc" data-k="'+k+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+SOC[k](b)+'</svg></i>'; return '<i class="bt'+(lum(b.h)<.28?' lt':'')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path style="fill:'+b.h+'" d="'+b.p+'"/></svg></i>'; }
   window.EBBrand=brand; window.EBBkey=bkey;
   // the tools as their real app icons: Adobe's dark tile with coloured letters (2024+ icons), Resolve's colour petals
   var APP={premiere:['#00005B','#9999FF'],aftereffects:['#00005B','#9999FF'],photoshop:['#001E36','#31A8FF'],illustrator:['#330000','#FF9A00'],audition:['#00005B','#9999FF'],indesign:['#49021F','#FF3366'],lightroom:['#001E36','#31A8FF']};

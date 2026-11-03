@@ -1333,3 +1333,37 @@ body[data-page="contact"] .page-hero .cta-links{justify-content:center;margin-to
 .plats{align-content:start}.plats .opts{align-content:flex-start;align-items:center;min-height:0}
 .plats{display:block!important;min-height:0}.plats legend{margin-bottom:10px}
 .olb .form{align-content:start}
+
+/* ===== round 7 ===== */
+/* platform picks: the logo IS the button — no ring around it, a liquid-glass sheen over the logo itself */
+.plats .opts{gap:12px}
+.plats .pchip{width:44px;height:44px;padding:0!important;border-radius:50%;background:none!important;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none;overflow:visible}
+.plats .pchip .bt{position:absolute;inset:0;width:100%!important;height:100%!important;border-radius:50%;overflow:hidden}
+.plats .pchip .bt.soc svg{filter:none}
+.plats .pchip::before{content:"";position:absolute;inset:0;border-radius:50%;z-index:2;pointer-events:none;
+  background:linear-gradient(160deg,rgba(255,255,255,.42),rgba(255,255,255,.06) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.14));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),inset 0 1px 1px rgba(255,255,255,.55),0 8px 18px -8px rgba(0,0,0,.75)}
+.plats .pchip input{z-index:3!important;border-radius:50%}
+.cur-glass .plats .pchip,.cur-glass .plats .pchip *,.cur-glass .plats .pchip input{cursor:url(../img/cursor-glass-link.png) 3 2,pointer!important;cursor:image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer!important}
+.plats .pchip:hover{transform:translateY(-2px) scale(1.08)}
+.plats .pchip:has(input:checked){box-shadow:0 0 0 2.5px #0b1236,0 0 0 4.5px var(--horizon),0 0 20px -2px rgba(63,224,232,.6)!important}
+.plats .pchip:has(input:checked)::after{z-index:4}
+.plats .pchip:not(:has(input:checked)) .bt{filter:saturate(.85) brightness(.92)}
+/* the bitmap-like tiles for TikTok / Snapchat / X fill the circle edge to edge */
+.plats .pchip .bt.soc svg{transform:scale(1.02)}
+
+/* service pages: the tools sit right under the service description, with a very small title */
+section:has(.tools){padding-top:clamp(4px,1vw,12px)!important}
+section:has(.tools) .head{margin-bottom:12px}
+section:has(.tools) .head h2{font-size:clamp(15px,1.25vw,18px);font-weight:500;margin-top:4px;color:var(--mist)}
+section:has(.tools) .head .eyebrow{font-size:10.5px}
+.svc-hero{padding-bottom:clamp(8px,1.4vw,16px)}
+.plats .pchip .bt.soc[data-k="youtube"]{background:#fff}
+.plats .pchip .bt.soc[data-k="youtube"] svg{transform:scale(.64)}
+.plats .pchip .bt.soc[data-k="facebook"] svg,.plats .pchip .bt.soc[data-k="whatsapp"] svg,.plats .pchip .bt.soc[data-k="telegram"] svg,.plats .pchip .bt.soc[data-k="pinterest"] svg{transform:scale(1.1)}
+.plats .pchip .bt.ini{border-radius:50%;font-size:15px}
+.plats .pchip .bt.soc[data-k="youtube"]{background:#fff!important}
+/* tools live inside the service intro, right under the description */
+.svc-tools{margin-top:22px;display:grid;gap:10px}
+.svc-tools .tl{font-size:12.5px;letter-spacing:.04em;color:var(--dim)}
+.svc-tools .tools{margin:0}

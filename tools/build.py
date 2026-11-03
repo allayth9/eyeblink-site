@@ -137,12 +137,9 @@ def p_service(U, lang, sid):
     <p class="lead" data-s="body"></p>
     <ul class="tags" data-list="svc-tags"></ul>
     <div class="actions" style="margin-top:22px"><a class="btn btn-primary" href="pricing.html">{U["cta"]}</a><a class="btn btn-glass glass" href="#pk"><span class="dot"></span>{U["see_pkgs"]}</a></div>
+    <div class="svc-tools"><span class="tl">{U["tools"]}</span><ul class="tools" data-list="svc-tools"></ul></div>
   </div>
   <div class="world glass" aria-hidden="true">{WORLDS[sid]()}</div>
-</div></section>
-<section class="block" style="padding-top:clamp(20px,3vw,40px)"><div class="wrap">
-  <div class="head rv"><div><span class="eyebrow">TOOLS</span><h2>{U["tools"]}</h2></div></div>
-  <ul class="tools" data-list="svc-tools"></ul>
 </div></section>
 <section class="block"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">DELIVERABLES</span><h2>{U["deliver"]}</h2></div></div>
