@@ -1294,3 +1294,42 @@ body[data-page="pricing"] section[data-show="showPayments"] .head p{font-size:14
 .plats .pchip:has(input:checked){background:linear-gradient(160deg,rgba(63,224,232,.28),rgba(46,98,255,.16));box-shadow:inset 0 0 0 2px var(--horizon),0 0 18px -2px rgba(63,224,232,.55)}
 .plats .pchip:has(input:checked)::after{content:"";position:absolute;top:-2px;inset-inline-end:-2px;width:15px;height:15px;border-radius:50%;background:var(--horizon) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2 5.1 8.3 9.2 4' fill='none' stroke='%2304061A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;box-shadow:0 0 0 2px #0b1236}
 .page-hero .actions{margin-top:18px!important}.page-hero [data-contact-extra]{margin-top:10px!important}
+
+/* ===== round 6 ===== */
+/* the pointer stays the studio arrow everywhere: text is not selectable (no I-beam), only fields are */
+body{-webkit-user-select:none;user-select:none}
+input,textarea,select,[contenteditable],pre,.msg .b,.paycard pre,.side dd,.code,.odetail .pre{-webkit-user-select:text;user-select:text}
+.cur-glass *{cursor:inherit}
+html.cur-glass,.cur-glass body{cursor:url(../img/cursor-glass.png) 3 2,default;cursor:-webkit-image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 3 2,default;cursor:image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 3 2,default}
+.cur-glass :is(input[type="text"],input[type="email"],input[type="password"],input[type="url"],input[type="number"],input:not([type]),textarea){cursor:text}
+.cur-glass .plats .pchip input,.cur-glass .addons input,.cur-glass input[type="checkbox"],.cur-glass input[type="date"]{cursor:inherit}
+.cur-glass .tools li,.cur-glass .tools li *{cursor:inherit}
+
+/* a little more air at the top of pages (a touch more than the last pass) */
+body:not([data-page="work"]) .page-hero{padding-block:clamp(26px,4.2vw,60px) clamp(12px,2.2vw,28px)}
+body:not([data-page="work"]) .page-hero h1{margin-block:10px 12px}
+.svc-hero{padding-block:clamp(26px,4.2vw,60px) clamp(18px,3vw,36px)}
+
+/* sections closer together: half the old gap (the work page keeps its own spacing) */
+body:not([data-page="work"]) section.block{padding-block:clamp(18px,2.6vw,38px)}
+@media (max-width:860px){ body:not([data-page="work"]) section.block{padding-block:clamp(22px,6vw,34px)} }
+
+/* contact page: one centred block — title, line, and the contact options */
+body[data-page="contact"] .page-hero .intro{text-align:center;margin-inline:auto;display:grid;justify-items:center}
+body[data-page="contact"] .page-hero .crumb{justify-content:center}
+body[data-page="contact"] .page-hero .cta-links{justify-content:center;margin-top:20px!important}
+/* the contact band at the end of pages: just the ways to reach us, centred in their column */
+.cta .handle{align-self:center;justify-items:center}
+.cta .cta-links{align-items:stretch;min-width:min(320px,100%)}
+
+/* about: the story card sits in the middle */
+.story{margin-inline:auto!important}
+
+/* send-request button in the studio colour (follows the accent picked in admin) */
+.osend{background:var(--horizon)!important}
+.osend{background:linear-gradient(135deg,var(--horizon),color-mix(in srgb,var(--horizon) 55%,var(--hour)))!important;color:#04061A!important;font-weight:600;
+  box-shadow:0 14px 34px -12px color-mix(in srgb,var(--horizon) 70%,transparent),inset 0 1px 0 rgba(255,255,255,.45)!important}
+.osend:hover{filter:brightness(1.06)}
+.plats{align-content:start}.plats .opts{align-content:flex-start;align-items:center;min-height:0}
+.plats{display:block!important;min-height:0}.plats legend{margin-bottom:10px}
+.olb .form{align-content:start}

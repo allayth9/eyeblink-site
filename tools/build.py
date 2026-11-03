@@ -67,7 +67,7 @@ def reviews_block(U):
 def cta_band(U):
     return f'''<section class="block" data-sec="cta"><div class="wrap"><div class="cta glass rv">
   <div><span class="eyebrow">CONTACT</span><h2 data-t="contact.h"></h2><p data-t="contact.p"></p></div>
-  <div class="handle"><div class="cta-links" data-cta-links></div><a class="btn btn-primary" href="pricing.html">{U["cta"]} <span class="arr">{U["arrow"]}</span></a></div>
+  <div class="handle"><div class="cta-links" data-cta-links></div></div>
 </div></div></section>'''
 
 def slots(U):
@@ -245,8 +245,7 @@ def p_about(U, lang):
 
 def p_contact(U, lang):
     extra = f'''
-  <div class="actions" style="margin-top:6px"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["cta"]}</a><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{UI[lang]["nav"][2][1]}</a></div>
-  <div class="cta-links wide" data-contact-extra style="margin-top:14px"></div>'''
+  <div class="cta-links wide" data-contact-extra></div>'''
     return page_hero("CONTACT", "contact.h", "contact.p", extra) + '''
 <section class="block" style="padding-top:clamp(24px,4vw,48px)"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">BRIEF</span><h2 data-t="contact.briefH"></h2></div></div>
