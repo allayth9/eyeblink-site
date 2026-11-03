@@ -127,7 +127,7 @@ function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
   paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
-  name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null }; }
+  name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null, invoice:o.invoice||null, qty:o.qty||1, platforms:o.platforms||[], payPref:o.payPref||"" }; }
 // attachments must point at files uploaded through /api/files
 function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
   .map(f=>({url:f.url, name:String(f.name||"file").slice(0,120), type:String(f.type||"").slice(0,80), size:+f.size||0})); }

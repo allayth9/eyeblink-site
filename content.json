@@ -796,19 +796,19 @@
    },
    {
     "id": "services",
-    "show": true
+    "show": false
    },
    {
     "id": "work",
-    "show": true
+    "show": false
    },
    {
     "id": "packages",
-    "show": true
+    "show": false
    },
    {
     "id": "reviews",
-    "show": true
+    "show": false
    },
    {
     "id": "cta",
@@ -859,6 +859,34 @@
   ],
   "accent": "cyan",
   "intro": true,
-  "particles": true
+  "particles": true,
+  "v": 2,
+  "cta": "aurora",
+  "cursor": "glass",
+  "countUp": true
+ },
+ "order": {
+  "askPlatform": true,
+  "askQty": true,
+  "askPay": true,
+  "platforms": [
+   "Instagram",
+   "TikTok",
+   "YouTube",
+   "Snapchat",
+   "Facebook"
+  ],
+  "next": {
+   "ar": [
+    "نراجع طلبك ونرد عليك بحسابك خلال 24 ساعة",
+    "نتفق على التفاصيل والموعد، وبعدها توصلك تفاصيل الدفع",
+    "نبدأ التنفيذ، وتتابع كل مرحلة وتحكي معنا لحد التسليم"
+   ],
+   "en": [
+    "We review your request and reply in your account within 24 hours",
+    "We agree on the details and date, then you get the payment details",
+    "We start production; you follow every stage and talk to us until delivery"
+   ]
+  }
  }
 }

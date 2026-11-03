@@ -14,7 +14,7 @@ SERVICES = [s["id"] for s in CONTENT["services"]]
 import hashlib
 def _v(path):
     return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/img/favicon.svg"]}
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/brands.js","assets/img/favicon.svg"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "privacy"]
 
 UI = {
@@ -67,15 +67,20 @@ def reviews_block(U):
 def cta_band(U):
     return f'''<section class="block" data-sec="cta"><div class="wrap"><div class="cta glass rv">
   <div><span class="eyebrow">CONTACT</span><h2 data-t="contact.h"></h2><p data-t="contact.p"></p></div>
-  <div class="handle"><span class="at latin" data-ig>@{CONTENT["site"]["instagram"]}</span><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["cta"]}</a></div>
+  <div class="handle"><div class="cta-links" data-cta-links></div><a class="btn btn-primary" href="pricing.html">{U["cta"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></div></section>'''
 
 def slots(U):
     return "".join(f'<article class="slot glass rv"><div class="rec"><span>{k}</span><b>● REC</b></div><div class="frame"></div><div><h3>{h}</h3><span class="soon">{U["soon"]}</span></div></article>' for k, h in U["slots"])
 
+CRUMB_AR = {"SERVICES": "الخدمات", "PRICING": "الأسعار", "ABOUT": "من نحن", "CONTACT": "تواصل", "PRIVACY": "الخصوصية", "WORK": "أعمالنا", "ACCOUNT": "حسابي"}
+LANG = ["ar"]
+def crumb_word(c):
+    return f'<b class="ar">/ {CRUMB_AR.get(c, c)}</b>' if LANG[0] == "ar" else f"<b>/ {c}</b>"
+
 def page_hero(crumb, h_path, p_path, extra="", hid=""):
     return f'''<section class="page-hero"{f' id="{hid}"' if hid else ""}><div class="wrap intro">
-  <span class="eyebrow crumb">EYEBLINK <b>/ {crumb}</b></span>
+  <span class="eyebrow crumb">EYEBLINK {crumb_word(crumb)}</span>
   <h1 data-t="{h_path}"></h1>
   <p class="lead" data-t="{p_path}"></p>{extra}
 </div></section>'''
@@ -127,7 +132,7 @@ def p_service(U, lang, sid):
     svc = [s for s in CONTENT["services"] if s["id"] == sid][0]
     return f'''<section><div class="wrap svc-hero">
   <div class="intro">
-    <span class="eyebrow crumb"><a href="services.html">SERVICES</a> <b>/ {svc["label"]}</b></span>
+    <span class="eyebrow crumb"><a href="services.html">{"SERVICES" if lang == "en" else '<span class="ar">الخدمات</span>'}</a> {f'<b>/ {svc["label"]}</b>' if lang == "en" else f'<b class="ar">/ {L(svc["name"], lang)}</b>'}</span>
     <h1 data-s="name">{L(svc["name"], lang)}</h1>
     <p class="lead" data-s="body"></p>
     <ul class="tags" data-list="svc-tags"></ul>
@@ -166,6 +171,49 @@ def p_work(U, lang):
 </div></section>
 {cta_band(U)}'''
 
+PATTERN = "".join(f'<div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div>' for _ in range(4))
+def order_modal(U, lang):
+    en = lang == "en"
+    T = (lambda a, e: e if en else a)
+    return f'''<div class="lightbox olb" id="olb" hidden role="dialog" aria-modal="true" aria-labelledby="olbTitle">
+  <div class="lb-pattern" aria-hidden="true">{PATTERN}</div>
+  <canvas class="lb-waves" aria-hidden="true"></canvas>
+  <div class="box obox glass">
+    <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle">{U["order_h"]}</h3></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
+    <div class="order" id="order">
+      <aside class="osum">
+        <div class="ocard"><span class="k" id="selKind"></span><h4 id="selName"></h4><p id="selDesc"></p>
+          <div class="oprice"><b id="selPrice"></b><span id="selUnit"></span></div><ul class="ofeats" id="selFeats"></ul></div>
+        <div class="oqty" id="qtyRow" hidden><span>{T("عدد الفيديوهات", "Number of videos")}</span><div class="stepper"><button type="button" data-q="-1" aria-label="−">−</button><output id="qty">1</output><button type="button" data-q="1" aria-label="+">+</button></div></div>
+        <p class="olab">{U["addons"]}</p>
+        <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
+        <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
+        <p class="fine" id="priceNote"></p>
+        <p class="fine" id="payNote"></p>
+      </aside>
+      <form class="form" id="orderForm" novalidate>
+        <label>{U["f_details"]}<textarea id="f-details" name="details" required placeholder="{T("مثال: ريل لإطلاق منتج جديد، 30 ثانية، أسلوب سريع وحماسي…", "e.g. a launch reel for a new product, 30 seconds, fast and energetic…")}"></textarea></label>
+        <fieldset class="plats" id="platforms"><legend>{T("وين رح ينشر الفيديو؟", "Where will it be posted?")}</legend><div class="opts"></div></fieldset>
+        <div class="row2"><label>{U["f_link"]}<input id="f-link" name="link" type="url" inputmode="url" dir="ltr" placeholder="Drive / Dropbox / WeTransfer"></label>
+        <label>{U["f_deadline"]}<input id="f-deadline" name="deadline" type="date"></label></div>
+        <div class="row2"><label>{U["f_contact"]}<input id="f-contact" name="contact" dir="auto"></label>
+        <label>{T("طريقة الدفع المفضّلة", "Preferred payment")}<select id="f-pay" name="pay"></select></label></div>
+        <div class="onext"><p class="olab">{T("شو بيصير بعد الإرسال؟", "What happens next?")}</p><ol id="oNext"></ol></div>
+        <p class="who" id="who"></p>
+        <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0">
+        <button class="btn btn-primary osend" type="submit">{U["send"]} <span class="arr">{U["arrow"]}</span></button>
+      </form>
+    </div>
+    <div class="done" id="orderDone" hidden>
+      <span class="eyebrow">REQUEST</span><h2></h2><p class="muted"></p>
+      <div class="code"></div>
+      <textarea id="orderText" class="form" style="width:100%;min-height:150px;font:inherit;color:var(--light);background:rgba(4,6,26,.55);border:0;border-radius:12px;padding:12px" readonly hidden></textarea>
+      <div class="actions" style="justify-content:center"><button class="btn btn-glass glass copy" type="button" hidden>{U["copy"]}</button><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div>
+      <p class="fine pay"></p>
+    </div>
+  </div>
+</div>'''
+
 def p_pricing(U, lang):
     return page_hero("PRICING", "packages.h", "packages.p") + f'''
 <section class="block" style="padding-top:0"><div class="wrap">
@@ -173,33 +221,6 @@ def p_pricing(U, lang):
   <div class="pkgs" data-list="packages" data-kind="service"></div>
   <div class="plan" data-list="packages" data-kind="package"></div>
   <div class="order glass" id="orderClosed" hidden><div><span class="eyebrow">ORDERS</span><h2>{U["closed_h"]}</h2><p class="muted" style="margin:0">{U["closed_p"]}</p></div><div class="handle"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div></div>
-  <div class="order glass" id="order">
-    <div>
-      <span class="eyebrow">ORDER</span>
-      <h2>{U["order_h"]}</h2>
-      <p class="muted sel" style="margin:0">{U["sel"]}: <b id="selName" style="color:var(--light)"></b></p>
-      <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
-      <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
-      <p class="fine" id="priceNote" style="margin-top:12px"></p>
-      <p class="fine" id="payNote" style="margin-top:6px"></p>
-    </div>
-    <form class="form" id="orderForm" novalidate>
-      <label>{U["f_details"]}<textarea id="f-details" name="details" required></textarea></label>
-      <div class="row2"><label>{U["f_link"]}<input id="f-link" name="link" type="url" inputmode="url" dir="ltr"></label>
-      <label>{U["f_deadline"]}<input id="f-deadline" name="deadline" type="date"></label></div>
-      <label>{U["f_contact"]}<input id="f-contact" name="contact" dir="auto"></label>
-      <p class="who" id="who"></p>
-      <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0">
-      <button class="btn btn-primary" type="submit" style="justify-content:center">{U["send"]}</button>
-    </form>
-  </div>
-  <div class="done glass" id="orderDone" hidden>
-    <span class="eyebrow">REQUEST</span><h2></h2><p class="muted"></p>
-    <div class="code"></div>
-    <textarea id="orderText" class="form" style="width:100%;min-height:150px;font:inherit;color:var(--light);background:rgba(4,6,26,.55);border:0;border-radius:12px;padding:12px" readonly hidden></textarea>
-    <div class="actions" style="justify-content:center"><button class="btn btn-glass glass copy" type="button" hidden>{U["copy"]}</button><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div>
-    <p class="fine pay"></p>
-  </div>
 </div></section>
 <section class="block" data-show="showPayments"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PAYMENT</span><h2 data-t="payments.h"></h2></div><p data-t="payments.p"></p></div>
@@ -224,8 +245,8 @@ def p_about(U, lang):
 
 def p_contact(U, lang):
     extra = f'''
-  <div class="actions" style="margin-top:6px"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["cta"]}</a><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{UI[lang]["nav"][2][1]}</a><span class="btn btn-glass glass latin" style="user-select:all" data-ig>@{CONTENT["site"]["instagram"]}</span></div>
-  <div class="actions" data-contact-extra style="margin-top:10px"></div>'''
+  <div class="actions" style="margin-top:6px"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["cta"]}</a><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{UI[lang]["nav"][2][1]}</a></div>
+  <div class="cta-links wide" data-contact-extra style="margin-top:14px"></div>'''
     return page_hero("CONTACT", "contact.h", "contact.p", extra) + '''
 <section class="block" style="padding-top:clamp(24px,4vw,48px)"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">BRIEF</span><h2 data-t="contact.briefH"></h2></div></div>
@@ -248,7 +269,7 @@ PRIVACY = {
 
 def p_privacy(U, lang):
     body = "".join(f'<h2>{h}</h2>' + "".join(f"<p>{x}</p>" for x in ps) for h, ps in PRIVACY[lang])
-    return f'''<section class="page-hero"><div class="wrap intro"><span class="eyebrow crumb">EYEBLINK <b>/ PRIVACY</b></span><h1>{U["titles"]["privacy"]}</h1></div></section>
+    return f'''<section class="page-hero"><div class="wrap intro"><span class="eyebrow crumb">EYEBLINK {crumb_word("PRIVACY")}</span><h1>{U["titles"]["privacy"]}</h1></div></section>
 <section class="block" style="padding-top:0"><div class="wrap"><div class="legal glass">{body}</div></div></section>'''
 
 def p_account(U, lang):
@@ -298,6 +319,7 @@ def url(lang, page):
     return f"{SITE}/{path}"
 
 def build(lang, page):
+    LANG[0] = lang
     U = UI[lang]; en = lang == "en"; A = "../" if en else ""
     other = f"../{page}.html" if en else f"en/{page}.html"
     sid = page[8:] if page.startswith("service-") else ""
@@ -329,9 +351,9 @@ def build(lang, page):
 <link rel="canonical" href="{url(lang, page)}">
 <link rel="alternate" hreflang="ar" href="{url("ar", page)}"><link rel="alternate" hreflang="en" href="{url("en", page)}"><link rel="alternate" hreflang="x-default" href="{url("ar", page)}">
 <meta property="og:type" content="website"><meta property="og:url" content="{url(lang, page)}"><meta property="og:site_name" content="Eyeblink Studio"><meta property="og:locale" content="{"en_US" if en else "ar_AR"}">
-<meta property="og:title" content="{title}"><meta property="og:description" content="{html_attr(desc)}"><meta property="og:image" content="{SITE}/assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}/assets/img/og.jpg">
+<meta property="og:title" content="{title}"><meta property="og:description" content="{html_attr(desc)}"><meta property="og:image" content="{SITE}/assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{title}"><meta name="twitter:image" content="{SITE}/assets/img/og.jpg">
 <link rel="stylesheet" href="{A}assets/css/site.css?v={ASSET_V["assets/css/site.css"]}">
-<script>if(/(^|\\.)pages\\.dev$|^www\\./.test(location.hostname)&&!/--|^[0-9a-f]{{8}}\\./.test(location.hostname))location.replace("{SITE}"+location.pathname+location.search+location.hash);document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&localStorage.getItem('eb-nointro')!=='1'&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
+<script>if(/(^|\\.)pages\\.dev$|^www\\./.test(location.hostname)&&!/--|^[0-9a-f]{{8}}\\./.test(location.hostname))location.replace("{SITE}"+location.pathname+location.search+location.hash);document.documentElement.classList.add('js');try{{document.documentElement.classList.add('cur-'+(localStorage.getItem('eb-cursor')||'glass'))}}catch(e){{}}try{{if(!sessionStorage.getItem('eb-intro')&&localStorage.getItem('eb-nointro')!=='1'&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
 <script type="application/ld+json">{ld}</script>
 </head>
 <body data-base="{A}" data-page="{page}"{f' data-service="{sid}"' if sid else ""}>
@@ -352,7 +374,7 @@ def build(lang, page):
 <main>
 {body}
 </main>
-{lb}
+{lb}{order_modal(U, lang) if page == "pricing" else ""}
 <div class="field-end" data-field-end aria-hidden="true"></div>
 <footer><div class="wrap row">
   <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
@@ -363,6 +385,7 @@ def build(lang, page):
 <script type="application/json" id="eb-seed">{seed()}</script>
 <script src="{THREE}"></script>
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
+<script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
 <script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
 </body>

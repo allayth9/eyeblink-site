@@ -48,6 +48,10 @@
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return ((x.name&&x.name.ar)||'إضافة')+' · '+(x.type==='percent'?x.price+'%':x.price)},
         add:function(){return {id:'add-'+Date.now().toString(36),name:bi('إضافة','Add-on'),price:10,type:'fixed'}},
         fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}},
+      {h:'نافذة الطلب', hint:'تنفتح فوق الصفحة لما العميل يضغط «اطلب». حدّد شو يسأل وشو يشوف.', fields:[
+        {row:[{p:'order.askQty', t:'check', l:'عدّاد عدد الفيديوهات (للخدمات)'},{p:'order.askPlatform', t:'check', l:'سؤال المنصة'},{p:'order.askPay', t:'check', l:'طريقة الدفع المفضّلة'}]},
+        {p:'order.platforms', t:'list', l:'المنصات المعروضة', hint:'كل منصة بسطر (Instagram، TikTok…)', ltr:1},
+        {p:'order.next', t:'bilist', l:'«شو بيصير بعد الإرسال؟»', hint:'كل خطوة بسطر'}]},
       {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'}, add:function(){return {q:bi(),a:bi()}},
         fields:[{p:'q', t:'bi', l:'السؤال'},{p:'a', t:'bita', l:'الجواب'}]}} ]},
     {id:'work', title:'الأعمال', secs:[
@@ -252,7 +256,7 @@
       return '<details class="order item" data-okey="'+k+'"'+(o.status==='new'||o.unread?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span>'+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
         '<b>'+esc(o.name)+' · '+esc(o.packageName||o.package)+'</b><span class="muted small">'+esc(new Date(o.createdAt).toLocaleDateString('ar'))+'</span></summary><div class="body">'+
         '<div class="grid2"><div>'+
-          '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+'</div>'+
+          '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
@@ -269,7 +273,8 @@
           '<div class="paysend"><div class="small muted">الدفع</div><div class="row"><div class="field"><label>المبلغ المطلوب الآن (فارغ = السعر كامل، أو اكتب عربوناً)</label><input data-payamt dir="ltr" placeholder="'+esc(o.price||o.total||'')+'" value="'+esc((o.payInfo&&o.payInfo.amount!==o.price&&o.payInfo.amount)||'')+'"></div></div>'+
             (o.email?'<button class="btn sm primary" type="button" data-opay="'+k+'">'+(o.payInfo?'أعد إرسال تفاصيل الدفع':'أرسل تفاصيل الدفع للعميل')+'</button>':'')+
             '<div class="small muted" style="margin-top:4px">يرسل تفاصيل «طريقة الدفع» المختارة من «تفاصيل الدفع الخاصة» ككرت دفع في حساب العميل، ويحوّل الحالة إلى «بانتظار الدفع».</div></div>'+
-          '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> تم استلام الدفع</label>'+
+          '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> تم استلام الدفع <span class="small muted">— عند الحفظ تُصدر فاتورة برقم تسلسلي وتُرسل للعميل بالإيميل</span></label>'+
+          (o.invoice?'<div class="small" style="margin:4px 0 8px">🧾 الفاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> · '+esc(new Date(o.invoice.at).toLocaleDateString('ar'))+' <button class="btn sm" type="button" data-oinv="'+k+'">أعد إرسال الفاتورة</button></div>':'')+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
           '<div class="small muted" style="margin-top:6px">رد سريع</div><div class="actions"><button class="btn sm" type="button" data-reply="confirm" data-ok="'+k+'">تأكيد + تفاصيل الدفع</button><button class="btn sm" type="button" data-reply="paid" data-ok="'+k+'">وصل الدفع</button><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">تم التسليم</button></div>'+
@@ -313,6 +318,8 @@
   document.addEventListener('click',function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
+    if(b.dataset.oinv){ var oi=orderOf(b.dataset.oinv); if(!LIVE||oi.demo){ toast('يعمل على الموقع المنشور',true); return; } b.disabled=true;
+      fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:oi.key,resendInvoice:true})}).then(function(r){ if(!r.ok) throw 0; toast('أُرسلت الفاتورة إلى بريد العميل'); }).catch(function(){ toast('تعذّر الإرسال',true); }).then(function(){ b.disabled=false; }); return; }
     if(b.dataset.opay){ var bx=b.closest('.order'), dd=readOrderForm(bx), oo=orderOf(b.dataset.opay);
       if(!dd.price&&!oo.price){ toast('اكتب السعر النهائي أولاً',true); return; } if(!dd.method){ toast('اختر طريقة الدفع أولاً',true); return; }
       if(!((P&&P.payments)||{})[dd.method]){ toast('أضف تفاصيل هذه الطريقة في «طرق الدفع ← تفاصيل الدفع الخاصة» وانشر',true); return; }
@@ -351,6 +358,7 @@
   var NAVN={services:'الخدمات',work:'أعمالنا',pricing:'الباقات',about:'من نحن',contact:'تواصل'};
   var ACC=[['cyan','سماوي (الأساسي)','#3FE0E8','#8B5CFF'],['violet','بنفسجي','#A78BFA','#5B7CFF'],['gold','ذهبي','#F5C66B','#E0833F'],['rose','وردي','#FF7AB6','#8B5CFF'],['mint','نعناعي','#5EF0B0','#2E9BFF']];
   function LY(){ var d=(window.EB_SEED&&EB_SEED.layout)||{home:[],nav:[]}; C.layout=C.layout||JSON.parse(JSON.stringify(d)); C.layout.home=C.layout.home||[]; C.layout.nav=C.layout.nav||[];
+    if((C.layout.v||0)<2){ C.layout.home.forEach(function(s){ if(/^(services|work|packages|reviews)$/.test(s.id)) s.show=false; }); C.layout.v=2; }
     d.home.forEach(function(s){ if(!C.layout.home.some(function(x){return x.id===s.id})) C.layout.home.push({id:s.id,show:true}); });
     d.nav.forEach(function(s){ if(!C.layout.nav.some(function(x){return x.id===s.id})) C.layout.nav.push({id:s.id,show:true,label:{ar:'',en:''}}); }); return C.layout; }
   function renderLayout(){
@@ -367,12 +375,16 @@
       '<section class="sec"><h3>عناصر بصرية</h3>'+
         '<label class="check"><input type="checkbox" data-ltog="intro"'+(L.intro!==false?' checked':'')+'> انترو فتح العين عند أول زيارة</label>'+
         '<label class="check"><input type="checkbox" data-ltog="particles"'+(L.particles!==false?' checked':'')+'> خلفية الجزيئات المتحركة</label>'+
+        '<label class="check"><input type="checkbox" data-ltog="countUp"'+(L.countUp!==false?' checked':'')+'> عدّاد الأرقام (يعدّ من الصفر لما تظهر الخانات)</label>'+
+        '<div class="field"><label>مؤشر الماوس</label><select data-lsel="cursor">'+[['glass','السهم الزجاجي (Eyeblink)'],['soft','المؤشر الناعم السابق'],['system','مؤشر النظام الافتراضي']].map(function(o){return '<option value="'+o[0]+'"'+((L.cursor||'glass')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
+        '<div class="field"><label>خانة التواصل أسفل الصفحات</label><select data-lsel="cta">'+[['aurora','بلون خاص (أورورا)'],['glass','زجاجية مثل باقي الخانات']].map(function(o){return '<option value="'+o[0]+'"'+((L.cta||'aurora')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
         '<p class="hint" style="margin-top:8px">التغييرات تظهر بعد «نشر التعديلات». استخدم «معاينة» لتراها قبل النشر.</p></section>';
   }
   document.addEventListener('change',function(e){ var el=e.target; if(TAB!=='layout'||!C) return; var L=LY();
     if(el.dataset.lshow){ var q=el.dataset.lshow.split(':'); L[q[0]][+q[1]].show=el.checked; dirty(); saveDraft(); }
     else if(el.hasAttribute('data-lacc')){ L.accent=el.value; dirty(); saveDraft(); renderLayout(); }
-    else if(el.dataset.ltog){ L[el.dataset.ltog]=el.checked; dirty(); saveDraft(); } });
+    else if(el.dataset.ltog){ L[el.dataset.ltog]=el.checked; dirty(); saveDraft(); }
+    else if(el.dataset.lsel){ L[el.dataset.lsel]=el.value; dirty(); saveDraft(); } });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-lmove]'); if(!b) return; var q=b.dataset.lmove.split(':'), arr=LY()[q[0]], i=+q[1], j=i+(+q[2]);
     if(j<0||j>=arr.length) return; var x=arr[i]; arr[i]=arr[j]; arr[j]=x; dirty(); saveDraft(); renderLayout(); });
 

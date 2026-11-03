@@ -290,7 +290,7 @@
   // a clean printable invoice (the browser's print dialog saves it as PDF)
   function invoice(o){
     var I=T.inv, S=C().settings||{}, m=((C().payments||{}).methods||[]).filter(function(x){return x.id===o.method})[0];
-    var d=new Date(), w=window.open('','_blank'); if(!w) return;
+    var d=o.invoice?new Date(o.invoice.at):new Date(), w=window.open('','_blank'); if(!w) return;
     w.document.write('<!doctype html><html lang="'+lang+'" dir="'+(AR?'rtl':'ltr')+'"><head><meta charset="utf-8"><title>'+I.t+' '+esc(o.code)+'</title><style>'+
       'body{font-family:Tahoma,Arial,sans-serif;color:#0b1236;margin:0;padding:48px;background:#fff}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0b1236;padding-bottom:18px}'+
       '.brand{font:700 18px Arial;letter-spacing:5px;direction:ltr}.brand small{display:block;font-weight:400;letter-spacing:1px;color:#6F7FA0;margin-top:6px}h1{margin:0;font-size:30px;letter-spacing:2px}'+
@@ -299,8 +299,8 @@
       '.tot{display:flex;justify-content:flex-end;gap:30px;margin-top:20px;font-size:20px;font-weight:700}.st{display:inline-block;margin-top:24px;padding:6px 14px;border-radius:99px;font-size:13px;background:'+(o.paid?'#dcf7e6;color:#127a3a':'#fde8ef;color:#a3215a')+'}'+
       '.foot{margin-top:60px;color:#6F7FA0;font-size:13px;border-top:1px solid #eef1f6;padding-top:16px}@media print{body{padding:24px}}</style></head><body>'+
       '<div class="top"><div class="brand">EYEBLINK STUDIO<small>eyeblinkstudio.com'+(S.email?' · '+esc(S.email):'')+'</small></div><h1>'+I.t+'</h1></div>'+
-      '<div class="meta"><div><b>'+I.no+'</b>'+esc(o.code)+'</div><div><b>'+I.date+'</b>'+d.toLocaleDateString(AR?'ar':'en',{year:'numeric',month:'long',day:'numeric'})+'</div><div><b>'+I.to+'</b>'+esc(o.name||'')+'<br><span dir="ltr">'+esc(o.email||'')+'</span></div></div>'+
-      '<table><tr><th>'+I.item+'</th><th class="n">'+I.amount+'</th></tr><tr><td>'+esc(o.packageName||'')+((o.addons||[]).length?'<br><small style="color:#6F7FA0">+ '+esc(o.addons.join('، '))+'</small>':'')+'</td><td class="n" dir="ltr">'+esc(o.price)+'</td></tr></table>'+
+      '<div class="meta"><div><b>'+I.no+'</b><span dir="ltr">'+esc(o.invoice?o.invoice.no:o.code)+'</span></div>'+(o.invoice?'<div><b>'+(AR?'رقم الطلب':'Order')+'</b><span dir="ltr">'+esc(o.code)+'</span></div>':'')+'<div><b>'+I.date+'</b>'+d.toLocaleDateString(AR?'ar':'en',{year:'numeric',month:'long',day:'numeric'})+'</div><div><b>'+I.to+'</b>'+esc(o.name||'')+'<br><span dir="ltr">'+esc(o.email||'')+'</span></div></div>'+
+      '<table><tr><th>'+I.item+'</th><th class="n">'+I.amount+'</th></tr><tr><td>'+esc(o.packageName||'')+(o.qty>1?' ×'+o.qty:'')+((o.addons||[]).length?'<br><small style="color:#6F7FA0">+ '+esc(o.addons.join('، '))+'</small>':'')+'</td><td class="n" dir="ltr">'+esc(o.price)+'</td></tr></table>'+
       '<div class="tot"><span>'+I.total+'</span><span dir="ltr">'+esc(o.price)+'</span></div>'+
       '<span class="st">'+(o.paid?I.paid+' ✓':I.unpaid)+'</span>'+(m?'<div style="margin-top:12px;font-size:14px;color:#6F7FA0">'+I.method+': '+esc(m.name)+'</div>':'')+
       '<div class="foot">'+I.thanks+'</div><script>setTimeout(function(){print()},300)<\/script></body></html>');
@@ -311,7 +311,7 @@
     if(o.status==='cancelled') return '<div class="track off"><p>'+T.cancelled+'</p></div>';
     var at=STEP[o.status]||0, when={};
     (o.history||[]).forEach(function(h){ var i=STEP[h.status]; if(i!=null&&!when[i]) when[i]=h.at; });
-    return '<ol class="track" style="--p:'+(at/5)+'">'+T.steps.map(function(s,i){ return '<li class="'+(i<at?'done':i===at?'now':'')+'"><i></i><b>'+s+'</b><small>'+(when[i]&&i<=at?esc(day(when[i])):'')+'</small></li>'; }).join('')+'</ol>';
+    return '<ol class="track" style="--p:'+(at/5)+'">'+T.steps.map(function(s,i){ return '<li class="'+(i<at||o.status==='delivered'?'done':i===at?'now':'')+'"><i></i><b>'+s+'</b><small>'+(when[i]&&i<=at?esc(day(when[i])):'')+'</small></li>'; }).join('')+'</ol>';
   }
   addEventListener('hashchange',function(){ var c=(location.hash||'').slice(1).toUpperCase(); if(box&&ME&&c&&c!==CUR&&LIST.some(function(o){return o.code===c})) open(c,true); });
   if(box) page(); else if(document.querySelector('.acct-link')) me();
