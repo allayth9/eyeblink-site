@@ -1370,3 +1370,6 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
 /* platform picks: exactly the same arrow as everywhere else (no swap at all when crossing a logo) — the hover lift is the feedback */
 .cur-glass .plats,.cur-glass .plats *,.cur-glass .plats .pchip,.cur-glass .plats .pchip *,.cur-glass .plats .pchip input{cursor:url(../img/cursor-glass.png) 3 2,default!important;cursor:image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 3 2,default!important}
 .cur-soft .plats *,.cur-system .plats *{cursor:inherit!important}
+/* tools: beside the description on computers, under the animation on phones */
+.svc-tools.m{display:none}
+@media (max-width:980px){ .svc-hero .intro .svc-tools{display:none} .svc-tools.m{display:grid;margin-top:0} }

@@ -93,8 +93,9 @@
   function lum(h){ h=h.replace('#',''); var r=parseInt(h.substr(0,2),16)/255,g=parseInt(h.substr(2,2),16)/255,b=parseInt(h.substr(4,2),16)/255; return .2126*r+.7152*g+.0722*b; }
   // social apps drawn as their current app icons (colour tile / badge), not flat single-colour marks
   function sg(b,s,fill,extra){ return '<g transform="translate(12 12) scale('+s+') translate(-12 -12)"><path d="'+b.p+'" style="fill:'+fill+'"'+(extra||'')+'/></g>'; }
+  var GID=0;
   var SOC={
-    instagram:function(b){ return '<defs><radialGradient id="igg" cx="30%" cy="107%" r="150%"><stop offset="0" stop-color="#FFDD55"/><stop offset=".1" stop-color="#FFDD55"/><stop offset=".5" stop-color="#FF543E"/><stop offset="1" stop-color="#C837AB"/></radialGradient><radialGradient id="igb" cx="-10%" cy="0%" r="70%"><stop offset="0" stop-color="#3771C8"/><stop offset="1" stop-color="#3771C8" stop-opacity="0"/></radialGradient></defs><rect width="24" height="24" rx="6.5" fill="url(#igg)"/><rect width="24" height="24" rx="6.5" fill="url(#igb)"/>'+sg(b,.66,'#fff'); },
+    instagram:function(b){ var g=++GID; return '<defs><radialGradient id="igg'+g+'" cx="30%" cy="107%" r="150%"><stop offset="0" stop-color="#FFDD55"/><stop offset=".1" stop-color="#FFDD55"/><stop offset=".5" stop-color="#FF543E"/><stop offset="1" stop-color="#C837AB"/></radialGradient><radialGradient id="igb'+g+'" cx="-10%" cy="0%" r="70%"><stop offset="0" stop-color="#3771C8"/><stop offset="1" stop-color="#3771C8" stop-opacity="0"/></radialGradient></defs><rect width="24" height="24" rx="6.5" fill="url(#igg'+g+')"/><rect width="24" height="24" rx="6.5" fill="url(#igb'+g+')"/>'+sg(b,.66,'#fff'); },
     facebook:function(b){ return '<circle cx="12" cy="12" r="10.5" fill="#fff"/><path d="'+b.p+'" style="fill:#0866FF"/>'; },
     youtube:function(b){ return '<rect x="8" y="7.5" width="9" height="9" fill="#fff"/><path d="'+b.p+'" style="fill:#FF0000"/>'; },
     tiktok:function(b){ return '<rect width="24" height="24" rx="6" fill="#000"/><g transform="translate(-.55 -.45)">'+sg(b,.62,'#25F4EE')+'</g><g transform="translate(.55 .45)">'+sg(b,.62,'#FE2C55')+'</g>'+sg(b,.62,'#fff'); },
@@ -117,7 +118,7 @@
     if(up) return '<i class="bt app img"><img alt="" src="'+esc(url(up.logo))+'"></i>';
     var k=bkey(name), b=BR[k]; if(!b) return '';
     if(APP[k]) return '<i class="bt app"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2.5" width="20" height="19" rx="3" fill="'+APP[k][1]+'"/><path fill="'+APP[k][0]+'" d="'+b.p+'"/></svg></i>';
-    if(k==='davinci') return '<i class="bt app" style="background:#1b1d22"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dvr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6B3D"/><stop offset=".5" stop-color="#3FA9F5"/><stop offset="1" stop-color="#7ED957"/></linearGradient></defs><path fill="url(#dvr)" d="'+b.p+'"/></svg></i>';
+    if(k==='davinci') var gd='dvr'+(++GID); return '<i class="bt app" style="background:#1b1d22"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="'+gd+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6B3D"/><stop offset=".5" stop-color="#3FA9F5"/><stop offset="1" stop-color="#7ED957"/></linearGradient></defs><path fill="url(#'+gd+')" d="'+b.p+'"/></svg></i>';
     return brand(k); }
   function payIcon(x){ return x.logo? '<img alt="'+esc(x.name)+'" src="'+esc(url(x.logo))+'">' : (bkey(x.id)? brand(bkey(x.id)) : (PAYI[x.id]||PAYI._)); }
   // contact chips: Instagram, e-mail, WhatsApp (when a number is set) — used by the CTA band and the contact page

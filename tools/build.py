@@ -140,6 +140,7 @@ def p_service(U, lang, sid):
     <div class="svc-tools"><span class="tl">{U["tools"]}</span><ul class="tools" data-list="svc-tools"></ul></div>
   </div>
   <div class="world glass" aria-hidden="true">{WORLDS[sid]()}</div>
+  <div class="svc-tools m"><span class="tl">{U["tools"]}</span><ul class="tools" data-list="svc-tools"></ul></div>
 </div></section>
 <section class="block"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">DELIVERABLES</span><h2>{U["deliver"]}</h2></div></div>
