@@ -177,8 +177,8 @@ def order_modal(U, lang):
     T = (lambda a, e: e if en else a)
     return f'''<div class="lightbox olb" id="olb" hidden role="dialog" aria-modal="true" aria-labelledby="olbTitle">
   <div class="lb-pattern" aria-hidden="true">{PATTERN}</div>
-  <canvas class="lb-waves" aria-hidden="true"></canvas>
-  <div class="box obox glass">
+  <canvas class="lb-waves" aria-hidden="true"></canvas><i class="owc" aria-hidden="true"></i>
+  <div class="oscroll"><div class="box obox glass">
     <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle" data-ot="title">{U["order_h"]}</h3></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
     <div class="order" id="order">
       <aside class="osum">
@@ -193,7 +193,7 @@ def order_modal(U, lang):
       </aside>
       <form class="form" id="orderForm" novalidate>
         <label><span data-ot="details">{U["f_details"]}</span><textarea id="f-details" name="details" required data-otp="detailsPh" placeholder="{T("مثال: ريل لإطلاق منتج جديد، 30 ثانية، أسلوب سريع وحماسي…", "e.g. a launch reel for a new product, 30 seconds, fast and energetic…")}"></textarea></label>
-        <fieldset class="plats" id="platforms"><legend data-ot="platforms">{T("وين رح ينشر الفيديو؟", "Where will it be posted?")}</legend><div class="opts"></div></fieldset>
+        <fieldset class="plats" id="platforms"><legend data-ot="platforms">{T("موقع النشر المستهدف", "Target platform")}</legend><div class="opts"></div></fieldset>
         <div class="row2"><label><span data-ot="link">{U["f_link"]}</span><input id="f-link" name="link" type="url" inputmode="url" dir="ltr" placeholder="Drive / Dropbox / WeTransfer"></label>
         <label><span data-ot="deadline">{U["f_deadline"]}</span><input id="f-deadline" name="deadline" type="date"></label></div>
         <div class="row2"><label><span data-ot="contact">{U["f_contact"]}</span><input id="f-contact" name="contact" dir="auto"></label>
@@ -211,7 +211,7 @@ def order_modal(U, lang):
       <div class="actions" style="justify-content:center"><button class="btn btn-glass glass copy" type="button" hidden>{U["copy"]}</button><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div>
       <p class="fine pay"></p>
     </div>
-  </div>
+  </div></div>
 </div>'''
 
 def p_pricing(U, lang):

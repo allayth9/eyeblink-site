@@ -190,3 +190,4 @@ video.afile{max-width:320px}
 .stable td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
 .stable small{font-size:11.5px}
 .tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:99px;background:rgba(63,224,232,.15);color:var(--horizon)}
+select option{background:#0b1236;color:#EEF2F6}select{color-scheme:dark}

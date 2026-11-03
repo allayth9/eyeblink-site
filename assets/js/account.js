@@ -71,7 +71,7 @@
     if(!gid && !window.EBLive) document.addEventListener('eb:content',function again(){ document.removeEventListener('eb:content',again);
       var g=((C().settings||{}).googleClientId||'').trim(); if(g && host.isConnected && host.querySelector('.auth') && !host.querySelector('.gbtn')) authBox(host,done,compact); });
     host.innerHTML='<div class="auth">'+(compact?'':'<span class="eyebrow">ACCOUNT</span>')+'<h2>'+T.inH+'</h2><p class="muted">'+T.inP+'</p>'+
-      (gid?'<div class="gbtn" aria-live="polite"></div><div class="or"><span>'+T.or+'</span></div>':'')+
+      (gid?'<div class="gwrap"><span class="gface" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.39 3.62v3h3.86c2.26-2.09 3.58-5.16 3.58-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.93-2.92l-3.86-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.27 14.28a7.2 7.2 0 0 1 0-4.56v-3.1H1.28a12 12 0 0 0 0 10.76z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.43-3.43A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.28 6.62l3.99 3.1C6.22 6.88 8.87 4.77 12 4.77z"/></svg><b>'+(AR?'المتابعة عبر Google':'Continue with Google')+'</b></span><div class="gbtn" aria-live="polite"></div></div><div class="or"><span>'+T.or+'</span></div>':'')+
       '<div class="seg" role="tablist"><button type="button" data-m="register" aria-selected="true">'+T.register+'</button><button type="button" data-m="login" aria-selected="false">'+T.login+'</button></div>'+
       '<form class="form" novalidate><label class="nm">'+T.name+'<input name="name" autocomplete="name" required></label>'+
       '<label>'+T.email+'<input name="email" type="email" dir="ltr" autocomplete="email" required></label>'+
@@ -103,7 +103,7 @@
       var el=host.querySelector('.gbtn'); if(!el||!window.google) return;
       google.accounts.id.initialize({client_id:gid, callback:function(r){ msg.textContent=T.wait; api('account',{action:'google',credential:r.credential}).then(function(j){ finish(j); }); }});
       google.accounts.id.renderButton(el,{theme:'filled_black',size:'large',shape:'pill',text:'continue_with',locale:lang,width:Math.min(380,el.clientWidth||320)});
-    }).catch(function(){ var el=host.querySelector('.gbtn'); if(el){ el.remove(); var o=host.querySelector('.or'); if(o) o.remove(); } }); }
+    }).catch(function(){ var el=host.querySelector('.gbtn'); if(el){ (el.closest('.gwrap')||el).remove(); var o=host.querySelector('.or'); if(o) o.remove(); } }); }
   }
   // forgot password: e-mail → 6-digit code → new password (signs in)
   function forgotBox(host,done,compact,email){

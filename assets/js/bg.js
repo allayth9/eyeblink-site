@@ -121,14 +121,14 @@
       var r=anchor.getBoundingClientRect();
       var w=screenToWorld(r.left+r.width/2, r.top+r.height/2);
       var rad=(r.width/2)/(H/2)*halfH*1.42;
-      return {x:w.x,y:w.y,s:rad,a:1};
+      return {x:w.x,y:w.y,s:rad,a:1,sx:r.left+r.width/2,sy:r.top+r.height/2};
     }
     // inner pages: a large field on the far side, drifting slowly with scroll
     var side=document.documentElement.dir==='rtl'?-1:1;
     var px=W<760? W*0.5 : (side>0? W*0.78 : W*0.22);
     var py=H*(W<760?0.32:0.42) - Math.min(y*0.12,H*0.25);
     var w2=screenToWorld(px,py);
-    return {x:w2.x,y:w2.y,s:halfH*(W<760?0.62:0.78),a:0.85};
+    return {x:w2.x,y:w2.y,s:halfH*(W<760?0.62:0.78),a:0.85,sx:px,sy:py};
   }
 
   function frame(now){
@@ -147,11 +147,13 @@
       var er=endAnchor.getBoundingClientRect(), vis=er.top<H && er.bottom>0;
       pts2.visible=vis;
       if(vis){
-        var w3=screenToWorld(er.left+er.width/2, er.top+er.height*0.56);
+        // the second field sits on the opposite side of the first, and fades while they would meet (short pages)
+        var ex=W<760? W*0.5 : W-p.sx, ey=er.top+er.height*0.56;
+        var w3=screenToWorld(ex, ey), gap=Math.hypot((ex-p.sx)/W, (ey-p.sy)/H);
         pts2.position.set(w3.x,w3.y,0); pts2.scale.setScalar(halfH*(W<760?0.62:0.86));
         pts2.rotation.y=-t*0.05-rot.y; pts2.rotation.x=-0.35+rot.x*0.6;
         var u2=mat2.uniforms; u2.uTime.value=(reduce?8:t)+40; u2.uMouse.value.set(mouse.x,mouse.y); u2.uPress.value=reduce?0:press;
-        u2.uAlpha.value=Math.min(1,Math.max(0,(H-er.top)/(H*0.6)));
+        u2.uAlpha.value=Math.min(1,Math.max(0,(H-er.top)/(H*0.6)))*Math.min(1,Math.max(0,(gap-0.28)/0.32));
       }
     }
     renderer.render(scene,camera);

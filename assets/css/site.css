@@ -1153,3 +1153,76 @@ html.cur-system,.cur-system body{cursor:auto}.cur-system :is(a,button,summary,la
 .inv-modal iframe{width:100%;height:640px;border:0;border-radius:16px;background:transparent}
 .acct-modal.show{opacity:1}
 .inv-bar .x{position:static!important;inset:auto!important}
+
+/* ===== round 3 ===== */
+/* order popup: the backdrop (studio name rows + radio waves) never moves; only the request scrolls */
+.olb{overflow:hidden!important;padding:0!important}
+.olb:not([hidden]){display:block!important}
+.olb>.lb-pattern{position:absolute!important;inset:-10% 0!important}
+.olb>.lb-waves{position:absolute!important;inset:0!important}
+.olb .owc{position:absolute;left:50%;top:50%;width:min(700px,70vw);height:min(420px,50vh);transform:translate(-50%,-50%);pointer-events:none}
+.oscroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:grid;justify-items:center;align-items:start;
+  padding:max(24px,env(safe-area-inset-top,0px)) 16px max(24px,env(safe-area-inset-bottom,0px));scrollbar-width:thin;scrollbar-color:rgba(160,190,255,.25) transparent}
+.oscroll .obox{margin-block:auto}
+@media (max-width:860px){ .oscroll{padding:10px 10px max(10px,env(safe-area-inset-bottom,0px))} }
+
+/* work: the play button back in its corner, as before; a soft shade keeps it readable on light covers */
+.proj .play{inset:auto!important;inset-inline-start:14px!important;bottom:14px!important;width:46px;height:46px;opacity:0;transform:translateY(8px)!important;
+  background:rgba(8,12,40,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(140%);backdrop-filter:blur(10px) saturate(140%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(2,4,20,.35)!important}
+.proj .play::after{display:none}
+.proj .play svg{width:16px;height:16px;margin:0!important;filter:drop-shadow(0 1px 1.5px rgba(2,4,20,.55))}
+.proj:hover .play,.proj:focus-visible .play{opacity:1;transform:none!important}
+
+/* pricing: a compact header so the services are in view sooner */
+body[data-page="pricing"] .page-hero{padding-block:clamp(20px,4vw,48px) 0}
+body[data-page="pricing"] .page-hero h1{font-size:clamp(28px,3.4vw,46px);line-height:1.3;margin-bottom:10px}
+body[data-page="pricing"] .page-hero h1 br{display:none}
+body[data-page="pricing"] .page-hero .lead{font-size:clamp(15px,1.3vw,17px);margin-bottom:0}
+body[data-page="pricing"] .page-hero+section .head{margin-bottom:18px}
+
+/* contact chips: tighter, icon fills the height */
+.chip{padding:7px 16px 7px 7px;gap:11px;border-radius:16px}
+[dir="rtl"] .chip{padding:7px 7px 7px 16px}
+.chip .bt{width:34px;height:34px;border-radius:11px}
+.chip .bt svg{width:66%;height:66%}
+.chip span{gap:0;line-height:1.25}
+.cta-links{gap:8px}
+
+/* native dropdowns stay dark */
+select{color-scheme:dark}
+select option{background:#0b1236;color:#EEF2F6}
+body[data-page="pricing"] .page-hero h1{max-width:none}
+@media (min-width:861px){ body[data-page="pricing"] .page-hero h1{white-space:nowrap} }
+.dsel{position:relative}
+.dsel select{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.dsel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;font:inherit;color:var(--light);text-align:start;padding:9px 14px;min-height:48px;border:0;border-radius:14px;
+  background:rgba(4,6,26,.55);box-shadow:inset 0 0 0 1px var(--line)}
+.dsel.open .dsel-btn,.dsel-btn:focus-visible{box-shadow:inset 0 0 0 1.5px var(--horizon);outline:0}
+.dsel-btn .dv{display:flex;align-items:center;gap:10px;min-width:0}
+.dsel-btn i{width:9px;height:9px;border-inline-end:1.6px solid var(--mist);border-bottom:1.6px solid var(--mist);transform:translateY(-2px) rotate(45deg);transition:transform .3s}
+.dsel.open .dsel-btn i{transform:translateY(2px) rotate(-135deg)}
+.dsel .bt{width:26px;height:26px;border-radius:8px}
+.dsel-list{position:absolute;z-index:5;inset-inline:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;border-radius:16px;max-height:260px;overflow:auto;
+  background:linear-gradient(160deg,rgba(22,30,80,.92),rgba(8,12,40,.95));-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  box-shadow:inset 0 0 0 1px rgba(170,195,255,.2),inset 0 1px 0 rgba(255,255,255,.12),0 24px 50px -14px rgba(0,0,0,.8);animation:dsIn .25s cubic-bezier(.22,.9,.24,1)}
+@keyframes dsIn{from{opacity:0;transform:translateY(-6px)}}
+.dsel-list li{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;font-size:14.5px;color:var(--light);outline:0}
+.dsel-list li:hover,.dsel-list li:focus{background:rgba(63,224,232,.12)}
+.dsel-list li[aria-selected="true"]{background:rgba(63,224,232,.18);box-shadow:inset 0 0 0 1px rgba(63,224,232,.35)}
+.dsel-list .dot0{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line)}
+/* Google sign-in: our own dark liquid-glass face; Google's real button sits on top, invisible, and takes the click */
+.auth .gwrap{position:relative;height:50px;border-radius:999px}
+.auth .gface{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:999px;pointer-events:none;color:var(--light);font-size:15.5px;
+  background:linear-gradient(160deg,rgba(40,56,140,.55),rgba(10,14,46,.75));-webkit-backdrop-filter:blur(14px) saturate(150%);backdrop-filter:blur(14px) saturate(150%);
+  box-shadow:inset 0 0 0 1px rgba(170,200,255,.26),inset 0 1px 0 rgba(255,255,255,.22),0 12px 30px -14px rgba(46,98,255,.7);transition:box-shadow .3s,transform .3s}
+.auth .gface b{font-weight:500}
+.auth .gface svg{width:20px;height:20px;padding:5px;box-sizing:content-box;border-radius:50%;background:#fff}
+.auth .gwrap:hover .gface{box-shadow:inset 0 0 0 1px rgba(63,224,232,.55),inset 0 1px 0 rgba(255,255,255,.28),0 14px 34px -12px rgba(63,224,232,.55)}
+.auth .gwrap .gbtn{position:absolute;inset:0;opacity:.0001;min-height:0;overflow:hidden;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.auth .gwrap .gbtn>div,.auth .gwrap .gbtn iframe{width:100%!important;transform:scaleY(1.2)}
+.auth .gwrap:has(.gbtn:focus-within) .gface{box-shadow:inset 0 0 0 2px var(--horizon)}
+/* glass cursor: a brighter, glowing arrow over anything you can click */
+.cur-glass :is(a,button,summary,label,[role="button"],[role="option"],.proj,.pkg,.lang,.filters button,.chip,.pchip,.dsel-btn,select){cursor:url(../img/cursor-glass-link.png) 3 2,pointer;cursor:-webkit-image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer;cursor:image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer}
+.cur-glass .chip *,.cur-glass .pchip *{cursor:inherit}
+body[data-page="pricing"] .page-hero+section{padding-top:clamp(30px,4vw,48px)!important}
