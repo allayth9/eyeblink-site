@@ -787,5 +787,78 @@
     }
    }
   ]
+ },
+ "layout": {
+  "home": [
+   {
+    "id": "stats",
+    "show": true
+   },
+   {
+    "id": "services",
+    "show": true
+   },
+   {
+    "id": "work",
+    "show": true
+   },
+   {
+    "id": "packages",
+    "show": true
+   },
+   {
+    "id": "reviews",
+    "show": true
+   },
+   {
+    "id": "cta",
+    "show": true
+   }
+  ],
+  "nav": [
+   {
+    "id": "services",
+    "show": true,
+    "label": {
+     "ar": "",
+     "en": ""
+    }
+   },
+   {
+    "id": "work",
+    "show": true,
+    "label": {
+     "ar": "",
+     "en": ""
+    }
+   },
+   {
+    "id": "pricing",
+    "show": true,
+    "label": {
+     "ar": "",
+     "en": ""
+    }
+   },
+   {
+    "id": "about",
+    "show": true,
+    "label": {
+     "ar": "",
+     "en": ""
+    }
+   },
+   {
+    "id": "contact",
+    "show": true,
+    "label": {
+     "ar": "",
+     "en": ""
+    }
+   }
+  ],
+  "accent": "cyan",
+  "intro": true,
+  "particles": true
  }
 }

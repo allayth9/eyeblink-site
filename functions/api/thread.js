@@ -30,10 +30,11 @@ export async function onRequestPost(ctx) {
   const text = String(d.text || "").trim().slice(0, 3000), files = cleanFiles(d.files);
   if (!text && !files.length) return json({ ok: false }, 400);
   if (await limited(env, "mrl:" + o.email, 40, 600)) return json({ ok: false, error: "too many messages" }, 429);
-  (o.messages ||= []).push({ from: "client", text, at, ...(files.length ? { files } : {}) }); if (o.messages.length > 600) o.messages = o.messages.slice(-600);
+  const receipt = !!d.receipt && files.length > 0;
+  (o.messages ||= []).push({ from: "client", text, at, ...(files.length ? { files } : {}), ...(receipt ? { kind: "receipt" } : {}) }); if (o.messages.length > 600) o.messages = o.messages.slice(-600);
   o.seenClient = at; o.updatedAt = at;
   await env.EB.put(o.key, JSON.stringify(o));
-  later(ctx, notifyStudio(env, "رسالة من "+o.name+" — "+o.code, text + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
+  later(ctx, notifyStudio(env, (receipt ? "🧾 إيصال دفع من " : "رسالة من ")+o.name+" — "+o.code, text + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
   return json({ ok: true, order: publicOrder(o) });
 }
 
@@ -78,8 +79,8 @@ async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0);
 function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
-  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined})), unread:unreadFor(o,"client"),
-  name:o.name, email:o.email, method:o.method, review:o.review||null }; }
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
+  name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null }; }
 // attachments must point at files uploaded through /api/files
 function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
   .map(f=>({url:f.url, name:String(f.name||"file").slice(0,120), type:String(f.type||"").slice(0,80), size:+f.size||0})); }

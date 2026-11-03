@@ -59,13 +59,13 @@ def seed():
 def L(v, lang): return v.get(lang) or v.get("ar") if isinstance(v, dict) else v
 
 def reviews_block(U):
-    return '''<section class="block" hidden><div class="wrap">
+    return '''<section class="block" hidden data-sec="reviews"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">REVIEWS</span><h2 data-t="reviews.h"></h2></div></div>
   <div class="revs" data-list="reviews"></div>
 </div></section>'''
 
 def cta_band(U):
-    return f'''<section class="block"><div class="wrap"><div class="cta glass rv">
+    return f'''<section class="block" data-sec="cta"><div class="wrap"><div class="cta glass rv">
   <div><span class="eyebrow">CONTACT</span><h2 data-t="contact.h"></h2><p data-t="contact.p"></p></div>
   <div class="handle"><span class="at latin" data-ig>@{CONTENT["site"]["instagram"]}</span><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["cta"]}</a></div>
 </div></div></section>'''
@@ -95,17 +95,17 @@ def p_index(U, lang):
     <button class="reel-card glass" type="button" id="reelCard" hidden aria-label="{U["reel"]}"><video muted loop playsinline autoplay preload="metadata"></video><span><i></i>SHOWREEL</span></button>
   </div>
 </div></section>
-<section class="block" style="padding-top:0" data-show="showStats"><div class="wrap"><div class="stats" data-list="stats"></div></div></section>
-<section class="block teaser"><div class="wrap">
+<section class="block" style="padding-top:0" data-show="showStats" data-sec="stats"><div class="wrap"><div class="stats" data-list="stats"></div></div></section>
+<section class="block teaser" data-sec="services"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">SERVICES</span><h2 data-t="servicesIntro.h"></h2></div><p data-t="servicesIntro.p"></p></div>
   <div class="grid3" data-list="services-cards" data-mode="teaser"></div>
 </div></section>
-<section class="block teaser" data-show="showWorkTeaser"><div class="wrap">
+<section class="block teaser" data-show="showWorkTeaser" data-sec="work"><div class="wrap">
   <div class="head rv" id="workHead"><div><span class="eyebrow">SHOWREEL • COMING SOON</span><h2 data-t="work.h"></h2></div><p data-t="work.p"></p></div>
   <div class="grid3" id="workGrid" data-limit="3">{slots(U)}</div>
   <div class="center"><a class="btn btn-glass glass" href="work.html"><span class="dot"></span>{U["all_work"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></section>
-<section class="block teaser" data-show="showPackagesTeaser"><div class="wrap">
+<section class="block teaser" data-show="showPackagesTeaser" data-sec="packages"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PRICING</span><h2 data-t="packages.h"></h2></div><p data-t="packages.p"></p></div>
   <div class="pkgs" data-list="packages-teaser"></div>
   <div class="center"><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{U["all_pkgs"]} <span class="arr">{U["arrow"]}</span></a></div>
@@ -254,6 +254,45 @@ def p_privacy(U, lang):
 def p_account(U, lang):
     return '<section class="page-hero acct-page"><div class="wrap"><div id="acct" class="acct"></div></div></section>'
 
+def html_attr(s): return str(s).replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
+
+def clip(s, n=158):
+    s = " ".join(str(s or "").split())
+    return s if len(s) <= n else s[:n].rsplit(" ", 1)[0] + "…"
+
+# one description per page, from the content people actually read there
+def page_desc(lang, page, svc):
+    C = CONTENT
+    pick = {"index": C["hero"]["lead"], "services": C["servicesIntro"]["p"], "work": C["work"]["p"], "pricing": C["packages"]["p"],
+            "about": C["about"]["lead"], "contact": C["contact"]["p"], "account": C["hero"]["lead"],
+            "privacy": {"ar": "كيف يتعامل Eyeblink Studio مع بياناتك: ما نجمعه، لماذا، ومع من لا نشاركه.", "en": "How Eyeblink Studio handles your data: what we collect, why, and who we never share it with."}}
+    v = svc["body"] if svc else pick.get(page, C["hero"]["lead"])
+    return clip(L(v, lang))
+
+# structured data so search engines understand the studio, each service and the FAQ
+def json_ld(lang, page, svc, title, desc):
+    org = {"@type": "ProfessionalService", "@id": SITE + "/#studio", "name": "Eyeblink Studio", "url": SITE + "/",
+           "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og.jpg",
+           "description": clip(L(CONTENT["hero"]["lead"], lang), 300),
+           "sameAs": ["https://instagram.com/" + CONTENT["site"]["instagram"]],
+           "areaServed": ["AE", "SA", "OM", "QA", "KW", "BH", "SY"],
+           "knowsAbout": [L(s["name"], lang) for s in CONTENT["services"]], "priceRange": "$$"}
+    email = (CONTENT.get("settings") or {}).get("email")
+    if email: org["email"] = email
+    graph = [org, {"@type": "WebPage", "@id": url(lang, page), "url": url(lang, page), "name": title, "description": desc,
+                   "inLanguage": lang, "isPartOf": {"@type": "WebSite", "@id": SITE + "/#site", "url": SITE + "/", "name": "Eyeblink Studio"}}]
+    if svc:
+        graph.append({"@type": "Service", "name": L(svc["name"], lang), "serviceType": svc["label"], "description": clip(L(svc["body"], lang), 300),
+                      "provider": {"@id": SITE + "/#studio"}, "areaServed": org["areaServed"], "url": url(lang, page)})
+    if page == "pricing":
+        for it in (CONTENT.get("packages") or {}).get("items", []):
+            o = {"@type": "Offer", "name": L(it["name"], lang), "description": L(it.get("desc", {}), lang), "seller": {"@id": SITE + "/#studio"}, "url": url(lang, page) + "#" + it["id"]}
+            if it.get("price") not in (None, ""): o.update({"price": str(it["price"]), "priceCurrency": "USD"})
+            graph.append(o)
+        faq = (CONTENT.get("faq") or {}).get("items", [])
+        if faq: graph.append({"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": L(f["q"], lang), "acceptedAnswer": {"@type": "Answer", "text": L(f["a"], lang)}} for f in faq]})
+    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False).replace("</", "<\\/")
+
 def url(lang, page):
     path = ("en/" if lang == "en" else "") + ("" if page == "index" else page + ".html")
     return f"{SITE}/{path}"
@@ -266,7 +305,8 @@ def build(lang, page):
     title = (L(svc["name"], lang) + " — Eyeblink Studio") if svc else (U["titles"][page] if page == "index" else U["titles"][page] + " — Eyeblink Studio")
     cur = "services" if sid else page
     nav = "".join(f'<li><a href="{k}.html"{" aria-current=\"page\"" if k == cur else ""}>{v}</a></li>' for k, v in U["nav"])
-    desc = L(CONTENT["hero"]["lead"], lang)
+    desc = page_desc(lang, page, svc)
+    ld = json_ld(lang, page, svc, title, desc)
     body = (p_service(U, lang, sid) if sid else globals()["p_" + page](U, lang))
     lb = f'''<div class="lightbox" id="lb" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
   <div class="lb-pattern" aria-hidden="true"><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div><div><span>{"EYEBLINK STUDIO   ·   " * 8}</span><span>{"EYEBLINK STUDIO   ·   " * 8}</span></div></div>
@@ -282,16 +322,17 @@ def build(lang, page):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{title}</title>
-<meta name="description" content="{desc}">
+<meta name="description" content="{html_attr(desc)}">
 <meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page=="account" else ""}
 <link rel="icon" href="{A}assets/img/favicon.svg?v={ASSET_V["assets/img/favicon.svg"]}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
 <link rel="canonical" href="{url(lang, page)}">
 <link rel="alternate" hreflang="ar" href="{url("ar", page)}"><link rel="alternate" hreflang="en" href="{url("en", page)}"><link rel="alternate" hreflang="x-default" href="{url("ar", page)}">
 <meta property="og:type" content="website"><meta property="og:url" content="{url(lang, page)}"><meta property="og:site_name" content="Eyeblink Studio"><meta property="og:locale" content="{"en_US" if en else "ar_AR"}">
-<meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:image" content="{SITE}/assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}/assets/img/og.jpg">
+<meta property="og:title" content="{title}"><meta property="og:description" content="{html_attr(desc)}"><meta property="og:image" content="{SITE}/assets/img/og.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}/assets/img/og.jpg">
 <link rel="stylesheet" href="{A}assets/css/site.css?v={ASSET_V["assets/css/site.css"]}">
-<script>if(/(^|\\.)pages\\.dev$|^www\\./.test(location.hostname)&&!/--|^[0-9a-f]{{8}}\\./.test(location.hostname))location.replace("{SITE}"+location.pathname+location.search+location.hash);document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
+<script>if(/(^|\\.)pages\\.dev$|^www\\./.test(location.hostname)&&!/--|^[0-9a-f]{{8}}\\./.test(location.hostname))location.replace("{SITE}"+location.pathname+location.search+location.hash);document.documentElement.classList.add('js');try{{if(!sessionStorage.getItem('eb-intro')&&localStorage.getItem('eb-nointro')!=='1'&&!sessionStorage.getItem('eb-cut')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){{sessionStorage.setItem('eb-intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){{document.documentElement.classList.remove('intro-on')}},3000)}}}}catch(e){{}}try{{if(sessionStorage.getItem('eb-cut')){{document.documentElement.classList.add('arriving');sessionStorage.removeItem('eb-cut');setTimeout(function(){{document.documentElement.classList.remove('arriving')}},1600)}}}}catch(e){{}}</script>
+<script type="application/ld+json">{ld}</script>
 </head>
 <body data-base="{A}" data-page="{page}"{f' data-service="{sid}"' if sid else ""}>
 <div class="eb-intro" aria-hidden="true"><i class="seam"></i><i class="lid top"></i><i class="lid bot"></i></div>

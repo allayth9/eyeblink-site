@@ -78,6 +78,7 @@
         name:function(x){return (x.name||'طريقة')+(x.enabled===false?' (مخفية)':'')}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
         fields:[{row:[{p:'name', t:'text', l:'الاسم', ltr:1},{p:'enabled', t:'check', l:'ظاهرة على الموقع'}]},{p:'logo', t:'media', l:'الشعار (PNG أو SVG بخلفية شفافة)', accept:'image/*'},{p:'id', t:'text', l:'المعرّف', ltr:1}]}},
       {h:'تفاصيل الدفع الخاصة', hint:'لا تظهر على الموقع أبداً. تُستخدم فقط في رسائل الرد على الطلبات (رقم المحفظة، البريد، بيانات الاستلام…).', priv:'payments'} ]},
+    {id:'layout', title:'التصميم والترتيب', layout:1},
     {id:'settings', title:'الإعدادات', settings:1},
     {id:'orders', title:'الطلبات', orders:1},
     {id:'clients', title:'العملاء', clients:1},
@@ -127,6 +128,7 @@
     $('#tabTitle').textContent=tab.title;
     if(tab.orders) return renderOrders();
     if(tab.clients) return renderClients();
+    if(tab.layout) return renderLayout();
     if(tab.backup) return renderBackup();
     if(tab.settings) return renderSettings();
     $('#panel').innerHTML=tab.secs.map(function(s,si){
@@ -264,6 +266,9 @@
           '<div class="field"><label>السعر النهائي</label><input data-of="price" dir="ltr" value="'+esc(o.price)+'" placeholder="'+esc(o.total)+'"></div></div>'+
           '<div class="row"><div class="field"><label>طريقة الدفع</label><select data-of="method"><option value="">—</option>'+methods.map(function(m){return '<option value="'+esc(m.id)+'"'+(m.id===o.method?' selected':'')+'>'+esc(m.name)+'</option>'}).join('')+'</select></div>'+
           '<div class="field"><label>المبلغ المستلم</label><input data-of="paidAmount" dir="ltr" value="'+esc(o.paidAmount)+'"></div></div>'+
+          '<div class="paysend"><div class="small muted">الدفع</div><div class="row"><div class="field"><label>المبلغ المطلوب الآن (فارغ = السعر كامل، أو اكتب عربوناً)</label><input data-payamt dir="ltr" placeholder="'+esc(o.price||o.total||'')+'" value="'+esc((o.payInfo&&o.payInfo.amount!==o.price&&o.payInfo.amount)||'')+'"></div></div>'+
+            (o.email?'<button class="btn sm primary" type="button" data-opay="'+k+'">'+(o.payInfo?'أعد إرسال تفاصيل الدفع':'أرسل تفاصيل الدفع للعميل')+'</button>':'')+
+            '<div class="small muted" style="margin-top:4px">يرسل تفاصيل «طريقة الدفع» المختارة من «تفاصيل الدفع الخاصة» ككرت دفع في حساب العميل، ويحوّل الحالة إلى «بانتظار الدفع».</div></div>'+
           '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> تم استلام الدفع</label>'+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
@@ -274,7 +279,7 @@
   }
   function thread(o){
     var m=o.messages||[]; if(!m.length) return '<div class="muted small">لا رسائل بعد. العميل يرى رسالة ترحيب تلقائية بأنكم سترسلون السعر خلال 24 ساعة.</div>';
-    return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+'">'+(x.text?'<div>'+esc(x.text).replace(/\n/g,'<br>').replace(/\[(\d{1,2}:\d{2})\]/g,'<b class="tcode">⏱ $1</b>')+'</div>':'')+
+    return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+(x.kind?' k-'+x.kind:'')+'">'+(x.text?'<div>'+esc(x.text).replace(/\n/g,'<br>').replace(/\[(\d{1,2}:\d{2})\]/g,'<b class="tcode">⏱ $1</b>')+'</div>':'')+
       (x.files||[]).map(function(f){ var u=esc(abs(f.url.replace(/^\//,''))); return /^image\//.test(f.type)?'<a href="'+u+'" target="_blank"><img class="afile" src="'+u+'" alt=""></a>'
         : /^video\//.test(f.type)?'<video class="afile" src="'+u+'" controls preload="metadata"></video>' : '<a class="adoc" href="'+u+'" target="_blank">📎 '+esc(f.name)+'</a>'; }).join('')+
       '<small>'+(x.from==='client'?'العميل':'أنت')+' · '+esc(new Date(x.at).toLocaleString('ar'))+'</small></div>'; }).join('');
@@ -308,6 +313,14 @@
   document.addEventListener('click',function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
+    if(b.dataset.opay){ var bx=b.closest('.order'), dd=readOrderForm(bx), oo=orderOf(b.dataset.opay);
+      if(!dd.price&&!oo.price){ toast('اكتب السعر النهائي أولاً',true); return; } if(!dd.method){ toast('اختر طريقة الدفع أولاً',true); return; }
+      if(!((P&&P.payments)||{})[dd.method]){ toast('أضف تفاصيل هذه الطريقة في «طرق الدفع ← تفاصيل الدفع الخاصة» وانشر',true); return; }
+      if(!LIVE||oo.demo){ toast('يعمل على الموقع المنشور',true); return; }
+      dd.key=oo.key; dd.sendPayment=true; dd.payAmount=bx.querySelector('[data-payamt]').value.trim(); b.disabled=true;
+      fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify(dd)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
+        .then(function(j){ Object.assign(oo,j.order); renderOrders(); var d2=document.querySelector('[data-okey="'+oo.key+'"]'); if(d2) d2.open=true; toast('وصلت تفاصيل الدفع إلى حساب العميل'); })
+        .catch(function(err){ b.disabled=false; toast(/private/.test(err.message)?'لا توجد تفاصيل دفع خاصة لهذه الطريقة':'تعذّر الإرسال',true); }); return; }
     if(b.dataset.osend){ sendMsg(b.dataset.osend, b.closest('.asend').querySelector('textarea').value, b, PEND[b.dataset.osend]); return; }
     if(b.dataset.sendreply){ sendMsg(b.dataset.sendreply, b.closest('.replybox').querySelector('textarea').value, b); return; }
     if(b.dataset.osave){ var box=b.closest('.order'), d=readOrderForm(box), o=orderOf(b.dataset.osave);
@@ -332,6 +345,36 @@
 
   // new requests and client messages arrive without reloading (skipped while you are typing in an order)
   setInterval(function(){ if(!LIVE||document.hidden) return; var a=document.activeElement; if(TAB==='orders'&&a&&a.closest&&a.closest('.order')) return; loadOrders(); },30000);
+
+  /* ---------------- layout + look ---------------- */
+  var SECN={stats:'خانة الأرقام',services:'الخدمات',work:'الأعمال',packages:'الباقات',reviews:'آراء العملاء',cta:'دعوة التواصل'};
+  var NAVN={services:'الخدمات',work:'أعمالنا',pricing:'الباقات',about:'من نحن',contact:'تواصل'};
+  var ACC=[['cyan','سماوي (الأساسي)','#3FE0E8','#8B5CFF'],['violet','بنفسجي','#A78BFA','#5B7CFF'],['gold','ذهبي','#F5C66B','#E0833F'],['rose','وردي','#FF7AB6','#8B5CFF'],['mint','نعناعي','#5EF0B0','#2E9BFF']];
+  function LY(){ var d=(window.EB_SEED&&EB_SEED.layout)||{home:[],nav:[]}; C.layout=C.layout||JSON.parse(JSON.stringify(d)); C.layout.home=C.layout.home||[]; C.layout.nav=C.layout.nav||[];
+    d.home.forEach(function(s){ if(!C.layout.home.some(function(x){return x.id===s.id})) C.layout.home.push({id:s.id,show:true}); });
+    d.nav.forEach(function(s){ if(!C.layout.nav.some(function(x){return x.id===s.id})) C.layout.nav.push({id:s.id,show:true,label:{ar:'',en:''}}); }); return C.layout; }
+  function renderLayout(){
+    var L=LY();
+    var row=function(list,i,name,extra){ var it=L[list][i]; return '<div class="lrow"><label class="check"><input type="checkbox" data-lshow="'+list+':'+i+'"'+(it.show!==false?' checked':'')+'> <b>'+esc(name)+'</b></label>'+(extra||'')+
+      '<span class="lmove"><button class="btn sm" type="button" data-lmove="'+list+':'+i+':-1" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-lmove="'+list+':'+i+':1" aria-label="أسفل">↓</button></span></div>'; };
+    $('#panel').innerHTML=
+      '<section class="sec"><h3>ترتيب أقسام الصفحة الرئيسية</h3><p class="hint">من الأعلى للأسفل تحت الواجهة. أزل العلامة لإخفاء القسم. «آراء العملاء» يظهر فقط حين يوجد تقييم معتمد.</p><div class="lgrid">'+
+        L.home.map(function(s,i){ return row('home',i,SECN[s.id]||s.id); }).join('')+'</div></section>'+
+      '<section class="sec"><h3>القائمة العلوية وأسفل الصفحة</h3><p class="hint">الترتيب والأسماء. اترك الاسم فارغاً ليبقى الافتراضي. الرئيسية وزر «ابدأ مشروعك» ثابتان.</p><div class="lgrid">'+
+        L.nav.map(function(n,i){ var lb=n.label||{}; return row('nav',i,NAVN[n.id]||n.id,'<span class="lnames"><input data-p="layout.nav.'+i+'.label.ar" data-t="text" placeholder="'+esc(NAVN[n.id]||'')+'" value="'+esc(lb.ar||'')+'"><input data-p="layout.nav.'+i+'.label.en" data-t="text" dir="ltr" placeholder="English" value="'+esc(lb.en||'')+'"></span>'); }).join('')+'</div></section>'+
+      '<section class="sec"><h3>اللون المميّز</h3><p class="hint">يغيّر لون الروابط والإضاءات والأزرار الثانوية في كل الموقع.</p><div class="accents">'+
+        ACC.map(function(a){ return '<label class="acc'+((L.accent||'cyan')===a[0]?' on':'')+'"><input type="radio" name="acc" value="'+a[0]+'"'+((L.accent||'cyan')===a[0]?' checked':'')+' data-lacc hidden><i style="background:linear-gradient(135deg,'+a[2]+','+a[3]+')"></i>'+a[1]+'</label>'; }).join('')+'</div></section>'+
+      '<section class="sec"><h3>عناصر بصرية</h3>'+
+        '<label class="check"><input type="checkbox" data-ltog="intro"'+(L.intro!==false?' checked':'')+'> انترو فتح العين عند أول زيارة</label>'+
+        '<label class="check"><input type="checkbox" data-ltog="particles"'+(L.particles!==false?' checked':'')+'> خلفية الجزيئات المتحركة</label>'+
+        '<p class="hint" style="margin-top:8px">التغييرات تظهر بعد «نشر التعديلات». استخدم «معاينة» لتراها قبل النشر.</p></section>';
+  }
+  document.addEventListener('change',function(e){ var el=e.target; if(TAB!=='layout'||!C) return; var L=LY();
+    if(el.dataset.lshow){ var q=el.dataset.lshow.split(':'); L[q[0]][+q[1]].show=el.checked; dirty(); saveDraft(); }
+    else if(el.hasAttribute('data-lacc')){ L.accent=el.value; dirty(); saveDraft(); renderLayout(); }
+    else if(el.dataset.ltog){ L[el.dataset.ltog]=el.checked; dirty(); saveDraft(); } });
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-lmove]'); if(!b) return; var q=b.dataset.lmove.split(':'), arr=LY()[q[0]], i=+q[1], j=i+(+q[2]);
+    if(j<0||j>=arr.length) return; var x=arr[i]; arr[i]=arr[j]; arr[j]=x; dirty(); saveDraft(); renderLayout(); });
 
   /* ---------------- clients ---------------- */
   function loadUsers(){

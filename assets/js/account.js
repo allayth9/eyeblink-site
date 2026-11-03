@@ -16,7 +16,7 @@
         chat:'المحادثة',write:'اكتب رسالتك…',send:'إرسال',you:'أنت',studio:'Eyeblink',
         hello:'استلمنا طلبك. سنراجع التفاصيل ونرد عليك هنا خلال 24 ساعة بالسعر النهائي وخطوات العمل.',
         closed:'أُغلقت المحادثة بعد التسليم. للتواصل استخدم الوسائل الخارجية.',cancelled:'أُلغي هذا الطلب.',
-        attach:'إرفاق ملف',uploading:'جارٍ رفع ',tooBig:'الحد 20MB للملف. للملفات الأكبر أرسل رابط Google Drive أو WeTransfer.',badType:'نوع الملف غير مدعوم. أرسل صوراً، فيديو، صوتاً، PDF أو ZIP.',
+        payH:'الدفع',payAmt:'المبلغ المطلوب',payVia:'الطريقة',copyD:'نسخ التفاصيل',copied:'نُسخت',receipt:'أرفق إيصال الدفع',receiptSent:'وصلنا الإيصال، وسنؤكد الدفع قريباً.',receiptText:'🧾 إيصال الدفع',paidOk:'وصل الدفع، شكراً لك. بدأنا العمل.',attach:'إرفاق ملف',uploading:'جارٍ رفع ',tooBig:'الحد 20MB للملف. للملفات الأكبر أرسل رابط Google Drive أو WeTransfer.',badType:'نوع الملف غير مدعوم. أرسل صوراً، فيديو، صوتاً، PDF أو ZIP.',
         tc:'علّق على هذه اللحظة',tcHint:'شغّل الفيديو، أوقفه عند اللحظة، ثم اكتب ملاحظتك',invoice:'الفاتورة',
         rate:'كيف كانت تجربتك؟',rateP:'رأيك يهمنا، ويساعد عملاء جدد على الثقة بنا.',publish:'أوافق على عرض تقييمي على الموقع باسمي الأول فقط',sendRate:'أرسل التقييم',thanks:'شكراً لتقييمك',
         forgot:'نسيت كلمة السر؟',forgotH:'استعادة كلمة السر',forgotP:'اكتب بريدك، وسنرسل لك رمزاً من 6 أرقام.',sendCode:'أرسل الرمز',codeSent:'إن كان البريد مسجلاً لدينا، وصلك رمز الآن. تحقق من البريد غير المرغوب أيضاً.',
@@ -35,7 +35,7 @@
         chat:'Conversation',write:'Write a message…',send:'Send',you:'You',studio:'Eyeblink',
         hello:'We received your request. We will review it and reply here within 24 hours with the final price and next steps.',
         closed:'This conversation closed after delivery. Use the links below to reach us.',cancelled:'This request was cancelled.',
-        attach:'Attach a file',uploading:'Uploading ',tooBig:'20 MB per file. For bigger files send a Google Drive or WeTransfer link.',badType:'File type not supported. Send images, video, audio, PDF or ZIP.',
+        payH:'Payment',payAmt:'Amount due',payVia:'Method',copyD:'Copy details',copied:'Copied',receipt:'Attach payment receipt',receiptSent:'We got your receipt and will confirm the payment shortly.',receiptText:'🧾 Payment receipt',paidOk:'Payment received, thank you. Work has started.',attach:'Attach a file',uploading:'Uploading ',tooBig:'20 MB per file. For bigger files send a Google Drive or WeTransfer link.',badType:'File type not supported. Send images, video, audio, PDF or ZIP.',
         tc:'Comment on this moment',tcHint:'Play the video, pause on the moment, then write your note',invoice:'Invoice',
         rate:'How was your experience?',rateP:'Your opinion matters, and it helps new clients trust us.',publish:'Show my review on the site with my first name only',sendRate:'Send review',thanks:'Thank you for your review',
         forgot:'Forgot your password?',forgotH:'Reset your password',forgotP:'Enter your email and we will send you a 6-digit code.',sendCode:'Send code',codeSent:'If this email has an account, a code is on its way. Check spam too.',
@@ -192,9 +192,19 @@
   }
   // [1:23] in a message becomes a button that jumps the latest video to that moment
   function tcText(t){ return linkify(t||'').replace(/\[(\d{1,2}):([0-5]\d)\]/g,function(_,m,s){ return '<button type="button" class="tstamp" data-t="'+(+m*60+ +s)+'">▶ '+m+':'+s+'</button>'; }); }
-  function msgHTML(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+'">'+(m.text?'<div class="b">'+tcText(m.text)+'</div>':'')+
+  function msgHTML(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+(m.kind?' k-'+m.kind:'')+'">'+(m.text?'<div class="b">'+tcText(m.text)+'</div>':'')+
     ((m.files||[]).length?'<div class="atts">'+m.files.map(fileHTML).join('')+'</div>':'')+'<small>'+(m.from==='client'?T.you:T.studio)+' · '+esc(time(m.at))+'</small></div>'; }
-  function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid; }
+  function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid+'|'+((o.payInfo||{}).at||''); }
+  function payCard(o){
+    var p=o.payInfo; if(!p||o.status==='cancelled') return '';
+    if(o.paid) return '<div class="paycard ok">✓ '+T.paidOk+'</div>';
+    var sent=(o.messages||[]).some(function(m){ return m.kind==='receipt'&&m.at>p.at; });
+    return '<div class="paycard"><div class="ph"><b>'+T.payH+'</b><span>'+T.payVia+': '+esc(p.methodName||p.method)+'</span></div>'+
+      '<div class="amt"><small>'+T.payAmt+'</small><b dir="ltr">'+esc(p.amount)+'</b></div><pre dir="auto">'+esc(p.details)+'</pre>'+
+      '<div class="actions"><button type="button" class="btn btn-glass glass cp">'+T.copyD+'</button>'+
+      '<label class="btn btn-primary rc">'+T.receipt+'<input type="file" accept="image/*,application/pdf" hidden></label></div>'+
+      (sent?'<p class="muted" style="margin:8px 0 0;font-size:13.5px">'+T.receiptSent+'</p>':'')+'</div>';
+  }
   var lastVid=null;
   function detail(o,full){
     var host=box.querySelector('.odetail'), closed=o.status==='delivered'||o.status==='cancelled';
@@ -202,7 +212,7 @@
     if(!full && host.querySelector('.thread')){   // poll: touch nothing unless something changed (keeps videos playing and the draft typed)
       if(host.dataset.sig===sig(o)) return;
       var wasClosed=!host.querySelector('form.send'), prev=(host.dataset.sig||'').split('|');
-      if(wasClosed!==closed || prev[2]!==o.status || prev[3]!==(o.review?'1':'0') || prev[4]!==String(o.price) || prev[5]!==String(o.paid)) return detail(o,true);
+      if(wasClosed!==closed || prev[2]!==o.status || prev[3]!==(o.review?'1':'0') || prev[4]!==String(o.price) || prev[5]!==String(o.paid) || prev[6]!==((o.payInfo||{}).at||'')) return detail(o,true);
       var th=host.querySelector('.thread'), atEnd=th.scrollHeight-th.scrollTop-th.clientHeight<40;
       th.innerHTML=msgs.map(msgHTML).join(''); if(atEnd) th.scrollTop=th.scrollHeight; host.dataset.sig=sig(o); toggleTc(); return;
     }
@@ -214,7 +224,7 @@
     host.innerHTML='<div class="od glass">'+
       '<div class="od-head"><div><span class="c">'+esc(o.code)+'</span><h2>'+esc(o.packageName||'')+'</h2></div>'+pill(o)+'</div>'+
       track(o)+
-      '<div class="od-body"><div class="chat"><h3>'+T.chat+'</h3><div class="thread" aria-live="polite">'+msgs.map(msgHTML).join('')+'</div>'+
+      '<div class="od-body"><div class="chat">'+payCard(o)+'<h3>'+T.chat+'</h3><div class="thread" aria-live="polite">'+msgs.map(msgHTML).join('')+'</div>'+
         (closed? '<p class="closed">'+(o.status==='cancelled'?T.cancelled:T.closed)+'</p>'+review
                : '<div class="pending" hidden></div><form class="send"><label class="clip" title="'+T.attach+'" aria-label="'+T.attach+'"><input type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.zip,.txt"><svg viewBox="0 0 24 24"><path d="M20.5 11.5 12 20a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.7a1.7 1.7 0 0 1-2.4-2.4L15 7.6"/></svg></label>'+
                  '<textarea name="t" rows="1" placeholder="'+T.write+'" dir="auto"></textarea><button class="btn btn-primary" type="submit">'+T.send+'</button></form>'+
@@ -233,6 +243,17 @@
     host.dataset.sig=sig(o);
     var th=host.querySelector('.thread'); th.scrollTop=th.scrollHeight;
     var ib=host.querySelector('.inv'); if(ib) ib.onclick=function(){ invoice(o); };
+    var pc=host.querySelector('.paycard');
+    if(pc&&!pc.classList.contains('ok')){
+      pc.querySelector('.cp').onclick=function(){ var b=this; try{ navigator.clipboard.writeText(o.payInfo.details).then(function(){ b.textContent=T.copied; setTimeout(function(){ b.textContent=T.copyD; },1600); }); }catch(_){} };
+      pc.querySelector('.rc input').onchange=function(){ var file=this.files[0]; this.value=''; if(!file) return;
+        if(file.size>20*1024*1024){ toast(T.tooBig); return; }
+        var lab=pc.querySelector('.rc'); lab.classList.add('busy');
+        fetch(API+'files',{method:'POST',credentials:'same-origin',headers:{'content-type':file.type||'application/octet-stream','x-code':o.code,'x-filename':encodeURIComponent(file.name)},body:file})
+          .then(function(r){ return r.json(); }).then(function(j){ if(!j.ok) throw 0; return api('thread',{code:o.code,text:T.receiptText,files:[j.file],receipt:true}); })
+          .then(function(j){ lab.classList.remove('busy'); if(j&&j.ok) detail(j.order,true); })
+          .catch(function(){ lab.classList.remove('busy'); toast(T.e.net); }); };
+    }
     var rf=host.querySelector('form.rate');
     if(rf){ var stars=0, pk=rf.querySelector('.pick');
       pk.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; stars=+b.dataset.s; [].forEach.call(pk.children,function(x){ x.classList.toggle('on',+x.dataset.s<=stars); }); rf.querySelector('[type=submit]').disabled=false; };

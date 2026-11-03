@@ -137,3 +137,15 @@ video.afile{max-width:320px}
 .areview b{color:#ffd76a}.areview p{margin:6px 0}
 .apend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .asend label.btn{align-self:flex-end}
+.paysend{margin:10px 0;padding:12px;border-radius:12px;background:rgba(63,224,232,.06);box-shadow:inset 0 0 0 1px rgba(63,224,232,.2)}
+.amsg.k-payment>div{box-shadow:inset 0 0 0 1px rgba(63,224,232,.5)}
+.amsg.k-receipt>div{box-shadow:inset 0 0 0 1px rgba(74,222,128,.6)}
+.lgrid{display:grid;gap:8px}
+.lrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line)}
+.lrow .check{margin:0;min-width:130px}
+.lnames{display:flex;gap:8px;flex:1;min-width:220px}.lnames input{flex:1;min-width:0}
+.lmove{margin-inline-start:auto;display:flex;gap:4px}
+.accents{display:flex;flex-wrap:wrap;gap:10px}
+.acc{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:999px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.acc i{width:26px;height:26px;border-radius:50%}
+.acc.on{box-shadow:inset 0 0 0 2px var(--horizon)}

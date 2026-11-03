@@ -60,9 +60,24 @@ export async function onRequestPatch(ctx) {
   if (d.message || files.length) { (o.messages ||= []).push({ from: "studio", text: clip(d.message, 4000), at: now, ...(files.length ? { files } : {}) }); o.seenAdmin = now; }
   if (d.seen) o.seenAdmin = now;
   if (d.reviewApproved !== undefined && o.review) { o.review.approved = !!d.reviewApproved; await syncReviews(env, o); }
+  // one click: the private payment details for the chosen method go to the client as a payment card + a chat message
+  let payMsg = "";
+  if (d.sendPayment) {
+    if (!o.method || !o.price) return json({ ok: false, error: "set price and method first" }, 400);
+    let priv = {}, content = {}; try { priv = JSON.parse(await env.EB.get("private") || "{}"); content = JSON.parse(await env.EB.get("content") || "{}"); } catch {}
+    const m = ((content.payments || {}).methods || []).find(x => x.id === o.method) || { name: o.method };
+    const details = String(((priv.payments || {})[o.method]) || "").slice(0, 2000);
+    if (!details) return json({ ok: false, error: "no private details for this method" }, 400);
+    const amount = clip(d.payAmount || o.price, 40), en = o.lang === "en";
+    o.payInfo = { method: o.method, methodName: m.name, details, amount, at: now };
+    payMsg = (en ? "Payment details — " : "تفاصيل الدفع — ") + m.name + "\n" + (en ? "Amount: " : "المبلغ: ") + amount + "\n\n" + details + "\n\n" + (en ? "After paying, attach the receipt here." : "بعد الدفع، أرفق صورة الإيصال هنا.");
+    (o.messages ||= []).push({ from: "studio", text: payMsg, at: now, kind: "payment" }); o.seenAdmin = now;
+    if (!["paid", "in-progress", "review", "delivered"].includes(o.status) && o.status !== "awaiting-payment") { (o.history ||= []).push({ at: now, status: "awaiting-payment" }); o.status = "awaiting-payment"; }
+  }
   o.updatedAt = new Date().toISOString();
   await env.EB.put(d.key, JSON.stringify(o));
-  if (d.message || files.length) later(ctx, notifyClient(env, o, "message", (d.message || "") + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
+  if (payMsg) later(ctx, notifyClient(env, o, "message", payMsg));
+  else if (d.message || files.length) later(ctx, notifyClient(env, o, "message", (d.message || "") + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
   else if (changed) later(ctx, notifyClient(env, o, "status", o.status));
   return json({ ok: true, order: o });
 }
@@ -124,8 +139,8 @@ async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0);
 function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
-  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined})), unread:unreadFor(o,"client"),
-  name:o.name, email:o.email, method:o.method, review:o.review||null }; }
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
+  name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null }; }
 // attachments must point at files uploaded through /api/files
 function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
   .map(f=>({url:f.url, name:String(f.name||"file").slice(0,120), type:String(f.type||"").slice(0,80), size:+f.size||0})); }
