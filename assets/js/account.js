@@ -195,6 +195,18 @@
   function msgHTML(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+(m.kind?' k-'+m.kind:'')+'">'+(m.text?'<div class="b">'+tcText(m.text)+'</div>':'')+
     ((m.files||[]).length?'<div class="atts">'+m.files.map(fileHTML).join('')+'</div>':'')+'<small>'+(m.from==='client'?T.you:T.studio)+' · '+esc(time(m.at))+'</small></div>'; }
   function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid+'|'+((o.payInfo||{}).at||''); }
+  // the client sees where the payment stands, in plain steps
+  function paySteps(o){
+    if(o.status==='cancelled') return '';
+    var dep=o.deposit&&o.deposit.paid, split=o.plan==='split'||!!o.deposit, L=[];
+    L.push([!!o.price, AR?'السعر النهائي'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — منأكّده معك بالمحادثة'):'Final price'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — we confirm it with you in the chat')]);
+    if(split){ L.push([dep, AR?'العربون'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — قبل ما نبلّش':'Deposit'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — before we start']);
+      L.push([!!o.paid, AR?'الباقي — قبل التسليم النهائي':'The rest — before final delivery']); }
+    else L.push([!!o.paid, AR?'الدفع — بعد تأكيد التفاصيل':'Payment — once the details are agreed']);
+    L.push([!!(o.invoice||(o.deposit&&o.deposit.invoice)), AR?'الفاتورة توصلك على إيميلك بعد كل دفعة':'An invoice reaches your email after each payment']);
+    var cur=L.findIndex(function(x){return !x[0]});
+    return '<div class="psteps"><h3>'+(AR?'مراحل الدفع':'Payment steps')+'</h3><ol>'+L.map(function(x,i){ return '<li class="'+(x[0]?'ok':i===cur?'now':'')+'"><i>'+(x[0]?'✓':i+1)+'</i><span>'+x[1]+'</span></li>'; }).join('')+'</ol></div>';
+  }
   function payCard(o){
     var p=o.payInfo; if(!p||o.status==='cancelled') return '';
     var stg=p.stage||'full', done=stg==='deposit'? !!(o.deposit&&o.deposit.paid) : o.paid;
@@ -236,6 +248,7 @@
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
         (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
         '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(o.link)+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
+        paySteps(o)+
         ((o.deposit&&o.deposit.invoice)||o.invoice?'<div class="invs">'+(o.deposit&&o.deposit.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="deposit">🧾 '+(AR?'فاتورة العربون':'Deposit invoice')+'</button>':'')+(o.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="final">🧾 '+T.invoice+'</button>':'')+'</div>':'')+
         '<div class="ext"><h3>'+T.ext+'</h3><p class="muted">'+T.extP+'</p><div class="actions">'+
           '<a class="btn btn-glass glass" href="https://ig.me/m/'+esc(ig)+'" target="_blank" rel="noopener">'+T.ig+'</a>'+
@@ -291,13 +304,14 @@
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3200); }
   // the invoice: the same compact design as the e-mail, in a window over the page (Save PDF prints it)
   function invoice(o,kind){
-    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
-    m.innerHTML='<div class="inv-box"><div class="inv-bar"><button type="button" class="btn btn-primary sv">'+(AR?'حفظ PDF':'Save PDF')+'</button><button type="button" class="btn btn-glass glass x" aria-label="×">×</button></div><iframe title="Invoice" src="'+BASE+'api/thread?code='+encodeURIComponent(o.code)+'&invoice='+kind+'"></iframe></div>';
-    document.body.appendChild(m); requestAnimationFrame(function(){ m.classList.add('show'); });
-    var f=m.querySelector('iframe'); f.onload=function(){ try{ var d=f.contentDocument; var bar=d.querySelector('.bar'); if(bar) bar.remove(); d.body.style.padding='0'; d.body.style.background='transparent'; f.style.height=(d.documentElement.scrollHeight+4)+'px'; }catch(_){} };
-    var close=function(){ m.classList.remove('show'); setTimeout(function(){ m.remove(); },400); };
+    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-label',T.invoice);
+    m.innerHTML='<div class="inv-box"><div class="inv-bar"><b>'+T.invoice+'</b><span class="sp"></span><button type="button" class="btn btn-primary sv">'+(AR?'حفظ PDF':'Save PDF')+'</button><button type="button" class="btn btn-glass glass x" aria-label="'+(AR?'إغلاق':'Close')+'">×</button></div><div class="inv-scroll"><iframe title="'+T.invoice+'" src="'+BASE+'api/thread?code='+encodeURIComponent(o.code)+'&invoice='+kind+'"></iframe></div></div>';
+    document.body.appendChild(m); document.body.style.overflow='hidden'; requestAnimationFrame(function(){ m.classList.add('show'); });
+    var f=m.querySelector('iframe'); f.onload=function(){ try{ var d=f.contentDocument; f.style.height=(d.body.scrollHeight+2)+'px'; [].forEach.call(d.images,function(im){ im.onload=function(){ f.style.height=(d.body.scrollHeight+2)+'px'; }; }); }catch(_){} };
+    var close=function(){ m.classList.remove('show'); document.body.style.overflow=''; setTimeout(function(){ m.remove(); },350); };
     m.querySelector('.x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); };
-    m.querySelector('.sv').onclick=function(){ try{ f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } };
+    m.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); }); setTimeout(function(){ m.querySelector('.x').focus(); },50);
+    m.querySelector('.sv').onclick=function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } };
   }
   function pill(o){ return '<span class="pill '+esc(o.status)+'">'+esc(T.st[o.status]||o.status)+'</span>'; }
   function track(o){

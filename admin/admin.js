@@ -254,6 +254,66 @@
     var pm=(P&&P.payments)||{}, m=((C.payments&&C.payments.methods)||[]).filter(function(x){return x.id===o.method})[0];
     return tpl.replace(/\{(\w+)\}/g,function(_,k){ return ({name:o.name,code:o.code,package:o.packageName||o.package,price:o.price||o.total,method:m?m.name:'—',details:o.method?(pm[o.method]||''):''})[k]||''; });
   }
+  /* ---------- the payment path of one order: four clear steps, one button at a time ---------- */
+  function pnum(v){ var n=parseFloat(String(v==null?'':v).replace(/,/g,'').replace(/[^0-9.]/g,'')); return isFinite(n)?n:0; }
+  function pcur(o){ return (String(o.price||o.total||'').match(/[^\d\s.,]+/)||[(C.packages&&C.packages.currency)||'$'])[0]; }
+  function pfmt(n,c){ var v=(Math.round(n*100)/100).toFixed(n%1?2:0); return c==='$'||c==='€'?c+v:v+' '+c; }
+  function payState(o){ var Pm=C.payments||{}, plan=o.plan||Pm.defaultPlan||'full', pct=+(o.depositPct||Pm.depositPct||50), total=pnum(o.price), dep=o.deposit&&o.deposit.paid;
+    var stage= plan==='split'? (dep?'final':'deposit') : 'full', amt= stage==='deposit'? Math.round(total*pct)/100 : stage==='final'? Math.max(0,total-pnum(o.deposit&&o.deposit.amount)) : total;
+    var asked=o.payInfo&&(o.payInfo.stage||'full')===stage, receipt=asked&&(o.messages||[]).some(function(m){return m.kind==='receipt'&&m.at>o.payInfo.at});
+    var done= o.paid || (stage==='full'&&o.paid);
+    return {plan:plan,pct:pct,total:total,stage:stage,amt:amt,asked:asked,receipt:receipt,done:done}; }
+  var STG={full:'المبلغ كامل',deposit:'العربون',final:'الباقي'};
+  function payFlow(o,k,methods){
+    var S=payState(o), c=pcur(o), pm=(P&&P.payments)||{}, m=methods.filter(function(x){return x.id===o.method})[0], has=!!(o.method&&pm[o.method]);
+    var step=function(n,ok,title,body){ return '<li class="pstep'+(ok?' ok':'')+'"><i>'+(ok?'✓':n)+'</i><div><b>'+title+'</b>'+body+'</div></li>'; };
+    var methodSel='<select data-of="method" data-pmethod="'+k+'"><option value="">اختر…</option>'+methods.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===o.method?' selected':'')+'>'+esc(x.name)+'</option>'}).join('')+'</select>';
+    var acct= !o.method? '' : has? '<div class="pnote ok">✓ حساب الاستلام جاهز: <span dir="auto">'+esc(String(pm[o.method]).split('\n')[0].slice(0,60))+'</span></div>'
+      : '<div class="pnote warn">لسا ما كتبت على أي حساب بيدفع العميل بـ'+esc(m?m.name:o.method)+'. اكتبه هون مرة وحدة وبينحفظ لكل الطلبات:<textarea data-pacct="'+esc(o.method)+'" dir="auto" placeholder="مثال: إيميل PayPal أو Binance ID أو اسم المستلم والمدينة"></textarea></div>';
+    var ask='', got='';
+    if(S.done) got='<div class="pnote ok">✓ مدفوع بالكامل'+(o.invoice?' · فاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="final">أعد إرسالها</button>':'')+'</div>';
+    else {
+      ask='<button class="btn sm primary" type="button" data-pask="'+k+'"'+(o.email?'':' disabled')+'>'+(S.asked?'أعد إرسال طلب الدفع':'اطلب الدفع من العميل')+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span>'+(S.stage!=='full'?' ('+STG[S.stage]+')':'')+'</button>'+
+        (S.asked?'<div class="pnote">'+(S.receipt?'📎 العميل رفع إيصال الدفع — تأكّد من وصول المبلغ واكبس «وصل الدفع».':'⏳ وصل للعميل طلب دفع '+esc(o.payInfo.amount)+' · '+esc(new Date(o.payInfo.at).toLocaleString('ar',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+(o.payInfo.reminded?' · ⏰ وصله تذكير':'')+'</div>'):'');
+      got='<button class="btn sm'+(S.asked?' primary':'')+'" type="button" data-pgot="'+k+'">✓ وصل '+STG[S.stage]+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span></button><div class="pnote">بينعمل فاتورة برقم تسلسلي وبتنبعت للعميل بالإيميل تلقائياً.</div>';
+    }
+    var depLine= o.deposit&&o.deposit.paid? '<div class="pnote ok">✓ العربون مدفوع <span dir="ltr">'+esc(pfmt(pnum(o.deposit.amount),c))+'</span>'+(o.deposit.invoice?' · فاتورة <b dir="ltr">'+esc(o.deposit.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="deposit">أعد إرسالها</button>':'')+'</div>':'';
+    return '<div class="pflow"><div class="ph"><b>مسار الدفع</b><span class="small muted">'+(S.done?'مكتمل':S.stage==='final'?'باقي الدفعة النهائية':'خطوة بخطوة')+'</span></div><ol>'+
+      step(1,S.total>0,'السعر النهائي','<input data-of="price" dir="ltr" value="'+esc(o.price)+'" placeholder="'+esc(o.total)+'">')+
+      step(2,true,'خطة الدفع','<div class="prow"><select data-of="plan" data-pplan="'+k+'"><option value="full"'+(S.plan==='full'?' selected':'')+'>المبلغ كامل دفعة وحدة</option><option value="split"'+(S.plan==='split'?' selected':'')+'>عربون والباقي قبل التسليم</option></select>'+
+        (S.plan==='split'?'<label class="pct">العربون <input data-of="depositPct" type="number" min="10" max="90" value="'+esc(S.pct)+'">%</label>':'')+'</div>')+
+      step(3,has,'طريقة الدفع وحساب الاستلام',methodSel+acct)+
+      step(4,S.done,'الدفع',depLine+ask+got)+
+    '</ol></div>';
+  }
+  function orderReq(o,extra,btn,okMsg){
+    var box=btn.closest('.order'), d=readOrderForm(box); Object.assign(d,extra||{}); d.key=o.key;
+    if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return Promise.resolve(); }
+    btn.disabled=true;
+    return fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify(d)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
+      .then(function(j){ Object.assign(o,j.order); renderOrders(); var d2=document.querySelector('[data-okey="'+o.key+'"]'); if(d2) d2.open=true; toast(okMsg); })
+      .catch(function(e){ btn.disabled=false; toast(({'set price and method first':'اكتب السعر واختر طريقة الدفع أولاً','no private details for this method':'اكتب حساب الاستلام بالخطوة 3'})[e.message]||'تعذّر، جرّب مرة ثانية',true); });
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-pask],[data-pgot]'); if(!b) return;
+    var o=orderOf(b.dataset.pask||b.dataset.pgot), box=b.closest('.order'), d=readOrderForm(box);
+    if(b.dataset.pask){
+      if(!pnum(d.price)){ toast('اكتب السعر النهائي بالخطوة 1',true); box.querySelector('[data-of="price"]').focus(); return; }
+      if(!d.method){ toast('اختر طريقة الدفع بالخطوة 3',true); box.querySelector('[data-pmethod]').focus(); return; }
+      var ta=box.querySelector('[data-pacct]'), save=Promise.resolve();
+      if(ta){ var v=ta.value.trim(); if(!v){ toast('اكتب حساب الاستلام بالخطوة 3',true); ta.focus(); return; }
+        P=P||{}; P.payments=P.payments||{}; P.payments[ta.dataset.pacct]=v;
+        save= LIVE? fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); }) : Promise.resolve(savePrivDraft()); }
+      save.then(function(){ return orderReq(o,{sendPayment:true},b,'وصل طلب الدفع لحساب العميل وإيميله'); }).catch(function(){ toast('ما انحفظ حساب الاستلام، جرّب مرة ثانية',true); });
+    } else {
+      var S=payState(Object.assign({},o,d)), extra= S.stage==='deposit'? {depositPaid:true} : {paid:true};
+      orderReq(o,extra,b,'تمام! انعملت الفاتورة وانبعتت للعميل');
+    }
+  });
+  document.addEventListener('change',function(e){ var el=e.target; if(!el.matches('[data-pmethod],[data-pplan]')) return;
+    var o=orderOf(el.dataset.pmethod||el.dataset.pplan), box=el.closest('.order'), d=readOrderForm(box); Object.assign(o,{method:d.method,plan:d.plan,price:d.price,depositPct:d.depositPct});
+    var fl=box.querySelector('.pflow'); if(fl){ var tmp=document.createElement('div'); tmp.innerHTML=payFlow(o,esc(o.key),((C.payments&&C.payments.methods)||[])); fl.replaceWith(tmp.firstChild); } });
+
   function renderOrders(){
     renderTabs();
     var list=ORDERS.filter(function(o){ return OFILTER==='all'||o.status===OFILTER; });
@@ -281,24 +341,11 @@
           '<div class="small muted" style="margin-top:8px">السجل</div><div class="small">'+(o.history||[]).map(function(h){return esc(ST[h.status]||h.status)+' · '+esc(new Date(h.at).toLocaleString('ar'))}).join('<br>')+'</div>'+
         '</div><div class="ofields">'+
           '<div class="row"><div class="field"><label>الحالة</label><select data-of="status">'+Object.keys(ST).map(function(s2){return '<option value="'+s2+'"'+(s2===o.status?' selected':'')+'>'+ST[s2]+'</option>'}).join('')+'</select></div>'+
-          '<div class="field"><label>السعر النهائي</label><input data-of="price" dir="ltr" value="'+esc(o.price)+'" placeholder="'+esc(o.total)+'"></div></div>'+
-          '<div class="row"><div class="field"><label>طريقة الدفع</label><select data-of="method"><option value="">—</option>'+methods.map(function(m){return '<option value="'+esc(m.id)+'"'+(m.id===o.method?' selected':'')+'>'+esc(m.name)+'</option>'}).join('')+'</select></div>'+
-          '<div class="field"><label>المبلغ المستلم</label><input data-of="paidAmount" dir="ltr" value="'+esc(o.paidAmount)+'"></div></div>'+
-          '<div class="paysend"><div class="small muted">الدفع</div><div class="row"><div class="field"><label>المبلغ المطلوب الآن (فارغ = السعر كامل، أو اكتب عربوناً)</label><input data-payamt dir="ltr" placeholder="'+esc(o.price||o.total||'')+'" value="'+esc((o.payInfo&&o.payInfo.amount!==o.price&&o.payInfo.amount)||'')+'"></div></div>'+
-            (o.email?'<button class="btn sm primary" type="button" data-opay="'+k+'">'+(o.payInfo?'أعد إرسال تفاصيل الدفع':'أرسل تفاصيل الدفع للعميل')+'</button>':'')+
-            '<div class="small muted" style="margin-top:4px">يرسل تفاصيل «طريقة الدفع» المختارة من «تفاصيل الدفع الخاصة» ككرت دفع في حساب العميل، ويحوّل الحالة إلى «بانتظار الدفع».</div></div>'+
-          (function(){ var Pm=C.payments||{}, plan=o.plan||Pm.defaultPlan||'full', pct=o.depositPct||Pm.depositPct||50, dp=o.deposit&&o.deposit.paid;
-            return '<div class="row"><div class="field"><label>خطة الدفع</label><select data-of="plan"><option value="full"'+(plan==='full'?' selected':'')+'>كامل المبلغ</option><option value="split"'+(plan==='split'?' selected':'')+'>عربون + الباقي قبل التسليم</option></select></div>'+
-              '<div class="field"><label>نسبة العربون %</label><input data-of="depositPct" type="number" min="10" max="90" value="'+esc(pct)+'"></div></div>'+
-              (plan==='split'?'<label class="check"><input type="checkbox" data-of="depositPaid"'+(dp?' checked':'')+'> وصل العربون <span class="small muted">— فاتورة عربون تُرسل تلقائياً، وبعدها «أرسل تفاصيل الدفع» يرسل الباقي</span></label>'+
-                (o.deposit&&o.deposit.invoice?'<div class="small" style="margin:4px 0 8px">🧾 فاتورة العربون <b dir="ltr">'+esc(o.deposit.invoice.no)+'</b> · <span dir="ltr">'+esc(o.deposit.amount)+'</span> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="deposit">أعد إرسالها</button></div>':''):'');
-          })()+
-          '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> '+((o.plan||(C.payments||{}).defaultPlan)==='split'?'وصلت الدفعة النهائية':'تم استلام الدفع')+' <span class="small muted">— عند الحفظ تُصدر فاتورة برقم تسلسلي وتُرسل للعميل بالإيميل</span></label>'+
-          (o.invoice?'<div class="small" style="margin:4px 0 8px">🧾 الفاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> · '+esc(new Date(o.invoice.at).toLocaleDateString('ar'))+' <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="final">أعد إرسال الفاتورة</button></div>':'')+
-          (o.payInfo&&o.payInfo.reminded?'<div class="small muted">⏰ وصل للعميل تذكير تلقائي بالدفع · '+esc(new Date(o.payInfo.reminded).toLocaleString('ar'))+'</div>':'')+
+          '</div>'+
+          payFlow(o,k,methods)+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
-          '<div class="small muted" style="margin-top:6px">رد سريع</div><div class="actions"><button class="btn sm" type="button" data-reply="confirm" data-ok="'+k+'">تأكيد + تفاصيل الدفع</button><button class="btn sm" type="button" data-reply="paid" data-ok="'+k+'">وصل الدفع</button><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">تم التسليم</button></div>'+
+          '<div class="small muted" style="margin-top:6px">رسالة جاهزة</div><div class="actions"><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">رسالة التسليم</button></div>'+
           '<div class="replybox" hidden><textarea class="replytext" dir="auto"></textarea><div class="actions">'+(o.email?'<button class="btn sm primary" type="button" data-sendreply="'+k+'">أرسل في محادثة الموقع</button>':'')+'<button class="btn sm" type="button" data-copyreply>نسخ الرسالة</button><a class="btn sm" data-openreply target="_blank" rel="noopener">افتح المحادثة الخارجية</a></div></div>'+
         '</div></div></div></details>';
     }).join('')+'</div>';
@@ -341,14 +388,6 @@
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
     if(b.dataset.oinv){ var oi=orderOf(b.dataset.oinv); if(!LIVE||oi.demo){ toast('يعمل على الموقع المنشور',true); return; } b.disabled=true;
       fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:oi.key,resendInvoice:b.dataset.kind||'final'})}).then(function(r){ if(!r.ok) throw 0; toast('أُرسلت الفاتورة إلى بريد العميل'); }).catch(function(){ toast('تعذّر الإرسال',true); }).then(function(){ b.disabled=false; }); return; }
-    if(b.dataset.opay){ var bx=b.closest('.order'), dd=readOrderForm(bx), oo=orderOf(b.dataset.opay);
-      if(!dd.price&&!oo.price){ toast('اكتب السعر النهائي أولاً',true); return; } if(!dd.method){ toast('اختر طريقة الدفع أولاً',true); return; }
-      if(!((P&&P.payments)||{})[dd.method]){ toast('أضف تفاصيل هذه الطريقة في «طرق الدفع ← تفاصيل الدفع الخاصة» وانشر',true); return; }
-      if(!LIVE||oo.demo){ toast('يعمل على الموقع المنشور',true); return; }
-      dd.key=oo.key; dd.sendPayment=true; dd.payAmount=bx.querySelector('[data-payamt]').value.trim(); b.disabled=true;
-      fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify(dd)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
-        .then(function(j){ Object.assign(oo,j.order); renderOrders(); var d2=document.querySelector('[data-okey="'+oo.key+'"]'); if(d2) d2.open=true; toast('وصلت تفاصيل الدفع إلى حساب العميل'); })
-        .catch(function(err){ b.disabled=false; toast(/private/.test(err.message)?'لا توجد تفاصيل دفع خاصة لهذه الطريقة':'تعذّر الإرسال',true); }); return; }
     if(b.dataset.osend){ sendMsg(b.dataset.osend, b.closest('.asend').querySelector('textarea').value, b, PEND[b.dataset.osend]); return; }
     if(b.dataset.sendreply){ sendMsg(b.dataset.sendreply, b.closest('.replybox').querySelector('textarea').value, b); return; }
     if(b.dataset.osave){ var box=b.closest('.order'), d=readOrderForm(box), o=orderOf(b.dataset.osave);

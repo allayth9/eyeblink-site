@@ -3,18 +3,20 @@
    (cyan at the top, blue in the body, the violet-pink "belt of Venus" at the bottom).
    The pointer turns it and presses into it. Anchors to [data-field-anchor] when present. */
 (function(){
-  var canvas=document.getElementById('field');
+  var canvas=document.getElementById('field'), root2=document.documentElement;
   if(!canvas||!window.THREE) return;
   var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   var renderer;
   try{ renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,alpha:true,powerPreference:'high-performance'}); }catch(e){ return; }
-  var DPR=Math.min(window.devicePixelRatio||1,SMALL?1.5:2);
+  // phones: fewer points, a lighter pixel ratio and ~30 fps, so scrolling stays smooth
+  var SMALL=Math.min(innerWidth,innerHeight)<700, COARSE=matchMedia('(pointer: coarse)').matches;
+  var DPR=Math.min(window.devicePixelRatio||1,SMALL||COARSE?1:1.75);
   renderer.setPixelRatio(DPR);
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(35,1,0.1,100); camera.position.z=7;
 
   // lat-long grid of points -> visible rows, like a woven light
-  var SMALL=Math.min(innerWidth,innerHeight)<700, ROWS=SMALL?70:110, COLS=SMALL?110:170, n=ROWS*COLS, pos=new Float32Array(n*3), seed=new Float32Array(n), k=0;
+  var ROWS=SMALL?64:110, COLS=SMALL?110:170, n=ROWS*COLS, pos=new Float32Array(n*3), seed=new Float32Array(n), k=0;
   for(var i=0;i<ROWS;i++){
     var v=(i+0.5)/ROWS, phi=Math.acos(1-2*v);
     for(var j=0;j<COLS;j++){
@@ -131,8 +133,12 @@
     return {x:w2.x,y:w2.y,s:halfH*(W<760?0.62:0.78),a:0.85,sx:px,sy:py};
   }
 
+  var lastF=0, MINF=COARSE?32:0;
   function frame(now){
     if(!visible) return;
+    // nothing to draw while a full-screen window (player, order) covers the page
+    if(root2.classList.contains('modal-open')){ if(!reduce) requestAnimationFrame(frame); return; }
+    if(MINF && now-lastF<MINF){ if(!reduce) requestAnimationFrame(frame); return; } lastF=now;
     var t=(now-t0)/1000;
     if(now-last>2500) tpress=0;
     mouse.x+=(mouse.tx-mouse.x)*0.08; mouse.y+=(mouse.ty-mouse.y)*0.08;

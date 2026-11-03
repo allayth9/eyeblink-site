@@ -18,33 +18,6 @@
   }
   addEventListener('pageshow',function(e){ if(e.persisted){ lids.classList.remove('shut'); root.classList.remove('arriving'); } });
 
-  /* ---------- cursor: a pupil inside an almond ---------- */
-  var dot,ring,rx=-100,ry=-100;
-  if(false){ // custom cursor retired: the site uses a styled native cursor (site.css)
-    dot=document.createElement('div'); dot.className='cur cur-dot';
-    ring=document.createElement('div'); ring.className='cur cur-ring';
-    ring.innerHTML='<svg viewBox="0 0 46 30" aria-hidden="true"><defs><linearGradient id="curGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FE0E8"/><stop offset=".55" stop-color="#2E62FF"/><stop offset="1" stop-color="#8B5CFF"/></linearGradient></defs><path d="M2,15 Q23,-5 44,15 Q23,35 2,15 Z"/></svg>';
-    document.body.appendChild(ring); document.body.appendChild(dot); root.classList.add('cursor-on');
-    addEventListener('pointermove',function(e){
-      dot.classList.remove('hide'); ring.classList.remove('hide');
-      var t=e.target.closest&&e.target;
-      var hov=!!(t&&t.closest('a,button,.proj,.pkg,[role="button"],summary'));
-      var typing=!!(t&&t.closest('input,textarea,select'));
-      ring.classList.toggle('hover',hov); dot.classList.toggle('hover',hov);
-      ring.classList.toggle('typing',typing); dot.classList.toggle('typing',typing);
-      dot.classList.toggle('on-glass',!!(t&&t.closest('.glass')));
-    },{passive:true});
-    addEventListener('pointerdown',function(){ ring.classList.add('down'); });
-    addEventListener('pointerup',function(){ ring.classList.remove('down'); });
-    document.addEventListener('pointerleave',function(){ dot.classList.add('hide'); ring.classList.add('hide'); });
-    (function loop(){
-      rx+=(px-rx)*(reduce?1:0.32); ry+=(py-ry)*(reduce?1:0.32);
-      dot.style.transform='translate3d('+px+'px,'+py+'px,0)';
-      ring.style.transform='translate3d('+rx.toFixed(1)+'px,'+ry.toFixed(1)+'px,0)';
-      requestAnimationFrame(loop);
-    })();
-  }
-
   /* ---------- the hero eye (the only living mark) ---------- */
   var hero=document.querySelector('.orb .eb-mark');
   var orb=document.querySelector('.orb.opening');
@@ -159,8 +132,10 @@
     });
   }
   function clamp(v){ return v<0?0:v>1?1:v; }
+  var STILL=!fine;          // phones and tablets: things are simply there — no scroll-scrubbed motion, no lag
   function targets(){
     var H=innerHeight;
+    if(STILL){ for(var q=0;q<items.length;q++){ var s=items[q]; s.enter=s.exit=s.t=1; } return; }
     for(var k=0;k<items.length;k++){
       var it=items[k], r=it.el.getBoundingClientRect();
       var enter=clamp((H - r.top)/(H*0.42) - it.i*0.1);           // rises in over the lower 40% of the screen, staggered in a row

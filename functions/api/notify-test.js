@@ -118,7 +118,7 @@ async function notifyClient(env, o, kind, text){
 // ---- money helpers ----
 function num(v){ const n = parseFloat(String(v ?? "").replace(/,/g, "").replace(/[^0-9.]/g, "")); return isFinite(n) ? n : 0; }
 function curOf(o){ return o.cur || (String(o.price || o.total || "").match(/[^\d\s.,]+/) || ["$"])[0]; }
-function fmt(n, c){ const v = (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); return c === "$" || c === "€" || c === "£" ? c + v : v + " " + c; }
+function fmt(n, c){ const neg = n < 0, a = Math.abs(n), v = (Math.round(a * 100) / 100).toFixed(a % 1 ? 2 : 0); return (neg ? "−" : "") + (c === "$" || c === "€" || c === "£" ? c + v : v + " " + c); }
 function totalOf(o){ return num(o.price) || (o.items || []).reduce((a, x) => a + num(x.unit) * (num(x.qty) || 1), 0) || num(o.total); }
 // what the client pays at each step: everything at once, or a deposit and then the rest
 function stageOf(o){ if (o.plan === "split") return (o.deposit && o.deposit.paid) ? "final" : "deposit"; return "full"; }
@@ -127,63 +127,81 @@ function stageAmount(o, stage){ const t = totalOf(o), pct = num(o.depositPct) ||
   if (stage === "final") return Math.max(0, t - num((o.deposit || {}).amount)); return t; }
 const STAGE = { ar:{ full:"كامل المبلغ", deposit:"العربون", final:"الدفعة النهائية" }, en:{ full:"Full amount", deposit:"Deposit", final:"Final payment" } };
 
-// ---- the invoice: compact (fits an e-mail), Eyeblink colours; one design for e-mail, the account page and PDF ----
+// ---- the invoice: a quiet, precise document (white, small type, thin rules) — one design for e-mail, the account page and PDF ----
+const INV_T = {
+  en:{ title:"Invoice", no:"Invoice no.", date:"Date issued", order:"Order", status:"Status", from:"From", to:"Billed to", desc:"Description", qty:"Qty", unit:"Unit price", amount:"Amount",
+       sub:"Subtotal", dep:"Deposit paid", paid:"Amount paid", bal:"Balance due", method:"Payment method", paidOn:"Paid on", st:{ full:"Paid", final:"Paid in full", deposit:"Deposit paid" },
+       adj:"Adjustment (agreed on the brief)", disc:"Discount", note:{ deposit:"The balance is due before final delivery.", other:"Thank you for working with Eyeblink Studio." }, svc:"Video editing · Motion graphics · Film" },
+  ar:{ title:"فاتورة", no:"رقم الفاتورة", date:"تاريخ الإصدار", order:"رقم الطلب", status:"الحالة", from:"من", to:"إلى", desc:"البيان", qty:"الكمية", unit:"سعر الوحدة", amount:"المبلغ",
+       sub:"المجموع", dep:"العربون المدفوع", paid:"المبلغ المدفوع", bal:"المتبقي", method:"طريقة الدفع", paidOn:"تاريخ الدفع", st:{ full:"مدفوعة", final:"مدفوعة بالكامل", deposit:"عربون مدفوع" },
+       adj:"تعديل حسب البريف المتفق عليه", disc:"خصم", note:{ deposit:"المبلغ المتبقي يُدفع قبل التسليم النهائي.", other:"شكراً لتعاملك مع Eyeblink Studio." }, svc:"مونتاج · موشن غرافيك · أفلام" } };
 function invoiceHTML(o, inv, opt){
-  opt = opt || {}; const c = curOf(o), total = totalOf(o);
+  opt = opt || {}; const en = o.lang === "en", L = INV_T[en ? "en" : "ar"], dir = en ? "ltr" : "rtl", s = en ? "left" : "right", e = en ? "right" : "left";
+  const c = curOf(o), total = totalOf(o);
   let lines = (o.items || []).filter(x => x && x.name).map(x => ({ name: x.name, qty: num(x.qty) || 1, unit: num(x.unit) }));
   if (!lines.length) lines = [{ name: o.packageName || o.package || "Service", qty: o.qty || 1, unit: total / (o.qty || 1) }];
   const sub = lines.reduce((a, x) => a + x.unit * x.qty, 0);
-  if (Math.abs(sub - total) > 0.009 && total) lines.push({ name: total < sub ? "Discount / خصم" : "Adjustment / تعديل حسب البريف", qty: 1, unit: total - sub });
-  const d = new Date(inv.at || Date.now()), date = d.toLocaleDateString("en-GB", { year:"numeric", month:"long", day:"numeric" });
-  const dep = num((o.deposit || {}).amount), paidNow = num(inv.amount) || total;
-  const balance = inv.kind === "deposit" ? Math.max(0, total - paidNow) : 0;
-  const pill = inv.kind === "deposit" ? ["DEPOSIT PAID · عربون مدفوع", "#e3f0ff", "#1d4fd8"] : ["PAID · مدفوعة", "#dcf7e6", "#127a3a"];
-  const td = "padding:9px 10px;border-bottom:1px solid #e9edf5;font-size:13px;color:#0b1236";
-  const row = (k, v, strong) => `<tr><td style="padding:5px 10px;font-size:${strong?14:12.5}px;color:${strong?"#0b1236":"#5b6785"};font-weight:${strong?"bold":"normal"};text-align:right">${k}</td><td style="padding:5px 10px;font-size:${strong?14:12.5}px;font-weight:bold;color:#0b1236;text-align:right;white-space:nowrap">${v}</td></tr>`;
+  if (Math.abs(sub - total) > 0.009 && total) lines.push({ name: total < sub ? L.disc : L.adj, qty: 1, unit: total - sub });
+  const kind = inv.kind || "full", d = new Date(inv.at || Date.now()), date = d.toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" });
+  const dep = num((o.deposit || {}).amount), paidNow = num(inv.amount) || total, balance = kind === "deposit" ? Math.max(0, total - paidNow) : 0;
   const method = (o.payInfo && o.payInfo.methodName) || o.method || "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="ltr" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Arial,Tahoma,sans-serif;text-align:left;border:1px solid #e3e8f2">
-<tr><td style="background:#04061A;background-image:linear-gradient(120deg,#04061A 0%,#0b1236 55%,#1b1f6b 100%);padding:20px 22px">
+  const F = "font-family:Arial,Helvetica,sans-serif;", ink = "#14172b", grey = "#6b7286", rule = "#e7e9f0";
+  const lab = `${F}font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${grey};`;
+  const val = `${F}font-size:12.5px;color:${ink};`;
+  const num_ = `direction:ltr;unicode-bidi:isolate;white-space:nowrap;`;
+  const th = `padding:0 0 8px;border-bottom:1px solid ${ink};${lab}`;
+  const td = `padding:11px 0;border-bottom:1px solid ${rule};${val}vertical-align:top;`;
+  const tot = (k, v, strong) => `<tr><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${strong?ink:grey};font-weight:${strong?"bold":"normal"};text-align:${s}">${k}</td><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${ink};font-weight:${strong?"bold":"normal"};text-align:${e};${num_}">${v}</td></tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid ${rule};border-radius:10px;text-align:${s};-webkit-print-color-adjust:exact;print-color-adjust:exact">
+<tr><td style="height:3px;line-height:3px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:10px 10px 0 0">&nbsp;</td></tr>
+<tr><td style="padding:26px 30px 0">
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-  <td style="vertical-align:middle"><img src="${SITE}/assets/img/email-logo.png" width="150" alt="EYEBLINK STUDIO" style="display:block;width:150px;height:auto;border:0"></td>
-  <td style="vertical-align:middle;text-align:right"><div style="font:bold 24px/1 Arial,sans-serif;letter-spacing:3px;color:#ffffff">INVOICE</div><div style="font:12px/1.6 Arial,sans-serif;color:#3FE0E8;letter-spacing:1px;margin-top:4px">#${h(inv.no)}</div></td>
- </tr></table></td></tr>
-<tr><td style="height:3px;line-height:3px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF)">&nbsp;</td></tr>
-<tr><td style="padding:18px 22px 6px">
- <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-  <td style="vertical-align:top;width:50%"><div style="font-size:10.5px;letter-spacing:1.5px;color:#8a95ad;font-weight:bold">FROM</div><div style="font-size:14px;font-weight:bold;color:#0b1236;margin-top:4px">Eyeblink Studio</div><div style="font-size:12px;color:#5b6785;line-height:1.6">Video Editing · Motion · Film<br>eyeblinkstudio.com${opt.email?"<br>"+h(opt.email):""}</div></td>
-  <td style="vertical-align:top;width:50%;text-align:right"><div style="font-size:10.5px;letter-spacing:1.5px;color:#8a95ad;font-weight:bold">BILL TO</div><div style="font-size:14px;font-weight:bold;color:#0b1236;margin-top:4px">${h(o.name)}</div><div style="font-size:12px;color:#5b6785;line-height:1.6">${h(o.email)}</div></td>
- </tr></table>
- <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;background:#f5f7fb;border-radius:10px"><tr>
-  <td style="padding:10px 12px;font-size:12px;color:#5b6785">Issue date<br><b style="color:#0b1236;font-size:13px">${date}</b></td>
-  <td style="padding:10px 12px;font-size:12px;color:#5b6785">Order<br><b style="color:#0b1236;font-size:13px">${h(o.code)}</b></td>
-  <td style="padding:10px 12px;text-align:right"><span style="display:inline-block;padding:5px 10px;border-radius:99px;background:${pill[1]};color:${pill[2]};font:bold 11px Arial;letter-spacing:.5px">✓ ${pill[0]}</span></td>
+  <td style="vertical-align:middle;text-align:${s}"><img src="${SITE}/assets/img/invoice-logo.png" width="184" height="20" alt="Eyeblink Studio" style="display:inline-block;width:184px;height:20px;border:0"></td>
+  <td style="vertical-align:middle;text-align:${e};${F}font-size:20px;font-weight:bold;color:${ink};letter-spacing:.01em">${L.title}</td>
  </tr></table>
 </td></tr>
-<tr><td style="padding:12px 22px 0">
+<tr><td style="padding:22px 30px 0">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  <td style="vertical-align:top;width:34%;text-align:${s}"><div style="${lab}">${L.no}</div><div style="${val}margin-top:4px;${num_}">${h(inv.no)}</div></td>
+  <td style="vertical-align:top;width:33%;text-align:${s}"><div style="${lab}">${L.date}</div><div style="${val}margin-top:4px">${date}</div></td>
+  <td style="vertical-align:top;width:33%;text-align:${s}"><div style="${lab}">${L.order}</div><div style="${val}margin-top:4px;${num_}">${h(o.code)}</div></td>
+ </tr></table>
+</td></tr>
+<tr><td style="padding:22px 30px 0">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  <td style="vertical-align:top;width:50%;text-align:${s};padding-${e}:12px"><div style="${lab}">${L.from}</div><div style="${val}margin-top:5px;font-weight:bold">Eyeblink Studio</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey}">${L.svc}<br><span style="${num_}">eyeblinkstudio.com</span>${opt.email?`<br><span style="${num_}">${h(opt.email)}</span>`:""}</div></td>
+  <td style="vertical-align:top;width:50%;text-align:${s}"><div style="${lab}">${L.to}</div><div style="${val}margin-top:5px;font-weight:bold">${h(o.name)}</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey};${num_}">${h(o.email)}</div></td>
+ </tr></table>
+</td></tr>
+<tr><td style="padding:26px 30px 0">
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-  <tr style="background:#0b1236"><td style="padding:9px 10px;font-size:11.5px;color:#fff;font-weight:bold;border-radius:8px 0 0 8px">Description / البيان</td><td style="padding:9px 6px;font-size:11.5px;color:#fff;font-weight:bold;text-align:center">Qty</td><td style="padding:9px 6px;font-size:11.5px;color:#fff;font-weight:bold;text-align:right">Unit</td><td style="padding:9px 10px;font-size:11.5px;color:#fff;font-weight:bold;text-align:right;border-radius:0 8px 8px 0">Total</td></tr>
-  ${lines.map((x, i) => `<tr style="background:${i%2?"#fafbfd":"#ffffff"}"><td style="${td}">${h(x.name)}</td><td style="${td};text-align:center">${x.qty}</td><td style="${td};text-align:right;white-space:nowrap">${fmt(x.unit, c)}</td><td style="${td};text-align:right;font-weight:bold;white-space:nowrap">${fmt(x.unit * x.qty, c)}</td></tr>`).join("")}
+  <tr><td style="${th}text-align:${s}">${L.desc}</td><td style="${th}text-align:center;width:52px">${L.qty}</td><td style="${th}text-align:${e};width:92px">${L.unit}</td><td style="${th}text-align:${e};width:92px">${L.amount}</td></tr>
+  ${lines.map(x => `<tr><td style="${td}text-align:${s}">${h(x.name)}</td><td style="${td}text-align:center;${num_}">${x.qty}</td><td style="${td}text-align:${e};color:${grey};${num_}">${fmt(x.unit, c)}</td><td style="${td}text-align:${e};${num_}">${fmt(x.unit * x.qty, c)}</td></tr>`).join("")}
  </table>
- <table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px 0 0 auto;min-width:240px">
-  ${row("Total / الإجمالي", fmt(total, c))}
-  ${inv.kind === "final" && dep ? row("Deposit paid / العربون المدفوع", "−" + fmt(dep, c)) : ""}
-  <tr><td colspan="2" style="padding:0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b1236;border-radius:8px;margin-top:4px"><tr><td style="padding:10px 12px;color:#fff;font-size:13px;font-weight:bold">${inv.kind === "deposit" ? "DEPOSIT PAID · العربون" : "PAID · المدفوع"}</td><td style="padding:10px 12px;color:#3FE0E8;font-size:16px;font-weight:bold;text-align:right;white-space:nowrap">${fmt(paidNow, c)}</td></tr></table></td></tr>
-  ${inv.kind === "deposit" ? row("Balance due / المتبقي", fmt(balance, c), 1) : ""}
+ <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;margin-${s}:auto;width:260px;max-width:100%">
+  ${tot(L.sub, fmt(total, c))}
+  ${kind === "final" && dep ? tot(L.dep, "−" + fmt(dep, c)) : ""}
+  <tr><td colspan="2" style="padding:6px 0 0;border-top:1px solid ${ink}"></td></tr>
+  ${tot(L.paid, fmt(paidNow, c), 1)}
+  ${kind === "deposit" ? tot(L.bal, fmt(balance, c)) : ""}
  </table>
 </td></tr>
-<tr><td style="padding:14px 22px 18px">
- ${method ? `<div style="font-size:12px;color:#5b6785">Payment method / طريقة الدفع: <b style="color:#0b1236">${h(method)}</b></div>` : ""}
- <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e9edf5;font-size:11.5px;color:#8a95ad;line-height:1.7">Thank you for working with us. · شكراً لثقتك بنا.<br>${inv.kind === "deposit" ? "The balance is due before final delivery. · المتبقي يُدفع قبل التسليم النهائي." : "This invoice confirms your payment in full for this stage. · هذه الفاتورة تأكيد لاستلام الدفعة."}</div>
+<tr><td style="padding:22px 30px 0">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fa;border-radius:8px"><tr>
+  <td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.status}</div><div style="${F}font-size:12px;margin-top:4px;color:#127a3a;font-weight:bold">● ${L.st[kind]}</div></td>
+  ${method ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.method}</div><div style="${val}margin-top:4px">${h(method)}</div></td>` : ""}
+  <td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${date}</div></td>
+ </tr></table>
 </td></tr>
-<tr><td style="background:#f5f7fb;padding:10px 22px;font-size:11px;color:#8a95ad;text-align:center;letter-spacing:.5px">EYEBLINK STUDIO · eyeblinkstudio.com · @eyeblnk</td></tr>
+<tr><td style="padding:20px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${kind === "deposit" ? L.note.deposit + " " : ""}${L.note.other}</td></tr>
 </table>`;
 }
-// the invoice as its own page (account → «الفاتورة», saves as a small PDF)
+// the invoice as its own page (account → «الفاتورة»): small A5 PDF, colours kept when printing
 function invoicePage(o, inv, opt){
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ${h(inv.no)} — Eyeblink Studio</title>
-<style>@page{size:150mm 190mm;margin:6mm}html,body{margin:0;background:#e9edf5}body{padding:18px 10px}@media print{html,body{background:#fff}body{padding:0}.bar{display:none}}
-.bar{max-width:560px;margin:0 auto 12px;display:flex;justify-content:flex-end;gap:8px}.bar button{font:bold 13px Arial;border:0;border-radius:99px;padding:10px 18px;background:#0b1236;color:#fff;cursor:pointer}</style></head>
-<body><div class="bar"><button onclick="print()">Save PDF · حفظ PDF</button></div>${invoiceHTML(o, inv, opt)}</body></html>`;
+  return `<!doctype html><html lang="${o.lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(inv.no)} · Eyeblink Studio</title>
+<style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}body{padding:0}
+@media print{html,body{background:#fff}table{max-width:none!important;border:0!important}}img{image-rendering:auto}</style></head>
+<body>${invoiceHTML(o, inv, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
 }
 
 // ---- client e-mails: the request summary; an invoice for every payment ----

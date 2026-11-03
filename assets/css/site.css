@@ -65,16 +65,6 @@ a{color:inherit;text-decoration:none}
 .grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.08;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");animation:grain 1.2s steps(6) infinite}
 @keyframes grain{0%{background-position:0 0}20%{background-position:-37px 21px}40%{background-position:29px -43px}60%{background-position:-18px -9px}80%{background-position:41px 33px}100%{background-position:0 0}}
 
-/* ---------- custom cursor: a pupil and its iris ---------- */
-.cursor-on,.cursor-on *{cursor:none!important}
-.cur{position:fixed;left:0;top:0;z-index:200;pointer-events:none;border-radius:50%;transform:translate3d(-100px,-100px,0)}
-.cur-dot{width:8px;height:8px;margin:-4px 0 0 -4px;background:var(--light);box-shadow:0 0 10px rgba(63,224,232,.9)}
-.cur-ring{width:38px;height:38px;margin:-19px 0 0 -19px;box-shadow:inset 0 0 0 1.2px rgba(238,242,246,.55);transition:width .35s var(--ease),height .35s var(--ease),margin .35s var(--ease),background .35s,box-shadow .35s}
-.cur-ring::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--night);transform:scaleY(0);transition:transform .12s}
-.cur.hover.cur-ring{width:64px;height:64px;margin:-32px 0 0 -32px;background:rgba(63,224,232,.08);box-shadow:inset 0 0 0 1px rgba(63,224,232,.75);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.cur.down.cur-ring{width:30px;height:30px;margin:-15px 0 0 -15px}
-.cur.down.cur-ring::after{transform:scaleY(1)}
-.cur.hide{opacity:0}
 
 /* ---------- liquid glass ---------- */
 .glass{position:relative;isolation:isolate;border-radius:var(--r);
@@ -144,8 +134,6 @@ h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.42;margin:0;te
 .hero h1{font-size:clamp(40px,6.2vw,78px);line-height:1.6;margin-block:14px 18px}
 :lang(en) .hero h1{font-size:clamp(40px,5.8vw,74px);line-height:1.14}
 .actions{display:flex;flex-wrap:wrap;gap:12px}
-.tagline{margin-top:34px;display:flex;align-items:center;gap:14px;color:var(--dim);font-size:15px}
-.tagline::before{content:"";width:34px;height:1px;background:var(--line)}
 .stage{position:relative;aspect-ratio:1;max-width:min(470px,100%);width:100%;margin-inline:auto}
 .orb{position:absolute;inset:9%;border-radius:50%;display:grid;place-items:center;background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.015) 45%,rgba(46,98,255,.08))}
 .orb .eb-mark{width:76%;fill:url(#heroFlow);animation:heroGlow 6s ease-in-out infinite}
@@ -221,8 +209,6 @@ section.block{padding-block:clamp(56px,8vw,110px)}
 .plate .eb-mark{width:min(360px,90%);color:var(--light)}
 .plate .wm{font-family:var(--mark);font-weight:500;letter-spacing:.42em;font-size:clamp(22px,3vw,34px);direction:ltr;margin-inline-start:.42em;text-align:center}
 .plate .wm small{display:block;font-weight:400;font-size:.36em;letter-spacing:1.1em;color:var(--mist);margin-top:6px}
-.swatches{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.swatches span{width:40px;height:40px;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 .prose h2{font-size:clamp(30px,4.2vw,52px);margin-block:12px 20px}
 .prose p{color:var(--mist);max-width:56ch;margin:0 0 16px}
 .values{display:flex;gap:12px;flex-wrap:wrap;list-style:none;padding:0;margin:26px 0 0}
@@ -333,18 +319,6 @@ footer .c{font-family:var(--latin);font-size:13px;color:var(--dim);direction:ltr
 
 /* ===================== v3 additions ===================== */
 
-/* ---- eye cursor: a pupil inside an almond that blinks on click ---- */
-.cur-ring{width:46px;height:30px;margin:-15px 0 0 -23px;border-radius:0;box-shadow:none;background:none;transition:width .35s var(--ease),height .35s var(--ease),margin .35s var(--ease)}
-.cur-ring::after{display:none}
-.cur-ring svg{width:100%;height:100%;overflow:visible;display:block;transition:transform .14s cubic-bezier(.6,0,.9,.4)}
-.cur-ring path{fill:none;stroke:url(#curGrad);stroke-width:1.6;vector-effect:non-scaling-stroke}
-.cur.hover.cur-ring{width:76px;height:48px;margin:-24px 0 0 -38px;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
-.cur.hover.cur-ring path{stroke-width:1.2}
-.cur.down.cur-ring svg{transform:scaleY(.08)}
-.cur.down.cur-ring{width:46px;height:30px;margin:-15px 0 0 -23px}
-.cur-dot{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:radial-gradient(circle at 35% 35%,#fff 0 18%,var(--horizon) 30%,var(--hour) 100%);box-shadow:0 0 12px rgba(63,224,232,.9),0 0 22px rgba(139,92,255,.5)}
-.cur-dot{transition:box-shadow .3s,width .3s,height .3s}
-.cur-dot.on-glass{box-shadow:0 0 3px rgba(63,224,232,.45)}
 
 /* ---- particles inside glass on hover ---- */
 /* ---- water drop on entering glass: one soft ring, then gone ---- */
@@ -522,30 +496,6 @@ h1,h2,h3{font-weight:700}
 @keyframes railRipple{0%{opacity:.7;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
 @media (max-width:860px){.rail{display:none}}
 
-/* ===== cursor v3: precise pupil + soft iris that opens into an eye on links ===== */
-.cur{will-change:transform}
-.cur-dot{width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(4,6,26,.35),0 0 8px rgba(63,224,232,.55);transition:width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease),opacity .2s}
-.cur-dot.on-glass{box-shadow:0 0 0 1px rgba(4,6,26,.35)}
-.cur-ring{width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:none;box-shadow:none;
-  transition:width .45s cubic-bezier(.22,.9,.24,1),height .45s cubic-bezier(.22,.9,.24,1),margin .45s cubic-bezier(.22,.9,.24,1),opacity .2s}
-.cur-ring svg{display:none}
-.cur-ring::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;
-  background:conic-gradient(from 210deg,rgba(63,224,232,.9),rgba(46,98,255,.7),rgba(139,92,255,.75),rgba(224,123,224,.6),rgba(63,224,232,.9));
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.75;
-  transition:border-radius .45s cubic-bezier(.22,.9,.24,1),opacity .3s,transform .14s cubic-bezier(.6,0,.9,.4)}
-.cur-ring::after{display:block;content:"";position:absolute;inset:0;border-radius:inherit;background:rgba(255,255,255,.05);opacity:0;transform:none;transition:opacity .3s,border-radius .45s cubic-bezier(.22,.9,.24,1)}
-/* over something clickable: the iris widens into an almond, the pupil grows a little */
-.cur.hover.cur-ring{width:62px;height:38px;margin:-19px 0 0 -31px;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
-.cur.hover.cur-ring::before{border-radius:50% / 50%;opacity:1}
-.cur.hover.cur-ring::after{opacity:1}
-.cur-dot.hover{width:10px;height:10px;margin:-5px 0 0 -5px;background:radial-gradient(circle at 35% 35%,#fff 0 22%,var(--horizon) 40%,var(--hour))}
-/* click: a blink */
-.cur.down.cur-ring{width:34px;height:34px;margin:-17px 0 0 -17px}
-.cur.down.cur-ring::before,.cur.down.cur-ring::after{transform:scaleY(.1)}
-.cur.hover.down.cur-ring{width:62px;height:38px;margin:-19px 0 0 -31px}
-/* text fields keep the native caret */
-.cursor-on input,.cursor-on textarea,.cursor-on select{cursor:auto!important}
-.cur.typing{opacity:0}
 
 /* ===== payment methods: a row of icons ===== */
 .paylist{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;list-style:none;padding:0;margin:0}
@@ -560,7 +510,6 @@ h1,h2,h3{font-weight:700}
 .paystrip li img{height:16px;width:auto;max-width:26px;filter:none;opacity:.9}
 
 /* ===== cursor: the native pointer, rounded, smaller, with a faint glow (no lag) ===== */
-.cur{display:none!important}
 html.cur-soft,.cur-soft body{cursor:url(../img/cursor.png) 6 4,auto;cursor:-webkit-image-set(url(../img/cursor.png) 1x,url(../img/cursor@2x.png) 2x) 6 4,auto;cursor:image-set(url(../img/cursor.png) 1x,url(../img/cursor@2x.png) 2x) 6 4,auto}
 .cur-soft :is(a,button,summary,label,[role="button"],.proj,.pkg,.lang,.filters button){cursor:url(../img/cursor-link.png) 6 4,pointer;cursor:-webkit-image-set(url(../img/cursor-link.png) 1x,url(../img/cursor-link@2x.png) 2x) 6 4,pointer;cursor:image-set(url(../img/cursor-link.png) 1x,url(../img/cursor-link@2x.png) 2x) 6 4,pointer}
 input,textarea,select{cursor:text}
@@ -1373,3 +1322,42 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
 /* tools: beside the description on computers, under the animation on phones */
 .svc-tools.m{display:none}
 @media (max-width:980px){ .svc-hero .intro .svc-tools{display:none} .svc-tools.m{display:grid;margin-top:0} }
+/* client: payment steps in the request summary */
+.psteps{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.psteps ol{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.psteps li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;font-size:13.5px;color:var(--mist);line-height:1.6}
+.psteps li i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-family:var(--latin);font-size:11px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line)}
+.psteps li.ok{color:var(--light)}.psteps li.ok i{background:var(--horizon);color:var(--night);box-shadow:none;font-weight:700}
+.psteps li.now i{box-shadow:inset 0 0 0 1.5px var(--horizon);color:var(--horizon)}
+.psteps b{color:var(--light);font-weight:500}
+/* platform picks: the same "clickable" arrow as the send button; the hit area never moves (only the logo inside lifts) */
+.cur-glass .plats .pchip,.cur-glass .plats .pchip *,.cur-glass .plats .pchip input{cursor:url(../img/cursor-glass-link.png) 3 2,pointer!important;cursor:image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer!important}
+.plats .pchip:hover{transform:none!important}
+.plats .pchip .bt,.plats .pchip::before{transition:transform .35s var(--ease)}
+.plats .pchip:hover .bt,.plats .pchip:hover::before{transform:translateY(-2px) scale(1.07)}
+
+/* ===== phones: same look, lighter work for the GPU ===== */
+@media (max-width:860px),(pointer:coarse){
+  .lightbox.show,.olb.show{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(2,3,12,.94)!important}
+  .olb .obox,.plats .pchip,.dsel-list,.olb .glass{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .olb .obox{background:linear-gradient(170deg,#121a48,#070b26)!important}
+  .lb-pattern>div{animation:none!important}
+  .olb .obox{transition:opacity .35s ease,transform .45s cubic-bezier(.16,1,.3,1)!important;filter:none!important}
+  .cta.aurora::after{animation:none}
+  .glass::before{display:none}
+  .rv{transform:none!important;opacity:1!important;filter:none!important;clip-path:none!important}
+}
+/* invoice window: a fixed bar on top, the invoice scrolls under it — nothing is cut */
+.inv-modal{align-items:center;padding:16px}
+.inv-modal .inv-box{width:min(640px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;gap:0;overflow:hidden;border-radius:18px;background:#eef0f5;box-shadow:0 40px 100px -30px rgba(0,0,0,.9)}
+.inv-bar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0b1236;color:var(--light)}
+.inv-bar b{font-weight:500;font-size:15px;padding-inline:6px}
+.inv-bar .sp{flex:1}
+.inv-bar .btn{padding:9px 16px;font-size:14px}
+.inv-bar .x{position:static!important;width:40px;height:40px;padding:0;justify-content:center;font-size:20px}
+.inv-scroll{flex:1;overflow:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.inv-modal iframe{display:block;width:100%;height:760px;border:0;background:transparent}
+@media (pointer:coarse){
+  /* phones: cards keep their glass colours but skip the live blur behind them (the heaviest thing to scroll) */
+  .glass:not(.bar):not(.dock){-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(160deg,rgba(40,50,110,.42),rgba(16,22,60,.5) 42%,rgba(60,40,120,.32))}
+}

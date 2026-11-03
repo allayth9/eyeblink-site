@@ -191,3 +191,21 @@ video.afile{max-width:320px}
 .stable small{font-size:11.5px}
 .tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:99px;background:rgba(63,224,232,.15);color:var(--horizon)}
 select option{background:#0b1236;color:#EEF2F6}select{color-scheme:dark}
+/* payment path */
+.pflow{margin:10px 0 14px;padding:14px 16px;border-radius:16px;background:linear-gradient(160deg,rgba(63,224,232,.06),rgba(139,92,255,.05));box-shadow:inset 0 0 0 1px rgba(63,224,232,.2)}
+.pflow .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.pflow ol{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.pstep{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start}
+.pstep>i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12.5px;font-family:Oswald,sans-serif;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px var(--line);color:var(--mist)}
+.pstep.ok>i{background:var(--horizon);color:var(--night);box-shadow:none;font-weight:700}
+.pstep>div{display:grid;gap:7px;min-width:0}
+.pstep b{font-size:13.5px;font-weight:500}
+.prow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.prow select{flex:1;min-width:180px}
+.pct{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mist)}
+.pct input{width:70px}
+.pnote{font-size:12.5px;color:var(--mist);line-height:1.7}
+.pnote.ok{color:#7ff0c0}
+.pnote.warn{color:#ffd27a;display:grid;gap:6px}
+.pnote textarea{min-height:56px;color:var(--light)}
+.pflow .btn.sm{justify-self:start}
