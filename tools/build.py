@@ -73,7 +73,7 @@ def cta_band(U):
 def slots(U):
     return "".join(f'<article class="slot glass rv"><div class="rec"><span>{k}</span><b>● REC</b></div><div class="frame"></div><div><h3>{h}</h3><span class="soon">{U["soon"]}</span></div></article>' for k, h in U["slots"])
 
-CRUMB_AR = {"SERVICES": "الخدمات", "PRICING": "الأسعار", "ABOUT": "من نحن", "CONTACT": "تواصل", "PRIVACY": "الخصوصية", "WORK": "أعمالنا", "ACCOUNT": "حسابي"}
+CRUMB_AR = {"SERVICES": "الخدمات", "PRICING": "الباقات", "ABOUT": "من نحن", "CONTACT": "تواصل", "PRIVACY": "الخصوصية", "WORK": "أعمالنا", "ACCOUNT": "حسابي"}
 LANG = ["ar"]
 def crumb_word(c):
     return f'<b class="ar">/ {CRUMB_AR.get(c, c)}</b>' if LANG[0] == "ar" else f"<b>/ {c}</b>"
@@ -223,8 +223,8 @@ def p_pricing(U, lang):
   <div class="order glass" id="orderClosed" hidden><div><span class="eyebrow">ORDERS</span><h2>{U["closed_h"]}</h2><p class="muted" style="margin:0">{U["closed_p"]}</p></div><div class="handle"><a class="btn btn-primary" data-ig href="{IG}" target="_blank" rel="noopener">{U["open_ig"]}</a></div></div>
 </div></section>
 <section class="block" data-show="showPayments"><div class="wrap">
-  <div class="head rv"><div><span class="eyebrow">PAYMENT</span><h2 data-t="payments.h"></h2></div><p data-t="payments.p"></p></div>
-  <ul class="paylist rv" data-list="payments"></ul>
+  <div class="head"><div><span class="eyebrow">PAYMENT</span><h2 data-t="payments.h"></h2></div><p data-t="payments.p"></p></div>
+  <ul class="paylist" data-list="payments"></ul>
 </div></section>
 {reviews_block(U)}
 <section class="block"><div class="wrap">

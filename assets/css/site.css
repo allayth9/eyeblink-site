@@ -1226,3 +1226,42 @@ body[data-page="pricing"] .page-hero h1{max-width:none}
 .cur-glass :is(a,button,summary,label,[role="button"],[role="option"],.proj,.pkg,.lang,.filters button,.chip,.pchip,.dsel-btn,select){cursor:url(../img/cursor-glass-link.png) 3 2,pointer;cursor:-webkit-image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer;cursor:image-set(url(../img/cursor-glass-link.png) 1x,url(../img/cursor-glass-link@2x.png) 2x) 3 2,pointer}
 .cur-glass .chip *,.cur-glass .pchip *{cursor:inherit}
 body[data-page="pricing"] .page-hero+section{padding-top:clamp(30px,4vw,48px)!important}
+
+/* ===== round 4 ===== */
+.bt.soc{background:none!important;box-shadow:none!important;overflow:visible}
+.bt.soc svg{width:100%!important;height:100%!important;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+/* platform chips: compact liquid pills */
+.plats .pchip{padding:4px 12px 4px 4px;gap:7px;line-height:1.2;min-height:0}
+[dir="rtl"] .plats .pchip{padding:4px 4px 4px 12px}
+.plats .pchip input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;padding:0!important;margin:0!important;opacity:0!important;border:0!important}
+.plats .pchip .bt{width:24px;height:24px}
+.plats .opts{gap:6px}
+/* work: play button always there, grows a little on hover */
+.proj .play{opacity:.92!important;transform:none!important;transition:transform .45s var(--ease),opacity .3s,background .3s!important}
+.proj:hover .play,.proj:focus-visible .play{opacity:1!important;transform:scale(1.14)!important;background:rgba(8,12,40,.32)!important}
+/* breadcrumb reads from the start side in Arabic */
+[dir="rtl"] .crumb{direction:rtl}
+/* pricing: header in one tight block, the service cards fully in the first screen */
+body[data-page="pricing"] .page-hero .lead{max-width:none}
+@media (min-width:861px){ body[data-page="pricing"] .page-hero .lead{white-space:nowrap;font-size:15.5px} }
+body[data-page="pricing"] .page-hero+section .head{display:none}
+body[data-page="pricing"] .page-hero+section{padding-top:clamp(18px,2.6vw,32px)!important;padding-bottom:0!important}
+body[data-page="pricing"] .page-hero .crumb{margin-bottom:10px}
+/* payment methods right under the cards: one quiet static row */
+body[data-page="pricing"] section[data-show="showPayments"]{padding-top:clamp(22px,3vw,36px)!important;padding-bottom:clamp(22px,3vw,36px)!important}
+body[data-page="pricing"] section[data-show="showPayments"] .head{margin-bottom:14px;align-items:center}
+body[data-page="pricing"] section[data-show="showPayments"] .head h2{font-size:clamp(20px,2vw,26px);margin:0}
+body[data-page="pricing"] section[data-show="showPayments"] .head p{font-size:14px;margin:0}
+.paylist,.paylist .paym{transform:none!important;transition:none!important;animation:none!important;opacity:1!important;scale:1!important}
+.paylist .paym::before{display:none}
+
+/* ===== mobile: every list stacks vertically (no sideways swiping) ===== */
+@media (max-width:860px){
+  .grid3,.pkgs,.steps,.principles,.brief,.deliver{display:grid!important;grid-template-columns:1fr!important;overflow:visible!important;scroll-snap-type:none!important;margin-inline:0!important;padding-inline:0!important;padding-block:0!important;gap:12px!important}
+  .grid3>*,.pkgs>*,.steps>*,.principles>*,.brief>*,.deliver>*{flex:none!important;width:auto!important;min-width:0}
+  .olist .items{display:grid!important;overflow:visible!important;margin-inline:0!important;padding-inline:0!important;gap:10px}
+  .oitem{flex:none!important}
+  .deliver{grid-template-columns:1fr 1fr!important}
+  body[data-page="pricing"] .page-hero h1{font-size:clamp(24px,7vw,32px)}
+  .plats .pchip{font-size:12.5px}
+}

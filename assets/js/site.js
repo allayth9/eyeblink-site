@@ -155,7 +155,7 @@
   function collect(){
     items=[].slice.call(document.querySelectorAll('.rv')).map(function(el){
       var sib=[].slice.call(el.parentNode.children).filter(function(c){return c.classList.contains('rv')});
-      var old=el._rv; return el._rv={el:el, i:Math.min(sib.indexOf(el),5), v:old?old.v:-1, t:0};
+      var old=el._rv; return el._rv={el:el, i:innerWidth<=860?0:Math.min(sib.indexOf(el),5), v:old?old.v:-1, t:0};
     });
   }
   function clamp(v){ return v<0?0:v>1?1:v; }
