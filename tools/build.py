@@ -23,7 +23,7 @@ UI = {
         "explore": "استكشف الخدمات", "all_work": "كل الأعمال", "all_pkgs": "كل الباقات", "close": "إغلاق",
         "tools": "الأدوات التي نعمل بها", "deliver": "ماذا تستلم", "svc_pkgs": "باقات هذه الخدمة", "others": "خدمات أخرى", "see_pkgs": "شاهد الباقات",
         "reel": "شاهد الشوريل", "order_h": "طلبك", "sel": "اخترت", "svc_h": "اطلب خدمة", "svc_p": "سعر واضح لكل فيديو. اختر الخدمة، أضف ما تحتاجه، وأرسل الطلب.", "acct": "حسابي", "f_step1": "ماذا تحتاج؟", "f_step2": "تفاصيل المشروع", "addons": "إضافات", "total": "المجموع التقديري",
-        "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام للتواصل الخارجي (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
+        "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
         "f_link": "رابط المواد (اختياري)", "f_deadline": "الموعد المستهدف (اختياري)", "send": "أرسل الطلب", "copy": "نسخ التفاصيل", "open_ig": "افتح إنستغرام", "again": "طلب جديد",
         "soon": "قريباً", "ig_follow": "تابع الجديد على إنستغرام", "closed_h": "الطلبات متوقفة مؤقتاً", "closed_p": "نستقبل الطلبات حالياً عبر إنستغرام فقط.", "home_l": "الرئيسية",
         "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي", "privacy": "سياسة الخصوصية"},
@@ -33,7 +33,7 @@ UI = {
         "explore": "Explore services", "all_work": "All work", "all_pkgs": "All packages", "close": "Close",
         "tools": "Tools we work with", "deliver": "What you get", "svc_pkgs": "Packages for this service", "others": "Other services", "see_pkgs": "See packages",
         "reel": "Watch the showreel", "order_h": "Your request", "sel": "You picked", "svc_h": "Order a service", "svc_p": "A clear price per video. Pick the service, add what you need, and send the request.", "acct": "My account", "f_step1": "What do you need?", "f_step2": "Project details", "addons": "Add-ons", "total": "Estimated total",
-        "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram for outside contact (optional)", "f_details": "Project details: type of video, length, idea",
+        "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram (optional)", "f_details": "Project details: type of video, length, idea",
         "f_link": "Link to materials (optional)", "f_deadline": "Target date (optional)", "send": "Send request", "copy": "Copy details", "open_ig": "Open Instagram", "again": "New request",
         "soon": "Coming soon", "ig_follow": "Follow new work on Instagram", "closed_h": "Requests are paused", "closed_p": "For now we take requests on Instagram only.", "home_l": "Home",
         "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account", "privacy": "Privacy policy"},
@@ -179,29 +179,29 @@ def order_modal(U, lang):
   <div class="lb-pattern" aria-hidden="true">{PATTERN}</div>
   <canvas class="lb-waves" aria-hidden="true"></canvas>
   <div class="box obox glass">
-    <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle">{U["order_h"]}</h3></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
+    <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle" data-ot="title">{U["order_h"]}</h3></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
     <div class="order" id="order">
       <aside class="osum">
         <div class="ocard"><span class="k" id="selKind"></span><h4 id="selName"></h4><p id="selDesc"></p>
           <div class="oprice"><b id="selPrice"></b><span id="selUnit"></span></div><ul class="ofeats" id="selFeats"></ul></div>
-        <div class="oqty" id="qtyRow" hidden><span>{T("عدد الفيديوهات", "Number of videos")}</span><div class="stepper"><button type="button" data-q="-1" aria-label="−">−</button><output id="qty">1</output><button type="button" data-q="1" aria-label="+">+</button></div></div>
-        <p class="olab">{U["addons"]}</p>
+        <div class="oqty" id="qtyRow" hidden><span data-ot="qty">{T("عدد الفيديوهات", "Number of videos")}</span><div class="stepper"><button type="button" data-q="-1" aria-label="−">−</button><output id="qty">1</output><button type="button" data-q="1" aria-label="+">+</button></div></div>
+        <p class="olab" data-ot="addons">{U["addons"]}</p>
         <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
         <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
         <p class="fine" id="priceNote"></p>
         <p class="fine" id="payNote"></p>
       </aside>
       <form class="form" id="orderForm" novalidate>
-        <label>{U["f_details"]}<textarea id="f-details" name="details" required placeholder="{T("مثال: ريل لإطلاق منتج جديد، 30 ثانية، أسلوب سريع وحماسي…", "e.g. a launch reel for a new product, 30 seconds, fast and energetic…")}"></textarea></label>
-        <fieldset class="plats" id="platforms"><legend>{T("وين رح ينشر الفيديو؟", "Where will it be posted?")}</legend><div class="opts"></div></fieldset>
-        <div class="row2"><label>{U["f_link"]}<input id="f-link" name="link" type="url" inputmode="url" dir="ltr" placeholder="Drive / Dropbox / WeTransfer"></label>
-        <label>{U["f_deadline"]}<input id="f-deadline" name="deadline" type="date"></label></div>
-        <div class="row2"><label>{U["f_contact"]}<input id="f-contact" name="contact" dir="auto"></label>
-        <label>{T("طريقة الدفع المفضّلة", "Preferred payment")}<select id="f-pay" name="pay"></select></label></div>
-        <div class="onext"><p class="olab">{T("شو بيصير بعد الإرسال؟", "What happens next?")}</p><ol id="oNext"></ol></div>
-        <p class="who" id="who"></p>
+        <label><span data-ot="details">{U["f_details"]}</span><textarea id="f-details" name="details" required data-otp="detailsPh" placeholder="{T("مثال: ريل لإطلاق منتج جديد، 30 ثانية، أسلوب سريع وحماسي…", "e.g. a launch reel for a new product, 30 seconds, fast and energetic…")}"></textarea></label>
+        <fieldset class="plats" id="platforms"><legend data-ot="platforms">{T("وين رح ينشر الفيديو؟", "Where will it be posted?")}</legend><div class="opts"></div></fieldset>
+        <div class="row2"><label><span data-ot="link">{U["f_link"]}</span><input id="f-link" name="link" type="url" inputmode="url" dir="ltr" placeholder="Drive / Dropbox / WeTransfer"></label>
+        <label><span data-ot="deadline">{U["f_deadline"]}</span><input id="f-deadline" name="deadline" type="date"></label></div>
+        <div class="row2"><label><span data-ot="contact">{U["f_contact"]}</span><input id="f-contact" name="contact" dir="auto"></label>
+        <label><span data-ot="pay">{T("طريقة الدفع المفضّلة", "Preferred payment")}</span><select id="f-pay" name="pay"></select></label></div>
+        <div class="onext"><p class="olab" data-ot="next">{T("شو بيصير بعد الإرسال؟", "What happens next?")}</p><ol id="oNext"></ol></div>
         <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0">
-        <button class="btn btn-primary osend" type="submit">{U["send"]} <span class="arr">{U["arrow"]}</span></button>
+        <button class="btn btn-primary osend" type="submit"><span data-ot="send">{U["send"]}</span> <span class="arr">{U["arrow"]}</span></button>
+        <p class="who" id="who"></p>
       </form>
     </div>
     <div class="done" id="orderDone" hidden>
@@ -257,13 +257,13 @@ PRIVACY = {
  "ar": [("ما نجمعه", ["عند إنشاء حساب أو إرسال طلب نحفظ: اسمك، بريدك الإلكتروني، تفاصيل الطلب التي تكتبها، والرسائل بينك وبيننا داخل الموقع.", "إن سجّلت عبر Google نستلم من Google اسمك وبريدك الإلكتروني فقط، ولا نصل إلى أي بيانات أخرى في حسابك.", "كلمة السر تُحفظ مشفّرة، ولا يمكن لأحد قراءتها، بما في ذلك نحن."]),
         ("لماذا نجمعه", ["لتنفيذ طلبك، والتواصل معك بخصوصه، وإظهار حالته في حسابك. لا نستخدم بياناتك لأي غرض آخر."]),
         ("مع من نشاركها", ["لا نبيع بياناتك ولا نشاركها مع أي طرف. تُخزَّن على خوادم Cloudflare التي تستضيف الموقع."]),
-        ("ملفات تعريف الارتباط", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات."]),
+        ("ملفات تعريف الارتباط والإحصائيات", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات.", "نعدّ الزيارات بشكل مجهول لنعرف أي الصفحات مفيدة ومن أين يصل الزوار (الصفحة، الدولة، نوع الجهاز، الموقع الذي أحالك). لا نحفظ عنوان IP ولا أي بيانات تعرّف بك، ولا نشاركها مع أي جهة."]),
         ("حقوقك", ["يمكنك طلب نسخة من بياناتك أو حذف حسابك وكل ما يتعلق به في أي وقت عبر البريد: hello@eyeblinkstudio.com"]),
         ("التحديثات", ["قد نحدّث هذه السياسة عند الحاجة، وتظهر أحدث نسخة دائماً في هذه الصفحة. آخر تحديث: نوفمبر 2026."])],
  "en": [("What we collect", ["When you create an account or send a request we store your name, email address, the request details you write, and the messages between you and us on the site.", "If you sign in with Google we receive only your name and email address from Google. We cannot access anything else in your Google account.", "Passwords are stored hashed. Nobody can read them, including us."]),
         ("Why", ["To deliver your request, talk to you about it, and show its progress in your account. We do not use your data for anything else."]),
         ("Sharing", ["We do not sell or share your data with anyone. It is stored on Cloudflare, which hosts this site."]),
-        ("Cookies", ["We use one essential cookie that keeps you signed in. No tracking or advertising cookies."]),
+        ("Cookies and statistics", ["We use one essential cookie that keeps you signed in. No tracking or advertising cookies.", "We count visits anonymously to learn which pages help and where visitors come from (page, country, device type, the site that sent you). We never store your IP address or anything that identifies you, and we share none of it."]),
         ("Your rights", ["You can ask for a copy of your data or have your account and everything linked to it deleted at any time: hello@eyeblinkstudio.com"]),
         ("Updates", ["We may update this policy when needed; the latest version always lives on this page. Last updated: November 2026."])]}
 

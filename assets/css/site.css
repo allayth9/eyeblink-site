@@ -1011,7 +1011,7 @@ footer .c a{color:inherit}
 .msg.k-receipt .b{box-shadow:inset 0 0 0 1px rgba(74,222,128,.5)}
 
 /* ===== cursor: the glass arrow (default), the soft pointer, or the system one — admin → التصميم ===== */
-html.cur-glass,.cur-glass body,.cur-glass :is(a,button,summary,label,[role="button"],.proj,.pkg,.lang,.filters button,select){cursor:url(../img/cursor-glass.png) 2 1,auto;cursor:-webkit-image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 2 1,auto;cursor:image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 2 1,auto}
+html.cur-glass,.cur-glass body,.cur-glass :is(a,button,summary,label,[role="button"],.proj,.pkg,.lang,.filters button,select){cursor:url(../img/cursor-glass.png) 3 2,auto;cursor:-webkit-image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 3 2,auto;cursor:image-set(url(../img/cursor-glass.png) 1x,url(../img/cursor-glass@2x.png) 2x) 3 2,auto}
 .cur-glass :is(input,textarea),.cur-soft :is(input,textarea){cursor:text}
 html.cur-system,.cur-system body{cursor:auto}.cur-system :is(a,button,summary,label,[role="button"],.proj,.pkg){cursor:pointer}
 
@@ -1131,3 +1131,25 @@ html.cur-system,.cur-system body{cursor:auto}.cur-system :is(a,button,summary,la
 .form .pchip{display:inline-flex;gap:8px;font-size:13.5px;color:var(--light)}
 .pchip .bt.ini{font-family:var(--latin);font-size:11px;font-weight:600;color:var(--light);background:linear-gradient(135deg,rgba(63,224,232,.35),rgba(139,92,255,.35))}
 .olb .row2{align-items:end}
+
+/* ===== round 2: readability, modal, work title ===== */
+:root{--dim:#93A1BF}
+.chip small{color:#B9C6DE;font-size:12px}
+.chip b{color:#fff}
+.olab,.plats legend,.form label{color:#C3CEE2}
+.olb .who{order:9;margin:4px 0 0;padding:0;background:none;box-shadow:none;font-size:12px;color:var(--dim);text-align:center}
+.olb .who b{font-weight:400;color:var(--mist)}
+.olb>.lb-pattern,.olb>.lb-waves{position:fixed}
+.olb>.lb-pattern{inset:-10% 0}
+.olb{overscroll-behavior:contain}
+#workHead h1,#workHead h2{white-space:nowrap;font-size:clamp(26px,5.4vw,64px)}
+.tools li .bt.app{width:30px;height:30px;border-radius:8px;background:none;box-shadow:none;overflow:hidden}
+.tools li .bt.app svg{width:100%;height:100%}
+.tools li .bt.img img{width:100%;height:100%;object-fit:contain}
+.invs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.inv-modal .inv-box{width:min(600px,100%);max-height:calc(100vh - 32px);overflow:auto;display:grid;gap:10px}
+.inv-bar{display:flex;justify-content:flex-end;gap:8px}
+.inv-bar .x{width:44px;height:44px;padding:0;justify-content:center;font-size:20px}
+.inv-modal iframe{width:100%;height:640px;border:0;border-radius:16px;background:transparent}
+.acct-modal.show{opacity:1}
+.inv-bar .x{position:static!important;inset:auto!important}

@@ -654,7 +654,11 @@
     "logo": "",
     "enabled": true
    }
-  ]
+  ],
+  "defaultPlan": "full",
+  "depositPct": 50,
+  "reminders": true,
+  "reminderHours": 48
  },
  "settings": {
   "showStats": true,
@@ -887,6 +891,65 @@
     "We agree on the details and date, then you get the payment details",
     "We start production; you follow every stage and talk to us until delivery"
    ]
+  },
+  "ask_link": true,
+  "ask_deadline": true,
+  "ask_contact": true,
+  "text": {
+   "title": {
+    "ar": "",
+    "en": ""
+   },
+   "details": {
+    "ar": "",
+    "en": ""
+   },
+   "detailsPh": {
+    "ar": "",
+    "en": ""
+   },
+   "platforms": {
+    "ar": "",
+    "en": ""
+   },
+   "qty": {
+    "ar": "",
+    "en": ""
+   },
+   "addons": {
+    "ar": "",
+    "en": ""
+   },
+   "link": {
+    "ar": "",
+    "en": ""
+   },
+   "deadline": {
+    "ar": "",
+    "en": ""
+   },
+   "contact": {
+    "ar": "",
+    "en": ""
+   },
+   "pay": {
+    "ar": "",
+    "en": ""
+   },
+   "next": {
+    "ar": "",
+    "en": ""
+   },
+   "send": {
+    "ar": "",
+    "en": ""
+   }
   }
- }
+ },
+ "toolLogos": [
+  {
+   "name": "Higgsfield",
+   "logo": ""
+  }
+ ]
 }

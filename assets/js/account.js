@@ -197,9 +197,11 @@
   function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid+'|'+((o.payInfo||{}).at||''); }
   function payCard(o){
     var p=o.payInfo; if(!p||o.status==='cancelled') return '';
-    if(o.paid) return '<div class="paycard ok">✓ '+T.paidOk+'</div>';
+    var stg=p.stage||'full', done=stg==='deposit'? !!(o.deposit&&o.deposit.paid) : o.paid;
+    if(done) return '<div class="paycard ok">✓ '+(stg==='deposit'?(AR?'وصل العربون، وبدأنا التنفيذ. المتبقي قبل التسليم.':'Deposit received — production has started. The rest is due before delivery.'):T.paidOk)+'</div>';
+    var SL=AR?{deposit:'العربون',final:'الدفعة النهائية',full:''}:{deposit:'Deposit',final:'Final payment',full:''};
     var sent=(o.messages||[]).some(function(m){ return m.kind==='receipt'&&m.at>p.at; });
-    return '<div class="paycard"><div class="ph"><b>'+T.payH+'</b><span>'+T.payVia+': '+esc(p.methodName||p.method)+'</span></div>'+
+    return '<div class="paycard"><div class="ph"><b>'+T.payH+(SL[stg]?' · '+SL[stg]:'')+'</b><span>'+T.payVia+': '+esc(p.methodName||p.method)+'</span></div>'+
       '<div class="amt"><small>'+T.payAmt+'</small><b dir="ltr">'+esc(p.amount)+'</b></div><pre dir="auto">'+esc(p.details)+'</pre>'+
       '<div class="actions"><button type="button" class="btn btn-glass glass cp">'+T.copyD+'</button>'+
       '<label class="btn btn-primary rc">'+T.receipt+'<input type="file" accept="image/*,application/pdf" hidden></label></div>'+
@@ -234,7 +236,7 @@
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
         (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
         '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(o.link)+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
-        (o.price?'<button type="button" class="btn btn-glass glass inv">🧾 '+T.invoice+'</button>':'')+
+        ((o.deposit&&o.deposit.invoice)||o.invoice?'<div class="invs">'+(o.deposit&&o.deposit.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="deposit">🧾 '+(AR?'فاتورة العربون':'Deposit invoice')+'</button>':'')+(o.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="final">🧾 '+T.invoice+'</button>':'')+'</div>':'')+
         '<div class="ext"><h3>'+T.ext+'</h3><p class="muted">'+T.extP+'</p><div class="actions">'+
           '<a class="btn btn-glass glass" href="https://ig.me/m/'+esc(ig)+'" target="_blank" rel="noopener">'+T.ig+'</a>'+
           (wa?'<a class="btn btn-glass glass" href="https://wa.me/'+wa+'?text='+note+'" target="_blank" rel="noopener">'+T.wa+'</a>':'')+
@@ -242,7 +244,7 @@
         '</div></div></aside></div></div>';
     host.dataset.sig=sig(o);
     var th=host.querySelector('.thread'); th.scrollTop=th.scrollHeight;
-    var ib=host.querySelector('.inv'); if(ib) ib.onclick=function(){ invoice(o); };
+    [].forEach.call(host.querySelectorAll('.inv'),function(ib){ ib.onclick=function(){ invoice(o,ib.dataset.inv); }; });
     var pc=host.querySelector('.paycard');
     if(pc&&!pc.classList.contains('ok')){
       pc.querySelector('.cp').onclick=function(){ var b=this; try{ navigator.clipboard.writeText(o.payInfo.details).then(function(){ b.textContent=T.copied; setTimeout(function(){ b.textContent=T.copyD; },1600); }); }catch(_){} };
@@ -287,24 +289,15 @@
     var v=lastVid&&lastVid.isConnected? lastVid : [].slice.call(document.querySelectorAll('.thread video')).pop(); if(!v) return;
     v.currentTime=+b.dataset.t; v.scrollIntoView({behavior:'smooth',block:'center'}); var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); });
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3200); }
-  // a clean printable invoice (the browser's print dialog saves it as PDF)
-  function invoice(o){
-    var I=T.inv, S=C().settings||{}, m=((C().payments||{}).methods||[]).filter(function(x){return x.id===o.method})[0];
-    var d=o.invoice?new Date(o.invoice.at):new Date(), w=window.open('','_blank'); if(!w) return;
-    w.document.write('<!doctype html><html lang="'+lang+'" dir="'+(AR?'rtl':'ltr')+'"><head><meta charset="utf-8"><title>'+I.t+' '+esc(o.code)+'</title><style>'+
-      'body{font-family:Tahoma,Arial,sans-serif;color:#0b1236;margin:0;padding:48px;background:#fff}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0b1236;padding-bottom:18px}'+
-      '.brand{font:700 18px Arial;letter-spacing:5px;direction:ltr}.brand small{display:block;font-weight:400;letter-spacing:1px;color:#6F7FA0;margin-top:6px}h1{margin:0;font-size:30px;letter-spacing:2px}'+
-      '.meta{display:flex;gap:40px;margin:26px 0}.meta div{font-size:14px}.meta b{display:block;color:#6F7FA0;font-weight:400;font-size:12px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}'+
-      'th{text-align:start;font-size:12px;color:#6F7FA0;font-weight:400;border-bottom:1px solid #d8deea;padding:10px 0}td{padding:14px 0;border-bottom:1px solid #eef1f6;font-size:15px}td.n,th.n{text-align:end}'+
-      '.tot{display:flex;justify-content:flex-end;gap:30px;margin-top:20px;font-size:20px;font-weight:700}.st{display:inline-block;margin-top:24px;padding:6px 14px;border-radius:99px;font-size:13px;background:'+(o.paid?'#dcf7e6;color:#127a3a':'#fde8ef;color:#a3215a')+'}'+
-      '.foot{margin-top:60px;color:#6F7FA0;font-size:13px;border-top:1px solid #eef1f6;padding-top:16px}@media print{body{padding:24px}}</style></head><body>'+
-      '<div class="top"><div class="brand">EYEBLINK STUDIO<small>eyeblinkstudio.com'+(S.email?' · '+esc(S.email):'')+'</small></div><h1>'+I.t+'</h1></div>'+
-      '<div class="meta"><div><b>'+I.no+'</b><span dir="ltr">'+esc(o.invoice?o.invoice.no:o.code)+'</span></div>'+(o.invoice?'<div><b>'+(AR?'رقم الطلب':'Order')+'</b><span dir="ltr">'+esc(o.code)+'</span></div>':'')+'<div><b>'+I.date+'</b>'+d.toLocaleDateString(AR?'ar':'en',{year:'numeric',month:'long',day:'numeric'})+'</div><div><b>'+I.to+'</b>'+esc(o.name||'')+'<br><span dir="ltr">'+esc(o.email||'')+'</span></div></div>'+
-      '<table><tr><th>'+I.item+'</th><th class="n">'+I.amount+'</th></tr><tr><td>'+esc(o.packageName||'')+(o.qty>1?' ×'+o.qty:'')+((o.addons||[]).length?'<br><small style="color:#6F7FA0">+ '+esc(o.addons.join('، '))+'</small>':'')+'</td><td class="n" dir="ltr">'+esc(o.price)+'</td></tr></table>'+
-      '<div class="tot"><span>'+I.total+'</span><span dir="ltr">'+esc(o.price)+'</span></div>'+
-      '<span class="st">'+(o.paid?I.paid+' ✓':I.unpaid)+'</span>'+(m?'<div style="margin-top:12px;font-size:14px;color:#6F7FA0">'+I.method+': '+esc(m.name)+'</div>':'')+
-      '<div class="foot">'+I.thanks+'</div><script>setTimeout(function(){print()},300)<\/script></body></html>');
-    w.document.close();
+  // the invoice: the same compact design as the e-mail, in a window over the page (Save PDF prints it)
+  function invoice(o,kind){
+    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
+    m.innerHTML='<div class="inv-box"><div class="inv-bar"><button type="button" class="btn btn-primary sv">'+(AR?'حفظ PDF':'Save PDF')+'</button><button type="button" class="btn btn-glass glass x" aria-label="×">×</button></div><iframe title="Invoice" src="'+BASE+'api/thread?code='+encodeURIComponent(o.code)+'&invoice='+kind+'"></iframe></div>';
+    document.body.appendChild(m); requestAnimationFrame(function(){ m.classList.add('show'); });
+    var f=m.querySelector('iframe'); f.onload=function(){ try{ var d=f.contentDocument; var bar=d.querySelector('.bar'); if(bar) bar.remove(); d.body.style.padding='0'; d.body.style.background='transparent'; f.style.height=(d.documentElement.scrollHeight+4)+'px'; }catch(_){} };
+    var close=function(){ m.classList.remove('show'); setTimeout(function(){ m.remove(); },400); };
+    m.querySelector('.x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); };
+    m.querySelector('.sv').onclick=function(){ try{ f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } };
   }
   function pill(o){ return '<span class="pill '+esc(o.status)+'">'+esc(T.st[o.status]||o.status)+'</span>'; }
   function track(o){

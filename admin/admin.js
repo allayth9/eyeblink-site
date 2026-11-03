@@ -34,7 +34,9 @@
         {p:'body', t:'bita', l:'الوصف الكامل (صفحة الخدمة)'},
         {p:'tags', t:'bilist', l:'الوسوم', hint:'كل وسم بسطر'},
         {p:'deliverables', t:'bilist', l:'ماذا يستلم العميل', hint:'كل بند بسطر'},
-        {p:'tools', t:'list', l:'الأدوات والبرامج', hint:'كل أداة بسطر', ltr:1} ]}} ]},
+        {p:'tools', t:'list', l:'الأدوات والبرامج', hint:'كل أداة بسطر', ltr:1} ]}},
+      {h:'شعارات الأدوات', hint:'Premiere وAfter Effects وPhotoshop وIllustrator وAudition وDaVinci وElevenLabs تظهر بشعاراتها تلقائياً. لأي أداة ثانية (مثل Higgsfield) أو لتبديل شعار: اكتب الاسم بالضبط كما هو بقائمة الأدوات وارفع الشعار (PNG أو SVG مربّع بخلفية).', rep:{p:'toolLogos',
+        name:function(x){return x.name||'أداة'}, add:function(){return {name:'',logo:''}}, fields:[{p:'name', t:'text', l:'اسم الأداة', ltr:1},{p:'logo', t:'media', l:'الشعار', accept:'image/*'}]}} ]},
     {id:'packages', title:'الباقات والأسعار', secs:[
       {h:'نصوص الصفحة', fields:[{p:'packages.h', t:'bi', l:'العنوان'},{p:'packages.p', t:'bita', l:'الوصف'},
         {p:'packages.currency', t:'text', l:'رمز العملة', ltr:1},{p:'packages.note', t:'bita', l:'ملاحظة الأسعار'},{p:'packages.payment', t:'bita', l:'طرق الدفع (تظهر بعد الطلب)'}]},
@@ -50,8 +52,14 @@
         fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}},
       {h:'نافذة الطلب', hint:'تنفتح فوق الصفحة لما العميل يضغط «اطلب». حدّد شو يسأل وشو يشوف.', fields:[
         {row:[{p:'order.askQty', t:'check', l:'عدّاد عدد الفيديوهات (للخدمات)'},{p:'order.askPlatform', t:'check', l:'سؤال المنصة'},{p:'order.askPay', t:'check', l:'طريقة الدفع المفضّلة'}]},
+        {row:[{p:'order.ask_link', t:'check', l:'خانة رابط المواد'},{p:'order.ask_deadline', t:'check', l:'خانة الموعد'},{p:'order.ask_contact', t:'check', l:'خانة التواصل الخارجي'}]},
         {p:'order.platforms', t:'list', l:'المنصات المعروضة', hint:'كل منصة بسطر (Instagram، TikTok…)', ltr:1},
         {p:'order.next', t:'bilist', l:'«شو بيصير بعد الإرسال؟»', hint:'كل خطوة بسطر'}]},
+      {h:'نصوص نافذة الطلب', hint:'اترك أي خانة فارغة ليبقى النص الافتراضي.', fields:[
+        {p:'order.text.title', t:'bi', l:'عنوان النافذة'},{p:'order.text.details', t:'bi', l:'عنوان خانة التفاصيل'},{p:'order.text.detailsPh', t:'bi', l:'المثال داخل خانة التفاصيل'},
+        {p:'order.text.platforms', t:'bi', l:'سؤال المنصة'},{p:'order.text.qty', t:'bi', l:'عدّاد الفيديوهات'},{p:'order.text.addons', t:'bi', l:'عنوان الإضافات'},
+        {p:'order.text.link', t:'bi', l:'خانة رابط المواد'},{p:'order.text.deadline', t:'bi', l:'خانة الموعد'},{p:'order.text.contact', t:'bi', l:'خانة التواصل الخارجي'},
+        {p:'order.text.pay', t:'bi', l:'خانة طريقة الدفع'},{p:'order.text.next', t:'bi', l:'عنوان الخطوات'},{p:'order.text.send', t:'bi', l:'زر الإرسال'}]},
       {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'}, add:function(){return {q:bi(),a:bi()}},
         fields:[{p:'q', t:'bi', l:'السؤال'},{p:'a', t:'bita', l:'الجواب'}]}} ]},
     {id:'work', title:'الأعمال', secs:[
@@ -81,8 +89,12 @@
       {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.', rep:{p:'payments.methods',
         name:function(x){return (x.name||'طريقة')+(x.enabled===false?' (مخفية)':'')}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
         fields:[{row:[{p:'name', t:'text', l:'الاسم', ltr:1},{p:'enabled', t:'check', l:'ظاهرة على الموقع'}]},{p:'logo', t:'media', l:'الشعار (PNG أو SVG بخلفية شفافة)', accept:'image/*'},{p:'id', t:'text', l:'المعرّف', ltr:1}]}},
+      {h:'الدفع التلقائي والتذكير', hint:'«عربون» = يدفع العميل نسبة قبل البدء والباقي قبل التسليم، وكل دفعة إلها فاتورة. التذكير يوصل للعميل مرة وحدة إذا ما رفع الإيصال.', fields:[
+        {row:[{p:'payments.defaultPlan', t:'select', l:'خطة الدفع الافتراضية للطلبات', opts:function(){return [['full','كامل المبلغ دفعة وحدة'],['split','عربون + الباقي قبل التسليم']]}},{p:'payments.depositPct', t:'num', l:'نسبة العربون %'}]},
+        {row:[{p:'payments.reminders', t:'check', l:'تذكير تلقائي بالدفع'},{p:'payments.reminderHours', t:'num', l:'بعد كم ساعة من إرسال التفاصيل'}]}]},
       {h:'تفاصيل الدفع الخاصة', hint:'لا تظهر على الموقع أبداً. تُستخدم فقط في رسائل الرد على الطلبات (رقم المحفظة، البريد، بيانات الاستلام…).', priv:'payments'} ]},
     {id:'layout', title:'التصميم والترتيب', layout:1},
+    {id:'stats', title:'الإحصائيات', stats:1},
     {id:'settings', title:'الإعدادات', settings:1},
     {id:'orders', title:'الطلبات', orders:1},
     {id:'clients', title:'العملاء', clients:1},
@@ -131,6 +143,7 @@
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
     $('#tabTitle').textContent=tab.title;
     if(tab.orders) return renderOrders();
+    if(tab.stats) return renderStats();
     if(tab.clients) return renderClients();
     if(tab.layout) return renderLayout();
     if(tab.backup) return renderBackup();
@@ -258,6 +271,7 @@
         '<div class="grid2"><div>'+
           '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
+          (o.visit?'<div class="small muted" style="margin-top:8px">من وين إجا</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
           (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
@@ -273,8 +287,15 @@
           '<div class="paysend"><div class="small muted">الدفع</div><div class="row"><div class="field"><label>المبلغ المطلوب الآن (فارغ = السعر كامل، أو اكتب عربوناً)</label><input data-payamt dir="ltr" placeholder="'+esc(o.price||o.total||'')+'" value="'+esc((o.payInfo&&o.payInfo.amount!==o.price&&o.payInfo.amount)||'')+'"></div></div>'+
             (o.email?'<button class="btn sm primary" type="button" data-opay="'+k+'">'+(o.payInfo?'أعد إرسال تفاصيل الدفع':'أرسل تفاصيل الدفع للعميل')+'</button>':'')+
             '<div class="small muted" style="margin-top:4px">يرسل تفاصيل «طريقة الدفع» المختارة من «تفاصيل الدفع الخاصة» ككرت دفع في حساب العميل، ويحوّل الحالة إلى «بانتظار الدفع».</div></div>'+
-          '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> تم استلام الدفع <span class="small muted">— عند الحفظ تُصدر فاتورة برقم تسلسلي وتُرسل للعميل بالإيميل</span></label>'+
-          (o.invoice?'<div class="small" style="margin:4px 0 8px">🧾 الفاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> · '+esc(new Date(o.invoice.at).toLocaleDateString('ar'))+' <button class="btn sm" type="button" data-oinv="'+k+'">أعد إرسال الفاتورة</button></div>':'')+
+          (function(){ var Pm=C.payments||{}, plan=o.plan||Pm.defaultPlan||'full', pct=o.depositPct||Pm.depositPct||50, dp=o.deposit&&o.deposit.paid;
+            return '<div class="row"><div class="field"><label>خطة الدفع</label><select data-of="plan"><option value="full"'+(plan==='full'?' selected':'')+'>كامل المبلغ</option><option value="split"'+(plan==='split'?' selected':'')+'>عربون + الباقي قبل التسليم</option></select></div>'+
+              '<div class="field"><label>نسبة العربون %</label><input data-of="depositPct" type="number" min="10" max="90" value="'+esc(pct)+'"></div></div>'+
+              (plan==='split'?'<label class="check"><input type="checkbox" data-of="depositPaid"'+(dp?' checked':'')+'> وصل العربون <span class="small muted">— فاتورة عربون تُرسل تلقائياً، وبعدها «أرسل تفاصيل الدفع» يرسل الباقي</span></label>'+
+                (o.deposit&&o.deposit.invoice?'<div class="small" style="margin:4px 0 8px">🧾 فاتورة العربون <b dir="ltr">'+esc(o.deposit.invoice.no)+'</b> · <span dir="ltr">'+esc(o.deposit.amount)+'</span> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="deposit">أعد إرسالها</button></div>':''):'');
+          })()+
+          '<label class="check"><input type="checkbox" data-of="paid"'+(o.paid?' checked':'')+'> '+((o.plan||(C.payments||{}).defaultPlan)==='split'?'وصلت الدفعة النهائية':'تم استلام الدفع')+' <span class="small muted">— عند الحفظ تُصدر فاتورة برقم تسلسلي وتُرسل للعميل بالإيميل</span></label>'+
+          (o.invoice?'<div class="small" style="margin:4px 0 8px">🧾 الفاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> · '+esc(new Date(o.invoice.at).toLocaleDateString('ar'))+' <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="final">أعد إرسال الفاتورة</button></div>':'')+
+          (o.payInfo&&o.payInfo.reminded?'<div class="small muted">⏰ وصل للعميل تذكير تلقائي بالدفع · '+esc(new Date(o.payInfo.reminded).toLocaleString('ar'))+'</div>':'')+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
           '<div class="small muted" style="margin-top:6px">رد سريع</div><div class="actions"><button class="btn sm" type="button" data-reply="confirm" data-ok="'+k+'">تأكيد + تفاصيل الدفع</button><button class="btn sm" type="button" data-reply="paid" data-ok="'+k+'">وصل الدفع</button><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">تم التسليم</button></div>'+
@@ -319,7 +340,7 @@
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.dataset.ofilter){ OFILTER=b.dataset.ofilter; renderOrders(); return; }
     if(b.dataset.oinv){ var oi=orderOf(b.dataset.oinv); if(!LIVE||oi.demo){ toast('يعمل على الموقع المنشور',true); return; } b.disabled=true;
-      fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:oi.key,resendInvoice:true})}).then(function(r){ if(!r.ok) throw 0; toast('أُرسلت الفاتورة إلى بريد العميل'); }).catch(function(){ toast('تعذّر الإرسال',true); }).then(function(){ b.disabled=false; }); return; }
+      fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify({key:oi.key,resendInvoice:b.dataset.kind||'final'})}).then(function(r){ if(!r.ok) throw 0; toast('أُرسلت الفاتورة إلى بريد العميل'); }).catch(function(){ toast('تعذّر الإرسال',true); }).then(function(){ b.disabled=false; }); return; }
     if(b.dataset.opay){ var bx=b.closest('.order'), dd=readOrderForm(bx), oo=orderOf(b.dataset.opay);
       if(!dd.price&&!oo.price){ toast('اكتب السعر النهائي أولاً',true); return; } if(!dd.method){ toast('اختر طريقة الدفع أولاً',true); return; }
       if(!((P&&P.payments)||{})[dd.method]){ toast('أضف تفاصيل هذه الطريقة في «طرق الدفع ← تفاصيل الدفع الخاصة» وانشر',true); return; }
@@ -387,6 +408,45 @@
     else if(el.dataset.lsel){ L[el.dataset.lsel]=el.value; dirty(); saveDraft(); } });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-lmove]'); if(!b) return; var q=b.dataset.lmove.split(':'), arr=LY()[q[0]], i=+q[1], j=i+(+q[2]);
     if(j<0||j>=arr.length) return; var x=arr[i]; arr[i]=arr[j]; arr[j]=x; dirty(); saveDraft(); renderLayout(); });
+
+  /* ---------------- stats ---------------- */
+  var DEV={mobile:'موبايل',desktop:'كمبيوتر',tablet:'تابلت'}, SDAYS=30, STATS=null;
+  var SRCN={direct:'مباشر / رابط محفوظ',instagram:'Instagram',google:'Google',facebook:'Facebook',whatsapp:'WhatsApp',telegram:'Telegram',tiktok:'TikTok',youtube:'YouTube',x:'X',linkedin:'LinkedIn',behance:'Behance',snapchat:'Snapchat',bing:'Bing'};
+  var CN={SY:'سوريا',SA:'السعودية',AE:'الإمارات',OM:'عُمان',QA:'قطر',KW:'الكويت',BH:'البحرين',JO:'الأردن',LB:'لبنان',IQ:'العراق',EG:'مصر',TR:'تركيا',RO:'رومانيا',DE:'ألمانيا',US:'أمريكا',GB:'بريطانيا',FR:'فرنسا',NL:'هولندا',SE:'السويد',PS:'فلسطين',MA:'المغرب',DZ:'الجزائر',TN:'تونس',LY:'ليبيا',YE:'اليمن',SD:'السودان'};
+  function loadStats(){ STATS='loading'; if(!LIVE){ STATS=demoStats(); renderStats(); return; }
+    fetch(API+'/track?days='+SDAYS,{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ STATS=j.days||[]; if(TAB==='stats') renderStats(); }).catch(function(){ STATS=[]; if(TAB==='stats') renderStats(); }); }
+  function demoStats(){ var out=[]; for(var i=SDAYS-1;i>=0;i--){ var v=Math.round(20+Math.random()*60); out.push({day:new Date(Date.now()-i*864e5).toISOString().slice(0,10),views:v,visits:Math.round(v*.6),visitors:Math.round(v*.4),pages:{'/':v,'/pricing':Math.round(v/3)},sources:{instagram:Math.round(v*.3),direct:Math.round(v*.2),google:3},countries:{SA:9,AE:5,SY:4},devices:{mobile:20,desktop:8},browsers:{'Instagram app':10,Chrome:9,Safari:6},os:{iOS:12,Android:8,Windows:5},langs:{ar:20,en:5},recent:i?[]:[{at:new Date().toISOString(),page:'/pricing',src:'instagram',country:'SA',city:'Riyadh',device:'mobile',os:'iOS',browser:'Instagram app',nv:true}]}); } return out; }
+  function sum(list,k){ var o={}; list.forEach(function(d){ var x=d[k]||{}; for(var n in x) o[n]=(o[n]||0)+x[n]; }); return Object.keys(o).map(function(n){return [n,o[n]]}).sort(function(a,b){return b[1]-a[1]}); }
+  function bars(rows,name){ var max=rows.length?rows[0][1]:1, tot=rows.reduce(function(a,r){return a+r[1]},0)||1;
+    return rows.length? '<div class="sbars">'+rows.slice(0,8).map(function(r){ return '<div class="sbar"><span class="n">'+esc(name?name(r[0]):r[0])+'</span><span class="v">'+r[1]+' <small>'+Math.round(r[1]*100/tot)+'%</small></span><i style="width:'+Math.max(3,r[1]*100/max)+'%"></i></div>'; }).join('')+'</div>' : '<div class="empty small">لا بيانات بعد</div>'; }
+  function renderStats(){
+    if(STATS===null||STATS==='loading'){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; if(STATS===null) loadStats(); return; }
+    var D=STATS, T=function(k){ return D.reduce(function(a,d){return a+(d[k]||0)},0); };
+    var from=D.length?D[0].day:'', ord=ORDERS.filter(function(o){ return !o.demo&&o.createdAt&&o.createdAt.slice(0,10)>=from; });
+    var paid=ord.filter(function(o){return o.paid||(o.deposit&&o.deposit.paid)});
+    var visits=T('visits'), conv=visits? (ord.length*100/visits).toFixed(1)+'%' : '—';
+    var max=Math.max.apply(null,D.map(function(d){return d.views||0}).concat([1]));
+    var chart='<div class="schart" role="img" aria-label="المشاهدات اليومية">'+D.map(function(d){ var o=ORDERS.filter(function(x){return x.createdAt&&x.createdAt.slice(0,10)===d.day}).length;
+      return '<div class="col" title="'+esc(d.day)+' · '+(d.views||0)+' مشاهدة · '+(d.visits||0)+' زيارة'+(o?' · '+o+' طلب':'')+'"><i style="height:'+((d.views||0)*100/max)+'%"></i><b style="height:'+((d.visits||0)*100/max)+'%"></b>'+(o?'<em>'+o+'</em>':'')+'</div>'; }).join('')+'</div>'+
+      '<div class="saxis"><span>'+esc(from)+'</span><span>اليوم</span></div><div class="slegend"><span><i class="a"></i>مشاهدات صفحات</span><span><i class="b"></i>زيارات</span><span><em>●</em> طلب</span></div>';
+    var recent=[].concat.apply([],D.slice().reverse().map(function(d){return d.recent||[]})).slice(0,60);
+    var osrc=sum(ord.map(function(o){ var x={}; x[(o.visit&&o.visit.source)||'غير معروف']=1; return {s:x}; }),'s');
+    $('#panel').innerHTML=
+      '<section class="sec"><div class="srange">'+[7,30,90].map(function(n){ return '<button type="button" class="btn sm'+(SDAYS===n?' primary':'')+'" data-sdays="'+n+'">آخر '+n+' يوم</button>'; }).join('')+'<button type="button" class="btn sm" data-sreload>تحديث</button></div>'+
+        '<div class="kpis"><div><b>'+T('views')+'</b><span>مشاهدة صفحة</span></div><div><b>'+visits+'</b><span>زيارة</span></div><div><b>'+T('visitors')+'</b><span>زائر جديد</span></div><div><b>'+ord.length+'</b><span>طلب</span></div><div><b>'+conv+'</b><span>نسبة الطلب من الزيارات</span></div><div><b>'+paid.length+'</b><span>طلب مدفوع</span></div></div>'+chart+
+        (!LIVE?'<p class="hint">أرقام تجريبية. الأرقام الحقيقية تبدأ بعد النشر.</p>':'<p class="hint">إحصائيات مجهولة الهوية: ما منخزّن IP ولا أي بيانات شخصية. الزيارة = جلسة تصفّح وحدة، والزائر الجديد = أول مرة بيفتح الموقع من هالجهاز.</p>')+'</section>'+
+      '<div class="sgrid">'+
+        '<section class="sec"><h3>مصادر الزيارات</h3>'+bars(sum(D,'sources'),function(n){return SRCN[n]||n})+'</section>'+
+        '<section class="sec"><h3>مصادر الطلبات</h3>'+bars(osrc,function(n){return SRCN[n]||n})+'</section>'+
+        '<section class="sec"><h3>أكثر الصفحات</h3>'+bars(sum(D,'pages'))+'</section>'+
+        '<section class="sec"><h3>الدول</h3>'+bars(sum(D,'countries'),function(n){return CN[n]||n})+'</section>'+
+        '<section class="sec"><h3>الأجهزة</h3>'+bars(sum(D,'devices'),function(n){return DEV[n]||n})+'<h3 style="margin-top:16px">أنظمة التشغيل</h3>'+bars(sum(D,'os'))+'</section>'+
+        '<section class="sec"><h3>المتصفّح / التطبيق</h3>'+bars(sum(D,'browsers'))+'<h3 style="margin-top:16px">لغة الصفحة</h3>'+bars(sum(D,'langs'),function(n){return n==='en'?'English':'العربية'})+'</section>'+
+      '</div>'+
+      '<section class="sec"><h3>آخر الزيارات</h3>'+(recent.length?'<div class="stable"><table><thead><tr><th>الوقت</th><th>الصفحة</th><th>المصدر</th><th>الموقع</th><th>الجهاز</th></tr></thead><tbody>'+recent.map(function(r){
+        return '<tr><td>'+esc(new Date(r.at).toLocaleString('ar',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+(r.nv?' <span class="tag">جديد</span>':'')+'</td><td dir="ltr">'+esc(r.page)+'</td><td>'+esc(SRCN[r.src]||r.src)+(r.utm?'<br><small dir="ltr">'+esc(r.utm)+'</small>':'')+(r.ref&&r.src!=='direct'?'<br><small dir="ltr" class="muted">'+esc(r.ref.replace(/^https?:\/\//,'').slice(0,40))+'</small>':'')+'</td><td>'+esc([r.city,CN[r.country]||r.country].filter(Boolean).join('، '))+'</td><td>'+esc(DEV[r.device]||r.device)+' · '+esc(r.os)+'<br><small class="muted">'+esc(r.browser)+'</small></td></tr>'; }).join('')+'</tbody></table></div>':'<div class="empty">لا زيارات بعد.</div>')+'</section>';
+  }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-sdays],[data-sreload]'); if(!b) return; if(b.dataset.sdays) SDAYS=+b.dataset.sdays; STATS=null; renderStats(); });
 
   /* ---------------- clients ---------------- */
   function loadUsers(){
