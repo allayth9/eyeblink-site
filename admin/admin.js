@@ -97,6 +97,7 @@
     {id:'stats', title:'الإحصائيات', stats:1},
     {id:'settings', title:'الإعدادات', settings:1},
     {id:'orders', title:'الطلبات', orders:1},
+    {id:'tasks', title:'المشاريع والمهام', tasks:1},
     {id:'clients', title:'العملاء', clients:1},
     {id:'backup', title:'نسخ احتياطي', backup:1}
   ];
@@ -136,7 +137,7 @@
   /* ---------------- render ---------------- */
   function renderTabs(){
     var newCount=ORDERS.filter(function(o){return o.status==='new'||o.unread}).length;
-    $('#tabs').innerHTML=TABS.map(function(t){ return '<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+(t.id==='clients'&&ACC&&ACC.requests.filter(function(r){return r.status==='pending'}).length?'<span class="count">'+ACC.requests.filter(function(r){return r.status==='pending'}).length+'</span>':'')+'</button>'; }).join('');
+    $('#tabs').innerHTML=TABS.map(function(t){ return '<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+(t.id==='tasks'&&WORK&&WORK.tasks?(function(){ var n=WORK.tasks.filter(function(x){return x.status==='new'||(x.change_request&&x.change_request.status==='pending')}).length; return n?'<span class="count">'+n+'</span>':''; })():'')+(t.id==='clients'&&ACC&&ACC.requests.filter(function(r){return r.status==='pending'}).length?'<span class="count">'+ACC.requests.filter(function(r){return r.status==='pending'}).length+'</span>':'')+'</button>'; }).join('');
   }
   function render(){
     renderTabs();
@@ -144,6 +145,7 @@
     $('#tabTitle').textContent=tab.title;
     if(tab.orders) return renderOrders();
     if(tab.stats) return renderStats();
+    if(tab.tasks) return renderWork();
     if(tab.clients) return renderClients();
     if(tab.layout) return renderLayout();
     if(tab.backup) return renderBackup();
@@ -187,7 +189,7 @@
   });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;
-    if(b.dataset.tab){ TAB=b.dataset.tab; render(); if(TAB==='orders') loadOrders(); if(TAB==='clients') loadUsers(); scrollTo(0,0); return; }
+    if(b.dataset.tab){ TAB=b.dataset.tab; render(); if(TAB==='orders') loadOrders(); if(TAB==='clients') loadUsers(); if(TAB==='tasks') loadWork(); scrollTo(0,0); return; }
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
     if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr); render(); dirty(); saveDraft();
       var items=document.querySelectorAll('[data-rep="'+s.rep.p+'"] .item'); var last=items[items.length-1]; if(last){ last.open=true; last.scrollIntoView({block:'center'}); } return; }
@@ -448,6 +450,108 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-lmove]'); if(!b) return; var q=b.dataset.lmove.split(':'), arr=LY()[q[0]], i=+q[1], j=i+(+q[2]);
     if(j<0||j>=arr.length) return; var x=arr[i]; arr[i]=arr[j]; arr[j]=x; dirty(); saveDraft(); renderLayout(); });
 
+  /* ---------------- projects & tasks (client workspace) ---------------- */
+  var WORK=null, WOPEN=null, WF={status:'',client:'',project:''}, WPEDIT=null;
+  var WST={new:'طلب جديد',review:'قيد المراجعة',info:'بانتظار معلومات العميل',accepted:'تم القبول',progress:'قيد التنفيذ',feedback:'بانتظار الملاحظات',revision:'تعديلات مطلوبة',final:'التسليم النهائي',completed:'مكتملة',rejected:'مرفوضة',cancelled:'ملغاة'};
+  var WOPENST=['new','review','info','accepted','progress','feedback','revision','final'];
+  var WPT={once:'مشروع لمرة واحدة',monthly:'تعاون شهري',campaign:'حملة إعلانية',content:'إدارة محتوى',editing:'مونتاج فيديوهات',motion:'موشن غرافيك',commercial:'إنتاج تجاري',custom:'مشروع مخصص'};
+  var WPS={active:'نشط',paused:'متوقف مؤقتاً',completed:'منتهي',archived:'مؤرشف'};
+  var WPR={normal:'عادية',high:'عالية',urgent:'عاجلة'};
+  function loadWork(){
+    if(!LIVE){ WORK={err:'live'}; if(TAB==='tasks') renderWork(); return; }
+    var q='?admin=1'+(WOPEN?'&task='+encodeURIComponent(WOPEN):'');
+    fetch(API+'/work'+q,{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json().then(function(j){ j._s=r.status; return j; }); })
+      .then(function(j){ WORK= j.ok? j : {err:j.error||'fail'}; renderTabs(); if(TAB==='tasks') renderWork(); }).catch(function(){ WORK={err:'net'}; if(TAB==='tasks') renderWork(); });
+  }
+  function wreq(body,btn,ok){
+    if(btn) btn.disabled=true;
+    return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
+      .then(function(j){ if(ok) toast(ok); loadWork(); return j; })
+      .catch(function(e){ if(btn) btn.disabled=false; toast(({date:'اختر تاريخاً صحيحاً',note:'اكتب شو المعلومات المطلوبة','not client':'هالعميل لسا مو متعاقد — رقّيه أولاً من تبويب العملاء','no account':'ما في حساب بهالبريد',name:'اكتب اسم المشروع','date first':'حدّد الموعد المؤكد أولاً','no request':'الطلب ما عاد موجود'})[e.message]||'تعذّر التنفيذ',true); throw e; });
+  }
+  function wd(s){ if(!s) return '—'; try{ return new Date(s.length===10?s+'T12:00:00Z':s).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short',year:'numeric'}); }catch(_){ return s; } }
+  function wlinks(ls){ return (ls||[]).map(function(l){ return '<a class="adoc" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">↗ '+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,50))+'</a>'; }).join(' '); }
+  function wpill(s){ return '<span class="wpill s-'+esc(s)+'">'+esc(WST[s]||s)+'</span>'; }
+  function wtaskBody(t){
+    var cr=t.change_request, cn=(WORK.clients||[]).filter(function(c){return c.email===t.client_email})[0];
+    return '<div class="wtb"><div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
+      '<div class="wdd"><div><span>الموعد المطلوب (من العميل)</span><b>'+esc(wd(t.requested_date))+'</b></div><div class="'+(t.confirmed_date?'ok':'')+'"><span>الموعد المؤكد (منك)</span><b>'+esc(wd(t.confirmed_date))+'</b></div></div>'+
+      (t.description?'<div class="small muted">الوصف</div><pre>'+esc(t.description)+'</pre>':'')+(t.details?'<div class="small muted">التفاصيل</div><pre>'+esc(t.details)+'</pre>':'')+
+      (t.notes?'<div class="small muted">تعليمات إضافية</div><pre>'+esc(t.notes)+'</pre>':'')+((t.links||[]).length?'<div class="small muted">الروابط</div><div>'+wlinks(t.links)+'</div>':'')+
+      (t.studio_note?'<div class="small muted">آخر ملاحظة منك للعميل</div><pre>'+esc(t.studio_note)+'</pre>':'')+
+      (cr&&cr.status==='pending'?'<div class="wcr"><b>⏳ العميل طلب تغيير الموعد إلى '+esc(wd(cr.date))+'</b>'+(cr.reason?'<div class="small">'+esc(cr.reason)+'</div>':'')+
+        '<div class="actions"><button class="btn sm primary" type="button" data-wdd="'+esc(t.ref)+'" data-ok="1">موافقة على '+esc(wd(cr.date))+'</button><button class="btn sm" type="button" data-wdd="'+esc(t.ref)+'" data-ok="0">إبقاء الموعد الحالي</button></div></div>':'')+
+      (t.status==='new'||t.status==='review'||t.status==='info'?
+        '<div class="wrev"><div class="ph"><b>مراجعة الطلب</b>'+(t.status==='new'?'<button class="btn sm" type="button" data-wrv="'+esc(t.ref)+'">علّمها «قيد المراجعة»</button>':'')+'</div>'+
+        '<div class="row"><div class="field"><label>الموعد المؤكد للتسليم</label><input type="date" data-wcd value="'+esc(t.confirmed_date||t.requested_date||'')+'"></div><div class="field"><label>ملاحظة للعميل (اختياري)</label><input data-wnote dir="auto"></div></div>'+
+        '<div class="actions"><button class="btn sm primary" type="button" data-wacc="'+esc(t.ref)+'">قبول وتأكيد الموعد</button></div>'+
+        '<div class="field"><label>أو اطلب معلومات / ملفات ناقصة</label><textarea data-winfo dir="auto" placeholder="مثلاً: ابعتلنا اللوغو بجودة عالية ورابط الفيديوهات الخام."></textarea></div><div class="actions"><button class="btn sm" type="button" data-winq="'+esc(t.ref)+'">أرسل طلب المعلومات</button></div>'+
+        '<div class="field"><label>أو ارفض مع سبب</label><textarea data-wrej dir="auto"></textarea></div><div class="actions"><button class="btn sm danger" type="button" data-wrjt="'+esc(t.ref)+'">رفض المهمة</button></div></div>'
+      : (t.status!=='rejected'&&t.status!=='cancelled'?
+        '<div class="row"><div class="field"><label>الحالة</label><select data-wst>'+['accepted','progress','feedback','revision','final','completed','cancelled'].map(function(s){ return '<option value="'+s+'"'+(s===t.status?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select></div>'+
+        '<div class="field"><label>ملاحظة للعميل مع التحديث (اختياري)</label><input data-wnote2 dir="auto"></div></div><div class="actions"><button class="btn sm primary" type="button" data-wsts="'+esc(t.ref)+'">حفظ الحالة</button></div>'+
+        '<div class="row"><div class="field"><label>تغيير الموعد المؤكد</label><input type="date" data-wcd2 value="'+esc(t.confirmed_date||'')+'"></div><div class="field"><label>&nbsp;</label><button class="btn sm" type="button" data-wdt="'+esc(t.ref)+'">حفظ الموعد وإبلاغ العميل</button></div></div>' : ''))+
+      (WOPEN===t.ref&&(WORK.activity||[]).length?'<div class="small muted" style="margin-top:8px">سجل المهمة</div><div class="wlog small">'+WORK.activity.map(function(a){ var d=a.data||{};
+        var w=a.kind==='status'?'الحالة ← '+(WST[d.to]||d.to)+(d.confirmed_date?' · الموعد '+wd(d.confirmed_date):''):a.kind==='task_created'?'أرسل المهمة':a.kind==='date_changed'?'الموعد ← '+wd(d.to):a.kind==='info_provided'?'أرسل المعلومات: '+(d.text||''):a.kind==='date_change_requested'?'طلب تغيير الموعد إلى '+wd(d.date):a.kind==='date_change_decided'?(d.approved?'وافقت على الموعد '+wd(d.to):'أبقيت الموعد'):a.kind;
+        return '<div>'+esc(new Date(a.at).toLocaleString('ar'))+' · <b>'+esc(a.actor==='studio'?'أنت':a.actor_name)+'</b> · '+esc(w)+(d.note?' — '+esc(d.note):'')+'</div>'; }).join('')+'</div>':'')+'</div>';
+  }
+  function wtaskCard(t){ return '<details class="order item wt" data-wref="'+esc(t.ref)+'"'+(WOPEN===t.ref?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(t.ref)+'</span>'+wpill(t.status)+'<b>'+esc(t.title)+'</b><span class="muted small">'+esc(t.project_name)+' · المطلوب '+esc(wd(t.requested_date))+(t.confirmed_date?' · المؤكد '+esc(wd(t.confirmed_date)):'')+'</span></summary><div class="body">'+wtaskBody(t)+'</div></details>'; }
+  function projForm(p){ p=p||{}; var svc=C.services||[], cl=WORK.clients||[];
+    return '<form class="wpf" data-wpid="'+esc(p.id||'')+'"><div class="row"><div class="field"><label>العميل المتعاقد</label><select name="client_email">'+(cl.length?'':'<option value="">ما في عملاء متعاقدين بعد</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===p.client_email?' selected':'')+'>'+esc(c.name)+' — '+esc(c.email)+'</option>'; }).join('')+'</select></div>'+
+      '<div class="field"><label>اسم المشروع</label><input name="name" value="'+esc(p.name||'')+'" required></div></div>'+
+      '<div class="row"><div class="field"><label>النوع</label><select name="type">'+Object.keys(WPT).map(function(k){ return '<option value="'+k+'"'+(k===(p.type||'monthly')?' selected':'')+'>'+WPT[k]+'</option>'; }).join('')+'</select></div>'+
+      '<div class="field"><label>الحالة</label><select name="status">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(k===(p.status||'active')?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div>'+
+      '<div class="field"><label>البداية</label><input type="date" name="start_date" value="'+esc(p.start_date||'')+'"></div><div class="field"><label>النهاية (اختياري)</label><input type="date" name="end_date" value="'+esc(p.end_date||'')+'"></div></div>'+
+      '<div class="field"><label>الخدمات المتفق عليها</label><div class="wsvc">'+svc.map(function(s){ return '<label class="check"><input type="checkbox" name="svc" value="'+esc(s.id)+'"'+((p.services||[]).indexOf(s.id)>=0?' checked':'')+'> '+esc((s.name&&s.name.ar)||s.id)+'</label>'; }).join('')+'</div></div>'+
+      '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">للتقارير الشهرية لاحقاً. اتركها فارغة إذا ما في عدد ثابت.</p></div></div>'+
+      '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button>':'')+'</div></form>'; }
+  function renderWork(){
+    var W=WORK;
+    if(!W){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; if(LIVE) loadWork(); return; }
+    if(W.err){ $('#panel').innerHTML='<section class="sec"><h3>المشاريع والمهام</h3><div class="empty">'+(W.err==='db'?'قاعدة البيانات (D1) مو مربوطة بالموقع بعد. اربطها باسم DB من Cloudflare ← Workers & Pages ← المشروع ← Settings ← Bindings.':W.err==='live'?'هالقسم بيشتغل على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
+    var T=W.tasks||[], td=W.today, cnt=function(f){ return T.filter(f).length; };
+    var fresh=T.filter(function(t){ return t.status==='new'||t.status==='review'; }), dates=T.filter(function(t){ return t.change_request&&t.change_request.status==='pending'; });
+    var queued=fresh.concat(dates.filter(function(x){return fresh.indexOf(x)<0}));
+    var list=T.filter(function(t){ return queued.indexOf(t)<0&&(!WF.status||(WF.status==='open'?WOPENST.indexOf(t.status)>=0:t.status===WF.status))&&(!WF.client||t.client_email===WF.client)&&(!WF.project||t.project_id===WF.project); });
+    $('#panel').innerHTML=
+      '<section class="sec"><div class="kpis"><div><b>'+cnt(function(t){return t.status==='new'||t.status==='review'})+'</b><span>طلبات جديدة</span></div><div><b>'+cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0})+'</b><span>قيد التنفيذ</span></div>'+
+        '<div><b>'+cnt(function(t){return ['info','feedback','final'].indexOf(t.status)>=0})+'</b><span>بانتظار العميل</span></div><div><b>'+cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0})+'</b><span>متأخرة</span></div>'+
+        '<div><b>'+cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)})+'</b><span>مكتملة هالشهر</span></div><div><b>'+(W.projects||[]).filter(function(p){return p.status==='active'}).length+'</b><span>مشاريع نشطة</span></div></div></section>'+
+      (queued.length?'<section class="sec wq"><h3>بانتظار قرارك ('+queued.length+')</h3><p class="hint">العميل حدّد موعد يتمناه. الموعد ما بيتأكد إلا لما تقبل وتحدّد «الموعد المؤكد».</p><div class="orders">'+queued.map(wtaskCard).join('')+'</div></section>':'')+
+      '<section class="sec"><h3>كل المهام</h3><div class="wfl"><select data-wf="status"><option value="">كل الحالات</option><option value="open"'+(WF.status==='open'?' selected':'')+'>المفتوحة</option>'+Object.keys(WST).map(function(s){ return '<option value="'+s+'"'+(WF.status===s?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select>'+
+        '<select data-wf="client"><option value="">كل العملاء</option>'+(W.clients||[]).map(function(c){ return '<option value="'+esc(c.email)+'"'+(WF.client===c.email?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('')+'</select>'+
+        '<select data-wf="project"><option value="">كل المشاريع</option>'+(W.projects||[]).map(function(p){ return '<option value="'+esc(p.id)+'"'+(WF.project===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div>'+
+        (list.length?'<div class="orders">'+list.map(wtaskCard).join('')+'</div>':'<div class="empty">'+(queued.length?'المهام الباقية فوق، بـ«بانتظار قرارك».':'لا مهام هنا.')+'</div>')+'</section>'+
+      '<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">المشروع بيربط عميل متعاقد بمساحة عمله. العميل بيشوف مشاريعه بس، وبيبعت المهام من جواتها.</p>'+
+        ((W.projects||[]).length?'<div class="clients">'+W.projects.map(function(p){ var cn=(W.clients||[]).filter(function(c){return c.email===p.client_email})[0];
+          return '<div class="client"'+(WPEDIT===p.id?' data-editing':'')+'>'+(WPEDIT===p.id?projForm(p):'<div><b>'+esc(p.name)+'</b> <span class="rpill'+(p.status==='active'?' on':'')+'">'+esc(WPS[p.status]||p.status)+'</span> <span class="muted small">'+esc(WPT[p.type]||p.type)+' · '+esc(cn?cn.name:p.client_email)+'</span></div>'+
+            '<span class="muted small">'+p.open_tasks+' مفتوحة من '+p.all_tasks+(p.start_date?' · من '+esc(wd(p.start_date)):'')+(p.end_date?' إلى '+esc(wd(p.end_date)):'')+'</span><div class="actions"><button class="btn sm" type="button" data-wpe="'+esc(p.id)+'">تعديل</button><button class="btn sm" type="button" data-wpt="'+esc(p.id)+'">مهامه</button></div>')+'</div>'; }).join('')+'</div>':'')+
+        '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+
+      '<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">أنواع المهام بتظهر للعميل كاقتراحات، وأسماء الأولويات قابلة للتعديل. بتنحفظ مع «نشر التعديلات».</p>'+
+        field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>';
+    if(WOPEN){ var op=document.querySelector('[data-wref="'+WOPEN+'"]'); if(op){ op.open=true; setTimeout(function(){ op.scrollIntoView({block:'start',behavior:'smooth'}); },80); } }
+  }
+  document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.wref||!d.open) return; if(WOPEN!==d.dataset.wref){ WOPEN=d.dataset.wref; try{ history.replaceState(null,'','#tasks/'+WOPEN); }catch(_){} loadWork(); } },true);
+  document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks'||!s.dataset.wf) return; WF[s.dataset.wf]=s.value; renderWork(); });
+  document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList.contains('wpf')) return; e.preventDefault(); var E=f.elements;
+    var body={action:'project',id:f.dataset.wpid||undefined,client_email:E.client_email.value,name:E.name.value.trim(),type:E.type.value,status:E.status.value,start_date:E.start_date.value,end_date:E.end_date.value,
+      description:E.description.value.trim(),quota:E.quota.value,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
+    wreq(body,f.querySelector('button[type=submit]'),f.dataset.wpid?'انحفظ المشروع':'انعمل المشروع ووصل للعميل إيميل').then(function(){ WPEDIT=null; }).catch(function(){}); });
+  document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
+    if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
+    if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
+    if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; renderWork(); return; }
+    if(b.dataset.wrv){ wreq({action:'review',task:b.dataset.wrv,decision:'review'},b,'صارت «قيد المراجعة»').catch(function(){}); return; }
+    if(b.dataset.wacc){ var cd=box.querySelector('[data-wcd]').value; if(!cd){ toast('حدّد الموعد المؤكد',true); return; }
+      wreq({action:'review',task:b.dataset.wacc,decision:'accept',confirmed_date:cd,note:box.querySelector('[data-wnote]').value.trim()},b,'انقبلت المهمة ووصل للعميل الموعد المؤكد').catch(function(){}); return; }
+    if(b.dataset.winq){ wreq({action:'review',task:b.dataset.winq,decision:'info',note:box.querySelector('[data-winfo]').value.trim()},b,'وصل للعميل طلب المعلومات').catch(function(){}); return; }
+    if(b.dataset.wrjt){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ اكبس مرة ثانية'; return; }
+      wreq({action:'review',task:b.dataset.wrjt,decision:'reject',note:box.querySelector('[data-wrej]').value.trim()},b,'انرفضت المهمة ووصل للعميل السبب').catch(function(){}); return; }
+    if(b.dataset.wsts){ wreq({action:'status',task:b.dataset.wsts,status:box.querySelector('[data-wst]').value,note:box.querySelector('[data-wnote2]').value.trim()},b,'انحفظت الحالة').catch(function(){}); return; }
+    if(b.dataset.wdt){ wreq({action:'date',task:b.dataset.wdt,confirmed_date:box.querySelector('[data-wcd2]').value},b,'تغيّر الموعد ووصل للعميل').catch(function(){}); return; }
+    if(b.dataset.wdd){ wreq({action:'dateDecision',task:b.dataset.wdd,approve:b.dataset.ok==='1'},b,b.dataset.ok==='1'?'تأكد الموعد الجديد':'بقي الموعد كما هو').catch(function(){}); return; }
+  });
+
   /* ---------------- stats ---------------- */
   var DEV={mobile:'موبايل',desktop:'كمبيوتر',tablet:'تابلت'}, SDAYS=30, STATS=null;
   var SRCN={direct:'مباشر / رابط محفوظ',instagram:'Instagram',google:'Google',facebook:'Facebook',whatsapp:'WhatsApp',telegram:'Telegram',tiktok:'TikTok',youtube:'YouTube',x:'X',linkedin:'LinkedIn',behance:'Behance',snapchat:'Snapchat',bing:'Bing'};
@@ -634,7 +738,8 @@
       var loadPriv= LIVE? fetch(API+'/private',{headers:headers({})}).then(function(r){return r.ok?r.json():{data:null}}).then(function(j){ return j.data; }).catch(function(){return null;})
                          : Promise.resolve((function(){ try{ return JSON.parse(localStorage.getItem('eb-private')||'null'); }catch(_){ return null; } })());
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
-        render(); dirty(); loadOrders(); loadUsers(); });
+        var wm=/^#(?:work|tasks)\/(T-[A-Z0-9]+)$|^#tasks$/.exec(location.hash); if(wm){ TAB='tasks'; WOPEN=wm[1]||null; }
+        render(); dirty(); loadOrders(); loadUsers(); loadWork(); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });
   }
   $('#loginForm').addEventListener('submit',function(e){

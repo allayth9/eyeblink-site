@@ -14,7 +14,7 @@ SERVICES = [s["id"] for s in CONTENT["services"]]
 import hashlib
 def _v(path):
     return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/brands.js","assets/img/favicon.svg"]}
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/brands.js","assets/img/favicon.svg"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "privacy"]
 
 UI = {
@@ -384,7 +384,7 @@ def build(lang, page):
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
 <script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
-<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
+<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/portal.js?v={ASSET_V["assets/js/portal.js"]}"></script>' if page == "account" else ""}{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
 </body>
 </html>
 '''

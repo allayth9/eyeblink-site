@@ -207,8 +207,17 @@
     var u=ME.user; LIST=ME.orders||[];
     box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing.html">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
+      (u.role==='client'&&window.EBPortal?'<div class="acct-tabs" role="tablist"><button type="button" role="tab" data-tab="w">'+EBPortal.T.ws+'</button><button type="button" role="tab" data-tab="o">'+T.orders+'</button></div><section class="wsp" id="wsp" hidden></section>':'')+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
     bindRole();
+    var wsp=document.getElementById('wsp');
+    if(wsp){ var grid=box.querySelector('.acct-grid'), tabs=box.querySelector('.acct-tabs');
+      var show=function(w){ wsp.hidden=!w; grid.hidden=w; [].forEach.call(tabs.children,function(b){ b.setAttribute('aria-selected',b.dataset.tab===(w?'w':'o')); }); };
+      tabs.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; if(b.dataset.tab==='w'){ show(true); if(!/^#w/.test(location.hash)) history.replaceState(null,'','#w'); EBPortal.mount(wsp); } else { show(false); if(/^#w/.test(location.hash)) history.replaceState(null,'',location.pathname); } };
+      addEventListener('hashchange',function(){ if(/^#w/.test(location.hash)&&wsp.hidden){ show(true); EBPortal.mount(wsp); } });
+      var onOrders=/^#EB-/i.test(location.hash);
+      show(!onOrders); if(!onOrders) EBPortal.mount(wsp);
+    }
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>'+T.seePricing+'</a></div>';
