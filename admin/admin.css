@@ -376,3 +376,9 @@ section.sec .ph{display:flex;justify-content:space-between;align-items:center;ga
 @media (max-width:620px){ .cp-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin} .cp-tabs button{white-space:nowrap} .cph2{gap:12px} .cp-acts{max-width:none} .cl-row{gap:6px 12px;padding:12px} .cl-n{gap:12px} }
 .code{font-family:Oswald,sans-serif;letter-spacing:.08em;font-weight:600}
 .cl-tools select,.cp-pf,.cp-proj select{width:auto;flex:0 0 auto}
+.cl-mode{border:0;margin:0;padding:0;display:grid;gap:8px}.cl-mode legend{font-size:13px;color:var(--mist);margin-bottom:6px;padding:0}
+.cl-mode .check span b{color:var(--light);font-weight:600}
+.cl-pkg{box-shadow:inset 0 0 0 1px rgba(63,224,232,.45);background:linear-gradient(160deg,rgba(63,224,232,.08),rgba(139,92,255,.06))}
+.pkg-dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:0}.pkg-dl div{padding:10px 12px;border-radius:12px;background:rgba(4,6,26,.45)}
+.pkg-dl dt{font-size:12px;color:var(--dim)}.pkg-dl dd{margin:3px 0 0;font-size:14px;word-break:break-all;user-select:all}.pkg-pw{font:600 16px/1.4 ui-monospace,monospace;color:var(--horizon)}
+.pkg-msg{margin:0;padding:12px 14px;border-radius:12px;background:rgba(4,6,26,.45);white-space:pre-wrap;font:inherit;font-size:13.5px;line-height:1.8;max-height:240px;overflow:auto}

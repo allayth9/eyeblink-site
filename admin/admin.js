@@ -897,7 +897,7 @@
     if(btn) btn.disabled=true;
     return fetch(API+'/access',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ if(ok) toast(ok); loadUsers(); if(PROF) loadProfile(PROF.email); return j; })
-      .catch(function(e){ if(btn) btn.disabled=false; toast(({already:'هذا العميل متعاقد أصلاً',email:'اكتب بريداً صحيحاً','no account':'لا يوجد حساب بهذا البريد','no request':'لم يعد الطلب موجوداً'})[e.message]||'تعذّر التنفيذ',true); throw e; });
+      .catch(function(e){ if(btn) btn.disabled=false; toast(({exists:'لهذا البريد حساب أصلاً',name:'اكتب اسم العميل',already:'هذا العميل متعاقد أصلاً',email:'اكتب بريداً صحيحاً','no account':'لا يوجد حساب بهذا البريد','no request':'لم يعد الطلب موجوداً'})[e.message]||'تعذّر التنفيذ',true); throw e; });
   }
   var ROLE={client:'عميل متعاقد',customer:'عميل عادي'}, VIA={invite:'بدعوة',request:'بطلب وصول',upgrade:'ترقية من الإدارة'};
   /* ---------------- clients: a list of every client, and one management profile per client ---------------- */
@@ -954,8 +954,14 @@
       '<section class="sec"><div class="ph"><h3>العملاء ('+all.filter(function(c){ return c.status!=='archived'; }).length+')</h3><button class="btn sm primary" type="button" data-cadd>'+(CADD?'إغلاق':'+ عميل جديد')+'</button></div>'+
       (CADD?'<form class="cl-add" id="clAdd" novalidate><div class="row"><div class="field"><label>الاسم *</label><input name="name" required dir="auto"></div><div class="field"><label>البريد الإلكتروني *</label><input name="email" type="email" dir="ltr" required></div></div>'+
         '<div class="row"><div class="field"><label>الهاتف أو واتساب</label><input name="phone" dir="ltr"></div><div class="field"><label>الشركة أو العلامة</label><input name="company" dir="auto"></div></div>'+
-        '<label class="check"><input type="checkbox" name="ws" checked> تفعيل مساحة العمل له: دعوة بالبريد إن لم يكن لديه حساب، أو ترقية حسابه الحالي</label>'+
-        '<div class="actions"><button class="btn primary sm" type="submit">إضافة العميل وفتح ملفه</button></div><div class="inv-out" hidden></div></form>':'')+
+        '<fieldset class="cl-mode"><legend>كيف يدخل العميل؟</legend>'+
+          '<label class="check"><input type="radio" name="mode" value="ready" checked> <span><b>أجهّز حسابه الآن</b> وأرسل له الرابط وكلمة سر مؤقتة (يغيّرها عند أول دخول)</span></label>'+
+          '<label class="check"><input type="radio" name="mode" value="invite"> <span><b>أرسل له دعوة</b> لينشئ حسابه بنفسه</span></label>'+
+          '<label class="check"><input type="radio" name="mode" value="none"> <span><b>سجلّ فقط</b> دون مساحة عمل الآن</span></label></fieldset>'+
+        '<div class="row"><div class="field"><label>لغة الحساب والرسالة</label><select name="lang"><option value="ar">العربية</option><option value="en">English</option></select></div>'+
+          '<div class="field"><label>مشروع أول (اختياري)</label><input name="pname" dir="auto" placeholder="مثلاً: المحتوى الشهري"></div><div class="field"><label>نوع المشروع</label><select name="ptype">'+Object.keys(WPT).map(function(k){ return '<option value="'+k+'"'+(k==='monthly'?' selected':'')+'>'+WPT[k]+'</option>'; }).join('')+'</select></div></div>'+
+        '<label class="check"><input type="checkbox" name="mail"> أرسل بيانات الدخول إلى بريده أيضاً</label>'+
+        '<div class="actions"><button class="btn primary sm" type="submit">إضافة العميل وتجهيزه</button></div></form>':'')+
       '<div class="cl-tools"><input type="search" class="cl-q" placeholder="ابحث بالاسم أو البريد أو الهاتف…" value="'+esc(CQ)+'" aria-label="بحث"><select class="cl-sort" aria-label="الترتيب"><option value="activity"'+(CS==='activity'?' selected':'')+'>الأحدث نشاطاً</option><option value="name"'+(CS==='name'?' selected':'')+'>الاسم</option><option value="added"'+(CS==='added'?' selected':'')+'>الأحدث إضافة</option></select></div>'+
       '<div class="chips cl-chips">'+CFL.map(function(x){ var n=all.filter(function(c){ return cmatch(c,x[0]); }).length; return '<button type="button" class="btn sm f-'+x[0]+(CF===x[0]?' primary':'')+'" data-cf="'+x[0]+'">'+x[1]+' <small>'+n+'</small></button>'; }).join('')+'</div>'+
       (list.length?'<div class="cl-list">'+list.map(function(c){
@@ -968,6 +974,16 @@
         :'<div class="empty">'+(all.length?'لا يوجد عملاء يطابقون هذا البحث.':'لا يوجد عملاء بعد. أضف أول عميل من زر «عميل جديد».')+'</div>')+'</section>'+
       (A.invites.length?'<section class="sec"><details><summary class="small">دعوات مفتوحة ('+A.invites.length+')</summary><div class="clients" style="margin-top:10px">'+A.invites.map(function(i){ return '<div class="client inv"><div><b dir="ltr">'+esc(i.email)+'</b>'+(i.name?' · '+esc(i.name):'')+' <span class="muted small">تنتهي '+esc(new Date(i.expires).toLocaleDateString('ar'))+'</span></div><div class="actions"><button class="btn sm" type="button" data-icopy="'+esc(i.token)+'" data-ilang="'+esc(i.lang||'ar')+'">نسخ الرابط</button><button class="btn sm danger" type="button" data-irevoke="'+esc(i.token)+'">إلغاء الدعوة</button></div></div>'; }).join('')+'</div></details></section>':'');
   }
+  var PKG=null;
+  function pkgMsg(k){ var first=String(k.name||'').split(/\s+/)[0], en=k.lang==='en';
+    return en?('Hi '+first+',\nYour Eyeblink Studio workspace is ready'+(k.project?' with the project "'+k.project+'"':'')+'. From there you send your tasks and follow the work, deliveries and invoices.\n\nLink: '+k.link+'\nE-mail: '+k.email+'\nTemporary password: '+k.password+'\n\nYou will choose your own password the first time you sign in.')
+      :('أهلاً '+first+'،\nجهّزنا لك مساحة العمل الخاصة بك في Eyeblink Studio'+(k.project?' وفيها مشروع «'+k.project+'»':'')+'، ومنها ترسل مهامك وتتابع التنفيذ والتسليمات والفواتير.\n\nالرابط: '+k.link+'\nالبريد: '+k.email+'\nكلمة السر المؤقتة: '+k.password+'\n\nعند أول دخول ستختار كلمة سر خاصة بك.'); }
+  function pkgCard(){ var k=PKG; if(!k||!PROF||k.email!==PROF.email) return ''; var digits=String(k.phone||'').replace(/[^0-9]/g,'');
+    return '<section class="sec cl-pkg"><div class="ph"><h3>بيانات دخول العميل</h3><button class="btn sm" type="button" data-pkgx>إغلاق</button></div>'+
+      '<p class="hint">تظهر كلمة السر المؤقتة هنا مرة واحدة فقط، ولا تُحفظ إلا مشفّرة. عند أول دخول يختار العميل كلمة سر خاصة به، ولا تُفتح مساحة العمل قبل ذلك.'+(k.sent?' وصلت هذه البيانات إلى بريده أيضاً.':'')+'</p>'+
+      '<dl class="pkg-dl"><div><dt>الرابط</dt><dd dir="ltr">'+esc(k.link)+'</dd></div><div><dt>البريد</dt><dd dir="ltr">'+esc(k.email)+'</dd></div><div><dt>كلمة السر المؤقتة</dt><dd dir="ltr" class="pkg-pw">'+esc(k.password)+'</dd></div></dl>'+
+      '<pre class="pkg-msg" dir="auto">'+esc(pkgMsg(k))+'</pre>'+
+      '<div class="actions"><button class="btn sm primary" type="button" data-pkgcopy>نسخ الرسالة</button><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/'+digits+'?text='+encodeURIComponent(pkgMsg(k))+'">إرسال عبر واتساب'+(digits?'':' (اختر جهة الاتصال)')+'</a><button class="btn sm" type="button" data-pkgpw>نسخ كلمة السر</button></div></section>'; }
   var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['log','سجل النشاط']];
   function renderProfile(){ var P=PROF;
     if(P.err) { $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="empty">'+(P.err==='live'?'يعمل هذا القسم على الموقع المنشور.':P.err==='db'?'قاعدة البيانات غير مربوطة.':'تعذّر تحميل ملف العميل.')+'</div></section>'; return; }
@@ -981,7 +997,7 @@
         '<div class="actions client cp-acts">'+'<button class="btn sm" type="button" data-cedit>'+(PEDIT?'إغلاق التعديل':'تعديل البيانات')+'</button>'+
           (c.status==='archived'?'<button class="btn sm" type="button" data-carch="0">استعادة العميل</button>':'<button class="btn sm" type="button" data-carch="1">أرشفة</button>')+
           (D.account?(isCl?'<button class="btn sm" type="button" data-urole="'+esc(email)+'" data-to="customer">إلغاء مساحة العمل</button>':'<button class="btn sm primary" type="button" data-urole="'+esc(email)+'" data-to="client">ترقية إلى عميل متعاقد</button>')+
-            '<button class="btn sm" type="button" data-upw="'+esc(email)+'">كلمة سر جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(email)+'">حذف الحساب</button>':'<button class="btn sm primary" type="button" data-cinvite>إرسال دعوة لمساحة العمل</button>')+
+            '<button class="btn sm" type="button" data-ctemp>بيانات دخول جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(email)+'">حذف الحساب</button>':'<button class="btn sm primary" type="button" data-cready>تجهيز حسابه وإصدار بيانات الدخول</button><button class="btn sm" type="button" data-cinvite>إرسال دعوة بدلاً من ذلك</button>')+
           '<div class="newpw small" hidden></div></div></div>'+
       (PEDIT?'<form class="cl-edit" id="clEdit" novalidate><div class="row"><div class="field"><label>الاسم</label><input name="name" dir="auto" value="'+esc(c.name||u.name||'')+'"></div><div class="field"><label>الشركة أو العلامة</label><input name="company" dir="auto" value="'+esc(c.company||'')+'"></div></div>'+
         '<div class="row"><div class="field"><label>الهاتف أو واتساب</label><input name="phone" dir="ltr" value="'+esc(c.phone||'')+'"></div><div class="field"><label>رابط الشعار أو الصورة</label><input name="logo_url" dir="ltr" placeholder="https://" value="'+esc(c.logo_url||'')+'"></div>'+
@@ -989,7 +1005,7 @@
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea name="notes" dir="auto" rows="3">'+esc(c.notes||'')+'</textarea></div><div class="actions"><button class="btn primary sm" type="submit">حفظ البيانات</button></div></form>'
         :(c.notes?'<div class="cp-notes"><span class="small muted">ملاحظات داخلية</span><p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p></div>':''))+
       '<nav class="cp-tabs" role="tablist">'+PSECS.map(function(x){ return '<button type="button" role="tab" class="t-'+x[0]+'" aria-selected="'+(PSEC===x[0])+'" data-psec="'+x[0]+'">'+x[1]+(cnt[x[0]]?' <small>'+cnt[x[0]]+'</small>':'')+'</button>'; }).join('')+'</nav></section>';
-    $('#panel').innerHTML=head+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
+    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
   }
   function kpi(n,l,k){ return '<div class="ck" style="--k:'+k+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
   function due2(D){ var due={},paid={}; D.invoices.forEach(function(x){ if(x.status!=='cancelled') paid[x.currency]=(paid[x.currency]||0)+x.paid-(x.refunded||0); if(x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0) due[x.currency]=(due[x.currency]||0)+x.balance; });
@@ -1104,14 +1120,19 @@
     if(el.dataset.pstat){ var p=PROF.d.projects.filter(function(x){ return x.id===el.dataset.pstat; })[0]; if(!p) return;
       creq({action:'project',id:p.id,client_email:PROF.email,name:p.name,description:p.description,type:p.type,status:el.value,services:p.services,start_date:p.start_date,end_date:p.end_date,quota:p.quota,drive_url:p.drive_url,auto_report:!!p.auto_report},null,'تحدّثت حالة المشروع').catch(function(){}); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||!/^cl(Add|Edit|Proj|Task|File)$/.test(f.id)&&!f.classList.contains('cl-pay')) return; e.preventDefault(); var E=f.elements, b=f.querySelector('[type=submit]');
-    if(f.id==='clAdd'){ var em=E.email.value.trim().toLowerCase(), nm=E.name.value.trim(), ws=E.ws.checked;
+    if(f.id==='clAdd'){ var em=E.email.value.trim().toLowerCase(), nm=E.name.value.trim(), mode=(f.querySelector('[name=mode]:checked')||{}).value||'ready', lang=E.lang.value, pn=E.pname.value.trim(), ph=E.phone.value.trim();
       if(!nm){ toast('اكتب اسم العميل',true); E.name.focus(); return; } if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ toast('اكتب بريداً صحيحاً',true); E.email.focus(); return; }
-      creq({action:'clientSave',email:em,name:nm,phone:E.phone.value.trim(),company:E.company.value.trim()},b).then(function(j){
-        var next=function(){ CADD=false; loadProfile(em,'overview'); };
-        if(!ws||j.role==='client') return next();
-        if(j.account) return accReq({action:'setRole',email:em,role:'client'},null,'أُضيف العميل وتفعّلت مساحة العمل له').then(next,next);
-        accReq({action:'invite',email:em,name:nm,lang:'ar'},null).then(function(r){ toast(r.sent?'أُضيف العميل ووصلته دعوة على بريده':'أُضيف العميل. البريد غير مفعّل: انسخ رابط الدعوة من «دعوات مفتوحة»'); next(); },next);
-      }).catch(function(){}); return; }
+      b.disabled=true;
+      var proj=function(){ return pn?creq({action:'project',client_email:em,name:pn,type:E.ptype.value},null).catch(function(){}):Promise.resolve(); };
+      creq({action:'clientSave',email:em,name:nm,phone:ph,company:E.company.value.trim()},null).then(function(j){
+        var done=function(msg){ CADD=false; if(msg) toast(msg); loadProfile(em,'overview'); };
+        if(mode==='none') return proj().then(function(){ done('أُضيف العميل'); });
+        if(j.account){ var up=j.role==='client'?Promise.resolve():accReq({action:'setRole',email:em,role:'client'},null);
+          return up.then(proj).then(function(){ done('لدى العميل حساب أصلاً، فتفعّلت له مساحة العمل. يمكنك إصدار كلمة سر مؤقتة من ملفه إن احتاج.'); },function(){ done(); }); }
+        if(mode==='invite') return accReq({action:'invite',email:em,name:nm,lang:lang},null).then(function(r){ return proj().then(function(){ done(r.sent?'أُضيف العميل ووصلته دعوة على بريده':'أُضيف العميل. انسخ رابط الدعوة من «دعوات مفتوحة»'); }); },function(){ done(); });
+        return accReq({action:'createAccount',email:em,name:nm,lang:lang,mail:E.mail.checked},null).then(function(r){
+          return proj().then(function(){ PKG={email:em,name:nm,password:r.password,link:r.link,lang:r.lang,phone:ph,project:pn,sent:r.sent}; done('جاهز: أرسل للعميل بيانات الدخول'); }); },function(){ done(); });
+      }).catch(function(){ b.disabled=false; }); return; }
     if(f.id==='clEdit'){ creq({action:'clientSave',email:PROF.email,name:E.name.value.trim(),company:E.company.value.trim(),phone:E.phone.value.trim(),logo_url:E.logo_url.value.trim(),status:E.status.value,notes:E.notes.value},b,'حُفظت بيانات العميل').catch(function(){}); return; }
     if(f.id==='clProj'){ if(!E.name.value.trim()){ toast('اكتب اسم المشروع',true); return; }
       creq({action:'project',client_email:PROF.email,name:E.name.value.trim(),type:E.type.value,start_date:E.start_date.value,end_date:E.end_date.value,quota:E.quota.value,description:E.description.value.trim()},b,'أُنشئ المشروع').catch(function(){}); return; }
@@ -1134,6 +1155,11 @@
     if(b.dataset.pgo){ PSEC=b.dataset.pgo; PROF.proj=b.dataset.pproj||null; renderClients(); if(b.dataset.pnew){ var fm=$(PSEC==='projects'?'#clProj':'#clTask'); if(fm){ fm.hidden=false; var i=fm.querySelector('input'); if(i) i.focus(); } } return; }
     if(b.hasAttribute('data-cedit')){ PEDIT=!PEDIT; renderClients(); return; }
     if(b.dataset.carch){ if(b.dataset.carch==='1'&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الأرشفة؟'; return; } creq({action:'clientArchive',email:PROF.email,archive:b.dataset.carch==='1'},b,b.dataset.carch==='1'?'أُرشف العميل':'استُعيد العميل').catch(function(){}); return; }
+    if(b.hasAttribute('data-pkgx')){ PKG=null; renderClients(); return; }
+    if(b.hasAttribute('data-pkgcopy')||b.hasAttribute('data-pkgpw')){ var tx=b.hasAttribute('data-pkgpw')?PKG.password:pkgMsg(PKG); try{ navigator.clipboard.writeText(tx).then(function(){ toast('نُسخ'); }); }catch(_){ toast(tx); } return; }
+    if(b.hasAttribute('data-ctemp')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد؟ تتوقف كلمة السر الحالية'; return; }
+      accReq({action:'tempPassword',email:PROF.email},b).then(function(r){ PKG={email:r.email,name:r.name,password:r.password,link:r.link,lang:r.lang,phone:(D.client&&D.client.phone)||''}; renderClients(); scrollTo(0,0); }).catch(function(){}); return; }
+    if(b.hasAttribute('data-cready')){ var cc=D.client||{}; accReq({action:'createAccount',email:PROF.email,name:cc.name||PROF.email.split('@')[0],lang:'ar'},b).then(function(r){ PKG={email:r.email,name:r.name,password:r.password,link:r.link,lang:r.lang,phone:cc.phone||'',project:(D.projects[0]||{}).name}; loadProfile(PROF.email); }).catch(function(){}); return; }
     if(b.hasAttribute('data-cinvite')){ accReq({action:'invite',email:PROF.email,name:(D.client&&D.client.name)||'',lang:'ar'},b).then(function(r){ toast(r.sent?'وصلت الدعوة على بريده':'البريد غير مفعّل: انسخ الرابط من «دعوات مفتوحة»'); }).catch(function(){}); return; }
     if(b.hasAttribute('data-pnewp')){ var fp=$('#clProj'); fp.hidden=!fp.hidden; if(!fp.hidden) fp.querySelector('input').focus(); return; }
     if(b.hasAttribute('data-pnewt')){ var ft=$('#clTask'); ft.hidden=!ft.hidden; if(!ft.hidden) ft.querySelector('[name=title]').focus(); return; }
@@ -1169,7 +1195,7 @@
   });
   function docOpen(src){ var w=window.open('about:blank','_blank'); fetch(src,{headers:headers({})}).then(function(r){ return r.text(); }).then(function(h){ if(w){ w.document.open(); w.document.write(h); w.document.close(); } }).catch(function(){ if(w) w.close(); toast('تعذّر فتح الفاتورة',true); }); }
 
-  var LOGN={'requested workspace access':'طلب الوصول لمساحة العمل','accepted the invitation':'قبل الدعوة','invited to the workspace':'أُرسلت إليه دعوة','access request approved':'قُبل طلب الوصول','access request declined':'رُفض طلب الوصول','upgraded to Active Client':'ترقية إلى عميل متعاقد','workspace access removed':'أُلغيت مساحة العمل'};
+  var LOGN={'account prepared by the studio':'جهّز الاستوديو حسابه','temporary password issued':'أُصدرت له بيانات دخول جديدة','chose a new password':'اختار كلمة سر جديدة','requested workspace access':'طلب الوصول لمساحة العمل','accepted the invitation':'قبل الدعوة','invited to the workspace':'أُرسلت إليه دعوة','access request approved':'قُبل طلب الوصول','access request declined':'رُفض طلب الوصول','upgraded to Active Client':'ترقية إلى عميل متعاقد','workspace access removed':'أُلغيت مساحة العمل'};
   document.addEventListener('submit',function(e){ var f=e.target; if(f.id!=='invForm') return; e.preventDefault();
     var E=f.elements, b=f.querySelector('button[type=submit]');
     accReq({action:'invite',email:E.email.value.trim(),name:E.name.value.trim(),lang:E.lang.value,note:E.note.value.trim()},b).then(function(j){

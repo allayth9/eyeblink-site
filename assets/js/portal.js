@@ -219,6 +219,7 @@
   // boot on the workspace page: signed in + Active Client → mount; otherwise a clear gate
   (function(){ var el=document.getElementById('ws'); if(!el) return;
     api('?view=dash').then(function(j){
+      if(j._s===403&&j.error==='password'){ location.replace('account.html?next=workspace'+location.hash); return; }   // temporary password: choose your own first
       if(j._s===401||j._s===403){ var lg=j._s===401; el.innerHTML='<div class="wgate glass"><span class="wg-ic">'+ICO.overview+'</span><span class="eyebrow">WORKSPACE</span><h1>'+T.ws+'</h1><p class="muted">'+(lg?U2.g.login:U2.g.client)+'</p>'+
         '<div class="actions"><a class="btn btn-primary" href="account.html'+(lg?'?next=workspace'+esc(location.hash):'')+'">'+(lg?U2.g.in:U2.g.acct)+'</a></div></div>'; return; }
       if(!j.ok){ el.innerHTML='<div class="wcard glass"><p class="muted">'+(j.error==='db'?(AR?'مساحة العمل قيد التجهيز. يُرجى المحاولة بعد قليل.':'The workspace is being set up. Try again shortly.'):T.err)+'</p></div>'; return; }

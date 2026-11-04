@@ -38,6 +38,9 @@
   setInterval(function(){ if(!document.hidden&&S&&S.u&&S.u.role==='client') get('work?view=unread').then(function(w){ if(w&&w.ok){ S.unread=w.unread; save(); badge(); } }); },90000);
 
   /* ---- draw ---- */
+  // workspace page on phones: the site pages and the language live in the ☰ menu (the bottom of the screen belongs to the workspace)
+  if(PAGE==='workspace'&&links&&!links.querySelector('.lang-li')){ var lg=bar.querySelector('.lang'); if(lg){ var ll=document.createElement('li'); ll.className='lang-li'; ll.innerHTML='<a href="'+lg.getAttribute('href')+'" hreflang="'+(AR?'en':'ar')+'">'+(AR?'English':'العربية')+'</a>'; links.appendChild(ll); }
+    var hm=document.createElement('li'); hm.className='lang-li home-li'; hm.innerHTML='<a href="'+BASE+'index.html">'+(AR?'الرئيسية':'Home')+'</a>'; links.insertBefore(hm,links.firstChild); }
   function apply(){
     var u=S&&S.u, cl=u&&u.role==='client';
     acct.classList.toggle('in',!!u); bar.classList.toggle('is-client',!!cl); try{ window.dispatchEvent(new CustomEvent('eb:who',{detail:u||null})); }catch(_){} if(u){ acct.title=u.name; acct.setAttribute('aria-haspopup','menu'); acct.setAttribute('aria-expanded','false'); } else { acct.removeAttribute('aria-haspopup'); acct.removeAttribute('aria-expanded'); }

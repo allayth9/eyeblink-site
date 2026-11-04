@@ -68,7 +68,7 @@
   var gsi=null;
   function loadGoogle(){ if(gsi) return gsi; gsi=new Promise(function(res,rej){ var s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); return gsi; }
   function authBox(host,done,compact){
-    var gid=((C().settings||{}).googleClientId||'').trim(), mode='register';
+    var gid=((C().settings||{}).googleClientId||'').trim(), mode=(new URLSearchParams(location.search).get('next')==='workspace'||/^#w/.test(location.hash))?'login':'register';   // clients coming to the workspace already have an account
     // the live settings (with the Google Client ID) can arrive a moment after this box is drawn: redraw once they do
     if(!gid && !window.EBLive) document.addEventListener('eb:content',function again(){ document.removeEventListener('eb:content',again);
       var g=((C().settings||{}).googleClientId||'').trim(); if(g && host.isConnected && host.querySelector('.auth') && !host.querySelector('.gbtn')) authBox(host,done,compact); });
@@ -86,6 +86,7 @@
       f.querySelector('button[type=submit]').textContent=m==='register'?T.doRegister:T.doLogin; msg.textContent=''; f.querySelector('.forgot').hidden=m!=='login'; }
     f.querySelector('.forgot').onclick=function(){ forgotBox(host,done,compact,f.elements.email.value.trim()); };
     host.querySelector('.seg').onclick=function(e){ var b=e.target.closest('button'); if(b) setMode(b.dataset.m); };
+    if(mode!=='register') setMode(mode);
     function finish(j,btn,old){
       if(btn){ btn.disabled=false; btn.textContent=old; }
       if(j.ok){ me().then(function(){ done(ME); }); return; }
@@ -159,9 +160,22 @@
       var inv=INVITE();
       if(inv){ return invitePage(inv,m); }
       if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); return; }
+      if(m.user.mustChange){ return newPassword(m,nextWs); }
       if(nextWs&&m.user.role==='client'){ location.replace('workspace.html'+(/^#w/.test(location.hash)?location.hash:'')); return; }   // the workspace has its own page now
       dash();
     });
+  }
+  // first sign-in with a temporary password from the studio: choose your own before anything else
+  function newPassword(m,nextWs){ var P=AR?{h:'اختر كلمة سر خاصة بك',p:'سجّلت الدخول بكلمة سر مؤقتة أرسلها إليك الاستوديو. اختر الآن كلمة سر خاصة بك لتفتح مساحة العمل.',a:'كلمة السر الجديدة (8 أحرف على الأقل)',b:'أعد كتابتها',go:'حفظ وفتح مساحة العمل',short:'يجب ألا تقل كلمة السر عن 8 أحرف.',diff:'كلمتا السر غير متطابقتين.',same:'اختر كلمة سر مختلفة عن المؤقتة.',err:'تعذّر الحفظ، يُرجى المحاولة مرة أخرى.',ok:'حُفظت كلمة السر.'}
+      :{h:'Choose your own password',p:'You signed in with a temporary password from the studio. Choose your own password now to open your workspace.',a:'New password (at least 8 characters)',b:'Type it again',go:'Save and open my workspace',short:'The password must be at least 8 characters.',diff:'The passwords do not match.',same:'Choose a password different from the temporary one.',err:'Could not save. Try again.',ok:'Password saved.'};
+    box.innerHTML='<div class="acct-card glass newpw-card"><span class="eyebrow">WELCOME</span><h2>'+esc(P.h)+'</h2><p class="muted">'+esc(P.p)+'</p><form class="form" novalidate><label>'+P.a+'<input name="a" type="password" autocomplete="new-password" dir="ltr" minlength="8" required></label><label>'+P.b+'<input name="b" type="password" autocomplete="new-password" dir="ltr" required></label><p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+P.go+'</button></div></form></div>';
+    var f=box.querySelector('form'), msg=f.querySelector('.msg'); f.elements.a.focus();
+    f.onsubmit=function(e){ e.preventDefault(); var a=f.elements.a.value, b2=f.elements.b.value;
+      if(a.length<8){ msg.textContent=P.short; return; } if(a!==b2){ msg.textContent=P.diff; return; }
+      var btn=f.querySelector('button'); btn.disabled=true;
+      api('account',{action:'setPassword',password:a}).then(function(j){ if(j&&j.ok){ toast(P.ok); try{ sessionStorage.removeItem('eb-who'); }catch(_){}
+          if(m.user.role==='client') location.replace('workspace.html'+(/^#w/.test(location.hash)?location.hash:'')); else page(); return; }
+        btn.disabled=false; msg.textContent=j&&j.error==='same'?P.same:j&&j.error==='password'?P.short:P.err; }); };
   }
   // invitation links: account.html?invite=TOKEN
   function INVITE(){ var t=new URLSearchParams(location.search).get('invite'); return /^[a-f0-9]{48}$/.test(t||'')? t : ''; }

@@ -5,6 +5,8 @@
 // POST /api/access                — signed in: { action:"request", note, company, lang } | { action:"accept", token }
 //                                    admin:     { action:"invite", email, name, lang, note } | { action:"revoke", token }
 //                                               { action:"approve"|"reject", email, reason } | { action:"setRole", email, role }
+//                                               { action:"createAccount", email, name, lang, mail } — the studio prepares a ready Active Client account (temporary password, changed at first sign-in)
+//                                               { action:"tempPassword", email, mail } — a new temporary password for an existing account
 // GET  /api/access?admin=1        — admin: pending requests + open invitations
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const INVITE_DAYS = 14;
@@ -12,6 +14,8 @@ function roleOf(u){ return u && u.role === "client" ? "client" : "customer"; }
 function logAct(u, by, what){ (u.log ||= []).unshift({ at: new Date().toISOString(), by, what }); u.log = u.log.slice(0, 60); }
 async function getUser(env, email){ const v = await env.EB.get("user:" + String(email || "").toLowerCase()); return v ? JSON.parse(v) : null; }
 async function putUser(env, u){ await env.EB.put("user:" + u.email, JSON.stringify(u)); }
+// a temporary password that is easy to read and type: no 0/O, 1/l/I
+function tempPw(){ const A = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(12)); let s = ""; for (let i = 0; i < 12; i++) { s += A[b[i] % A.length]; if (i === 3 || i === 7) s += "-"; } return s; }
 function acctLink(lang, extra){ return SITE + (lang === "en" ? "/en" : "") + "/account.html" + (extra || ""); }
 
 export async function onRequestGet({ request, env }) {
@@ -39,7 +43,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
   const clip = (v, m) => String(v ?? "").trim().slice(0, m);
-  const ADMIN = ["invite", "revoke", "approve", "reject", "setRole"];
+  const ADMIN = ["invite", "revoke", "approve", "reject", "setRole", "createAccount", "tempPassword"];
   if (ADMIN.includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminAction(ctx, d, clip);
@@ -93,6 +97,31 @@ async function adminAction(ctx, d, clip){
       mail(lang, en ? "Your client workspace is ready" : "مساحة العمل الخاصة بك جاهزة", body, en ? "Accept the invitation" : "اقبل الدعوة", link, en ? "Hi" + (first ? " " + first : "") + "," : "أهلاً" + (first ? " " + first : "") + "،"));
     if (ex) { logAct(ex, "admin", "invited to the workspace"); await putUser(env, ex); }
     return json({ ok: true, token, link, sent });
+  }
+  // ready accounts: the studio prepares everything, then sends the client the link + a temporary password (shown once, stored only as a hash)
+  if (d.action === "createAccount" || d.action === "tempPassword") {
+    const email = clip(d.email, 254).toLowerCase(); if (!EMAIL.test(email)) return json({ ok: false, error: "email" }, 400);
+    const ex = await getUser(env, email), now = new Date().toISOString(), pw = tempPw();
+    let u;
+    if (d.action === "createAccount") {
+      if (ex) return json({ ok: false, error: "exists", role: roleOf(ex) }, 409);
+      const name = clip(d.name, 80); if (!name) return json({ ok: false, error: "name" }, 400);
+      u = { email, name, provider: "password", createdAt: now, orders: [], lang: d.lang === "en" ? "en" : "ar", role: "client", clientSince: now, clientVia: "admin" };
+      logAct(u, "admin", "account prepared by the studio");
+    } else { if (!ex) return json({ ok: false, error: "no account" }, 404); u = ex; logAct(u, "admin", "temporary password issued"); }
+    u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); u.mustChange = true; u.provider ||= "password";
+    await putUser(env, u);
+    const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", link = SITE + (en ? "/en" : "") + "/workspace.html";
+    let sent = false;
+    if (d.mail) {
+      const body = (en ? `Your <b style="color:#fff">Eyeblink Studio workspace</b> is ready. Sign in with the details below; you will choose your own password the first time.`
+                       : `جهّزنا لك <b style="color:#fff">مساحة العمل في Eyeblink Studio</b>. سجّل دخولك بالبيانات التالية، وستختار كلمة سر خاصة بك عند أول دخول.`) +
+        `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0;border-collapse:collapse"><tr><td style="padding:6px 0;color:#8E9BB8">${en ? "E-mail" : "البريد"}</td><td style="padding:6px 14px;color:#fff;direction:ltr">${h(email)}</td></tr>` +
+        `<tr><td style="padding:6px 0;color:#8E9BB8">${en ? "Temporary password" : "كلمة السر المؤقتة"}</td><td style="padding:6px 14px;color:#3FE0E8;font:bold 16px monospace;direction:ltr">${h(pw)}</td></tr></table>`;
+      const r = await sendMail(env, email, en ? "Your Eyeblink workspace is ready" : "مساحة العمل الخاصة بك جاهزة", mail(lang, en ? "Welcome to your workspace" : "أهلاً بك في مساحة العمل", body, en ? "Open my workspace" : "افتح مساحة العمل", link, greet({ name: u.name, lang })));
+      sent = !!(r && (r.ok || r === true));
+    }
+    return json({ ok: true, email, name: u.name, lang, password: pw, link, sent, role: "client" });
   }
   if (d.action === "revoke") {
     const t = String(d.token || ""); if (!/^[a-f0-9]{48}$/.test(t)) return json({ ok: false }, 400);

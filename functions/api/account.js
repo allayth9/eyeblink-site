@@ -7,7 +7,7 @@ export async function onRequestGet({ request, env }) {
   const u = await currentUser(request, env);
   if (!u) return json({ ok: false, guest: true });          // a visitor who is not signed in: not an error
   // the header on every page only needs who this is (no orders read)
-  if (new URL(request.url).searchParams.get("lite")) return json({ ok: true, user: { email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer" } });
+  if (new URL(request.url).searchParams.get("lite")) return json({ ok: true, user: { email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", mustChange: !!u.mustChange } });
   const orders = [];
   for (const k of (u.orders || []).slice(-60).reverse()) {
     const v = await env.EB.get(k); if (!v) continue; const o = JSON.parse(v);
@@ -15,7 +15,7 @@ export async function onRequestGet({ request, env }) {
       lastAt: ((o.messages || []).slice(-1)[0] || {}).at || o.updatedAt || o.createdAt });
   }
   const ar = await env.EB.get("accreq:" + u.email);
-  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null }, access: ar ? JSON.parse(ar) : null, orders });
+  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, mustChange: !!u.mustChange }, access: ar ? JSON.parse(ar) : null, orders });
 }
 export async function onRequestPost({ request, env }) {
   const d = await request.json().catch(() => ({}));
@@ -23,6 +23,17 @@ export async function onRequestPost({ request, env }) {
   if (d.action === "logout") {
     const t = cookie(request, "eb_s"); if (t) await env.EB.delete("sess:" + t);
     return json({ ok: true }, 200, { "set-cookie": "eb_s=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" });
+  }
+  // a signed-in client chooses a new password (required after a temporary one the studio issued)
+  if (d.action === "setPassword") {
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    const pw = String(d.password || ""); if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
+    if (!u.mustChange) { if (!u.hash || (await pbkdf2(String(d.current || ""), u.salt)) !== u.hash) return json({ ok: false, error: "current" }, 403); }
+    else if (u.hash && (await pbkdf2(pw, u.salt)) === u.hash) return json({ ok: false, error: "same" }, 400);
+    u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); delete u.mustChange;
+    (u.log ||= []).unshift({ at: new Date().toISOString(), by: "client", what: "chose a new password" }); u.log = u.log.slice(0, 60);
+    await env.EB.put("user:" + u.email, JSON.stringify(u));
+    return json({ ok: true });
   }
   if (await limited(env, "arl:" + ip, 25, 3600)) return json({ ok: false, error: "too many attempts" }, 429);
   let user;

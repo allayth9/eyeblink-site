@@ -1947,3 +1947,40 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
 .omg{margin-top:16px;padding:14px 16px;border-radius:16px;display:grid;gap:8px;background:rgba(4,6,26,.35);box-shadow:inset 0 0 0 1px var(--line)}
 .omg>b{font-weight:500}.omg p{margin:0}.omg .actions{gap:8px}.omg .actions .btn{padding:10px 16px;font-size:14px}.omg .danger{color:#ff9eae}
 .omg form{display:grid;gap:10px}.omg form .msg{margin:0;color:#ff9eae;font-size:13.5px}.omg.locked{background:none}
+
+/* ===== workspace page on phones: one bar on top (brand, ☰ site menu, bell, account), the workspace bar at the bottom like an app ===== */
+.lang-li{display:none}
+@media (max-width:860px){
+  body[data-page="workspace"] .dock{display:none!important}
+  body[data-page="workspace"] .menu-btn{display:block!important}
+  body[data-page="workspace"] .bar>.lang{display:none}
+  body[data-page="workspace"] .lang-li{display:block}
+  body[data-page="workspace"] .lang-li:not(.home-li){border-top:1px solid var(--line);margin-top:4px;padding-top:4px}
+  body[data-page="workspace"] .links .ws-li{display:none}
+  body[data-page="workspace"]{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  body[data-page="workspace"] footer{padding-bottom:20px}
+  .wnav{position:fixed;top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));inset-inline:12px;z-index:80;display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) 64px repeat(2,minmax(0,1fr));align-items:center;gap:2px;
+    padding:6px;border-radius:26px;background:rgba(10,14,42,.9)}
+  .wnav::after{top:-1px;bottom:auto}
+  .wnav.glass{background:rgba(10,14,42,.95)!important;-webkit-backdrop-filter:blur(22px) saturate(140%)!important;backdrop-filter:blur(22px) saturate(140%)!important}
+  body[data-page="workspace"] .nav.open .links{background:rgba(10,14,44,.97)}
+  .wnav-in{display:contents}
+  .wnav-in>a[data-s="overview"]{order:1}.wnav-in>a[data-s="projects"]{order:2}.wnav-new{order:3}.wnav-in>a[data-s="tasks"]{order:4}.wnav-x{order:5}
+  .wnav-in>a,.wnav-more{flex-direction:column;justify-content:center;gap:4px;padding:8px 2px 7px;font-size:11.5px;line-height:1.2;min-width:0;border-radius:18px}
+  .wnav-in>a span,.wnav-more .wm-l{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .wnav-in>a svg,.wnav-more svg{width:21px;height:21px}
+  .wnav-more .wm-c{display:none}
+  .wnav-x{display:block;position:static;min-width:0}
+  .wnav-x>.wnav-more{display:flex;width:100%}
+  .wnav-in>a.on::after,.wnav-more.on::after{inset-inline:34%;bottom:3px}
+  .wnav-more .wn-dot{top:3px;inset-inline-end:calc(50% - 24px)}
+  /* the new-task button: one raised round button in the middle */
+  .wnav a.wnav-new{justify-self:center;width:56px;height:56px;padding:0;border-radius:50%;justify-content:center;margin-top:-26px;
+    box-shadow:0 0 0 5px rgba(10,14,42,.95),0 12px 28px -8px #E07BE0}
+  .wnav a.wnav-new span{display:none}.wnav a.wnav-new svg{width:24px;height:24px}
+  /* «More» opens upwards, as its own floating card */
+  .wnav-sec{position:absolute;top:auto;bottom:calc(100% + 12px);left:0;right:auto;min-width:min(250px,calc(100vw - 24px));font-size:14.5px;transform:translateY(6px)}
+  [dir=ltr] .wnav-sec{left:auto;right:0}
+  .wm-bar{bottom:calc(98px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:360px){ .wnav{inset-inline:8px;grid-template-columns:repeat(2,minmax(0,1fr)) 58px repeat(2,minmax(0,1fr))} .wnav-in>a,.wnav-more{font-size:11px} }

@@ -476,6 +476,7 @@ export async function onRequestGet(ctx) {
   if (q.get("admin")) return adminGet(request, env, q);
   const u = await currentUser(request, env); if (!u) return json({ ok: false, error: "login" }, 401);
   if (u.role !== "client") return json({ ok: false, error: "not client" }, 403);
+  if (u.mustChange) return json({ ok: false, error: "password" }, 403);   // a temporary password: choose your own first
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const e = u.email, open = OPEN.map(s => `'${s}'`).join(",");
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
@@ -527,6 +528,7 @@ export async function onRequestPost(ctx) {
   }
   const u = await currentUser(request, env); if (!u) return json({ ok: false, error: "login" }, 401);
   if (u.role !== "client") return json({ ok: false, error: "not client" }, 403);
+  if (u.mustChange) return json({ ok: false, error: "password" }, 403);   // a temporary password: choose your own first
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), who = { actor: u.email, actor_name: u.name, client_email: u.email };
   if (d.action === "read") {
