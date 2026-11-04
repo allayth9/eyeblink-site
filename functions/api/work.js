@@ -25,6 +25,13 @@
 //   GET  /api/work?admin=1&space=PROJECT_ID   that project's discussion, files and deliveries
 //   GET  /api/work?admin=1&view=notify       studio inbox, delivery log (e-mail / WhatsApp), WhatsApp setup status
 //   POST /api/work { action:"studioRead", ids|all }  { action:"retryNotif", id }  { action:"waConfig", … }  { action:"waTest", phone, lang }
+// Billing (Phase 6): invoices for clients, kept by hand (no payment gateway): six statuses — pending, partial, paid, overdue
+// (pending/partial past the due date), cancelled, refunded. Same numbering as the order invoices (KV "invseq").
+//   client: GET ?view=invoices | ?invoiceDoc=ID (printable page)
+//   studio: GET ?admin=1&view=billing | ?admin=1&invoiceDoc=ID | ?admin=1&view=reports&from=&to= | ?admin=1&profile=EMAIL
+//           POST { action:"invoice", id?, client_email, project_id, title, period, items:[{desc,qty,unit}], currency, discount, issue_date, due_date, note, send }
+//                { action:"invoicePay", id, amount, method, date, note }  { action:"invoiceUnpay", id, index }
+//                { action:"invoiceStatus", id, status:"cancelled"|"refunded"|"reopen", amount, note }  { action:"invoiceSend", id }  { action:"invoiceDelete", id }
 // Notifications (Phase 5): every studio decision becomes one event → in-app (always) + e-mail + WhatsApp, each by the client's own
 // preferences. WhatsApp goes only to a number the client confirmed with explicit consent, through Meta's official Cloud API, and a
 // failed send never blocks the work: it is logged and retried (5 min, 30 min, 2 h).
@@ -73,6 +80,12 @@ const SCHEMA = [
      status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 1, error TEXT, next_try_at TEXT, provider_id TEXT, delivery TEXT, payload TEXT)`,
   `CREATE INDEX IF NOT EXISTS notify_log_retry ON notify_log(status, next_try_at)`,
   `CREATE INDEX IF NOT EXISTS notify_log_provider ON notify_log(provider_id)`,
+  `CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, no TEXT NOT NULL UNIQUE, client_email TEXT NOT NULL, project_id TEXT, title TEXT NOT NULL DEFAULT '', period TEXT NOT NULL DEFAULT '',
+     items TEXT NOT NULL DEFAULT '[]', currency TEXT NOT NULL DEFAULT '$', discount REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, paid REAL NOT NULL DEFAULT 0, refunded REAL NOT NULL DEFAULT 0,
+     status TEXT NOT NULL DEFAULT 'pending', issue_date TEXT NOT NULL, due_date TEXT, note TEXT NOT NULL DEFAULT '', payments TEXT NOT NULL DEFAULT '[]', sent_at TEXT, reminded_at TEXT,
+     created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS invoices_client ON invoices(client_email, issue_date)`,
+  `CREATE INDEX IF NOT EXISTS invoices_status ON invoices(status, due_date)`,
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -117,10 +130,78 @@ const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
 const fmtDate = (d, lang) => { try { return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : "ar-u-nu-latn", { weekday:"long", year:"numeric", month:"long", day:"numeric" }); } catch { return d; } };
+// ==== billing (phase 6) ====
+const money = n => Math.round((+n || 0) * 100) / 100;
+const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
+function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
+  x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
+function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit) })).filter(i => i.desc); }
+const BILL_ST = { ar: { pending:"بانتظار الدفع", partial:"مدفوعة جزئياً", paid:"مدفوعة", overdue:"متأخرة", cancelled:"ملغاة", refunded:"مستردة" },
+                  en: { pending:"Awaiting payment", partial:"Partially paid", paid:"Paid", overdue:"Overdue", cancelled:"Cancelled", refunded:"Refunded" } };
+const BILL_T = {
+  ar: { title:"فاتورة", no:"رقم الفاتورة", issued:"تاريخ الإصدار", due:"تاريخ الاستحقاق", period:"الفترة", from:"من", to:"إلى", desc:"البيان", qty:"الكمية", unit:"سعر الوحدة", amount:"المبلغ",
+        sub:"المجموع", disc:"خصم", total:"الإجمالي", paid:"المدفوع", bal:"المتبقي", refunded:"المسترد", status:"الحالة", method:"طريقة الدفع", paidOn:"تاريخ آخر دفعة", project:"المشروع", svc:"مونتاج · موشن غرافيك · أفلام",
+        note:{ open:"يُرجى السداد قبل تاريخ الاستحقاق، وتجد تفاصيل الدفع لدى الاستوديو.", paid:"شكراً لتعاملك مع Eyeblink Studio.", cancelled:"أُلغيت هذه الفاتورة، ولا يترتب عليها أي مبلغ.", refunded:"أُعيد المبلغ الموضّح أعلاه." } },
+  en: { title:"Invoice", no:"Invoice no.", issued:"Issue date", due:"Due date", period:"Period", from:"From", to:"Bill to", desc:"Description", qty:"Qty", unit:"Unit price", amount:"Amount",
+        sub:"Subtotal", disc:"Discount", total:"Total", paid:"Paid", bal:"Balance due", refunded:"Refunded", status:"Status", method:"Payment method", paidOn:"Last payment", project:"Project", svc:"Video editing · Motion graphics · Film",
+        note:{ open:"Please pay before the due date; the studio will share the payment details.", paid:"Thank you for working with Eyeblink Studio.", cancelled:"This invoice was cancelled and nothing is due.", refunded:"The amount shown above was refunded." } } };
+const BILL_COL = { pending:"#9a6700", partial:"#9a6700", paid:"#127a3a", overdue:"#b42318", cancelled:"#6b7286", refunded:"#3949ab" };
+function billHTML(x, cl, lang, opt){
+  opt = opt || {}; const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], dir = en ? "ltr" : "rtl", s = en ? "left" : "right", e = en ? "right" : "left", c = x.currency || "$";
+  const F = "font-family:Arial,Helvetica,sans-serif;", ink = "#14172b", grey = "#6b7286", rule = "#e7e9f0";
+  const lab = `${F}font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${grey};`, val = `${F}font-size:12.5px;color:${ink};`, nb = `direction:ltr;unicode-bidi:isolate;white-space:nowrap;`;
+  const th = `padding:0 0 8px;border-bottom:1px solid ${ink};${lab}`, td = `padding:11px 0;border-bottom:1px solid ${rule};${val}vertical-align:top;`;
+  const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
+  const tot = (k, v, strong, col) => `<tr><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${strong?ink:grey};font-weight:${strong?"bold":"normal"};text-align:${s}">${k}</td><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${col||ink};font-weight:${strong?"bold":"normal"};text-align:${e};${nb}">${v}</td></tr>`;
+  const sub = x.items.reduce((a, i) => a + i.unit * i.qty, 0), last = x.payments.length ? x.payments[x.payments.length - 1] : null, st = x.state || x.status;
+  const meta = [[L.no, `<span style="${nb}">${h(x.no)}</span>`], [L.issued, dt(x.issue_date)], [L.due, dt(x.due_date)]].concat(x.period ? [[L.period, h(x.period)]] : []);
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid ${rule};border-radius:10px;text-align:${s};-webkit-print-color-adjust:exact;print-color-adjust:exact">
+<tr><td style="height:3px;line-height:3px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:10px 10px 0 0">&nbsp;</td></tr>
+<tr><td style="padding:26px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ <td style="vertical-align:middle;text-align:${s}"><img src="${SITE}/assets/img/invoice-logo.png" width="184" height="20" alt="Eyeblink Studio" style="display:inline-block;width:184px;height:20px;border:0"></td>
+ <td style="vertical-align:middle;text-align:${e};${F}font-size:20px;font-weight:bold;color:${ink}">${L.title}</td></tr></table></td></tr>
+<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ ${meta.map(m => `<td style="vertical-align:top;text-align:${s};padding-${e}:8px"><div style="${lab}">${m[0]}</div><div style="${val}margin-top:4px">${m[1]}</div></td>`).join("")}</tr></table></td></tr>
+<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ <td style="vertical-align:top;width:50%;text-align:${s};padding-${e}:12px"><div style="${lab}">${L.from}</div><div style="${val}margin-top:5px;font-weight:bold">Eyeblink Studio</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey}">${L.svc}<br><span style="${nb}">eyeblinkstudio.com</span>${opt.email ? `<br><span style="${nb}">${h(opt.email)}</span>` : ""}</div></td>
+ <td style="vertical-align:top;width:50%;text-align:${s}"><div style="${lab}">${L.to}</div><div style="${val}margin-top:5px;font-weight:bold">${h(cl.name || "")}</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey};${nb}">${h(cl.email || x.client_email)}</div>${opt.project ? `<div style="${F}font-size:11.5px;color:${grey}">${L.project}: ${h(opt.project)}</div>` : ""}</td>
+</tr></table></td></tr>
+${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:bold;color:${ink};text-align:${s}">${h(x.title)}</td></tr>` : ""}
+<tr><td style="padding:${x.title ? 12 : 26}px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+ <tr><td style="${th}text-align:${s}">${L.desc}</td><td style="${th}text-align:center;width:52px">${L.qty}</td><td style="${th}text-align:${e};width:92px">${L.unit}</td><td style="${th}text-align:${e};width:92px">${L.amount}</td></tr>
+ ${x.items.map(i => `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;margin-${s}:auto;width:260px;max-width:100%">
+ ${x.discount ? tot(L.sub, fmt(sub, c)) + tot(L.disc, "−" + fmt(x.discount, c)) : ""}
+ ${tot(L.total, fmt(x.total, c), 1)}
+ <tr><td colspan="2" style="padding:6px 0 0;border-top:1px solid ${ink}"></td></tr>
+ ${x.paid ? tot(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? tot(L.refunded, "−" + fmt(x.refunded, c)) : ""}
+ ${st !== "cancelled" && st !== "refunded" ? tot(L.bal, fmt(x.balance, c), 1, x.balance > 0 ? BILL_COL[st] : "#127a3a") : ""}
+</table></td></tr>
+<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fa;border-radius:8px"><tr>
+ <td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.status}</div><div style="${F}font-size:12px;margin-top:4px;color:${BILL_COL[st] || ink};font-weight:bold">● ${S[st] || st}</div></td>
+ ${last && last.method ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.method}</div><div style="${val}margin-top:4px">${h(last.method)}</div></td>` : ""}
+ ${last ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${dt(last.date || last.at)}</div></td>` : ""}
+</tr></table></td></tr>
+${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.7;color:${ink};text-align:${s}">${h(x.note).replace(/\n/g, "<br>")}</td></tr>` : ""}
+<tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
+</table>`;
+}
+function billPage(x, cl, lang, opt){
+  return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(x.no)} · Eyeblink Studio</title>
+<style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}body{padding:0}
+@media print{html,body{background:#fff}table{max-width:none!important;border:0!important}}</style></head><body>${billHTML(x, cl, lang, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
+}
+const htmlRes = (t, st) => new Response(t, { status: st || 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "SAMEORIGIN" } });
+async function invoiceOf(D, id){ return parseI(await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=?").bind(clip(id, 40)).first()); }
+function invoiceMail(env, x, kind){ const s = { client_email: x.client_email, ref: "", title: x.title || x.no };
+  return tellClient(env, s, kind, { hash: "#w/invoices/" + x.id, inv: x, no: x.no, amount: fmt(x.total, x.currency), balance: fmt(x.balance, x.currency), paidNow: kind === "invoicePaid" && x.payments.length ? fmt(x.payments[x.payments.length - 1].amount, x.currency) : undefined, due: x.due_date }); }
+
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
-const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects" };
-const CATS = ["tasks","requests","deliveries","comments","projects"];
-const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false };
+const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
+  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing" };
+const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
+const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
 const CONSENT_V = "wa-v1";
 const BACKOFF = [5, 30, 120];   // minutes between retries
 const nextTry = n => n > BACKOFF.length ? null : new Date(Date.now() + BACKOFF[n - 1] * 60000).toISOString();
@@ -165,18 +246,23 @@ const WA_TXT = {
         reject: d => `بخصوص مهمة «${d.title}» (${d.ref}): تعذّر تنفيذها كما طُلبت، والسبب موضّح في مساحة العمل.`, progress: d => `بدأنا تنفيذ «${d.title}» (${d.ref}).`,
         status: d => `أصبحت حالة «${d.title}» (${d.ref}): ${d.statusText}.`, date: d => `أصبح موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`, dateNo: d => `بقي موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`,
         completed: d => `اكتملت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
-        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».` },
+        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
+        invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
+        invoiceDue: d => `تذكير: الفاتورة ${d.no} تجاوزت تاريخ استحقاقها، والمبلغ المتبقي ${d.balance}.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
         status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
         completed: d => `"${d.title}" (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}" (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}" (${d.ref}) is ready for review.`,
-        comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".` } };
+        comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
+        invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
+        invoiceDue: d => `Reminder: invoice ${d.no} is past its due date; ${d.balance} is still due.` } };
 async function tellClient(env, t, kind, extra){
   extra = extra || {};
   const u = await userOf(env, t.client_email); if (!u) return;
   const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
-  const data = { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined };
+  const data = { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
+    no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined };
   // 1) in-app — always on
   if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
   const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
@@ -197,13 +283,20 @@ async function tellClient(env, t, kind, extra){
     deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
                  : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. اطّلع عليها وأرسل إلينا موافقتك أو ملاحظاتك.`],
     comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>:`],
+    invoice: en ? ["Invoice " + extra.no + " · Eyeblink Studio", `Your invoice <b style="color:#fff">${h(extra.no)}</b> for <b style="color:#3FE0E8">${h(extra.amount)}</b> is below${extra.due ? ", due <b style=\"color:#fff\">" + h(fmtDate(extra.due, lang)) + "</b>" : ""}.`]
+                 : ["فاتورة " + extra.no + " · Eyeblink Studio", `تجد أدناه فاتورتك <b style="color:#fff">${h(extra.no)}</b> بقيمة <b style="color:#3FE0E8">${h(extra.amount)}</b>${extra.due ? "، وتاريخ استحقاقها <b style=\"color:#fff\">" + h(fmtDate(extra.due, lang)) + "</b>" : ""}.`],
+    invoicePaid: en ? ["Payment received · " + extra.no, `We received <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> for invoice <b style="color:#fff">${h(extra.no)}</b>. Thank you! The updated invoice is below.`]
+                    : ["وصلت دفعتك · " + extra.no, `وصلتنا دفعتك <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> للفاتورة <b style="color:#fff">${h(extra.no)}</b>. شكراً لك! تجد الفاتورة المحدّثة أدناه.`],
+    invoiceDue: en ? ["Reminder: invoice " + extra.no, `Invoice <b style="color:#fff">${h(extra.no)}</b> is past its due date. The balance due is <b style="color:#3FE0E8">${h(extra.balance)}</b>.`]
+                   : ["تذكير بالفاتورة " + extra.no, `تجاوزت الفاتورة <b style="color:#fff">${h(extra.no)}</b> تاريخ استحقاقها، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>.`],
     file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
                  : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
                 : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
+    const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : "";
+    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
@@ -211,7 +304,7 @@ async function tellClient(env, t, kind, extra){
   if (P && P.consent && P.wa_cats[cat]) jobs.push((async () => {
     const cfg = await waConfig(env); if (!waReady(env, cfg)) return;
     const f = WA_TXT[lang][kind]; if (!f) return;
-    const text = oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", statusText: L[data.status] || data.status || "" }), 700);
+    const text = oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", dueText: data.due ? fmtDate(data.due, lang) : "", statusText: L[data.status] || data.status || "" }), 700);
     const pl = { name: oneLine(u.name, 60), text, path: (en ? "en/" : "") + hash.replace(/^#w\/?/, "") };
     const r = await waSend(env, cfg, P.wa_phone, lang, pl);
     await logSend(D, { channel: "whatsapp", recipient: u.email, target: P.wa_phone, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok ? null : { phone: P.wa_phone, lang, p: pl } });
@@ -239,6 +332,9 @@ async function sweepNotify(env){ try {
   await D.prepare("INSERT INTO meta (k, v) VALUES ('nsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
   const rows = (await D.prepare("SELECT * FROM notify_log WHERE status='retry' AND next_try_at<=? ORDER BY id LIMIT 10").bind(now()).all()).results;
   for (const r of rows) await retryRow(env, D, r);
+  // one reminder per invoice once it passes its due date
+  const due = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.status IN ('pending','partial') AND i.due_date<? AND i.reminded_at IS NULL AND i.sent_at IS NOT NULL LIMIT 10").bind(today()).all()).results;
+  for (const x of due) { await D.prepare("UPDATE invoices SET reminded_at=? WHERE id=?").bind(now(), x.id).run(); await invoiceMail(env, parseI(x), "invoiceDue"); }
 } catch {} }
 
 export async function onRequestGet(ctx) {
@@ -252,6 +348,9 @@ export async function onRequestGet(ctx) {
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
+  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)) });
+  if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
+    return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
   if (q.get("view") === "prefs") { const cfg = await waConfig(env); return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) } }); }
   if (q.get("project")) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
@@ -273,13 +372,14 @@ export async function onRequestGet(ctx) {
   const activity = (await D.prepare(`SELECT a.*, t.ref AS task_ref, t.title AS task_title FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.project_id IN ${MINE} ORDER BY a.id DESC LIMIT 20`).bind(e).all()).results.map(parseA);
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
-  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting, unread: await unreadN() });
+  const bills = await D.prepare("SELECT COUNT(*) AS open, SUM(CASE WHEN due_date<?2 THEN 1 ELSE 0 END) AS overdue FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(e, today()).first();
+  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
 }
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -429,6 +529,9 @@ async function addFile(ctx, D, o){
   return json({ ok: true, id });
 }
 
+async function clientsList(env){ const out = []; let cursor;
+  do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") out.push({ email: u.email, name: u.name, lang: u.lang || "ar" }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
+  return out; }
 async function adminGet(request, env, q){
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
@@ -439,6 +542,33 @@ async function adminGet(request, env, q){
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY t.updated_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(s => `'${s}'`).join(",")})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks FROM projects p ORDER BY p.updated_at DESC`).all()).results.map(parseP);
+  if (q.get("view") === "billing") {
+    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
+    const projects = (await D.prepare("SELECT id, name, client_email, status FROM projects ORDER BY updated_at DESC").all()).results;
+    return json({ ok: true, invoices, projects, clients: await clientsList(env), today: today() });
+  }
+  if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x) return htmlRes("not found", 404);
+    const u = (await userOf(env, x.client_email)) || { email: x.client_email, name: "" };
+    return htmlRes(billPage(x, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"), { project: x.project_name, email: (await siteSettings(env)).email })); }
+  if (q.get("view") === "reports") {
+    const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.client_email, t.project_id, t.status, t.created_at, t.completed_at, t.confirmed_date, t.requested_date, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id").all()).results;
+    const deliverables = (await D.prepare("SELECT task_id, status, is_final, created_at FROM deliverables").all()).results;
+    const invoices = (await D.prepare("SELECT id, no, client_email, currency, total, paid, refunded, status, issue_date, due_date, payments, sent_at FROM invoices").all()).results.map(x => { x = parseI(x); delete x.items; return x; });
+    const projects = (await D.prepare("SELECT id, name, client_email, status, quota, type FROM projects").all()).results;
+    return json({ ok: true, today: today(), tasks, deliverables, invoices, projects, clients: await clientsList(env) });
+  }
+  if (q.get("profile")) {
+    const em = clip(q.get("profile"), 254).toLowerCase(), u = await userOf(env, em); if (!u) return json({ ok: false }, 404);
+    const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(x => `'${x}'`).join(",")})) AS open_tasks FROM projects p WHERE p.client_email=? ORDER BY p.updated_at DESC`).bind(em).all()).results.map(parseP);
+    const tasks = (await D.prepare("SELECT t.ref, t.title, t.status, t.confirmed_date, t.completed_at, t.updated_at, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY t.updated_at DESC LIMIT 60").bind(em).all()).results;
+    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY i.issue_date DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x));
+    const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 40").bind(em).all()).results.map(parseA);
+    const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
+    const P = await prefsOf(D, em);
+    return json({ ok: true, user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+      projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
+  }
   if (q.get("view") === "notify") {
     const inbox = (await D.prepare("SELECT * FROM notifications WHERE recipient='studio' ORDER BY id DESC LIMIT 60").all()).results.map(parseA);
     const where = [], args = [];
@@ -457,8 +587,7 @@ async function adminGet(request, env, q){
   let activity = [], deliverables = [], comments = [];
   if (q.get("task")) { const t = await D.prepare("SELECT id FROM tasks WHERE ref=?").bind(q.get("task")).first();
     if (t) { activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); deliverables = await deliverablesOf(D, t.id); comments = await commentsOf(D, "task", t.id); } }
-  const clients = []; let cursor;
-  do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") clients.push({ email: u.email, name: u.name }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
+  const clients = await clientsList(env);
   const inboxUnread = (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n;
   return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, inboxUnread, today: today() });
 }
@@ -467,6 +596,65 @@ async function adminPost(ctx, d){
   const { env } = ctx;
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), studio = { actor: "studio", actor_name: "Eyeblink Studio" };
+  if (d.action === "invoice") {
+    const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email); if (!u) return json({ ok: false, error: "no account" }, 404);
+    const items = cleanItems(d.items); if (!items.length) return json({ ok: false, error: "items" }, 400);
+    const pid = d.project_id ? clip(d.project_id, 40) : null;
+    if (pid) { const p = await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(pid).first(); if (!p || p.client_email !== email) return json({ ok: false, error: "project" }, 400); }
+    const cur = clip(d.currency, 8) || "$", disc = Math.max(0, money(d.discount)), sub = money(items.reduce((a, i) => a + i.unit * i.qty, 0)), total = Math.max(0, money(sub - disc));
+    const issue = isDate(d.issue_date) ? d.issue_date : today(), due = isDate(d.due_date) ? d.due_date : null;
+    if (due && due < issue) return json({ ok: false, error: "due" }, 400);
+    const title = clip(d.title, 140), period = clip(d.period, 60), note = clip(d.note, 2000);
+    if (d.id) {
+      const x = await invoiceOf(D, d.id); if (!x) return json({ ok: false }, 404);
+      if (x.status === "cancelled" || x.status === "refunded") return json({ ok: false, error: "state" }, 409);
+      if (total + 0.009 < x.paid) return json({ ok: false, error: "below paid" }, 400);
+      const st = x.paid > 0 ? (x.paid + 0.009 >= total ? "paid" : "partial") : "pending";
+      await D.prepare("UPDATE invoices SET client_email=?, project_id=?, title=?, period=?, items=?, currency=?, discount=?, total=?, status=?, issue_date=?, due_date=?, note=?, reminded_at=CASE WHEN due_date IS ? THEN reminded_at ELSE NULL END, updated_at=? WHERE id=?")
+        .bind(email, pid, title, period, JSON.stringify(items), cur, disc, total, st, issue, due, note, due, at, x.id).run();
+      await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_updated", data: { no: x.no, total, cur } });
+      if (d.send) { await D.prepare("UPDATE invoices SET sent_at=? WHERE id=?").bind(at, x.id).run(); later(ctx, invoiceMail(env, await invoiceOf(D, x.id), "invoice")); }
+      return json({ ok: true, id: x.id, no: x.no });
+    }
+    const n = await newInvoice(env, "bill", total), id = "i_" + randHex(6);
+    await D.prepare("INSERT INTO invoices (id, no, client_email, project_id, title, period, items, currency, discount, total, paid, refunded, status, issue_date, due_date, note, payments, sent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,'pending',?,?,?,'[]',?,?,?)")
+      .bind(id, n.no, email, pid, title, period, JSON.stringify(items), cur, disc, total, issue, due, note, d.send ? at : null, at, at).run();
+    await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_issued", data: { no: n.no, total, cur, sent: !!d.send } });
+    if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice"));
+    return json({ ok: true, id, no: n.no });
+  }
+  if (["invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete"].includes(d.action)) {
+    const x = await invoiceOf(D, d.id); if (!x) return json({ ok: false }, 404);
+    const save = async (patch, kind, data) => {
+      const y = { ...x, ...patch }; await D.prepare("UPDATE invoices SET paid=?, refunded=?, status=?, payments=?, sent_at=?, updated_at=? WHERE id=?").bind(money(y.paid), money(y.refunded), y.status, JSON.stringify(y.payments), y.sent_at || null, at, x.id).run();
+      await act(D, { ...studio, client_email: x.client_email, project_id: x.project_id, kind, data: { no: x.no, ...data } });
+      return invoiceOf(D, x.id);
+    };
+    const byPaid = (paid) => paid > 0 ? (paid + 0.009 >= x.total ? "paid" : "partial") : "pending";
+    if (d.action === "invoicePay") {
+      if (x.status === "cancelled" || x.status === "refunded") return json({ ok: false, error: "state" }, 409);
+      const amt = money(d.amount); if (amt <= 0) return json({ ok: false, error: "amount" }, 400); if (amt > x.balance + 0.009) return json({ ok: false, error: "too much" }, 400);
+      const pay = { amount: amt, method: clip(d.method, 80), date: isDate(d.date) ? d.date : today(), note: clip(d.note, 300), at };
+      const paid = money(x.paid + amt), y = await save({ paid, payments: x.payments.concat([pay]), status: byPaid(paid) }, "invoice_paid", { amount: amt, cur: x.currency });
+      if (y.sent_at) later(ctx, invoiceMail(env, y, "invoicePaid"));
+      return json({ ok: true, status: y.state, balance: y.balance });
+    }
+    if (d.action === "invoiceUnpay") {
+      const i = +d.index; if (!x.payments[i]) return json({ ok: false }, 404); if (x.status === "refunded") return json({ ok: false, error: "state" }, 409);
+      const pays = x.payments.filter((_, k) => k !== i), paid = money(pays.reduce((a, p) => a + p.amount, 0));
+      const y = await save({ paid, payments: pays, status: x.status === "cancelled" ? "cancelled" : byPaid(paid) }, "invoice_payment_removed", { amount: x.payments[i].amount, cur: x.currency });
+      return json({ ok: true, status: y.state });
+    }
+    if (d.action === "invoiceStatus") {
+      if (d.status === "cancelled") { if (x.paid > 0) return json({ ok: false, error: "paid" }, 409); const y = await save({ status: "cancelled" }, "invoice_status", { to: "cancelled" }); return json({ ok: true, status: y.state }); }
+      if (d.status === "refunded") { if (x.paid <= 0) return json({ ok: false, error: "nothing paid" }, 409); const amt = d.amount !== undefined && d.amount !== "" ? money(d.amount) : x.paid; if (amt <= 0 || amt > x.paid + 0.009) return json({ ok: false, error: "amount" }, 400);
+        const y = await save({ status: "refunded", refunded: amt }, "invoice_status", { to: "refunded", amount: amt, cur: x.currency }); return json({ ok: true, status: y.state }); }
+      if (d.status === "reopen") { if (x.status !== "cancelled" && x.status !== "refunded") return json({ ok: false, error: "state" }, 409); const y = await save({ status: byPaid(x.paid), refunded: 0 }, "invoice_status", { to: "reopened" }); return json({ ok: true, status: y.state }); }
+      return json({ ok: false }, 400);
+    }
+    if (d.action === "invoiceSend") { if (x.status === "cancelled") return json({ ok: false, error: "state" }, 409); const y = await save({ sent_at: x.sent_at || at }, "invoice_sent", {}); later(ctx, invoiceMail(env, y, y.status === "paid" ? "invoicePaid" : "invoice")); return json({ ok: true }); }
+    if (d.action === "invoiceDelete") { if (x.sent_at || x.paid > 0) return json({ ok: false, error: "sent" }, 409); await D.prepare("DELETE FROM invoices WHERE id=?").bind(x.id).run(); return json({ ok: true }); }
+  }
   if (d.action === "studioRead") {
     if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient='studio' AND read_at IS NULL").bind(at).run();
     else for (const id of (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map(Number).filter(Number.isInteger)) await D.prepare("UPDATE notifications SET read_at=? WHERE id=? AND recipient='studio'").bind(at, id).run();

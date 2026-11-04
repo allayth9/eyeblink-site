@@ -166,7 +166,7 @@ video.afile{max-width:320px}
 .visit b{color:var(--horizon);font-weight:500}
 /* stats */
 .srange{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.schart{display:flex;align-items:flex-end;gap:3px;height:170px;margin-top:18px;padding:10px 4px 0;border-bottom:1px solid var(--line)}
+.schart{direction:ltr;display:flex;align-items:flex-end;gap:3px;height:170px;margin-top:18px;padding:10px 4px 0;border-bottom:1px solid var(--line)}
 .schart .col{flex:1;position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center}
 .schart .col i,.schart .col b{position:absolute;bottom:0;width:72%;border-radius:4px 4px 0 0}
 .schart .col i{background:rgba(63,224,232,.22)}
@@ -267,3 +267,37 @@ select option{background:#0b1236;color:#EEF2F6}select{color-scheme:dark}
 .nhow code{font-size:12.5px;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px}
 .nwa{box-shadow:inset 0 0 0 1px rgba(37,211,102,.25)}
 section.sec .ph{display:flex;justify-content:space-between;align-items:center;gap:8px}
+/* sidebar groups */
+.tabgrp{font-size:11px;letter-spacing:.08em;color:var(--dim);padding:14px 14px 4px;text-transform:uppercase}
+.tabgrp:first-child{padding-top:4px}
+/* billing */
+.bnew{margin:4px 0 14px}
+.bform{display:grid;gap:10px;padding:14px 16px;border-radius:14px;background:linear-gradient(160deg,rgba(63,224,232,.06),rgba(139,92,255,.05));box-shadow:inset 0 0 0 1px rgba(63,224,232,.22)}
+.bitems{display:grid;gap:6px}.bitem{display:grid;grid-template-columns:1fr 90px 120px 28px;gap:6px;align-items:center}
+.bitem .linkbtn{font-size:18px;color:var(--dim)}
+.btot{font-family:Oswald,sans-serif;font-weight:500;margin-inline-end:auto}
+.blist{display:grid;gap:6px}
+.brow{border-radius:14px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+.brow.open{box-shadow:inset 0 0 0 1px rgba(63,224,232,.35)}
+.bsum{all:unset;box-sizing:border-box;display:grid;grid-template-columns:150px 1fr 120px 130px 120px;gap:10px;align-items:center;width:100%;padding:11px 14px;cursor:inherit}
+.bsum:focus-visible{outline:2px solid var(--horizon);outline-offset:-2px;border-radius:14px}
+.bno{font-family:Oswald,sans-serif;letter-spacing:.03em;font-size:13.5px}.bnm{display:grid;gap:1px;min-width:0}.bnm small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bam{font-family:Oswald,sans-serif;display:grid;justify-items:end}.bam small{font-family:inherit;font-size:11.5px;color:#ffd27a}
+.npill.bs-pending,.npill.bs-partial{background:rgba(255,210,122,.16);color:#ffd27a}.npill.bs-paid{background:rgba(127,240,192,.14);color:#7ff0c0}
+.npill.bs-overdue{background:rgba(255,90,110,.18);color:#ff8c9c}.npill.bs-cancelled,.npill.bs-draft{background:rgba(255,255,255,.07);color:var(--dim)}.npill.bs-refunded{background:rgba(110,140,255,.16);color:#a9b8ff}
+.bsum .npill{justify-self:end}
+.bdet{padding:4px 14px 14px;display:grid;gap:10px}
+.bgrid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+.btab{width:100%;border-collapse:collapse;font-size:13.5px}.btab td{padding:6px 0;border-bottom:1px solid var(--line)}.btab td:not(:first-child){text-align:end;white-space:nowrap;padding-inline-start:10px}.btab tr.t td{font-weight:600;border-bottom:0}
+.bpays{display:grid;gap:4px;font-size:13.5px}
+.bpay{display:grid;gap:6px;margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(127,240,192,.05);box-shadow:inset 0 0 0 1px rgba(127,240,192,.2)}
+.bacts{flex-wrap:wrap}.brf{display:inline-flex;gap:6px;align-items:center}.brf input{width:110px}
+.bprev{width:100%;height:620px;border:0;border-radius:12px;background:#fff;margin-top:10px}
+/* reports */
+.rchart{height:150px;direction:ltr}.rax{direction:ltr}.rax{display:flex;gap:3px;padding:0 4px}.rax span{flex:1;font-size:10.5px;text-align:center;white-space:nowrap;overflow:hidden}
+/* client profile */
+.cprof{box-shadow:inset 0 0 0 1px rgba(63,224,232,.3)}
+.cph{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start}.cpn{font-size:18px}
+.cpgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.cpi{padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.cpact summary{cursor:pointer;color:var(--horizon);margin-top:6px}
+@media (max-width:900px){ .bsum{grid-template-columns:1fr auto} .bdt{display:none} .bno{grid-column:1 / -1} .bgrid,.cpgrid{grid-template-columns:1fr} .bitem{grid-template-columns:1fr 70px 90px 24px} }

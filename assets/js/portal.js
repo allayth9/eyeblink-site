@@ -32,11 +32,14 @@
       tabs:{tasks:'المهام',talk:'النقاشات',files:'الملفات'},waiting:'بانتظار ردّك',waitingP:'تحتاج هذه المهام إلى موافقتك أو ملاحظاتك أو معلومات منك.',
       nt:{h:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',set:'إعدادات الإشعارات',bell:'الإشعارات'},
       pf:{h:'إعدادات الإشعارات',p:'إشعارات الموقع (الجرس) مفعّلة دائماً. اختر ما تريد أن يصلك أيضاً عبر البريد الإلكتروني وواتساب.',inapp:'في الموقع',email:'البريد',wa:'واتساب',save:'حفظ الإعدادات',saved:'حُفظت الإعدادات.',
-        cats:{tasks:['تحديثات المهام','القبول، والمواعيد، وبدء التنفيذ، والإنجاز'],requests:['طلبات المعلومات','عندما يحتاج الاستوديو إلى شيء منك لإكمال المهمة'],deliveries:['التسليمات','نسخة جديدة أو تسليم نهائي جاهز للمراجعة'],comments:['التعليقات','ردود الاستوديو على المهام والنقاشات'],projects:['المشاريع والملفات','مشروع جديد أو ملف أضافه الاستوديو']},
+        cats:{billing:['الفواتير والمدفوعات','فاتورة جديدة، وتأكيد الدفع، وتذكير الاستحقاق'],tasks:['تحديثات المهام','القبول، والمواعيد، وبدء التنفيذ، والإنجاز'],requests:['طلبات المعلومات','عندما يحتاج الاستوديو إلى شيء منك لإكمال المهمة'],deliveries:['التسليمات','نسخة جديدة أو تسليم نهائي جاهز للمراجعة'],comments:['التعليقات','ردود الاستوديو على المهام والنقاشات'],projects:['المشاريع والملفات','مشروع جديد أو ملف أضافه الاستوديو']},
         waH:'إشعارات واتساب',waOff:'لم يُفعّل الاستوديو واتساب بعد. يمكنك إعداد رقمك وموافقتك الآن، وستبدأ الإشعارات التي اخترتها بالوصول فور تفعيله.',
         phone:'رقم واتساب مع رمز الدولة',consent:'أوافق على تلقّي إشعارات عن مشاريعي ومهامي من Eyeblink Studio عبر واتساب على هذا الرقم، ويمكنني إيقافها في أي وقت.',
         on:'فعّل إشعارات واتساب',stop:'أوقف إشعارات واتساب',active:'مفعّلة على الرقم ',since:' منذ ',stopHint:'يمكنك إيقافها من هنا في أي وقت، أو بالرد على أي رسالة منا بكلمة «إيقاف».',
-        needPhone:'اكتب الرقم مع رمز الدولة، مثلاً ‎+9665xxxxxxxx',needConsent:'يجب أن توافق أولاً لكي نراسلك عبر واتساب.',onMsg:'فُعّلت إشعارات واتساب.',offMsg:'أُوقفت إشعارات واتساب.',stopped:'أوقفتَها بتاريخ '}},
+        needPhone:'اكتب الرقم مع رمز الدولة، مثلاً ‎+9665xxxxxxxx',needConsent:'يجب أن توافق أولاً لكي نراسلك عبر واتساب.',onMsg:'فُعّلت إشعارات واتساب.',offMsg:'أُوقفت إشعارات واتساب.',stopped:'أوقفتَها بتاريخ '},
+      bl:{h:'الفواتير',p:'فواتير تعاونك مع الاستوديو وحالة كل منها. يمكنك فتح أي فاتورة وحفظها بصيغة PDF.',none:'لا توجد فواتير بعد.',no:'رقم الفاتورة',issued:'تاريخ الإصدار',due:'الاستحقاق',total:'الإجمالي',bal:'المتبقي',view:'عرض',
+        open:'مستحقة',overdue:'متأخرة',paidAll:'المدفوع',strip:'لديك فواتير مستحقة',stripP:'افتح صفحة الفواتير لمراجعتها.',save:'حفظ PDF',close:'إغلاق',
+        st:{pending:'بانتظار الدفع',partial:'مدفوعة جزئياً',paid:'مدفوعة',overdue:'متأخرة',cancelled:'ملغاة',refunded:'مستردة'}}},
     en:{ws:'Workspace',wsP:'Your projects, tasks and their dates in one place.',projects:'Projects',recent:'Recent tasks',activity:'Latest activity',upcoming:'Upcoming dates',
       k:{active:'Active projects',progress:'In progress',review:'Awaiting your review',fresh:'New requests',done:'Completed',dates:'Upcoming dates'},
       empty:'The studio has not opened a project for you yet. You will get an e-mail when it does, and you can send tasks to it from here.',noTasks:'No tasks yet.',noAct:'No activity yet.',noDates:'No confirmed dates coming up.',
@@ -65,11 +68,14 @@
       tabs:{tasks:'Tasks',talk:'Discussion',files:'Files'},waiting:'Waiting for you',waitingP:'These tasks need your approval, notes or information.',
       nt:{h:'Notifications',all:'Mark all as read',none:'No notifications yet.',set:'Notification settings',bell:'Notifications'},
       pf:{h:'Notification settings',p:'Site notifications (the bell) are always on. Choose what should also reach you by e-mail and WhatsApp.',inapp:'On site',email:'E-mail',wa:'WhatsApp',save:'Save settings',saved:'Settings saved.',
-        cats:{tasks:['Task updates','Acceptance, dates, work started, completion'],requests:['Information requests','When the studio needs something from you'],deliveries:['Deliveries','A new version or the final delivery is ready'],comments:['Comments','Studio replies on tasks and discussions'],projects:['Projects & files','A new project or a file the studio added']},
+        cats:{billing:['Invoices & payments','A new invoice, payment confirmations, due-date reminders'],tasks:['Task updates','Acceptance, dates, work started, completion'],requests:['Information requests','When the studio needs something from you'],deliveries:['Deliveries','A new version or the final delivery is ready'],comments:['Comments','Studio replies on tasks and discussions'],projects:['Projects & files','A new project or a file the studio added']},
         waH:'WhatsApp notifications',waOff:'The studio has not switched WhatsApp on yet. You can set up your number and consent now; notifications you choose start as soon as it is on.',
         phone:'WhatsApp number with country code',consent:'I agree to receive notifications about my projects and tasks from Eyeblink Studio on WhatsApp at this number. I can stop them at any time.',
         on:'Turn on WhatsApp notifications',stop:'Stop WhatsApp notifications',active:'On for ',since:' since ',stopHint:'Stop them here at any time, or reply STOP to any of our messages.',
-        needPhone:'Write the number with its country code, e.g. +44 7xxx xxxxxx',needConsent:'Please agree first so we can message you on WhatsApp.',onMsg:'WhatsApp notifications are on.',offMsg:'WhatsApp notifications are off.',stopped:'Stopped on '}}
+        needPhone:'Write the number with its country code, e.g. +44 7xxx xxxxxx',needConsent:'Please agree first so we can message you on WhatsApp.',onMsg:'WhatsApp notifications are on.',offMsg:'WhatsApp notifications are off.',stopped:'Stopped on '},
+      bl:{h:'Invoices',p:'Invoices for your work with the studio and where each one stands. Open any invoice and save it as PDF.',none:'No invoices yet.',no:'Invoice no.',issued:'Issued',due:'Due',total:'Total',bal:'Balance',view:'View',
+        open:'Due',overdue:'Overdue',paidAll:'Paid',strip:'You have invoices due',stripP:'Open the invoices page to review them.',save:'Save PDF',close:'Close',
+        st:{pending:'Awaiting payment',partial:'Partially paid',paid:'Paid',overdue:'Overdue',cancelled:'Cancelled',refunded:'Refunded'}}}
   }[lang];
   var OPEN=['new','review','info','accepted','progress','feedback','revision','final'];
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
@@ -100,18 +106,20 @@
   var NT={ar:{accept:function(d,t){return 'قُبلت مهمة '+t+(d.date?' · موعد التسليم المؤكد '+d8(d.date):'');},info:function(d,t){return 'يحتاج الاستوديو إلى معلومات منك لمهمة '+t;},reject:function(d,t){return 'بخصوص مهمة '+t+': تعذّر تنفيذها كما طُلبت';},
       progress:function(d,t){return 'بدأ تنفيذ '+t;},status:function(d,t){return 'أصبحت حالة '+t+' «'+(T.st[d.status]||d.status)+'»';},date:function(d,t){return 'أصبح موعد تسليم '+t+' '+d8(d.date);},dateNo:function(d,t){return 'بقي موعد تسليم '+t+' '+d8(d.date);},
       completed:function(d,t){return 'اكتملت مهمة '+t;},deliver:function(d,t){return d.final?'التسليم النهائي لـ'+t+' جاهز للمراجعة':'النسخة '+d.label+' من '+t+' جاهزة للمراجعة';},comment:function(d,t){return 'تعليق جديد من الاستوديو على '+t;},
-      project:function(d){return 'فتح الاستوديو لك مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» إلى مشروع «'+d.name+'»';}},
+      project:function(d){return 'فتح الاستوديو لك مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» إلى مشروع «'+d.name+'»';},
+      invoice:function(d){return 'فاتورة جديدة '+d.no+' بقيمة '+d.amount;},invoicePaid:function(d){return 'وصلت دفعتك للفاتورة '+d.no;},invoiceDue:function(d){return 'الفاتورة '+d.no+' متأخرة — المتبقي '+d.balance;}},
     en:{accept:function(d,t){return 'Task '+t+' accepted'+(d.date?' · confirmed for '+d8(d.date):'');},info:function(d,t){return 'The studio needs information for '+t;},reject:function(d,t){return 'About '+t+': we can\'t take it as requested';},
       progress:function(d,t){return 'Work started on '+t;},status:function(d,t){return t+' is now “'+(T.st[d.status]||d.status)+'”';},date:function(d,t){return 'Delivery date of '+t+' is now '+d8(d.date);},dateNo:function(d,t){return 'Delivery date of '+t+' stays '+d8(d.date);},
       completed:function(d,t){return t+' is complete';},deliver:function(d,t){return d.final?'Final delivery of '+t+' is ready for review':'Version '+d.label+' of '+t+' is ready for review';},comment:function(d,t){return 'New comment from the studio on '+t;},
-      project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';}}}[lang];
+      project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';},
+      invoice:function(d){return 'New invoice '+d.no+' for '+d.amount;},invoicePaid:function(d){return 'Payment received for invoice '+d.no;},invoiceDue:function(d){return 'Invoice '+d.no+' is overdue — '+d.balance+' due';}}}[lang];
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
   var host=null, shell=null, DASH=null, UNREAD=0;
   var BELL='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>';
   function mount(el){ shell=el;
-    if(!el.querySelector('.wview')){ el.innerHTML='<div class="wtop"><a class="wtop-set" href="#w/settings">'+T.nt.set+'</a><div class="wbellw"><button type="button" class="wbell glass" aria-label="'+T.nt.bell+'" aria-expanded="false">'+BELL+'<span class="wbadge" hidden></span></button>'+
+    if(!el.querySelector('.wview')){ el.innerHTML='<div class="wtop"><a class="wtop-set" href="#w/invoices">'+T.bl.h+'</a><a class="wtop-set" href="#w/settings">'+T.nt.set+'</a><div class="wbellw"><button type="button" class="wbell glass" aria-label="'+T.nt.bell+'" aria-expanded="false">'+BELL+'<span class="wbadge" hidden></span></button>'+
         '<div class="wnp glass" hidden><div class="wnp-h"><b>'+T.nt.h+'</b><button type="button" class="linkbtn" data-nall>'+T.nt.all+'</button></div><div class="wnp-l"></div><a class="wnp-f" href="#w/settings">'+T.nt.set+'</a></div></div></div><div class="wview"></div>';
       bindBell(el); }
     host=el.querySelector('.wview'); route(); pollUnread(); }
@@ -130,6 +138,7 @@
     document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!pnl.hidden){ close(); btn.focus(); } }); }
   function route(){ if(!shell||shell.hidden) return; var h=(location.hash||'').slice(1), m;
     if(h==='w/settings') return settings();
+    if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))) return invoices(m[1]);
     if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))) return task(m[1]);
     if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files))?$/.exec(h))) return project(m[1],m[2]||'tasks');
     if((m=/^w\/new\/(p_[a-f0-9]+)$/.exec(h))) return newTask(m[1]);
@@ -147,6 +156,7 @@
       var tiles=[[T.k.active,act.length],[T.k.fresh,n(['new','review','info'])],[T.k.progress,n(['accepted','progress','revision'])],[T.k.review,n(['feedback','final'])],[T.k.done,c.completed||0],[T.k.dates,(j.upcoming||[]).length]];
       host.innerHTML='<div class="wsp-head"><div><span class="eyebrow">WORKSPACE</span><h2>'+T.ws+'</h2><p class="muted">'+T.wsP+'</p></div></div>'+
         '<div class="wkpis">'+tiles.map(function(t){ return '<div class="wkpi glass"><b>'+t[1]+'</b><span>'+esc(t[0])+'</span></div>'; }).join('')+'</div>'+
+        (j.bills&&j.bills.open?'<a class="wcard glass wbillstrip'+(j.bills.overdue?' late':'')+'" href="#w/invoices"><b>'+T.bl.strip+' ('+j.bills.open+')</b><small class="muted">'+(j.bills.overdue?j.bills.overdue+' '+T.bl.overdue+' · ':'')+T.bl.stripP+'</small><span class="go">←</span></a>':'')+
         ((j.waiting||[]).length?'<section class="wcard glass wwait"><h3>'+T.waiting+' ('+j.waiting.length+')</h3><p class="muted small">'+T.waitingP+'</p><ul>'+j.waiting.map(function(w){ return '<li><a href="#w/t/'+esc(w.ref)+'">'+pill(w.status)+'<b><bdi>'+esc(w.title)+'</bdi></b><small class="muted"><bdi>'+esc(w.project_name)+'</bdi> · <bdi dir="ltr">'+esc(w.ref)+'</bdi></small><span class="go">←</span></a></li>'; }).join('')+'</ul></section>':'')+
         (j.projects.length? '<section class="wsec"><h3>'+T.projects+'</h3><div class="wprojects">'+j.projects.map(projCard).join('')+'</div></section>' : '<div class="wcard glass wempty"><p>'+T.empty+'</p></div>')+
         (j.projects.length? '<div class="wcols"><section class="wsec"><h3>'+T.recent+'</h3>'+taskTable(j.tasks,true)+'</section>'+
@@ -320,6 +330,35 @@
         api('',{action:'dateChange',task:t.ref,date:cf.elements.date.value,reason:cf.elements.reason.value.trim()}).then(function(r){ if(r.ok){ toast(T.saved); task(ref); } else { b.disabled=false; toast(r.error==='date'?T.f.bad:T.err); } }); };
     });
   }
+  /* ---- invoices: the client's own, with a printable copy ---- */
+  function money(n,c){ var a=Math.abs(+n||0), v=(Math.round(a*100)/100).toFixed(a%1?2:0); return ((+n||0)<0?'−':'')+(c==='$'||c==='€'||c==='£'?c+v:v+' '+c); }
+  function invoices(openId){
+    loading();
+    api('?view=invoices').then(function(j){ if(!j.ok) return fail(j); var L2=j.invoices||[], by={};
+      L2.forEach(function(x){ if(x.state==='cancelled'||x.state==='refunded') return; var c=x.currency; by[c]=by[c]||{due:0,paid:0}; by[c].due+=x.balance; by[c].paid+=x.paid; });
+      var cur=Object.keys(by);
+      host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a><div class="wsp-head"><div><span class="eyebrow">INVOICES</span><h2>'+T.bl.h+'</h2><p class="muted">'+T.bl.p+'</p></div></div>'+
+        (cur.length?'<div class="wkpis wkpis3">'+cur.map(function(c){ return '<div class="wkpi glass"><b dir="ltr">'+esc(money(by[c].due,c))+'</b><span>'+T.bl.open+'</span></div><div class="wkpi glass"><b dir="ltr">'+esc(money(by[c].paid,c))+'</b><span>'+T.bl.paidAll+'</span></div>'; }).join('')+
+          '<div class="wkpi glass"><b>'+L2.filter(function(x){return x.state==='overdue'}).length+'</b><span>'+T.bl.overdue+'</span></div></div>':'')+
+        (L2.length?'<div class="wtable"><table><thead><tr><th>'+T.bl.no+'</th><th>'+T.status+'</th><th>'+T.bl.issued+'</th><th>'+T.bl.due+'</th><th>'+T.bl.total+'</th><th>'+T.bl.bal+'</th><th></th></tr></thead><tbody>'+L2.map(function(x){
+          return '<tr><td><b><bdi dir="ltr">'+esc(x.no)+'</bdi></b>'+((x.title||x.period)?'<small class="muted ref">'+esc([x.title,x.period].filter(Boolean).join(' · '))+'</small>':'')+(x.project_name?'<small class="muted">'+esc(x.project_name)+'</small>':'')+'</td>'+
+            '<td class="ts"><span class="bpill s-'+esc(x.state)+'">'+esc(T.bl.st[x.state]||x.state)+'</span></td><td data-l="'+esc(T.bl.issued)+'">'+esc(d8(x.issue_date))+'</td><td data-l="'+esc(T.bl.due)+'" class="'+(x.state==='overdue'?'late':'')+'">'+esc(x.due_date?d8(x.due_date):'—')+'</td>'+
+            '<td data-l="'+esc(T.bl.total)+'"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi></td><td data-l="'+esc(T.bl.bal)+'"><bdi dir="ltr">'+esc(money(x.balance,x.currency))+'</bdi></td><td class="tu"><button type="button" class="btn btn-glass glass wbv" data-inv="'+esc(x.id)+'">'+T.bl.view+'</button></td></tr>'; }).join('')+'</tbody></table></div>'
+          :'<div class="wcard glass wempty"><p>'+T.bl.none+'</p></div>');
+      host.querySelectorAll('[data-inv]').forEach(function(b){ b.onclick=function(){ invDoc(b.dataset.inv); }; });
+      if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
+    });
+  }
+  function invDoc(id){
+    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-label',T.bl.h);
+    m.innerHTML='<div class="inv-box"><div class="inv-bar"><b>'+T.bl.h+'</b><span class="sp"></span><button type="button" class="btn btn-primary sv">'+T.bl.save+'</button><button type="button" class="btn btn-glass glass x" aria-label="'+T.bl.close+'">×</button></div><div class="inv-scroll"><iframe title="'+T.bl.h+'" src="'+API+'work?invoiceDoc='+encodeURIComponent(id)+'"></iframe></div></div>';
+    document.body.appendChild(m); document.body.style.overflow='hidden'; requestAnimationFrame(function(){ m.classList.add('show'); });
+    var f=m.querySelector('iframe'); f.onload=function(){ try{ var d=f.contentDocument; f.style.height=(d.body.scrollHeight+2)+'px'; [].forEach.call(d.images,function(im){ im.onload=function(){ f.style.height=(d.body.scrollHeight+2)+'px'; }; }); }catch(_){} };
+    var close=function(){ m.classList.remove('show'); document.body.style.overflow=''; setTimeout(function(){ m.remove(); },350); };
+    m.querySelector('.x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); }; m.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); }); setTimeout(function(){ m.querySelector('.x').focus(); },50);
+    m.querySelector('.sv').onclick=function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } };
+  }
+
   /* ---- notification settings: e-mail and WhatsApp per category; WhatsApp only with explicit consent ---- */
   function settings(){
     loading();
