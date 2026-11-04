@@ -104,6 +104,10 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS clients_status ON clients(status)`,
   `CREATE INDEX IF NOT EXISTS files_client ON files(client_email, created_at)`,
   `CREATE INDEX IF NOT EXISTS deliverables_client ON deliverables(client_email, created_at)`,
+  // phase 10: notifications outside the site — this device (Web Push) and Telegram
+  `CREATE TABLE IF NOT EXISTS push_subs (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, ua TEXT, created_at TEXT NOT NULL, last_ok_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS push_subs_email ON push_subs(email)`,
+  `CREATE TABLE IF NOT EXISTS tg_links (email TEXT PRIMARY KEY, chat_id TEXT NOT NULL UNIQUE, username TEXT, linked_at TEXT NOT NULL)`,
 ];
 // columns added to tables that already exist on the live database (run once, in order; meta "schema" keeps the count)
 const MIGRATIONS = [
@@ -112,6 +116,8 @@ const MIGRATIONS = [
   "ALTER TABLE projects ADD COLUMN drive_url TEXT",
   "ALTER TABLE projects ADD COLUMN auto_report INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE tasks ADD COLUMN assignee TEXT",
+  "ALTER TABLE notify_prefs ADD COLUMN push_cats TEXT NOT NULL DEFAULT '{}'",
+  "ALTER TABLE notify_prefs ADD COLUMN tg_cats TEXT NOT NULL DEFAULT '{}'",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -325,15 +331,65 @@ const nextTry = n => n > BACKOFF.length ? null : new Date(Date.now() + BACKOFF[n
 const oneLine = (t, n) => String(t || "").replace(/[\r\n\t]+/g, " · ").replace(/ {2,}/g, " ").trim().slice(0, n);
 const normPhone = p => { const x = String(p || "").replace(/[\s\-().]/g, "").replace(/^00/, "+"); return /^\+?[1-9]\d{7,14}$/.test(x) ? x.replace(/^\+/, "") : null; };
 async function prefsOf(D, email){
-  const r = await D.prepare("SELECT * FROM notify_prefs WHERE email=?").bind(email).first(); let ec = {}, wc = {};
+  const r = await D.prepare("SELECT * FROM notify_prefs WHERE email=?").bind(email).first(); let ec = {}, wc = {}, pc = {}, tc = {};
   try { ec = JSON.parse((r && r.email_cats) || "{}"); } catch {} try { wc = JSON.parse((r && r.wa_cats) || "{}"); } catch {}
-  return { email_cats: Object.fromEntries(CATS.map(c => [c, ec[c] !== false])), wa_cats: Object.fromEntries(CATS.map(c => [c, c in wc ? !!wc[c] : WA_DEFAULT[c]])),
+  try { pc = JSON.parse((r && r.push_cats) || "{}"); } catch {} try { tc = JSON.parse((r && r.tg_cats) || "{}"); } catch {}
+  return { email_cats: Object.fromEntries(CATS.map(c => [c, ec[c] !== false])), push_cats: Object.fromEntries(CATS.map(c => [c, pc[c] !== false])), tg_cats: Object.fromEntries(CATS.map(c => [c, tc[c] !== false])), wa_cats: Object.fromEntries(CATS.map(c => [c, c in wc ? !!wc[c] : WA_DEFAULT[c]])),
     wa_phone: (r && r.wa_phone) || "", wa_consent_at: (r && r.wa_consent_at) || null, wa_withdrawn_at: (r && r.wa_withdrawn_at) || null,
     consent: !!(r && r.wa_phone && r.wa_consent_at && !r.wa_withdrawn_at) };
 }
 async function waConfig(env){ let c = {}; try { c = JSON.parse(await env.EB.get("wa:config") || "{}"); } catch {}
   return { enabled: !!c.enabled, template: c.template || "eyeblink_update", langAr: c.langAr || "ar", langEn: c.langEn || "en", button: c.button !== false, version: /^v\d{2}\.0$/.test(c.version || "") ? c.version : "v25.0" }; }
 const waReady = (env, cfg) => !!(cfg.enabled && env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_ID);
+// ==== notifications outside the site (phase 10) ====
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const ub64 = s => { s = String(s || "").replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const b = atob(s), o = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) o[i] = b.charCodeAt(i); return o; };
+const cat8 = (...a) => { const n = a.reduce((x, y) => x + y.length, 0), o = new Uint8Array(n); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+const utf8 = t => new TextEncoder().encode(t);
+// the site's own VAPID key pair: made once, kept in D1 (no setup needed)
+async function vapid(D){
+  const row = await D.prepare("SELECT v FROM meta WHERE k='vapid'").first();
+  if (row) { const v = JSON.parse(row.v); return { pub: v.pub, key: await crypto.subtle.importKey("jwk", v.jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]) }; }
+  const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const pub = b64u(await crypto.subtle.exportKey("raw", kp.publicKey)), jwk = await crypto.subtle.exportKey("jwk", kp.privateKey);
+  await D.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('vapid', ?)").bind(JSON.stringify({ pub, jwk })).run();
+  return vapid(D);
+}
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com|push\.microsoft\.com)$/i;
+function okEndpoint(e){ try { const u = new URL(e); return u.protocol === "https:" && PUSH_HOSTS.test(u.hostname); } catch { return false; } }
+async function hkdf(salt, ikm, info, len){ const k = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, k, len * 8)); }
+async function pushSend(D, sub, payload){
+  const V = await vapid(D), ua = ub64(sub.p256dh), auth = ub64(sub.auth);
+  const eph = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", ua, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, eph.privateKey, 256));
+  const ikm = await hkdf(auth, shared, cat8(utf8("WebPush: info\0"), ua, asPub), 32), salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, utf8("Content-Encoding: aes128gcm\0"), 16), nonce = await hkdf(salt, ikm, utf8("Content-Encoding: nonce\0"), 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, cat8(utf8(JSON.stringify(payload)), new Uint8Array([2]))));
+  const head = new Uint8Array(21); head.set(salt, 0); new DataView(head.buffer).setUint32(16, 4096); head[20] = 65;
+  const ep = new URL(sub.endpoint), jh = b64u(utf8(JSON.stringify({ typ: "JWT", alg: "ES256" }))), jc = b64u(utf8(JSON.stringify({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:hello@eyeblinkstudio.com" })));
+  const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, V.key, utf8(jh + "." + jc)));
+  const r = await fetch(sub.endpoint, { method: "POST", headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "normal",
+    Authorization: `vapid t=${jh}.${jc}.${sig}, k=${V.pub}` }, body: cat8(head, asPub, ct) }).catch(e => ({ ok: false, status: 0, _e: String(e) }));
+  if (r.status === 404 || r.status === 410) { await D.prepare("DELETE FROM push_subs WHERE id=?").bind(sub.id).run(); return { ok: false, gone: true, error: "expired" }; }
+  if (r.ok) { await D.prepare("UPDATE push_subs SET last_ok_at=? WHERE id=?").bind(now(), sub.id).run(); return { ok: true }; }
+  return { ok: false, error: "push " + r.status, retry: r.status === 0 || r.status === 429 || r.status >= 500 };
+}
+const tgTok = env => String(env.TELEGRAM_TOKEN || "").trim().replace(/^bot/i, "");
+async function tgApi(env, method, body){ const t = tgTok(env); if (!t) return { ok: false, description: "no token" };
+  const r = await fetch(`https://api.telegram.org/bot${t}/${method}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) }).catch(() => null);
+  return r ? r.json().catch(() => ({ ok: false })) : { ok: false, description: "network" }; }
+async function tgConf(env){ try { return JSON.parse(await env.EB.get("tg:clients") || "null"); } catch { return null; } }
+async function tgSend(env, chat, text, url, label){
+  const r = await tgApi(env, "sendMessage", { chat_id: chat, text, disable_web_page_preview: true, ...(url ? { reply_markup: { inline_keyboard: [[{ text: label, url }]] } } : {}) });
+  return r && r.ok ? { ok: true, id: r.result && String(r.result.message_id) } : { ok: false, error: (r && r.description) || "telegram", retry: !r || r.error_code === 429 || r.error_code >= 500 };
+}
+// what goes to the phone: the same one-line text as the WhatsApp template
+function shortText(lang, kind, data, L){ const f = WA_TXT[lang][kind]; if (!f) return "";
+  return oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", dueText: data.due ? fmtDate(data.due, lang) : "", statusText: L[data.status] || data.status || "" }), 400); }
 async function logSend(D, r){ if (!D) return; try {
   await D.prepare("INSERT INTO notify_log (at, channel, recipient, target, kind, status, attempts, error, next_try_at, provider_id, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
     .bind(now(), r.channel, r.recipient, r.target || null, r.kind, r.status, r.attempts || 1, r.error || null, r.next || null, r.provider_id || null, r.payload ? JSON.stringify(r.payload) : null).run(); } catch {} }
@@ -433,6 +489,21 @@ async function tellClient(env, t, kind, extra){
     const r = await waSend(env, cfg, P.wa_phone, lang, pl);
     await logSend(D, { channel: "whatsapp", recipient: u.email, target: P.wa_phone, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok ? null : { phone: P.wa_phone, lang, p: pl } });
   })());
+  // 4) this device (Web Push) — every device the client switched on, for the categories left on
+  if (D && (!P || P.push_cats[cat])) jobs.push((async () => {
+    const subs = (await D.prepare("SELECT * FROM push_subs WHERE email=?").bind(u.email).all()).results; if (!subs.length) return;
+    const body = shortText(lang, kind, data, L); if (!body) return;
+    const url = SITE + (en ? "/en" : "") + "/workspace.html" + hash;
+    for (const sub of subs) { const r = await pushSend(D, sub, { title: "Eyeblink Studio", body, url, tag: (t.ref || kind), lang, dir: en ? "ltr" : "rtl" }).catch(e => ({ ok: false, error: String(e).slice(0, 120) }));
+      await logSend(D, { channel: "push", recipient: u.email, target: new URL(sub.endpoint).hostname, kind, status: r.ok ? "sent" : "failed", error: r.error }); }
+  })());
+  // 5) Telegram — once the client linked their chat with the studio's bot
+  if (D && (!P || P.tg_cats[cat])) jobs.push((async () => {
+    const link = await D.prepare("SELECT * FROM tg_links WHERE email=?").bind(u.email).first(); if (!link || !tgTok(env)) return;
+    const body = shortText(lang, kind, data, L); if (!body) return;
+    const r = await tgSend(env, link.chat_id, "✦ Eyeblink Studio\n\n" + body, SITE + (en ? "/en" : "") + "/workspace.html" + hash, en ? "Open in my workspace" : "افتح في مساحة العمل");
+    await logSend(D, { channel: "telegram", recipient: u.email, target: link.username ? "@" + link.username : "chat", kind, status: r.ok ? "sent" : "failed", error: r.error, provider_id: r.id });
+  })());
   await Promise.allSettled(jobs);
 }
 // to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
@@ -468,6 +539,25 @@ async function sweepNotify(env){ try {
     for (const p of auto) await sendReport({}, env, D, p, pm); }
 } catch {} }
 
+// Telegram calls this when someone writes to the bot. Only "/start <one-time code>" (link) and "/stop" (unlink) do anything.
+async function tgHook(ctx){ const { request, env } = ctx, conf = await tgConf(env);
+  if (!conf || !conf.secret || request.headers.get("x-telegram-bot-api-secret-token") !== conf.secret) return json({ ok: false }, 401);
+  const up = await request.json().catch(() => ({})), m = up.message || {}, chat = m.chat && m.chat.id, text = String(m.text || "").trim();
+  if (!chat || (m.chat.type && m.chat.type !== "private")) return json({ ok: true });
+  const D = await db(env); if (!D) return json({ ok: true });
+  const st = /^\/start(?:@\w+)?\s+([a-f0-9]{24})$/.exec(text);
+  if (st) { const email = await env.EB.get("tglink:" + st[1]); if (!email) { await tgSend(env, chat, "انتهت صلاحية رابط الربط. افتح إعدادات الإشعارات في مساحة العمل واضغط «اربط تيليغرام» من جديد.\n\nThis link has expired — open your workspace notification settings and tap “Link Telegram” again."); return json({ ok: true }); }
+    await env.EB.delete("tglink:" + st[1]);
+    const u = await userOf(env, email), en = u && u.lang === "en";
+    await D.batch([D.prepare("DELETE FROM tg_links WHERE chat_id=? OR email=?").bind(String(chat), email), D.prepare("INSERT INTO tg_links (email, chat_id, username, linked_at) VALUES (?,?,?,?)").bind(email, String(chat), (m.from && m.from.username) || null, now())]);
+    await act(D, { actor: email, actor_name: u ? u.name : email, client_email: email, kind: "tg_linked", data: {} });
+    await tgSend(env, chat, en ? "✦ Linked. Updates from Eyeblink Studio about your projects will arrive here. Send /stop any time to turn them off." : "✦ تم الربط. ستصلك هنا تحديثات Eyeblink Studio عن مشاريعك ومهامك. أرسل /stop في أي وقت لإيقافها.");
+    return json({ ok: true }); }
+  if (/^\/stop\b/.test(text)) { const l = await D.prepare("SELECT email FROM tg_links WHERE chat_id=?").bind(String(chat)).first();
+    if (l) { await D.prepare("DELETE FROM tg_links WHERE chat_id=?").bind(String(chat)).run(); await act(D, { actor: l.email, actor_name: l.email, client_email: l.email, kind: "tg_unlinked", data: {} }); }
+    await tgSend(env, chat, "أوقفنا الرسائل هنا. يمكنك إعادة الربط من إعدادات الإشعارات في مساحة العمل.\n\nStopped. You can link again from your workspace notification settings."); return json({ ok: true }); }
+  return json({ ok: true });
+}
 // what a client receives about a task: everything but the studio's internal fields
 function cparse(t){ t = parse(t); if (t) delete t.assignee; return t; }
 export async function onRequestGet(ctx) {
@@ -492,7 +582,11 @@ export async function onRequestGet(ctx) {
   if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)) });
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
     return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
-  if (q.get("view") === "prefs") { const cfg = await waConfig(env); return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) } }); }
+  if (q.get("view") === "prefs") { const cfg = await waConfig(env), tg = await tgConf(env), link = await D.prepare("SELECT username, linked_at FROM tg_links WHERE email=?").bind(e).first();
+    const subs = (await D.prepare("SELECT endpoint FROM push_subs WHERE email=?").bind(e).all()).results;
+    return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) },
+      push: { key: (await vapid(D)).pub, devices: subs.length, endpoints: subs.map(x => x.endpoint.slice(-24)) },
+      tg: { available: !!(tg && tg.bot && tgTok(env)), bot: tg && tg.bot, linked: !!link, username: link && link.username, since: link && link.linked_at } }); }
   if (q.get("project")) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(cparse);
@@ -521,8 +615,9 @@ export async function onRequestGet(ctx) {
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
+  if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -537,18 +632,41 @@ export async function onRequestPost(ctx) {
       await D.prepare("UPDATE notifications SET read_at=? WHERE id=? AND recipient=? AND read_at IS NULL").bind(at, id, u.email).run();
     return json({ ok: true });
   }
+  if (d.action === "pushSub") {
+    const s2 = d.sub || {}, k = s2.keys || {}; if (!okEndpoint(s2.endpoint) || !/^[\w-]{80,100}$/.test(k.p256dh || "") || !/^[\w-]{16,32}$/.test(k.auth || "")) return json({ ok: false, error: "sub" }, 400);
+    const n = (await D.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE email=?").bind(u.email).first()).n; if (n >= 10) await D.prepare("DELETE FROM push_subs WHERE id=(SELECT id FROM push_subs WHERE email=? ORDER BY id LIMIT 1)").bind(u.email).run();
+    await D.prepare("INSERT INTO push_subs (email, endpoint, p256dh, auth, ua, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET email=excluded.email, p256dh=excluded.p256dh, auth=excluded.auth")
+      .bind(u.email, s2.endpoint, k.p256dh, k.auth, clip(request.headers.get("user-agent"), 160), at).run();
+    return json({ ok: true });
+  }
+  if (d.action === "pushUnsub") { await D.prepare("DELETE FROM push_subs WHERE email=? AND endpoint=?").bind(u.email, String(d.endpoint || "")).run(); return json({ ok: true }); }
+  if (d.action === "pushTest" || d.action === "tgTest") {
+    const en = u.lang === "en", body = en ? "Notifications are on. You'll hear from us here when something changes in your workspace." : "الإشعارات تعمل. ستصلك هنا تحديثات مساحة العمل أولاً بأول.", url = SITE + (en ? "/en" : "") + "/workspace.html#w/settings";
+    if (d.action === "tgTest") { const l = await D.prepare("SELECT chat_id FROM tg_links WHERE email=?").bind(u.email).first(); if (!l) return json({ ok: false, error: "not linked" }, 409);
+      const r = await tgSend(env, l.chat_id, "✦ Eyeblink Studio\n\n" + body); return json({ ok: r.ok, error: r.error }); }
+    const subs = (await D.prepare("SELECT * FROM push_subs WHERE email=?").bind(u.email).all()).results; if (!subs.length) return json({ ok: false, error: "no device" }, 409);
+    let ok = 0; for (const sub of subs) if ((await pushSend(D, sub, { title: "Eyeblink Studio", body, url, tag: "test", lang: en ? "en" : "ar", dir: en ? "ltr" : "rtl" }).catch(() => ({}))).ok) ok++;
+    return json({ ok: ok > 0, sent: ok });
+  }
+  if (d.action === "tgLink") { const conf = await tgConf(env); if (!conf || !conf.bot || !tgTok(env)) return json({ ok: false, error: "tg off" }, 409);
+    const code = randHex(12); await env.EB.put("tglink:" + code, u.email, { expirationTtl: 1800 });
+    return json({ ok: true, url: "https://t.me/" + conf.bot + "?start=" + code }); }
+  if (d.action === "tgUnlink") { const l = await D.prepare("SELECT chat_id FROM tg_links WHERE email=?").bind(u.email).first();
+    if (l) { await D.prepare("DELETE FROM tg_links WHERE email=?").bind(u.email).run(); await act(D, { ...who, kind: "tg_unlinked", data: {} }); }
+    return json({ ok: true }); }
   if (d.action === "prefs") {
     const cur = await prefsOf(D, u.email), pick = (src, c, dflt) => src && typeof src === "object" && c in src ? !!src[c] : dflt;
     const ec = Object.fromEntries(CATS.map(c => [c, pick(d.email_cats, c, cur.email_cats[c])])), wc = Object.fromEntries(CATS.map(c => [c, pick(d.wa_cats, c, cur.wa_cats[c])]));
+    const pcs = Object.fromEntries(CATS.map(c => [c, pick(d.push_cats, c, cur.push_cats[c])])), tcs = Object.fromEntries(CATS.map(c => [c, pick(d.tg_cats, c, cur.tg_cats[c])]));
     let phone = cur.wa_phone || null, cAt = cur.wa_consent_at, wAt = cur.wa_withdrawn_at, logKind = null;
     if (d.wa_consent === true) {
       const np = normPhone(d.wa_phone); if (!np) return json({ ok: false, error: "phone" }, 400);
       if (!cur.consent || np !== cur.wa_phone) { phone = np; cAt = at; wAt = null; logKind = "wa_consent"; }   // a new number needs a fresh consent
     } else if (d.wa_consent === false && cur.consent) { wAt = at; logKind = "wa_withdrawn"; }
-    await D.prepare(`INSERT INTO notify_prefs (email, email_cats, wa_cats, wa_phone, wa_consent_at, wa_consent_v, wa_withdrawn_at, updated_at) VALUES (?,?,?,?,?,?,?,?)
-      ON CONFLICT(email) DO UPDATE SET email_cats=excluded.email_cats, wa_cats=excluded.wa_cats, wa_phone=excluded.wa_phone, wa_consent_at=excluded.wa_consent_at,
+    await D.prepare(`INSERT INTO notify_prefs (email, email_cats, wa_cats, push_cats, tg_cats, wa_phone, wa_consent_at, wa_consent_v, wa_withdrawn_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(email) DO UPDATE SET email_cats=excluded.email_cats, wa_cats=excluded.wa_cats, push_cats=excluded.push_cats, tg_cats=excluded.tg_cats, wa_phone=excluded.wa_phone, wa_consent_at=excluded.wa_consent_at,
       wa_consent_v=excluded.wa_consent_v, wa_withdrawn_at=excluded.wa_withdrawn_at, updated_at=excluded.updated_at`)
-      .bind(u.email, JSON.stringify(ec), JSON.stringify(wc), phone, cAt, cAt ? CONSENT_V : null, wAt, at).run();
+      .bind(u.email, JSON.stringify(ec), JSON.stringify(wc), JSON.stringify(pcs), JSON.stringify(tcs), phone, cAt, cAt ? CONSENT_V : null, wAt, at).run();
     if (logKind) await act(D, { ...who, kind: logKind, data: { phone: phone ? phone.replace(/\d(?=\d{4})/g, "•") : undefined, v: CONSENT_V } });
     return json({ ok: true, prefs: await prefsOf(D, u.email) });
   }
@@ -769,7 +887,7 @@ async function adminGet(request, env, q){
   if (q.get("view") === "notify") {
     const inbox = (await D.prepare("SELECT * FROM notifications WHERE recipient='studio' ORDER BY id DESC LIMIT 60").all()).results.map(parseA);
     const where = [], args = [];
-    if (["email","whatsapp"].includes(q.get("channel"))) { where.push("channel=?"); args.push(q.get("channel")); }
+    if (["email","whatsapp","push","telegram"].includes(q.get("channel"))) { where.push("channel=?"); args.push(q.get("channel")); }
     if (["sent","failed","retry","skipped"].includes(q.get("status"))) { where.push("status=?"); args.push(q.get("status")); }
     const log = (await D.prepare(`SELECT id, at, channel, recipient, target, kind, status, attempts, error, next_try_at, delivery FROM notify_log ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
     const stats = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE at>=? GROUP BY channel, status").bind(new Date(Date.now() - 30 * 864e5).toISOString()).all()).results;
@@ -777,7 +895,9 @@ async function adminGet(request, env, q){
     return json({ ok: true, inbox, unread: (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n, log, stats,
       consents: (await D.prepare("SELECT COUNT(*) AS n FROM notify_prefs WHERE wa_consent_at IS NOT NULL AND wa_withdrawn_at IS NULL").first()).n,
       wa: { config: cfg, ready: waReady(env, cfg), secrets: { token: !!env.WHATSAPP_TOKEN, phoneId: !!env.WHATSAPP_PHONE_ID, appSecret: !!env.WHATSAPP_APP_SECRET, verifyToken: !!env.WHATSAPP_VERIFY_TOKEN } },
-      email: { ready: !!env.RESEND_API_KEY }, webhook: SITE + "/api/whatsapp", goBase: SITE + "/go/" });
+      email: { ready: !!env.RESEND_API_KEY }, webhook: SITE + "/api/whatsapp", goBase: SITE + "/go/",
+      tg: { token: !!tgTok(env), clients: await tgConf(env).then(c => c ? { bot: c.bot, at: c.at } : null), linked: (await D.prepare("SELECT COUNT(*) AS n FROM tg_links").first()).n },
+      push: { devices: (await D.prepare("SELECT COUNT(*) AS n FROM push_subs").first()).n, clients: (await D.prepare("SELECT COUNT(DISTINCT email) AS n FROM push_subs").first()).n } });
   }
   if (q.get("space")) { const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(q.get("space")).first()); if (!p) return json({ ok: false }, 404);
     const recurring = (await D.prepare("SELECT * FROM recurring WHERE project_id=? ORDER BY active DESC, next_run").bind(p.id).all()).results;
@@ -795,7 +915,7 @@ async function adminGet(request, env, q){
 }
 
 async function adminPost(ctx, d){
-  const { env } = ctx;
+  const { env, request } = ctx;
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), studio = { actor: "studio", actor_name: "Eyeblink Studio" };
   if (d.action === "recurring") {
@@ -923,6 +1043,16 @@ async function adminPost(ctx, d){
     await act(D, { ...studio, client_email: email, project_id: id, kind: "project_created", data: { name: f.name } });
     later(ctx, tellClient(env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
+  }
+  if (d.action === "tgSetup") {
+    if (!tgTok(env)) return json({ ok: false, error: "no token" }, 409);
+    const me = await tgApi(env, "getMe"); if (!me.ok) return json({ ok: false, error: me.description || "telegram" }, 502);
+    if (d.off) { await tgApi(env, "deleteWebhook", {}); await env.EB.delete("tg:clients"); return json({ ok: true, off: true }); }
+    const secret = randHex(16), hook = new URL(request.url).origin + "/api/work?tg=hook";
+    const r = await tgApi(env, "setWebhook", { url: hook, secret_token: secret, allowed_updates: ["message"], drop_pending_updates: true });
+    if (!r.ok) return json({ ok: false, error: r.description || "webhook" }, 502);
+    await env.EB.put("tg:clients", JSON.stringify({ bot: me.result.username, secret, at }));
+    return json({ ok: true, bot: me.result.username, hook });
   }
   if (d.action === "clientSave") {
     const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);

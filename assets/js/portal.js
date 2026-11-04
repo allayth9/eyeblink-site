@@ -530,20 +530,68 @@
   }
 
   /* ---- notification settings: e-mail and WhatsApp per category; WhatsApp only with explicit consent ---- */
+  /* ---- notifications outside the site: this device (Web Push) and Telegram ---- */
+  function CH(){ return AR?{dev:'هذا الجهاز',tg:'تيليغرام',h:'إشعارات خارج الموقع',p:'لتصلك التحديثات على هاتفك حتى والموقع مغلق.',
+      devH:'إشعارات هذا الجهاز',devP:'تظهر على شاشة الهاتف أو الحاسوب مثل إشعارات التطبيقات، وتفتح المهمة مباشرة عند الضغط.',on:'فعّل على هذا الجهاز',off:'أوقف على هذا الجهاز',test:'إرسال إشعار تجريبي',
+      devOn:'مفعّلة على هذا الجهاز',devN:function(n){ return n===1?'مفعّلة على جهاز واحد':'مفعّلة على '+n+' أجهزة'; },denied:'منعتَ الإشعارات لهذا الموقع. اسمح بها من إعدادات المتصفح ثم حاول مجدداً.',
+      ios:'على آيفون: أضف الموقع إلى الشاشة الرئيسية أولاً (زر المشاركة ← «إضافة إلى الشاشة الرئيسية»)، ثم افتحه من هناك وفعّل الإشعارات.',nosup:'هذا المتصفح لا يدعم الإشعارات. جرّب Chrome أو Safari أحدث.',
+      tgH:'تيليغرام',tgP:'تصلك التحديثات في محادثة مع بوت Eyeblink Studio على تيليغرام.',link:'اربط تيليغرام',unlink:'فصل تيليغرام',tgOn:'مربوط',tgWait:'افتح تيليغرام واضغط «ابدأ» (Start) في محادثة البوت… ننتظر الربط.',tgOff:'لم يفعّل الاستوديو هذه القناة بعد.',
+      sent:'أُرسل إشعار تجريبي.',done:'تفعّلت الإشعارات على هذا الجهاز.',stopped:'أوقفنا الإشعارات على هذا الجهاز.',linked:'تم ربط تيليغرام.',unlinked:'فُصل تيليغرام.'}
+    :{dev:'This device',tg:'Telegram',h:'Notifications outside the site',p:'Get updates on your phone even when the site is closed.',
+      devH:'Notifications on this device',devP:'They appear on your phone or computer like app notifications, and open the task when tapped.',on:'Turn on for this device',off:'Turn off for this device',test:'Send a test notification',
+      devOn:'On for this device',devN:function(n){ return 'On for '+n+(n===1?' device':' devices'); },denied:'Notifications are blocked for this site. Allow them in the browser settings, then try again.',
+      ios:'On iPhone: add the site to your Home Screen first (Share → “Add to Home Screen”), open it from there and turn notifications on.',nosup:'This browser does not support notifications. Try a recent Chrome or Safari.',
+      tgH:'Telegram',tgP:'Updates arrive in a chat with the Eyeblink Studio bot on Telegram.',link:'Link Telegram',unlink:'Unlink Telegram',tgOn:'Linked',tgWait:'Open Telegram and tap “Start” in the bot chat… waiting for the link.',tgOff:'The studio has not switched this channel on yet.',
+      sent:'Test notification sent.',done:'Notifications are on for this device.',stopped:'Notifications are off for this device.',linked:'Telegram linked.',unlinked:'Telegram unlinked.'}; }
+  var pushOK=function(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; };
+  var isIOS=function(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); };
+  var standalone=function(){ return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true; };
+  function mySub(){ if(!pushOK()) return Promise.resolve(null); return navigator.serviceWorker.getRegistration('/').then(function(r){ return r?r.pushManager.getSubscription():null; }).catch(function(){ return null; }); }
+  function channelsHTML(PU,TG,X){
+    return '<section class="wch">'+wh(X.h,'#7DD3FC')+'<p class="muted small">'+X.p+'</p><div class="wch-g">'+
+      '<article class="wch-c" style="--k:#7DD3FC"><div class="wch-h"><span class="wch-i">'+SVG('<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>')+'</span><div><b>'+X.devH+'</b><small class="muted">'+X.devP+'</small></div></div>'+
+        '<p class="wch-s" data-pst>'+(PU.devices?X.devN(PU.devices):'')+'</p><p class="wnote small" data-pnote hidden></p>'+
+        '<div class="actions"><button type="button" class="btn btn-primary" data-pon hidden>'+X.on+'</button><button type="button" class="btn btn-glass glass" data-ptest'+(PU.devices?'':' hidden')+'>'+X.test+'</button><button type="button" class="btn btn-glass glass danger" data-poff hidden>'+X.off+'</button></div></article>'+
+      '<article class="wch-c" style="--k:#5BB8F5"><div class="wch-h"><span class="wch-i">'+SVG('<path d="M21 4 3 11l6 2 2 6 3.5-4.5L19 18z"/><path d="m9 13 8-6"/>')+'</span><div><b>'+X.tgH+'</b><small class="muted">'+X.tgP+'</small></div></div>'+
+        (!TG.available?'<p class="wnote small">'+X.tgOff+'</p>':TG.linked?'<p class="wch-s on">✓ '+X.tgOn+(TG.username?' · <bdi dir="ltr">@'+esc(TG.username)+'</bdi>':'')+'</p><div class="actions"><button type="button" class="btn btn-glass glass" data-ttest>'+X.test+'</button><button type="button" class="btn btn-glass glass danger" data-tunlink>'+X.unlink+'</button></div>'
+          :'<p class="wnote small" data-twait hidden>'+X.tgWait+'</p><div class="actions"><button type="button" class="btn btn-primary" data-tlink>'+X.link+'</button></div>')+'</article></div></section>'; }
+  function bindChannels(f,PU,TG,X){
+    var st=f.querySelector('[data-pst]'), note=f.querySelector('[data-pnote]'), on=f.querySelector('[data-pon]'), off=f.querySelector('[data-poff]'), test=f.querySelector('[data-ptest]');
+    var say=function(t){ note.textContent=t; note.hidden=!t; };
+    if(!pushOK()){ say(isIOS()&&!standalone()?X.ios:X.nosup); }
+    else mySub().then(function(sub){ var here=!!sub; on.hidden=here; off.hidden=!here; if(here) st.textContent=X.devOn+(PU.devices>1?' · '+X.devN(PU.devices):''); if(Notification.permission==='denied'&&!here) say(X.denied); });
+    if(on) on.onclick=function(){ on.disabled=true; say('');
+      Notification.requestPermission().then(function(perm){ if(perm!=='granted'){ on.disabled=false; say(X.denied); return; }
+        return navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(){ return navigator.serviceWorker.ready; }).then(function(reg){
+          return reg.pushManager.getSubscription().then(function(old){ return old||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlKey(PU.key)}); }); })
+        .then(function(sub){ var j=sub.toJSON(); return api('',{action:'pushSub',sub:{endpoint:j.endpoint,keys:j.keys}}); })
+        .then(function(r){ if(r&&r.ok){ toast(X.done); settings(); } else { on.disabled=false; say(T.err); } }); }).catch(function(){ on.disabled=false; say(T.err); }); };
+    if(off) off.onclick=function(){ off.disabled=true; mySub().then(function(sub){ if(!sub) return settings(); var ep=sub.endpoint; return sub.unsubscribe().catch(function(){}).then(function(){ return api('',{action:'pushUnsub',endpoint:ep}); }).then(function(){ toast(X.stopped); settings(); }); }); };
+    if(test) test.onclick=function(){ test.disabled=true; api('',{action:'pushTest'}).then(function(r){ test.disabled=false; toast(r.ok?X.sent:T.err); }); };
+    var tl=f.querySelector('[data-tlink]'); if(tl) tl.onclick=function(){ var w=window.open('about:blank','_blank'); tl.disabled=true;
+      api('',{action:'tgLink'}).then(function(r){ if(!r.ok){ if(w) w.close(); tl.disabled=false; toast(T.err); return; } if(w) w.location=r.url; else location.href=r.url;
+        f.querySelector('[data-twait]').hidden=false; var n=0, poll=setInterval(function(){ if(++n>60||!document.body.contains(f)){ clearInterval(poll); tl.disabled=false; return; }
+          api('?view=prefs').then(function(j){ if(j.ok&&j.tg&&j.tg.linked){ clearInterval(poll); toast(X.linked); settings(); } }); },3000); }); };
+    var tt=f.querySelector('[data-ttest]'); if(tt) tt.onclick=function(){ tt.disabled=true; api('',{action:'tgTest'}).then(function(r){ tt.disabled=false; toast(r.ok?X.sent:T.err); }); };
+    var tu=f.querySelector('[data-tunlink]'); if(tu) tu.onclick=function(){ if(tu.dataset.armed!=='1'){ tu.dataset.armed='1'; tu.textContent=T.dl.sure; return; } tu.disabled=true; api('',{action:'tgUnlink'}).then(function(){ toast(X.unlinked); settings(); }); };
+  }
+  function urlKey(b){ b=String(b).replace(/-/g,'+').replace(/_/g,'/'); while(b.length%4) b+='='; var r=atob(b), o=new Uint8Array(r.length); for(var i=0;i<r.length;i++) o[i]=r.charCodeAt(i); return o; }
   function settings(){
     loading();
-    api('?view=prefs').then(function(j){ if(!j.ok) return fail(j); var P=j.prefs, wa=j.wa||{}, cats=j.cats||['tasks','requests','deliveries','comments','projects'];
+    api('?view=prefs').then(function(j){ if(!j.ok) return fail(j); var P=j.prefs, wa=j.wa||{}, PU=j.push||{}, TG=j.tg||{}, X=CH(), cats=j.cats||['tasks','requests','deliveries','comments','projects'];
       var sw=function(name,on,dis){ return '<label class="wsw"><input type="checkbox" name="'+name+'"'+(on?' checked':'')+(dis?' disabled':'')+'><i></i></label>'; };
       var masked=P.wa_phone?('+'+P.wa_phone).replace(/\d(?=\d{4})/g,'•'):'';
       host.innerHTML=head('settings','SETTINGS',T.pf.h,T.pf.p,'<div class="whd-a"><a class="btn btn-glass glass" href="account.html">'+(AR?'بيانات الحساب':'Account details')+'</a></div>')+'<form class="wcard glass wset form" novalidate>'+
-        '<div class="wprefs"><div class="wpr wpr-h"><span></span><span>'+T.pf.inapp+'</span><span>'+T.pf.email+'</span><span>'+T.pf.wa+'</span></div>'+cats.map(function(c){ var L2=T.pf.cats[c]||[c,''];
-          return '<div class="wpr"><span class="wpr-l"><b>'+esc(L2[0])+'</b><small class="muted">'+esc(L2[1])+'</small></span><span data-l="'+T.pf.inapp+'">'+sw('in_'+c,true,true)+'</span><span data-l="'+T.pf.email+'">'+sw('em_'+c,P.email_cats[c])+'</span><span data-l="'+T.pf.wa+'">'+sw('wa_'+c,P.wa_cats[c],!P.consent)+'</span></div>'; }).join('')+'</div>'+
+        '<div class="wprefs wprefs6"><div class="wpr wpr-h"><span></span><span>'+T.pf.inapp+'</span><span>'+T.pf.email+'</span><span>'+X.dev+'</span><span>'+X.tg+'</span><span>'+T.pf.wa+'</span></div>'+cats.map(function(c){ var L2=T.pf.cats[c]||[c,''];
+          return '<div class="wpr"><span class="wpr-l"><b>'+esc(L2[0])+'</b><small class="muted">'+esc(L2[1])+'</small></span><span data-l="'+T.pf.inapp+'">'+sw('in_'+c,true,true)+'</span><span data-l="'+T.pf.email+'">'+sw('em_'+c,P.email_cats[c])+'</span><span data-l="'+X.dev+'">'+sw('pu_'+c,P.push_cats[c],!PU.devices)+'</span><span data-l="'+X.tg+'">'+sw('tg_'+c,P.tg_cats[c],!TG.linked)+'</span><span data-l="'+T.pf.wa+'">'+sw('wa_'+c,P.wa_cats[c],!P.consent)+'</span></div>'; }).join('')+'</div>'+
         '<div class="actions"><button class="btn btn-primary" type="submit">'+T.pf.save+'</button></div>'+
+        channelsHTML(PU,TG,X)+
         '<section class="wwa">'+wh(T.pf.waH,'#5EF0B0')+(wa.available?'':'<p class="wnote">'+T.pf.waOff+'</p>')+
           (P.consent?'<p class="wwa-on"><b>✓ '+T.pf.active+'<bdi dir="ltr">'+esc(masked)+'</bdi></b><small class="muted">'+T.pf.since+esc(d8(P.wa_consent_at))+'</small></p><p class="muted small">'+T.pf.stopHint+'</p><div class="actions"><button type="button" class="btn btn-glass glass danger" data-wastop>'+T.pf.stop+'</button></div>'
             :(P.wa_withdrawn_at?'<p class="muted small">'+T.pf.stopped+esc(d8(P.wa_withdrawn_at))+'</p>':'')+'<label>'+T.pf.phone+'<input name="phone" type="tel" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="+966 5x xxx xxxx" value="'+esc(P.wa_phone?'+'+P.wa_phone:'')+'"></label>'+
             '<label class="wconsent"><input type="checkbox" name="consent"><span>'+T.pf.consent+'</span></label><p class="msg" role="alert"></p><div class="actions"><button type="button" class="btn btn-primary" data-waon>'+T.pf.on+'</button></div>')+'</section></form>';
-      rise(); var f=host.querySelector('.wset'), E=f.elements, collect=function(){ var ec={}, wc={}; cats.forEach(function(c){ ec[c]=E['em_'+c].checked; wc[c]=E['wa_'+c].checked; }); return {email_cats:ec,wa_cats:wc}; };
+      rise(); var f=host.querySelector('.wset'), E=f.elements, collect=function(){ var ec={}, wc={}, pc={}, tc={}; cats.forEach(function(c){ ec[c]=E['em_'+c].checked; wc[c]=E['wa_'+c].checked; pc[c]=E['pu_'+c].checked; tc[c]=E['tg_'+c].checked; }); return {email_cats:ec,wa_cats:wc,push_cats:pc,tg_cats:tc}; };
+      bindChannels(f,PU,TG,X);
       f.onsubmit=function(e){ e.preventDefault(); var b=f.querySelector('button[type=submit]'); b.disabled=true; var d=collect(); d.action='prefs';
         api('',d).then(function(r){ b.disabled=false; toast(r.ok?T.pf.saved:T.err); }); };
       var on=f.querySelector('[data-waon]'); if(on) on.onclick=function(){ var msg=f.querySelector('.msg'), ph=E.phone.value.trim();

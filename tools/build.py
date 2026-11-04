@@ -354,7 +354,7 @@ def build(lang, page):
 <meta name="description" content="{html_attr(desc)}">
 <meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page in PRIVATE else ""}
 <link rel="icon" href="{A}assets/img/favicon.svg?v={ASSET_V["assets/img/favicon.svg"]}" type="image/svg+xml">
-<link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">{'<link rel="manifest" href="/manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Eyeblink">' if page=="workspace" else ""}
 <link rel="canonical" href="{url(lang, page)}">
 <link rel="alternate" hreflang="ar" href="{url("ar", page)}"><link rel="alternate" hreflang="en" href="{url("en", page)}"><link rel="alternate" hreflang="x-default" href="{url("ar", page)}">
 <meta property="og:type" content="website"><meta property="og:url" content="{url(lang, page)}"><meta property="og:site_name" content="Eyeblink Studio"><meta property="og:locale" content="{"en_US" if en else "ar_AR"}">

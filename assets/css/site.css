@@ -1984,3 +1984,16 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
   .wm-bar{bottom:calc(98px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:360px){ .wnav{inset-inline:8px;grid-template-columns:repeat(2,minmax(0,1fr)) 58px repeat(2,minmax(0,1fr))} .wnav-in>a,.wnav-more{font-size:11px} }
+
+/* settings: two more channels (this device, Telegram) */
+.wprefs6 .wpr{grid-template-columns:1fr repeat(5,84px)}
+@media (max-width:860px){ .wprefs6 .wpr{grid-template-columns:1fr repeat(5,64px);gap:6px;padding:12px} .wprefs6 .wpr-h span{font-size:11.5px} }
+@media (max-width:620px){ .wprefs6 .wpr{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px 2px} .wprefs6 .wpr>span[data-l]{flex-direction:column;justify-self:center;gap:5px;min-width:0;text-align:center} .wprefs6 .wpr>span[data-l]::before{font-size:10.5px;line-height:1.2;white-space:nowrap} }
+.wch{display:grid;gap:10px;margin-top:22px}.wch>p{margin:0}
+.wch-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.wch-c{--k:#7DD3FC;display:grid;gap:10px;align-content:start;padding:16px 18px;border-radius:18px;background:linear-gradient(155deg,color-mix(in srgb,var(--k) 10%,transparent),rgba(4,6,26,.35));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 26%,transparent)}
+.wch-h{display:flex;gap:12px;align-items:flex-start}.wch-h b{display:block;font-weight:500}.wch-h small{display:block;font-size:13px;line-height:1.6;margin-top:2px}
+.wch-i{width:40px;height:40px;flex:none;border-radius:13px;display:grid;place-items:center;background:color-mix(in srgb,var(--k) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 34%,transparent)}
+.wch-i svg{width:20px;height:20px;fill:none;stroke:var(--k);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.wch-s{margin:0;font-size:14px;color:var(--mist)}.wch-s:empty{display:none}.wch-s.on{color:#7ff0c0}
+.wch .actions{gap:8px;flex-wrap:wrap}.wch .actions .btn{padding:10px 16px;font-size:14px}.wch .actions .btn[hidden]{display:none}
