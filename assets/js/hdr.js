@@ -45,15 +45,16 @@
     var li=links&&links.querySelector('.ws-li');
     if(cl&&links&&!li){ li=document.createElement('li'); li.className='ws-li'; li.innerHTML='<a class="ws-link" href="'+WS+'"'+(PAGE==='workspace'?' aria-current="page"':'')+'><i aria-hidden="true"></i><span>'+T.ws+'</span></a>'; links.insertBefore(li,links.firstChild); }
     if(!cl&&li) li.remove();
-    var dk=dock&&dock.querySelector('.ws-dock');
-    if(cl&&dock&&!dk){ dk=document.createElement('a'); dk.className='ws-dock'; dk.href=WS; if(PAGE==='workspace') dk.setAttribute('aria-current','page'); dk.innerHTML=ICON.ws+'<span>'+T.ws+'</span>'; dock.insertBefore(dk,dock.firstChild); dock.classList.add('has-ws'); }
-    if(!cl&&dk){ dk.remove(); dock.classList.remove('has-ws'); }
+    // phones: the workspace is a floating button above the bottom bar (not a bottom-bar item); hidden on the workspace page itself
+    var fab=document.querySelector('.ws-fab');
+    if(cl&&PAGE!=='workspace'&&!fab){ fab=document.createElement('a'); fab.className='ws-fab'; fab.href=WS; fab.innerHTML=ICON.ws+'<span>'+T.ws+'</span><b class="wsf-n" hidden></b>'; body.appendChild(fab); body.classList.add('has-wsfab'); }
+    if(!cl&&fab){ fab.remove(); body.classList.remove('has-wsfab'); }
     // the bell
     if(cl&&!bell){ bell=document.createElement('button'); bell.type='button'; bell.className='hbell'; bell.setAttribute('aria-label',T.nt); bell.setAttribute('aria-expanded','false'); bell.innerHTML=ICON.bell+'<span class="hbadge" hidden></span>'; acct.parentNode.insertBefore(bell,acct); bell.addEventListener('click',togglePanel); }
     if(!cl&&bell){ bell.remove(); bell=null; }
     badge();
   }
-  function badge(){ if(!bell) return; var n=S.unread||0, b=bell.querySelector('.hbadge'); b.hidden=!n; b.textContent=n>9?'9+':n; bell.classList.toggle('has',!!n);
+  function badge(){ if(!bell) return; var n=S.unread||0, b=bell.querySelector('.hbadge'), fb=document.querySelector('.ws-fab .wsf-n'); if(fb){ fb.hidden=!n; fb.textContent=n>9?'9+':n; } b.hidden=!n; b.textContent=n>9?'9+':n; bell.classList.toggle('has',!!n);
     bell.setAttribute('aria-label',T.nt+(n?' ('+n+')':'')); try{ window.dispatchEvent(new CustomEvent('eb:unread',{detail:n})); }catch(_){} }
 
   /* ---- account menu ---- */
@@ -75,9 +76,9 @@
 
   /* ---- notifications panel ---- */
   var NT=AR?{accept:'قُبلت مهمة «%t»',info:'يحتاج الاستوديو إلى معلومات لمهمة «%t»',reject:'بخصوص مهمة «%t»',progress:'بدأ تنفيذ «%t»',status:'تحديث على «%t»',date:'موعد جديد لـ«%t»',dateNo:'بقي موعد «%t» كما هو',completed:'اكتملت مهمة «%t»',
-      deliver:'نسخة جديدة من «%t» جاهزة للمراجعة',comment:'تعليق جديد من الاستوديو على «%t»',project:'مشروع جديد: «%n»',file:'ملف جديد في «%n»',invoice:'فاتورة جديدة %no',invoicePaid:'وصلت دفعتك للفاتورة %no',invoiceDue:'الفاتورة %no متأخرة',recurring:'مهمة دورية جديدة «%t»',report:'التقرير الشهري لـ«%n» جاهز'}
+      deliver:'نسخة جديدة من «%t» جاهزة للمراجعة',comment:'تعليق جديد من الاستوديو على «%t»',project:'مشروع جديد: «%n»',file:'ملف جديد في «%n»',invoice:'فاتورة جديدة %no',invoicePaid:'وصلت دفعتك للفاتورة %no',invoiceDue:'الفاتورة %no متأخرة',recurring:'مهمة دورية جديدة «%t»',added:'أضاف الاستوديو مهمة «%t»',report:'التقرير الشهري لـ«%n» جاهز'}
     :{accept:'“%t” was accepted',info:'The studio needs information for “%t”',reject:'About “%t”',progress:'Work started on “%t”',status:'Update on “%t”',date:'New date for “%t”',dateNo:'The date of “%t” stays',completed:'“%t” is complete',
-      deliver:'A new version of “%t” is ready',comment:'New studio comment on “%t”',project:'New project: “%n”',file:'New file in “%n”',invoice:'New invoice %no',invoicePaid:'Payment received for %no',invoiceDue:'Invoice %no is overdue',recurring:'New recurring task “%t”',report:'Monthly report for “%n” is ready'};
+      deliver:'A new version of “%t” is ready',comment:'New studio comment on “%t”',project:'New project: “%n”',file:'New file in “%n”',invoice:'New invoice %no',invoicePaid:'Payment received for %no',invoiceDue:'Invoice %no is overdue',recurring:'New recurring task “%t”',added:'The studio added “%t”',report:'Monthly report for “%n” is ready'};
   function ntext(n){ var d=n.data||{}, t=NT[n.kind]||n.kind; return t.replace('%t',d.title||'').replace('%n',d.name||d.title||'').replace('%no',d.no||''); }
   function ago(s){ try{ var m=(Date.now()-new Date(s))/6e4; if(m<1) return AR?'الآن':'now'; if(m<60) return AR?'قبل '+Math.round(m)+' د':Math.round(m)+'m'; if(m<1440) return AR?'قبل '+Math.round(m/60)+' س':Math.round(m/60)+'h';
     return new Date(s).toLocaleDateString(AR?'ar-u-nu-latn':'en-GB',{day:'numeric',month:'short'}); }catch(_){ return ''; } }

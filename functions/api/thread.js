@@ -30,6 +30,31 @@ export async function onRequestPost(ctx) {
     later(ctx, notifyStudio(env, "تقييم جديد ★".repeat(1)+stars+" — "+o.code, o.name+": "+(o.review.text||"—")+(o.review.publish?"\n(وافق على النشر — يمكنك إظهاره من لوحة التحكم)":"")));
     return json({ ok: true, order: publicOrder(o) });
   }
+  if (d.cancel) {
+    if (!canCancel(o)) return json({ ok: false, error: "locked" }, 409);
+    const reason = String(d.reason || "").trim().slice(0, 600);
+    o.status = "cancelled"; (o.history ||= []).push({ at, status: "cancelled", by: "client", ...(reason ? { note: reason } : {}) }); o.updatedAt = at;
+    await env.EB.put(o.key, JSON.stringify(o));
+    later(ctx, Promise.all([ notifyStudio(env, "❌ ألغى العميل طلبه " + o.code + " — " + o.name, (o.packageName || "") + (reason ? "\nالسبب: " + reason : "")), notifyClient(env, o, "status", "cancelled") ]));
+    return json({ ok: true, order: publicOrder(o) });
+  }
+  if (d.edit) {
+    if (!canEdit(o)) return json({ ok: false, error: "locked" }, 409);
+    const e = d.edit || {}, c = (v, m) => String(v ?? "").trim().slice(0, m), details = c(e.details, 4000);
+    if (!details) return json({ ok: false, error: "missing fields" }, 400);
+    const link = c(e.link, 500), deadline = c(e.deadline, 20), contact = c(e.contact, 200);
+    if (link && !/^https?:\/\/\S+$/i.test(link)) return json({ ok: false, error: "link" }, 400);
+    if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) return json({ ok: false, error: "date" }, 400);
+    const changed = [["details", details], ["link", link], ["deadline", deadline], ["contact", contact]].filter(([k, v]) => (o[k] || "") !== v).map(([k]) => k);
+    if (!changed.length) return json({ ok: true, order: publicOrder(o), same: true });
+    o.details = details; o.link = link; o.deadline = deadline; o.contact = contact; o.editedAt = at; o.updatedAt = at;
+    (o.history ||= []).push({ at, status: o.status, by: "client", note: "edited", fields: changed });
+    await env.EB.put(o.key, JSON.stringify(o));
+    const en = o.lang === "en";
+    later(ctx, Promise.all([ notifyStudio(env, "✏️ عدّل العميل طلبه " + o.code + " — " + o.name, "الحقول: " + changed.join("، ") + "\n\n" + details.slice(0, 600)),
+      notifyClient(env, o, "message", en ? "We saved the changes to your request. The studio will review them and get back to you." : "حُفظت التعديلات على طلبك، وسيراجعها الاستوديو ويعود إليك.") ]));
+    return json({ ok: true, order: publicOrder(o) });
+  }
   if (o.status === "delivered" || o.status === "cancelled") return json({ ok: false, error: "closed" }, 403);
   const text = String(d.text || "").trim().slice(0, 3000), files = cleanFiles(d.files);
   if (!text && !files.length) return json({ ok: false }, 400);
@@ -82,7 +107,10 @@ async function pbkdf2(pw, salt){
 async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0); if(n>=max) return true; await env.EB.put(key,String(n+1),{expirationTtl:ttl}); return false; }
 function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
-function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
+// the client may change a request while the studio is still confirming it, and withdraw it until anything is paid or work starts
+function canEdit(o){ return ["new","confirmed"].includes(o.status) && !o.paid && !(o.deposit && o.deposit.paid); }
+function canCancel(o){ return ["new","confirmed","awaiting-payment"].includes(o.status) && !o.paid && !(o.deposit && o.deposit.paid); }
+function publicOrder(o){ return { canEdit:canEdit(o), canCancel:canCancel(o), contact:o.contact||"", editedAt:o.editedAt||null, code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
   paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
   name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null, invoice:o.invoice||null, deposit:o.deposit||null, plan:o.plan||"full", items:o.items||[], cur:o.cur||"", qty:o.qty||1, platforms:o.platforms||[], payPref:o.payPref||"" }; }
 // attachments must point at files uploaded through /api/files

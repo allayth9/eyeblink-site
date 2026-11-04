@@ -61,7 +61,15 @@ export async function onRequestPatch(ctx) {
   const v = await env.EB.get(d.key); if (!v) return json({ ok: false }, 404);
   const o = JSON.parse(v), clip = (x, m) => String(x ?? "").slice(0, m);
   let changed = false;
-  if (d.status !== undefined) { if (!STATUSES.includes(d.status)) return json({ ok: false }, 400); if (d.status !== o.status) { (o.history ||= []).push({ at: new Date().toISOString(), status: d.status }); changed = true; } o.status = d.status; }
+  if (d.status !== undefined) { if (!STATUSES.includes(d.status)) return json({ ok: false }, 400); if (d.status !== o.status) { (o.history ||= []).push({ at: new Date().toISOString(), status: d.status, by: "admin" }); changed = true; } o.status = d.status; }
+  // link the request to one of this client's projects (studio only; the project must belong to the same client)
+  if (d.project !== undefined) { const pid = clip(d.project, 40);
+    if (!pid) { if (o.projectId) { (o.history ||= []).push({ at: new Date().toISOString(), status: o.status, by: "admin", note: "unlinked" }); delete o.projectId; delete o.projectName; } }
+    else { if (!env.DB) return json({ ok: false, error: "db" }, 503);
+      const p = await env.DB.prepare("SELECT id, name FROM projects WHERE id=? AND client_email=?").bind(pid, String(o.email || "").toLowerCase()).first().catch(() => null);
+      if (!p) return json({ ok: false, error: "project" }, 404);
+      if (o.projectId !== p.id) (o.history ||= []).push({ at: new Date().toISOString(), status: o.status, by: "admin", note: "linked", project: p.name });
+      o.projectId = p.id; o.projectName = p.name; } }
   if (d.price !== undefined) o.price = clip(d.price, 40);
   if (d.method !== undefined) o.method = clip(d.method, 60);
   const inv = [];

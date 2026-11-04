@@ -80,7 +80,7 @@
   /* ---------- liquid glass: light that leans toward you, a drop on entry ---------- */
   var glasses=[];
   function ripple(g,x,y){
-    if(reduce) return;
+    if(reduce||!fine) return;   // touch screens: no drop ripple (a plain pressed state is enough)
     var wrap=g.querySelector(':scope > .ripple-wrap');
     if(!wrap){ wrap=document.createElement('span'); wrap.className='ripple-wrap'; wrap.setAttribute('aria-hidden','true'); g.appendChild(wrap); }
     var r=g.getBoundingClientRect(), d=document.createElement('i');
@@ -91,7 +91,6 @@
   function bindGlass(g){
     if(g._g) return; g._g=1; glasses.push(g);
     g.addEventListener('pointerenter',function(ev){ ripple(g,ev.clientX,ev.clientY); });
-    if(!fine) g.addEventListener('pointerdown',function(ev){ ripple(g,ev.clientX,ev.clientY); });
   }
   if(fine && !reduce){
     (function prox(){

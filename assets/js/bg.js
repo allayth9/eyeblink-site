@@ -106,6 +106,7 @@
   function screenToWorld(x,y){ return {x:((x/W)*2-1)*halfH*(W/H), y:-((y/H)*2-1)*halfH}; }
 
   var mouse={x:9,y:9,tx:9,ty:9}, rot={x:0,y:0,tx:0,ty:0}, press=0, tpress=0, last=0;
+  if(!COARSE){   // touch screens: the field does not bulge under a tap or a scrolling finger
   addEventListener('pointermove',function(e){
     mouse.tx=(e.clientX/W)*2-1; mouse.ty=-((e.clientY/H)*2-1);
     rot.ty=mouse.tx*0.6; rot.tx=-mouse.ty*0.35; tpress=1; last=performance.now();
@@ -113,6 +114,7 @@
   addEventListener('pointerdown',function(){ tpress=1.8; },{passive:true});
   addEventListener('pointerup',function(){ tpress=1; },{passive:true});
   document.addEventListener('pointerleave',function(){ tpress=0; });
+  }
 
   var t0=performance.now(), cx=0, cy=0, cs=1, visible=true;
   document.addEventListener('visibilitychange',function(){ visible=!document.hidden; if(visible) requestAnimationFrame(frame); });

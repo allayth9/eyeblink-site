@@ -4,7 +4,7 @@
   var root=document.documentElement, lang=root.lang==='en'?'en':'ar', AR=lang==='ar';
   var BASE=document.body.getAttribute('data-base')||'', API=BASE+'api/';
   var T={
-    ar:{inH:'سجّل دخولك لمتابعة طلبك',inP:'حساب واحد تتابع منه حالة الطلب، وتتحدث معنا مباشرة حتى لحظة التسليم.',
+    ar:{mg:{h:'إدارة الطلب',p:'يمكنك تعديل طلبك ما دام الاستوديو يراجع تفاصيله، وإلغاؤه قبل الدفع أو بدء التنفيذ.',pc:'لم يعد تعديل الطلب متاحاً بعد تأكيد السعر، ويمكنك إلغاؤه قبل الدفع.',locked:'بدأ العمل على هذا الطلب، لذا لم يعد تعديله أو إلغاؤه متاحاً من هنا. اكتب لنا في المحادثة لأي تغيير.',edit:'تعديل الطلب',cancel:'إلغاء الطلب',sure:'تأكيد الإلغاء',why:'سبب الإلغاء (اختياري)',save:'حفظ التعديلات',back:'تراجع',det:'تفاصيل الطلب',link:'رابط مرجعي (اختياري)',dl:'الموعد المطلوب (اختياري)',ct:'وسيلة التواصل (اختياري)',saved:'حُفظت التعديلات، وأُرسل إليك تأكيد.',gone:'أُلغي الطلب، وأُرسل إليك تأكيد.',need:'اكتب تفاصيل الطلب.',badLink:'يجب أن يبدأ الرابط بـ https://',err:'تعذّر التنفيذ. ربما تغيّرت حالة الطلب، فحدّث الصفحة.',edited:'عدّلتَ الطلب في '},inH:'سجّل دخولك لمتابعة طلبك',inP:'حساب واحد تتابع منه حالة الطلب، وتتحدث معنا مباشرة حتى لحظة التسليم.',
         login:'دخول',register:'حساب جديد',name:'الاسم أو اسم الجهة',email:'البريد الإلكتروني',pw:'كلمة السر',pwHint:'8 أحرف على الأقل',
         doLogin:'دخول',doRegister:'إنشاء الحساب',or:'أو',wait:'لحظة…',close:'إغلاق',
         e:{exists:'هذا البريد مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك.',wrong:'البريد أو كلمة السر غير صحيحة.',google:'هذا الحساب مسجّل عبر Google، استخدم زر Google.',
@@ -24,7 +24,7 @@
         code:'الرمز',newPw:'كلمة السر الجديدة',saveIn:'حفظ والدخول',backIn:'رجوع لتسجيل الدخول',mailOff:'الاستعادة التلقائية غير مفعّلة بعد. راسلنا على إنستغرام ونعيد تعيينها لك فوراً.',
         inv:{t:'فاتورة',no:'رقم',date:'التاريخ',to:'إلى',item:'البند',amount:'المبلغ',total:'الإجمالي',paid:'مدفوعة',unpaid:'غير مدفوعة بعد',method:'طريقة الدفع',thanks:'شكراً لثقتك بنا.'},
         ext:'تواصل خارجي',extP:'تفضّل محادثة أسرع؟ راسلنا وأرفق رقم طلبك.',ig:'إنستغرام',wa:'واتساب',mail:'البريد الإلكتروني',back:'كل الطلبات',paid:'مدفوع',unread:'رسائل جديدة'},
-    en:{inH:'Sign in to follow your request',inP:'One account to track your order and talk to us directly until delivery.',
+    en:{mg:{h:'Manage request',p:'You can edit your request while the studio is reviewing it, and cancel it before payment or before work starts.',pc:'Editing closes once the price is confirmed; you can still cancel before paying.',locked:'Work has started on this request, so it can no longer be edited or cancelled here. Write to us in the chat for any change.',edit:'Edit request',cancel:'Cancel request',sure:'Confirm cancellation',why:'Reason (optional)',save:'Save changes',back:'Back',det:'Request details',link:'Reference link (optional)',dl:'Requested date (optional)',ct:'Contact (optional)',saved:'Changes saved — we sent you a confirmation.',gone:'Request cancelled — we sent you a confirmation.',need:'Write the request details.',badLink:'The link must start with https://',err:'Could not do that. The request may have changed; refresh the page.',edited:'You edited this request on '},inH:'Sign in to follow your request',inP:'One account to track your order and talk to us directly until delivery.',
         login:'Sign in',register:'New account',name:'Your name or company',email:'Email',pw:'Password',pwHint:'At least 8 characters',
         doLogin:'Sign in',doRegister:'Create account',or:'or',wait:'One moment…',close:'Close',
         e:{exists:'This email already has an account. Sign in instead.',wrong:'Wrong email or password.',google:'This account uses Google. Use the Google button.',
@@ -245,7 +245,27 @@
   function tcText(t){ return linkify(t||'').replace(/\[(\d{1,2}):([0-5]\d)\]/g,function(_,m,s){ return '<button type="button" class="tstamp" data-t="'+(+m*60+ +s)+'">▶ '+m+':'+s+'</button>'; }); }
   function msgHTML(m){ return '<div class="msg '+(m.from==='client'?'me':'them')+(m.kind?' k-'+m.kind:'')+'">'+(m.text?'<div class="b">'+tcText(m.text)+'</div>':'')+
     ((m.files||[]).length?'<div class="atts">'+m.files.map(fileHTML).join('')+'</div>':'')+'<small>'+(m.from==='client'?T.you:T.studio)+' · '+esc(time(m.at))+'</small></div>'; }
-  function sig(o){ var m=o.messages||[]; return m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid+'|'+((o.payInfo||{}).at||''); }
+  /* ---- the client's own control over a request: edit while it is being reviewed, cancel before payment or work ---- */
+  function manageHTML(o){ var M=T.mg; if(o.status==='cancelled'||o.status==='delivered') return '';
+    if(!o.canEdit&&!o.canCancel) return '<div class="omg locked"><b>'+M.h+'</b><p class="muted small">'+M.locked+'</p></div>';
+    return '<div class="omg"><b>'+M.h+'</b><p class="muted small">'+(o.canEdit?M.p:M.pc)+'</p>'+(o.editedAt?'<p class="muted small">'+M.edited+esc(new Date(o.editedAt).toLocaleString(AR?'ar-u-nu-latn':'en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</p>':'')+
+      '<div class="actions">'+(o.canEdit?'<button type="button" class="btn btn-glass glass" data-oedit>'+M.edit+'</button>':'')+(o.canCancel?'<button type="button" class="btn btn-glass glass danger" data-ocancel>'+M.cancel+'</button>':'')+'</div>'+
+      (o.canEdit?'<form class="form oedit" hidden novalidate><label>'+M.det+'<textarea name="details" rows="5" dir="auto" maxlength="4000">'+esc(o.details||'')+'</textarea></label><label>'+M.link+'<input name="link" type="url" dir="ltr" value="'+esc(o.link||'')+'"></label>'+
+        '<label>'+M.dl+'<input name="deadline" type="date" value="'+esc(/^\d{4}-\d{2}-\d{2}$/.test(o.deadline||'')?o.deadline:'')+'"></label><label>'+M.ct+'<input name="contact" dir="auto" maxlength="200" value="'+esc(o.contact||'')+'"></label>'+
+        '<p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+M.save+'</button><button class="btn btn-glass glass" type="button" data-oback>'+M.back+'</button></div></form>':'')+
+      (o.canCancel?'<form class="form ocancel" hidden novalidate><label>'+M.why+'<textarea name="reason" rows="2" dir="auto" maxlength="600"></textarea></label><p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary danger" type="submit">'+M.sure+'</button><button class="btn btn-glass glass" type="button" data-oback>'+M.back+'</button></div></form>':'')+'</div>'; }
+  function bindManage(host,o){ var M=T.mg, box=host.querySelector('.omg'); if(!box) return;
+    var fe=box.querySelector('.oedit'), fc=box.querySelector('.ocancel'), acts=box.querySelector('.actions');
+    var show=function(f){ [fe,fc].forEach(function(x){ if(x) x.hidden=x!==f; }); acts.hidden=!!f; if(f){ var i=f.querySelector('textarea'); if(i) i.focus(); } };
+    box.addEventListener('click',function(e){ if(e.target.closest('[data-oedit]')) show(fe); else if(e.target.closest('[data-ocancel]')) show(fc); else if(e.target.closest('[data-oback]')) show(null); });
+    if(fe) fe.onsubmit=function(e){ e.preventDefault(); var E=fe.elements, msg=fe.querySelector('.msg'), d={details:E.details.value.trim(),link:E.link.value.trim(),deadline:E.deadline.value,contact:E.contact.value.trim()};
+      if(!d.details){ msg.textContent=M.need; E.details.focus(); return; } if(d.link&&!/^https?:\/\/\S+$/i.test(d.link)){ msg.textContent=M.badLink; E.link.focus(); return; }
+      var b=fe.querySelector('[type=submit]'); b.disabled=true;
+      api('thread',{code:o.code,edit:d}).then(function(j){ if(j.ok){ toast(M.saved); detail(j.order,true); } else { b.disabled=false; msg.textContent=M.err; } }); };
+    if(fc) fc.onsubmit=function(e){ e.preventDefault(); var b=fc.querySelector('[type=submit]'); b.disabled=true;
+      api('thread',{code:o.code,cancel:true,reason:fc.elements.reason.value.trim()}).then(function(j){ if(j.ok){ toast(M.gone); detail(j.order,true); if(typeof refreshList==='function') refreshList(); } else { b.disabled=false; fc.querySelector('.msg').textContent=M.err; } }); };
+  }
+  function sig(o){ var m=o.messages||[]; return (o.canEdit?'e':'')+(o.canCancel?'c':'')+(o.editedAt||'')+m.length+'|'+((m[m.length-1]||{}).at||'')+'|'+o.status+'|'+(o.review?1:0)+'|'+o.price+'|'+o.paid+'|'+((o.payInfo||{}).at||''); }
   // the client sees where the payment stands, in plain steps
   function paySteps(o){
     if(o.status==='cancelled') return '';
@@ -299,6 +319,7 @@
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
         (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
         '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(o.link)+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
+        manageHTML(o)+
         paySteps(o)+
         ((o.deposit&&o.deposit.invoice)||o.invoice?'<div class="invs">'+(o.deposit&&o.deposit.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="deposit">🧾 '+(AR?'فاتورة العربون':'Deposit invoice')+'</button>':'')+(o.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="final">🧾 '+T.invoice+'</button>':'')+'</div>':'')+
         '<div class="ext"><h3>'+T.ext+'</h3><p class="muted">'+T.extP+'</p><div class="actions">'+
@@ -308,6 +329,7 @@
         '</div></div></aside></div></div>';
     host.dataset.sig=sig(o);
     var th=host.querySelector('.thread'); th.scrollTop=th.scrollHeight;
+    bindManage(host,o);
     [].forEach.call(host.querySelectorAll('.inv'),function(ib){ ib.onclick=function(){ invoice(o,ib.dataset.inv); }; });
     var pc=host.querySelector('.paycard');
     if(pc&&!pc.classList.contains('ok')){

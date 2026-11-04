@@ -1661,9 +1661,10 @@ body[data-page="workspace"] .page-hero.ws-page{padding-block:clamp(14px,2.4vw,30
 .wsx{--ac:#3FE0E8;--ac2:#6E8BFF;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;position:relative;transition:--ac .6s ease,--ac2 .6s ease}
 .wsx[data-sec="projects"]{--ac:#A78BFA;--ac2:#E07BE0}.wsx[data-sec="tasks"]{--ac:#6E8BFF;--ac2:#3FE0E8}.wsx[data-sec="invoices"]{--ac:#F5C66B;--ac2:#FFC56B}
 .wsx[data-sec="notifications"]{--ac:#FF7AB6;--ac2:#E07BE0}.wsx[data-sec="settings"]{--ac:#AEBBD2;--ac2:#7DD3FC}.wsx[data-sec="new"]{--ac:#E07BE0;--ac2:#3FE0E8}
-.wsx::before{content:"";position:absolute;inset:-100px 0 auto;height:520px;z-index:-1;pointer-events:none;
-  background:radial-gradient(42% 60% at 78% 30%,color-mix(in srgb,var(--ac) 16%,transparent),transparent 70%),radial-gradient(36% 50% at 18% 10%,color-mix(in srgb,var(--ac2) 11%,transparent),transparent 70%)}
-[dir=rtl] .wsx::before{transform:scaleX(-1)}
+.wsx::before{content:"";position:absolute;top:-180px;left:50%;width:100vw;height:760px;z-index:-1;pointer-events:none;transform:translateX(-50%);
+  background:radial-gradient(34% 46% at 70% 34%,color-mix(in srgb,var(--ac) 15%,transparent),transparent 72%),radial-gradient(30% 40% at 28% 22%,color-mix(in srgb,var(--ac2) 10%,transparent),transparent 72%);
+  -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent)}
+[dir=rtl] .wsx::before{transform:translateX(-50%) scaleX(-1)}
 .wsx bdi[dir=ltr]{white-space:nowrap;font-family:var(--latin);letter-spacing:.04em}
 /* views are swapped in place: no scroll anchoring (it would follow the footer while a view loads) */
 body[data-page="workspace"]{overflow-anchor:none}
@@ -1675,15 +1676,18 @@ body[data-page="workspace"]{overflow-anchor:none}
   background:rgba(9,13,42,.82);-webkit-backdrop-filter:blur(20px) saturate(140%);backdrop-filter:blur(20px) saturate(140%);
   box-shadow:inset 0 0 0 1px rgba(190,210,255,.12),0 18px 50px -24px rgba(0,0,0,.8),0 0 0 1px color-mix(in srgb,var(--ac) 10%,transparent)}
 .wnav::after{content:"";position:absolute;inset-inline:22px;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--ac),var(--ac2),transparent);opacity:.7}
-.wnav-in{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}.wnav-in::-webkit-scrollbar{display:none}
-.wnav a{--k:#AEBBD2;position:relative;display:flex;align-items:center;gap:9px;flex:none;padding:10px 15px;border-radius:16px;color:var(--mist);text-decoration:none;font-size:14.5px;white-space:nowrap;scroll-snap-align:center;
+/* nothing in the bar scrolls or clips: the lit pill and its glow always show whole */
+.wnav-in{display:flex;align-items:center;gap:2px;flex:1;min-width:0;padding:2px}
+.wnav-x,.wnav-sec{display:contents}
+.wnav-more{display:none;font-family:inherit;border:0;background:none;cursor:pointer}
+.wnav a,.wnav-more{--k:#AEBBD2;position:relative;display:flex;align-items:center;gap:9px;flex:none;padding:10px 15px;border-radius:16px;color:var(--mist);text-decoration:none;font-size:14.5px;white-space:nowrap;
   transition:color .25s,background .25s,box-shadow .25s}
 .wnav svg{width:19px;height:19px;flex:none;fill:none;stroke:var(--k);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s var(--ease,ease)}
-.wnav a:hover{color:var(--light);background:color-mix(in srgb,var(--k) 9%,transparent)}.wnav a:hover svg{transform:translateY(-1px) scale(1.06)}
-.wnav a.on{color:#fff;font-weight:500;background:linear-gradient(160deg,color-mix(in srgb,var(--k) 24%,transparent),color-mix(in srgb,var(--k) 9%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 48%,transparent),0 8px 24px -12px var(--k)}
+.wnav a:hover,.wnav-more:hover{color:var(--light);background:color-mix(in srgb,var(--k) 9%,transparent)}.wnav a:hover svg,.wnav-more:hover svg{transform:translateY(-1px) scale(1.06)}
+.wnav a.on,.wnav-more.on{color:#fff;font-weight:500;background:linear-gradient(160deg,color-mix(in srgb,var(--k) 24%,transparent),color-mix(in srgb,var(--k) 9%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 48%,transparent),0 8px 24px -12px var(--k)}
 .wnav a.wnav-new.on::after{display:none}
-.wnav a.on::after{content:"";position:absolute;inset-inline:30%;bottom:3px;height:2px;border-radius:2px;background:var(--k);box-shadow:0 0 10px var(--k)}
-.wnav a:focus-visible{outline:2px solid var(--k);outline-offset:1px}
+.wnav a.on::after,.wnav-more.on::after{content:"";position:absolute;inset-inline:30%;bottom:3px;height:2px;border-radius:2px;background:var(--k);box-shadow:0 0 10px var(--k)}
+.wnav a:focus-visible,.wnav-more:focus-visible{outline:2px solid var(--k);outline-offset:1px}
 .wnav .c-overview{--k:#3FE0E8}.wnav .c-projects{--k:#A78BFA}.wnav .c-tasks{--k:#6E8BFF}.wnav .c-invoices{--k:#F5C66B}.wnav .c-notifications{--k:#FF7AB6}.wnav .c-settings{--k:#AEBBD2}
 .wn-n{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:linear-gradient(135deg,#FF7AB6,#E07BE0);color:#1c0518;font:700 11px/19px var(--latin);text-align:center}
 .wnav a.wnav-new{flex:none;gap:8px;padding:11px 18px;color:#fff;font-weight:500;background:linear-gradient(120deg,#E07BE0,#8B6CFF 55%,#3FE0E8);background-size:160% 100%;background-position:0 0;
@@ -1855,9 +1859,7 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
 
 @media (max-width:860px){
   .wnav{top:calc(70px + env(safe-area-inset-top,0px));border-radius:18px;padding:5px}
-  .wnav a{padding:9px 12px;font-size:13.5px;gap:7px}.wnav svg{width:17px;height:17px}
-  .wnav a.wnav-new span{display:none}.wnav a.wnav-new{padding:11px 13px}
-  .wnav-in{-webkit-mask-image:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent);padding-inline:6px}
+  .wnav a.wnav-new span{display:none}.wnav a.wnav-new{padding:12px 14px}
   .wm-bar{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:620px){
@@ -1870,3 +1872,78 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
   .whd h2{font-size:clamp(24px,7vw,32px)}
 }
 @media (prefers-reduced-motion:reduce){ .wrise,.wm-card,.wni.new>i::after,.ws-entry::before{animation:none} .wsx{transition:none} .wkpi,.wproj,.ws-entry{transition:none} }
+
+/* ===== phones: no ripples, drops or spreading rings — a pressed colour and calm transitions only (desktop unchanged) ===== */
+@media (max-width:860px), (pointer:coarse){
+  .ripple-wrap{display:none!important}
+  .lb-waves{display:none}
+  .proj .play::after{animation:none;opacity:0}
+  .track li.now i::before,.track li.now i::after{animation:none;opacity:0}
+  .track li.now i{animation:none}
+  a,button,.btn,.glass,[role=button]{-webkit-tap-highlight-color:transparent}
+  .btn:active,.chipb:active,.chipc:active,.dock a:active{filter:brightness(1.12)}
+}
+
+/* ===== workspace bar, narrower screens: three main sections + «More» (no sideways scrolling) ===== */
+.wn-dot{position:absolute;top:2px;inset-inline-end:2px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:linear-gradient(135deg,#FF7AB6,#E07BE0);color:#1c0518;font:700 10px/17px var(--latin);text-align:center;box-shadow:0 0 0 2px #0b1030}
+.wnav-x>.wnav-more{display:none}
+.wnav-more .wm-c{width:15px;height:15px;stroke:var(--mist);stroke-width:2;transition:transform .25s}
+.wnav-x.open .wnav-more .wm-c{transform:rotate(180deg)}
+@media (max-width:1180px){
+  .wnav-x{display:block;position:relative;flex:none}
+  .wnav-x>.wnav-more{display:flex}
+  .wnav-x.open .wnav-more{color:var(--light);background:rgba(255,255,255,.06)}
+  .wnav-sec{display:flex;flex-direction:column;gap:2px;position:absolute;top:calc(100% + 12px);inset-inline-start:0;z-index:5;min-width:236px;padding:6px;border-radius:18px;
+    background:rgba(9,13,42,.97);box-shadow:inset 0 0 0 1px rgba(190,210,255,.14),0 26px 70px -20px rgba(0,0,0,.8);
+    opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .18s,transform .18s,visibility 0s .18s}
+  .wnav-x.open .wnav-sec{opacity:1;visibility:visible;transform:none;transition:opacity .18s,transform .18s}
+  .wnav-sec a{justify-content:flex-start;padding:12px 14px}
+  .wnav-sec a .wn-n{margin-inline-start:auto}
+  .wnav-sec a.on::after{inset-inline:auto;inset-block:12px;inset-inline-start:4px;width:3px;height:auto}
+}
+@media (max-width:620px){
+  .wnav{gap:5px;padding:5px}
+  .wnav-in{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:0}
+  .wnav-in>a,.wnav-more{flex-direction:column;justify-content:center;gap:4px;padding:8px 2px 9px;font-size:12px;line-height:1.2;min-width:0;border-radius:14px}
+  .wnav-in>a span,.wnav-more .wm-l{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .wnav-in>a svg,.wnav-more svg{width:20px;height:20px}
+  .wnav-more .wm-c{display:none}
+  .wnav-more .wn-dot{top:3px;inset-inline-end:calc(50% - 26px)}
+  .wnav-x{display:block;min-width:0}
+  .wnav-in>a.on::after,.wnav-more.on::after{inset-inline:32%;bottom:3px}
+  .wnav-sec{left:0;right:auto;min-width:min(240px,calc(100vw - 40px));font-size:14.5px}
+  [dir=ltr] .wnav-sec{left:auto;right:0}
+  .wnav a.wnav-new{align-self:stretch;padding:0 15px;border-radius:14px}
+}
+@media (max-width:360px){ .wnav-in>a,.wnav-more{font-size:11.5px} .wnav a.wnav-new{padding:0 12px} }
+
+/* ===== phones: the workspace as a floating button above the bottom bar (desktop keeps it in the top bar) ===== */
+.ws-fab{display:none}
+@media (max-width:860px){
+  .ws-fab{position:fixed;z-index:79;bottom:calc(90px + env(safe-area-inset-bottom,0px));inset-inline-start:max(16px,env(safe-area-inset-right,0px));display:inline-flex;align-items:center;gap:8px;
+    padding:10px 16px 10px 14px;border-radius:999px;color:#fff;font-weight:500;font-size:14px;text-decoration:none;isolation:isolate;
+    background:linear-gradient(130deg,rgba(28,48,120,.96),rgba(58,36,120,.96));box-shadow:inset 0 0 0 1px rgba(160,190,255,.3),0 14px 34px -12px rgba(63,224,232,.55),0 10px 30px -10px rgba(0,0,0,.7)}
+  [dir=ltr] .ws-fab{inset-inline-start:auto;inset-inline-end:max(16px,env(safe-area-inset-right,0px))}
+  .ws-fab::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;pointer-events:none;background:conic-gradient(from var(--wsa,0deg),#3FE0E8,#6E8BFF,#E07BE0,#F5C66B,#3FE0E8);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:wsRing 6s linear infinite}
+  .ws-fab svg{width:20px;height:20px;fill:none;stroke:#3FE0E8;stroke-width:1.7}
+  .ws-fab:active{filter:brightness(1.15)}
+  .ws-fab .wsf-n{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:linear-gradient(135deg,#FF7AB6,#E07BE0);color:#1c0518;font:700 11px/19px var(--latin);text-align:center}
+  body.has-wsfab footer{padding-bottom:70px}
+  .modal-open .ws-fab{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .ws-fab::before{animation:none} }
+
+/* very small phones: a signed-in client has two extra round buttons in the top bar — keep everything on screen */
+@media (max-width:374px){
+  .bar.is-client .brand .wm{font-size:9.5px;letter-spacing:.16em}
+  .bar.is-client .brand .eb-mark{width:38px}
+  .bar.is-client .brand{gap:8px}
+  .bar.is-client .hbell,.bar.is-client .acct-link,.bar.is-client .lang{width:36px;height:36px}
+  .bar.is-client{gap:6px}
+}
+
+/* account page: the client's own control over a request */
+.omg{margin-top:16px;padding:14px 16px;border-radius:16px;display:grid;gap:8px;background:rgba(4,6,26,.35);box-shadow:inset 0 0 0 1px var(--line)}
+.omg>b{font-weight:500}.omg p{margin:0}.omg .actions{gap:8px}.omg .actions .btn{padding:10px 16px;font-size:14px}.omg .danger{color:#ff9eae}
+.omg form{display:grid;gap:10px}.omg form .msg{margin:0;color:#ff9eae;font-size:13.5px}.omg.locked{background:none}

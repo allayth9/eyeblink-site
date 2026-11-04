@@ -124,19 +124,19 @@
       completed:function(d,t){return 'اكتملت مهمة '+t;},deliver:function(d,t){return d.final?'التسليم النهائي لـ'+t+' جاهز للمراجعة':'النسخة '+d.label+' من '+t+' جاهزة للمراجعة';},comment:function(d,t){return 'تعليق جديد من الاستوديو على '+t;},
       project:function(d){return 'فتح الاستوديو لك مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» إلى مشروع «'+d.name+'»';},
       invoice:function(d){return 'فاتورة جديدة '+d.no+' بقيمة '+d.amount;},invoicePaid:function(d){return 'وصلت دفعتك للفاتورة '+d.no;},invoiceDue:function(d){return 'الفاتورة '+d.no+' متأخرة — المتبقي '+d.balance;},
-      recurring:function(d,t){return 'مهمة دورية جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},report:function(d){return 'التقرير الشهري لمشروع «'+d.name+'» جاهز';}},
+      recurring:function(d,t){return 'مهمة دورية جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},added:function(d,t){return 'أضاف الاستوديو مهمة جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},report:function(d){return 'التقرير الشهري لمشروع «'+d.name+'» جاهز';}},
     en:{accept:function(d,t){return 'Task '+t+' accepted'+(d.date?' · confirmed for '+d8(d.date):'');},info:function(d,t){return 'The studio needs information for '+t;},reject:function(d,t){return 'About '+t+': we can\'t take it as requested';},
       progress:function(d,t){return 'Work started on '+t;},status:function(d,t){return t+' is now “'+(T.st[d.status]||d.status)+'”';},date:function(d,t){return 'Delivery date of '+t+' is now '+d8(d.date);},dateNo:function(d,t){return 'Delivery date of '+t+' stays '+d8(d.date);},
       completed:function(d,t){return t+' is complete';},deliver:function(d,t){return d.final?'Final delivery of '+t+' is ready for review':'Version '+d.label+' of '+t+' is ready for review';},comment:function(d,t){return 'New comment from the studio on '+t;},
       project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';},
       invoice:function(d){return 'New invoice '+d.no+' for '+d.amount;},invoicePaid:function(d){return 'Payment received for invoice '+d.no;},invoiceDue:function(d){return 'Invoice '+d.no+' is overdue — '+d.balance+' due';},
-      recurring:function(d,t){return 'Recurring task '+t+' added'+(d.date?' · due '+d8(d.date):'');},report:function(d){return 'The monthly report for “'+d.name+'” is ready';}}}[lang];
+      recurring:function(d,t){return 'Recurring task '+t+' added'+(d.date?' · due '+d8(d.date):'');},added:function(d,t){return 'The studio added a task '+t+(d.date?' · due '+d8(d.date):'');},report:function(d){return 'The monthly report for “'+d.name+'” is ready';}}}[lang];
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
   /* ======== the workspace page (workspace.html): its own bar, colour per section ======== */
   var host=null, shell=null, DASH=null, CUR='overview';
-  var U2=AR?{nav:{overview:'نظرة عامة',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
+  var U2=AR?{more:'المزيد',nav:{overview:'نظرة عامة',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
       g:{login:'سجّل دخولك لفتح مساحة العمل.',client:'مساحة العمل متاحة للعملاء المتعاقدين مع الاستوديو. إن كان لديك تعاون مستمر معنا، فاطلب الوصول من صفحة حسابك.',in:'تسجيل الدخول',acct:'صفحة حسابي'},
       allTasks:'كل المهام',allTasksP:'جميع مهامك في كل المشاريع، مع حالتها ومواعيدها.',search:'ابحث في المهام…',allProj:'كل المشاريع',
       f:{all:'الكل',fresh:'جديدة',progress:'قيد التنفيذ',waiting:'بانتظار ردّك',done:'مكتملة',closed:'ملغاة ومرفوضة',upcoming:'مواعيد قادمة'},none:'لا توجد مهام تطابق هذا الاختيار.',
@@ -146,7 +146,7 @@
       nw:{h:'مهام جديدة',p:'أضف مهمة واحدة أو عدة مهام دفعة واحدة، وكلها تصل إلى الاستوديو معاً.',card:'المهمة',add:'+ أضف مهمة أخرى',copy:'تبدأ المهمة الجديدة بنوع المهمة السابقة وموعدها وأولويتها.',
         rm:'إزالة',more:'تفاصيل وروابط وموجز إبداعي',review:'معاينة وإرسال',count:function(n){ return n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام'; },max:'الحد الأقصى 10 مهام في الإرسال الواحد.',
         sendAll:function(n){ return n===1?'أرسل المهمة':'أرسل '+(n===2?'المهمتين':n+' مهام'); },sentAll:function(n){ return n===1?'وصلت المهمة إلى الاستوديو.':'وصلت '+(n===2?'المهمتان':n+' مهام')+' إلى الاستوديو.'; },noProj:'لا يوجد مشروع نشط بعد لإرسال المهام إليه.'}}
-    :{nav:{overview:'Overview',projects:'Projects',tasks:'Tasks',invoices:'Invoices',notifications:'Notifications',settings:'Settings'},hi:'Hi',hiP:'Your workspace with Eyeblink Studio: projects, tasks, dates and deliveries in one place.',
+    :{more:'More',nav:{overview:'Overview',projects:'Projects',tasks:'Tasks',invoices:'Invoices',notifications:'Notifications',settings:'Settings'},hi:'Hi',hiP:'Your workspace with Eyeblink Studio: projects, tasks, dates and deliveries in one place.',
       g:{login:'Sign in to open your workspace.',client:'The workspace is for clients with an ongoing agreement with the studio. If that is you, request access from your account page.',in:'Sign in',acct:'My account'},
       allTasks:'All tasks',allTasksP:'Every task across your projects, with status and dates.',search:'Search tasks…',allProj:'All projects',
       f:{all:'All',fresh:'New',progress:'In progress',waiting:'Waiting for you',done:'Completed',closed:'Cancelled & rejected',upcoming:'Upcoming dates'},none:'No tasks match this view.',
@@ -161,18 +161,38 @@
     tasks:SVG('<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="m3.8 6.5 1.3 1.3 2.2-2.6M3.8 12l1.3 1.3 2.2-2.6M3.8 17.5l1.3 1.3 2.2-2.6"/>'),invoices:SVG('<path d="M6 3.5h9l3 3v14l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2z"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>'),
     notifications:SVG('<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),settings:SVG('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
     plus:SVG('<path d="M12 5v14M5 12h14"/>'),fresh:SVG('<path d="M12 4.5v15M4.5 12h15"/>'),progress:SVG('<path d="M12 4a8 8 0 1 0 8 8"/><path d="M12 8v4l2.5 2.5"/>'),waiting:SVG('<path d="M5 12.5 9.5 17 19 7.5"/>'),
-    done:SVG('<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'),dates:SVG('<rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>'),arrow:SVG('<path d="M15 6l-6 6 6 6"/>')};
+    done:SVG('<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'),dates:SVG('<rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>'),arrow:SVG('<path d="M15 6l-6 6 6 6"/>'),more:SVG('<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>'),chev:'<svg class="wm-c" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>'};
   var TYPEC={monthly:'#A78BFA',campaign:'#F5C66B',content:'#5EF0B0',editing:'#6E8BFF',motion:'#E07BE0',commercial:'#FFC56B',once:'#3FE0E8',custom:'#7DD3FC'};
   var PAL=['#6E8BFF','#E07BE0','#3FE0E8','#F5C66B','#5EF0B0','#A78BFA','#FF7AB6','#7DD3FC','#FFC56B','#8FA2FF'];
   var NAV=[['overview','#w'],['projects','#w/projects'],['tasks','#w/tasks'],['invoices','#w/invoices'],['notifications','#w/notifications'],['settings','#w/settings']];
+  // the bar: three main sections always in view; invoices, notifications and settings sit inline on wide screens
+  // and behind «More» on narrow ones (one set of links, never duplicated)
+  var MAIN=NAV.slice(0,3), MORE=NAV.slice(3);
+  function navA(n){ return '<a class="c-'+n[0]+'" data-s="'+n[0]+'" href="'+n[1]+'">'+ICO[n[0]]+'<span>'+U2.nav[n[0]]+'</span>'+(n[0]==='notifications'?'<b class="wn-n" hidden></b>':'')+'</a>'; }
   function mount(el){ shell=el;
-    el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+NAV.map(function(n){ return '<a class="c-'+n[0]+'" data-s="'+n[0]+'" href="'+n[1]+'">'+ICO[n[0]]+'<span>'+U2.nav[n[0]]+'</span>'+(n[0]==='notifications'?'<b class="wn-n" hidden></b>':'')+'</a>'; }).join('')+'</div>'+
-      '<a class="wnav-new" href="#w/new">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
-    host=el.querySelector('.wview'); route(); }
+    el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+MAIN.map(navA).join('')+
+      '<div class="wnav-x"><button type="button" class="wnav-more" aria-expanded="false" aria-controls="wnavSec" aria-haspopup="true">'+ICO.more+'<span class="wm-l">'+U2.more+'</span>'+ICO.chev+'<b class="wn-dot" hidden></b></button>'+
+      '<div class="wnav-sec" id="wnavSec">'+MORE.map(navA).join('')+'</div></div></div>'+
+      '<a class="wnav-new" href="#w/new" aria-label="'+T.newTask+'">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
+    host=el.querySelector('.wview');
+    var mb=el.querySelector('.wnav-more'), x=el.querySelector('.wnav-x');
+    mb.onclick=function(e){ e.stopPropagation(); moreOpen(!x.classList.contains('open')); };
+    document.addEventListener('click',function(e){ if(x.classList.contains('open')&&!e.target.closest('.wnav-x')) moreOpen(false); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&x.classList.contains('open')){ moreOpen(false); mb.focus(); } });
+    el.querySelector('.wnav-sec').addEventListener('click',function(e){ if(e.target.closest('a')) moreOpen(false); });
+    route(); }
+  function moreOpen(on){ var x=shell.querySelector('.wnav-x'), mb=x.querySelector('.wnav-more'); x.classList.toggle('open',on); mb.setAttribute('aria-expanded',on?'true':'false');
+    if(on){ var f=x.querySelector('.wnav-sec a.on')||x.querySelector('.wnav-sec a'); if(f) f.focus({preventScroll:true}); } }
   function setSec(sec){ if(sec!=='tasks') TC=null; CUR=sec; shell.dataset.sec=sec;
-    [].forEach.call(shell.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); if(on&&a.scrollIntoView&&innerWidth<860) a.scrollIntoView({inline:'center',block:'nearest'}); });
-    shell.querySelector('.wnav-new').classList.toggle('on',sec==='new'); }
-  function paintN(n){ var b=shell&&shell.querySelector('.wnav .wn-n'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } }
+    [].forEach.call(shell.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+    // «More» stands in for the section it hides, so the open section is always named in the bar
+    var mb=shell.querySelector('.wnav-more'), inMore=MORE.some(function(n){ return n[0]===sec; });
+    mb.classList.toggle('on',inMore); mb.className=mb.className.replace(/\bc-\w+/g,'').trim()+(inMore?' c-'+sec:'');
+    mb.querySelector('.wm-l').textContent=inMore?U2.nav[sec]:U2.more; mb.querySelector('svg').outerHTML=inMore?ICO[sec]:ICO.more;
+    if(inMore) mb.setAttribute('aria-current','page'); else mb.removeAttribute('aria-current');
+    shell.querySelector('.wnav-new').classList.toggle('on',sec==='new'); moreOpen(false); paintN(LASTN); }
+  var LASTN=0;
+  function paintN(n){ LASTN=n; var b=shell&&shell.querySelector('.wnav .wn-n'), d=shell&&shell.querySelector('.wnav .wn-dot'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } if(d){ d.hidden=!n||CUR==='notifications'; d.textContent=n>9?'9+':n; } }
   function setUnread(n){ n=+n||0; paintN(n); if(window.EBHdr) EBHdr.setUnread(n); }
   addEventListener('eb:unread',function(e){ paintN(+e.detail||0); });
   function route(){ if(!shell) return; var h=(location.hash||'').slice(1), m;

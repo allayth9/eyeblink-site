@@ -97,6 +97,13 @@ const SCHEMA = [
      every TEXT NOT NULL DEFAULT 'month', dow INTEGER, dom INTEGER, due_days INTEGER NOT NULL DEFAULT 5, next_run TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, runs INTEGER NOT NULL DEFAULT 0, last_ref TEXT,
      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS recurring_next ON recurring(active, next_run)`,
+  // phase 9: the studio's record of each client — a stable id, contact details, internal notes and status (active / paused / archived).
+  // Every other table already points at the client by its unique account e-mail (client_email); this row gives that client an id of its own.
+  `CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', company TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '',
+     logo_url TEXT, status TEXT NOT NULL DEFAULT 'active', notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS clients_status ON clients(status)`,
+  `CREATE INDEX IF NOT EXISTS files_client ON files(client_email, created_at)`,
+  `CREATE INDEX IF NOT EXISTS deliverables_client ON deliverables(client_email, created_at)`,
 ];
 // columns added to tables that already exist on the live database (run once, in order; meta "schema" keeps the count)
 const MIGRATIONS = [
@@ -104,6 +111,7 @@ const MIGRATIONS = [
   "ALTER TABLE tasks ADD COLUMN over_quota INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE projects ADD COLUMN drive_url TEXT",
   "ALTER TABLE projects ADD COLUMN auto_report INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE tasks ADD COLUMN assignee TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -308,7 +316,7 @@ function invoiceMail(env, x, kind){ const s = { client_email: x.client_email, re
 
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
-  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects" };
+  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
 const CONSENT_V = "wa-v1";
@@ -358,7 +366,7 @@ const WA_TXT = {
         comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
         invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
         invoiceDue: d => `تذكير: الفاتورة ${d.no} تجاوزت تاريخ استحقاقها، والمبلغ المتبقي ${d.balance}.`,
-        recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
+        recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو مهمة «${d.title}» (${d.ref}) إلى مشروعك${d.date ? "، وموعد تسليمها المؤكد " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
         status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
@@ -366,7 +374,7 @@ const WA_TXT = {
         comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
         invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
         invoiceDue: d => `Reminder: invoice ${d.no} is past its due date; ${d.balance} is still due.`,
-        recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
+        recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added "${d.title}" (${d.ref}) to your project${d.date ? "; confirmed delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
 async function tellClient(env, t, kind, extra){
   extra = extra || {};
   const u = await userOf(env, t.client_email); if (!u) return;
@@ -402,6 +410,8 @@ async function tellClient(env, t, kind, extra){
                    : ["تذكير بالفاتورة " + extra.no, `تجاوزت الفاتورة <b style="color:#fff">${h(extra.no)}</b> تاريخ استحقاقها، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>.`],
     recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                   : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    added:   en ? ["New task from the studio · " + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to your project${t.confirmed_date ? `. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
+                 : ["مهمة جديدة من الاستوديو · " + t.ref, `أضاف الاستوديو مهمة <b style="color:#fff">${h(t.title)}</b> إلى مشروعك${t.confirmed_date ? `. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`],
     report:  en ? ["Monthly report · " + (extra.name || ""), `Here is the monthly report for <b style="color:#fff">${h(extra.name || "")}</b>.`] : ["التقرير الشهري · " + (extra.name || ""), `تجد أدناه التقرير الشهري لمشروع <b style="color:#fff">${h(extra.name || "")}</b>.`],
     file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
                  : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
@@ -458,6 +468,8 @@ async function sweepNotify(env){ try {
     for (const p of auto) await sendReport({}, env, D, p, pm); }
 } catch {} }
 
+// what a client receives about a task: everything but the studio's internal fields
+function cparse(t){ t = parse(t); if (t) delete t.assignee; return t; }
 export async function onRequestGet(ctx) {
   const { request, env } = ctx, q = new URL(request.url).searchParams;
   later(ctx, sweepNotify(env));
@@ -468,7 +480,7 @@ export async function onRequestGet(ctx) {
   const e = u.email, open = OPEN.map(s => `'${s}'`).join(",");
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
-  if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(parse),
+  if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(cparse),
     projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
   if (q.get("report") || q.get("reportDoc")) {
@@ -482,13 +494,13 @@ export async function onRequestGet(ctx) {
   if (q.get("view") === "prefs") { const cfg = await waConfig(env); return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) } }); }
   if (q.get("project")) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
-    const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(parse);
+    const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(cparse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
     const recurring = (await D.prepare("SELECT id, title, every, dow, dom, due_days, next_run, active FROM recurring WHERE project_id=? AND active=1 ORDER BY next_run").bind(p.id).all()).results;
     return json({ ok: true, me: e, project: p, tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
   }
   if (q.get("task")) {
-    const t = parse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
+    const t = cparse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
     const activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA);
     return json({ ok: true, me: e, task: t, activity, deliverables: await deliverablesOf(D, t.id), comments: await commentsOf(D, "task", t.id) });
   }
@@ -496,7 +508,7 @@ export async function onRequestGet(ctx) {
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=?2 AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e, monthOf(now())).all()).results.map(parseP);
   const counts = {}; for (const r of (await D.prepare(`SELECT status, COUNT(*) AS n FROM tasks WHERE project_id IN ${MINE} GROUP BY status`).bind(e).all()).results) counts[r.status] = r.n;
-  const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 12`).bind(e).all()).results.map(parse);
+  const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 12`).bind(e).all()).results.map(cparse);
   const upcoming = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.confirmed_date >= ?2 AND t.status IN (${open}) ORDER BY t.confirmed_date LIMIT 6`).bind(e, today()).all()).results;
   const activity = (await D.prepare(`SELECT a.*, t.ref AS task_ref, t.title AS task_title FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.project_id IN ${MINE} ORDER BY a.id DESC LIMIT 20`).bind(e).all()).results.map(parseA);
@@ -509,7 +521,7 @@ export async function onRequestGet(ctx) {
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -673,6 +685,41 @@ async function addFile(ctx, D, o){
 async function clientsList(env){ const out = []; let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") out.push({ email: u.email, name: u.name, lang: u.lang || "ar" }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
   return out; }
+// ==== client records (phase 9) ====
+const CSTATUS = ["active","paused","archived"];
+const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || "");
+async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
+async function ensureClients(D, list){   // a stable id for every client the studio works with (never overwrites what the studio wrote)
+  const st = list.filter(x => x && isEmail(x.email)).map(x => D.prepare("INSERT OR IGNORE INTO clients (id, email, name, created_at, updated_at) VALUES (?,?,?,?,?)").bind("c_" + randHex(6), x.email.toLowerCase(), clip(x.name, 120), now(), now()));
+  for (let i = 0; i < st.length; i += 50) await D.batch(st.slice(i, i + 50));
+}
+async function allUsers(env){ const out = []; let cursor;
+  do { const r = await env.EB.list({ prefix: "user:", cursor });
+    for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v);
+      out.push({ email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", lang: u.lang || "ar", created: u.createdAt || null, lastLogin: u.lastLogin || null, orders: (u.orders || []).length, clientSince: u.clientSince || null }); }
+    cursor = r.list_complete ? null : r.cursor; } while (cursor && out.length < 3000);
+  return out; }
+async function clientsOverview(env, D){
+  const users = await allUsers(env), td = today();
+  await ensureClients(D, users.filter(u => u.role === "client").concat((await D.prepare("SELECT DISTINCT client_email AS email FROM projects").all()).results));
+  const by = {}, row = e => (by[e] ||= { projects: 0, active_projects: 0, late_projects: 0, open_tasks: 0, new_tasks: 0, late_tasks: 0, done_tasks: 0, due_invoices: 0, overdue_invoices: 0, due: {}, paid: {}, last_activity: null, files: 0 });
+  for (const r of (await D.prepare("SELECT client_email AS e, COUNT(*) AS n, SUM(status='active') AS a, SUM(status='active' AND end_date IS NOT NULL AND end_date<?) AS l FROM projects GROUP BY client_email").bind(td).all()).results) Object.assign(row(r.e), { projects: r.n, active_projects: r.a || 0, late_projects: r.l || 0 });
+  for (const r of (await D.prepare(`SELECT client_email AS e, SUM(status IN (${OPEN.map(x => `'${x}'`).join(",")})) AS o, SUM(status='new') AS nw, SUM(status IN ('new','review','info','accepted','progress','revision') AND confirmed_date IS NOT NULL AND confirmed_date<?) AS l,
+      SUM(status='completed') AS c, MAX(updated_at) AS u FROM tasks GROUP BY client_email`).bind(td).all()).results) { const x = row(r.e); x.open_tasks = r.o || 0; x.new_tasks = r.nw || 0; x.late_tasks = r.l || 0; x.done_tasks = r.c || 0; x.last_activity = r.u; }
+  for (const i of (await D.prepare("SELECT * FROM invoices WHERE sent_at IS NOT NULL").all()).results.map(v => parseI(v))) { const x = row(i.client_email);
+    if (["pending","partial","overdue"].includes(i.state)) { x.due_invoices++; x.due[i.currency] = money((x.due[i.currency] || 0) + i.balance); } if (i.state === "overdue") x.overdue_invoices++;
+    if (i.status !== "cancelled") x.paid[i.currency] = money((x.paid[i.currency] || 0) + i.paid - (i.refunded || 0)); }
+  for (const r of (await D.prepare("SELECT client_email AS e, MAX(at) AS a FROM activity WHERE client_email IS NOT NULL GROUP BY client_email").all()).results) { const x = row(r.e); if (!x.last_activity || r.a > x.last_activity) x.last_activity = r.a; }
+  for (const r of (await D.prepare("SELECT client_email AS e, COUNT(*) AS n FROM files WHERE deleted_at IS NULL GROUP BY client_email").all()).results) row(r.e).files = r.n;
+  const rows = (await D.prepare("SELECT id, email, name, company, phone, logo_url, status, created_at, updated_at, archived_at FROM clients").all()).results, U = {};
+  users.forEach(u => U[u.email] = u);
+  const emails = new Set(users.map(u => u.email).concat(rows.map(r => r.email)));
+  const R = {}; rows.forEach(r => R[r.email] = r);
+  return [...emails].map(e => { const r = R[e] || {}, u = U[e] || null, st = by[e] || row(e);
+    return { id: r.id || null, email: e, name: r.name || (u && u.name) || "", company: r.company || "", phone: r.phone || "", logo_url: r.logo_url || null, status: r.status || "active", archived_at: r.archived_at || null,
+      added: r.created_at || (u && u.created), account: u ? { role: u.role, lang: u.lang, created: u.created, lastLogin: u.lastLogin, orders: u.orders, clientSince: u.clientSince } : null, ...st,
+      last_activity: [st.last_activity, u && u.lastLogin].filter(Boolean).sort().pop() || r.updated_at || null }; });
+}
 async function adminGet(request, env, q){
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
@@ -699,16 +746,22 @@ async function adminGet(request, env, q){
     const projects = (await D.prepare("SELECT id, name, client_email, status, quota, type FROM projects").all()).results;
     return json({ ok: true, today: today(), tasks, deliverables, invoices, projects, clients: await clientsList(env) });
   }
+  if (q.get("view") === "clients") return json({ ok: true, today: today(), clients: await clientsOverview(env, D) });
   if (q.get("profile")) {
-    const em = clip(q.get("profile"), 254).toLowerCase(), u = await userOf(env, em); if (!u) return json({ ok: false }, 404);
+    const em = clip(q.get("profile"), 254).toLowerCase(), u0 = await userOf(env, em); let cr = await clientRow(D, em);
+    if (!u0 && !cr) return json({ ok: false }, 404);
+    if (!cr) { await ensureClients(D, [{ email: em, name: u0.name }]); cr = await clientRow(D, em); }
+    const u = u0 || { name: cr.name, email: em, role: "none", lang: "ar" };
     const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(x => `'${x}'`).join(",")})) AS open_tasks FROM projects p WHERE p.client_email=? ORDER BY p.updated_at DESC`).bind(em).all()).results.map(parseP);
-    const tasks = (await D.prepare("SELECT t.ref, t.title, t.status, t.confirmed_date, t.completed_at, t.updated_at, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY t.updated_at DESC LIMIT 60").bind(em).all()).results;
+    const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.type, t.description, t.status, t.priority, t.requested_date, t.confirmed_date, t.completed_at, t.created_at, t.updated_at, t.created_by, t.over_quota, t.recurring, t.assignee, t.project_id, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY t.updated_at DESC LIMIT 400").bind(em).all()).results;
+    const files = (await D.prepare("SELECT f.id, f.project_id, f.task_id, f.category, f.title, f.url, f.note, f.added_by, f.added_name, f.created_at, p.name AS project_name FROM files f JOIN projects p ON p.id=f.project_id WHERE f.client_email=? AND f.deleted_at IS NULL ORDER BY f.created_at DESC LIMIT 400").bind(em).all()).results;
+    const delivered = (await D.prepare("SELECT d.id, d.project_id, d.label, d.is_final, d.title, d.url, d.status, d.created_at, t.ref, t.title AS task_title, p.name AS project_name FROM deliverables d JOIN tasks t ON t.id=d.task_id JOIN projects p ON p.id=d.project_id WHERE d.client_email=? ORDER BY d.created_at DESC LIMIT 400").bind(em).all()).results;
     const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY i.issue_date DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x));
-    const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 40").bind(em).all()).results.map(parseA);
+    const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
-    return json({ ok: true, user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    return json({ ok: true, client: cr, account: !!u0, files, delivered, today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
@@ -765,7 +818,7 @@ async function adminPost(ctx, d){
   if (d.action === "sendReport") { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
     const month = isMonth(d.month) ? d.month : prevMonth(); await sendReport(ctx, env, D, p, month); return json({ ok: true, month }); }
   if (d.action === "invoice") {
-    const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email); if (!u) return json({ ok: false, error: "no account" }, 404);
+    const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email); if (!u && !(await clientRow(D, email))) return json({ ok: false, error: "no account" }, 404);
     const items = cleanItems(d.items); if (!items.length) return json({ ok: false, error: "items" }, 400);
     const pid = d.project_id ? clip(d.project_id, 40) : null;
     if (pid) { const p = await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(pid).first(); if (!p || p.client_email !== email) return json({ ok: false, error: "project" }, 400); }
@@ -846,9 +899,10 @@ async function adminPost(ctx, d){
     return json({ ok: !!r.ok, error: r.error || r.skip || null, id: r.id || null });
   }
   if (d.action === "project") {
-    const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email);
-    if (!u) return json({ ok: false, error: "no account" }, 404);
-    if (u.role !== "client") return json({ ok: false, error: "not client" }, 409);
+    const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email), cr = await clientRow(D, email);
+    if (!u && !(cr && cr.status !== "archived")) return json({ ok: false, error: "no account" }, 404);
+    if (u && u.role !== "client") return json({ ok: false, error: "not client" }, 409);
+    if (!cr) await ensureClients(D, [{ email, name: u.name }]);
     const name = clip(d.name, 140); if (!name) return json({ ok: false, error: "name" }, 400);
     const f = { name, description: clip(d.description, 4000), type: PTYPES.includes(d.type) ? d.type : "custom", status: ["active","paused","completed","archived"].includes(d.status) ? d.status : "active",
       services: JSON.stringify((Array.isArray(d.services) ? d.services : []).slice(0, 12).map(s => clip(s, 60)).filter(Boolean)),
@@ -868,6 +922,38 @@ async function adminPost(ctx, d){
     later(ctx, tellClient(env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
   }
+  if (d.action === "clientSave") {
+    const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
+    const name = clip(d.name, 120), old = await clientRow(D, email), u = await userOf(env, email);
+    if (!old && !name && !u) return json({ ok: false, error: "name" }, 400);
+    const logo = clip(d.logo_url, 600), f = { name: name || (old && old.name) || (u && u.name) || "", company: clip(d.company, 120), phone: clip(d.phone, 40), logo_url: isUrl(logo) ? logo : null, notes: clip(d.notes, 4000),
+      status: CSTATUS.includes(d.status) ? d.status : (old ? old.status : "active") };
+    if (old) await D.prepare("UPDATE clients SET name=?, company=?, phone=?, logo_url=?, notes=?, status=?, archived_at=?, updated_at=? WHERE id=?")
+      .bind(f.name, f.company, f.phone, f.logo_url, f.notes, f.status, f.status === "archived" ? (old.archived_at || at) : null, at, old.id).run();
+    else await D.prepare("INSERT INTO clients (id, email, name, company, phone, logo_url, notes, status, created_at, updated_at, archived_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+      .bind("c_" + randHex(6), email, f.name, f.company, f.phone, f.logo_url, f.notes, f.status, at, at, f.status === "archived" ? at : null).run();
+    await act(D, { ...studio, client_email: email, kind: old ? "client_updated" : "client_added", data: { name: f.name } });
+    return json({ ok: true, id: (await clientRow(D, email)).id, account: !!u, role: u ? (u.role === "client" ? "client" : "customer") : null });
+  }
+  if (d.action === "clientArchive") {
+    const c = await clientRow(D, clip(d.email, 254)); if (!c) return json({ ok: false }, 404);
+    const arch = d.archive !== false;
+    await D.prepare("UPDATE clients SET status=?, archived_at=?, updated_at=? WHERE id=?").bind(arch ? "archived" : "active", arch ? at : null, at, c.id).run();
+    await act(D, { ...studio, client_email: c.email, kind: arch ? "client_archived" : "client_restored", data: { name: c.name } });
+    return json({ ok: true });
+  }
+  if (d.action === "studioTask") {
+    const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
+    const title = clip(d.title, 140); if (!title) return json({ ok: false, error: "title" }, 400);
+    const cd = clip(d.confirmed_date, 10); if (cd && !isDate(cd)) return json({ ok: false, error: "date" }, 400);
+    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", st = cd ? "accepted" : "review";
+    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, confirmed_date, status, assignee, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'studio',?,?)`)
+      .bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, at, at).run();
+    await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, by_studio: true, confirmed_date: cd || null, priority: pr } });
+    await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
+    later(ctx, tellClient(env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
+    return json({ ok: true, ref });
+  }
   if (d.action === "point") {
     const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE id=?").bind(clip(d.deliverable, 40)).first() || {}); const i = +d.index;
     if (!dl.id || !dl.points[i]) return json({ ok: false }, 404);
@@ -886,6 +972,21 @@ async function adminPost(ctx, d){
   const t = parse(await D.prepare("SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?").bind(clip(d.task, 12)).first());
   if (!t) return json({ ok: false, error: "task" }, 404);
   const tw = { ...studio, client_email: t.client_email, project_id: t.project_id, task_id: t.id }, note = clip(d.note, 3000);
+  if (d.action === "taskEdit") {
+    const f = {}; if (d.title !== undefined) { f.title = clip(d.title, 140); if (!f.title) return json({ ok: false, error: "title" }, 400); }
+    if (d.description !== undefined) f.description = clip(d.description, 4000); if (d.type !== undefined) f.type = clip(d.type, 60);
+    if (d.priority !== undefined) { if (!PRIORITIES.includes(d.priority)) return json({ ok: false }, 400); f.priority = d.priority; }
+    if (d.assignee !== undefined) f.assignee = clip(d.assignee, 80) || null;
+    const k = Object.keys(f); if (!k.length) return json({ ok: true });
+    await D.prepare(`UPDATE tasks SET ${k.map(x => x + "=?").join(", ")}, updated_at=? WHERE id=?`).bind(...k.map(x => f[x]), at, t.id).run();
+    await act(D, { ...tw, kind: "task_edited", data: { ref: t.ref, title: f.title || t.title, fields: k } });
+    return json({ ok: true });
+  }
+  if (d.action === "taskDelete") {
+    await D.batch([D.prepare("DELETE FROM deliverables WHERE task_id=?").bind(t.id), D.prepare("DELETE FROM comments WHERE task_id=?").bind(t.id), D.prepare("UPDATE files SET task_id=NULL WHERE task_id=?").bind(t.id), D.prepare("DELETE FROM tasks WHERE id=?").bind(t.id)]);
+    await act(D, { ...studio, client_email: t.client_email, project_id: t.project_id, kind: "task_deleted", data: { ref: t.ref, title: t.title } });
+    return json({ ok: true });
+  }
   if (d.action === "studioComment") return addComment(ctx, D, { scope: "task", task: t, author: "studio", author_name: "Eyeblink Studio", body: d.body, links: d.links });
   if (d.action === "deliver") {
     if (!["accepted","progress","revision","feedback","final"].includes(t.status)) return json({ ok: false, error: "state" }, 409);

@@ -345,7 +345,7 @@
   function waves(on,host,tgt){
     host=host||lb; tgt=tgt||lbFrame; var wv=host._wv||(host._wv={raf:0});
     var c=host&&host.querySelector('.lb-waves'); if(!c) return;
-    cancelAnimationFrame(wv.raf); if(!on||matchMedia('(prefers-reduced-motion: reduce)').matches){ var x0=c.getContext('2d'); x0&&x0.clearRect(0,0,c.width,c.height); return; }
+    cancelAnimationFrame(wv.raf); if(!on||matchMedia('(prefers-reduced-motion: reduce)').matches||matchMedia('(max-width: 860px), (pointer: coarse)').matches){ var x0=c.getContext('2d'); x0&&x0.clearRect(0,0,c.width,c.height); return; }
     var x=c.getContext('2d'), coarse=matchMedia('(pointer: coarse)').matches, dpr=coarse?1:Math.min(devicePixelRatio||1,2), t0=performance.now(), lastW=0;
     function frame(now){
       if(coarse&&now-lastW<40){ wv.raf=requestAnimationFrame(frame); return; } lastW=now;
