@@ -54,7 +54,7 @@ export async function onRequestPost(ctx) {
     const req = { email: u.email, name: u.name, company: clip(d.company, 120), note: clip(d.note, 1500), lang: d.lang === "en" ? "en" : "ar", status: "pending", at: new Date().toISOString() };
     await env.EB.put("accreq:" + u.email, JSON.stringify(req));
     u.lang = req.lang; logAct(u, "client", "requested workspace access"); await putUser(env, u);
-    later(ctx, notifyStudio(env, "طلب وصول لمساحة العمل — " + u.name, u.name + " · " + u.email + (req.company ? " · " + req.company : "") + "\n\n" + (req.note || "—") + "\n\nاقبله أو ارفضه من لوحة التحكم ← العملاء."));
+    later(ctx, notifyStudio(env, "طلب وصول لمساحة العمل — " + u.name, u.name + " · " + u.email + (req.company ? " · " + req.company : "") + "\n\n" + (req.note || "—") + "\n\nيمكنك قبوله أو رفضه من لوحة التحكم ← العملاء."));
     return json({ ok: true, request: req });
   }
 
@@ -68,7 +68,7 @@ export async function onRequestPost(ctx) {
     const already = roleOf(u) === "client";
     u.role = "client"; u.clientSince ||= inv.usedAt; u.clientVia ||= "invite"; logAct(u, "client", "accepted the invitation");
     await putUser(env, u); await env.EB.delete("accreq:" + u.email);
-    if (!already) later(ctx, notifyStudio(env, "✅ " + u.name + " فعّل مساحة العمل", u.email + " قبل الدعوة وصار عميلاً متعاقداً."));
+    if (!already) later(ctx, notifyStudio(env, "✅ " + u.name + " فعّل مساحة العمل", u.email + " قبِل الدعوة وأصبح عميلاً متعاقداً."));
     return json({ ok: true, role: "client" });
   }
   return json({ ok: false }, 400);
@@ -85,12 +85,12 @@ async function adminAction(ctx, d, clip){
     const link = acctLink(lang, "?invite=" + token), en = lang === "en";
     const first = (inv.name || "").split(/\s+/)[0];
     const body = (en ? `You have been invited to the <b style="color:#fff">Eyeblink Studio client workspace</b> — one place to send your tasks, follow the work, review every version and talk to the studio.`
-                     : `دعوتك Eyeblink Studio إلى <b style="color:#fff">مساحة العمل الخاصة بالعملاء</b> — مكان واحد ترسل منه مهامك، وتتابع التنفيذ، وتراجع كل نسخة، وتتواصل مع الاستوديو.`) +
+                     : `يدعوك Eyeblink Studio إلى <b style="color:#fff">مساحة العمل الخاصة بالعملاء</b> — مكان واحد ترسل منه مهامك، وتتابع التنفيذ، وتراجع كل نسخة، وتتواصل مع الاستوديو.`) +
       (inv.note ? `<p style="margin:16px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(inv.note).replace(/\n/g, "<br>")}</p>` : "") +
       `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">${en ? "Sign in or create your account with <b style=\"color:#fff\">" + h(email) + "</b>. The link works once and expires in " + INVITE_DAYS + " days."
                                                                   : "سجّل دخولك أو أنشئ حسابك بالبريد <b style=\"color:#fff\">" + h(email) + "</b>. الرابط يعمل مرة واحدة وينتهي خلال " + INVITE_DAYS + " يوماً."}</p>`;
     const sent = await sendMail(env, email, en ? "Your invitation to the Eyeblink client workspace" : "دعوتك إلى مساحة عمل Eyeblink",
-      mail(lang, en ? "Your client workspace is ready" : "مساحة العمل الخاصة فيك جاهزة", body, en ? "Accept the invitation" : "اقبل الدعوة", link, en ? "Hi" + (first ? " " + first : "") + "," : "أهلاً" + (first ? " " + first : "") + "،"));
+      mail(lang, en ? "Your client workspace is ready" : "مساحة العمل الخاصة بك جاهزة", body, en ? "Accept the invitation" : "اقبل الدعوة", link, en ? "Hi" + (first ? " " + first : "") + "," : "أهلاً" + (first ? " " + first : "") + "،"));
     if (ex) { logAct(ex, "admin", "invited to the workspace"); await putUser(env, ex); }
     return json({ ok: true, token, link, sent });
   }
@@ -104,10 +104,10 @@ async function adminAction(ctx, d, clip){
   const grant = async (via, what) => {
     const was = roleOf(u) === "client";
     u.role = "client"; u.clientSince ||= now; u.clientVia ||= via; logAct(u, "admin", what); await putUser(env, u); await env.EB.delete("accreq:" + email);
-    if (!was) later(ctx, sendMail(env, u.email, en ? "Your Eyeblink workspace is active" : "تفعّلت مساحة العمل الخاصة فيك",
-      mail(lang, en ? "Welcome to your client workspace" : "أهلاً بك بمساحة العمل",
+    if (!was) later(ctx, sendMail(env, u.email, en ? "Your Eyeblink workspace is active" : "فُعّلت مساحة العمل الخاصة بك",
+      mail(lang, en ? "Welcome to your client workspace" : "أهلاً بك في مساحة العمل",
         en ? "Your account is now an <b style=\"color:#fff\">Active Client</b> account. Your requests, invoices and history stay exactly as they were; the workspace is added on top of them."
-           : "صار حسابك حساب <b style=\"color:#fff\">عميل متعاقد</b>. طلباتك وفواتيرك وسجلك بقيوا متل ما هم، وانضافت عليهم مساحة العمل.",
+           : "أصبح حسابك حساب <b style=\"color:#fff\">عميل متعاقد</b>. بقيت طلباتك وفواتيرك وسجلك كما هي، وأُضيفت إليها مساحة العمل.",
         en ? "Open my account" : "افتح حسابي", acctLink(lang), greet({ name: u.name, lang }))));
   };
   if (d.action === "approve") {
@@ -120,10 +120,10 @@ async function adminAction(ctx, d, clip){
     await env.EB.put("accreq:" + email, JSON.stringify(req), { expirationTtl: 30 * 86400 });
     logAct(u, "admin", "access request declined"); await putUser(env, u);
     later(ctx, sendMail(env, u.email, en ? "About your workspace request" : "بخصوص طلب مساحة العمل",
-      mail(lang, en ? "We could not open the workspace yet" : "ما قدرنا نفعّل مساحة العمل حالياً",
-        (en ? "Thank you for your request. The workspace is for clients with an ongoing agreement with the studio." : "شكراً لطلبك. مساحة العمل مخصّصة للعملاء اللي عندهم اتفاق مستمر مع الاستوديو.") +
+      mail(lang, en ? "We could not open the workspace yet" : "تعذّر تفعيل مساحة العمل حالياً",
+        (en ? "Thank you for your request. The workspace is for clients with an ongoing agreement with the studio." : "شكراً لطلبك. مساحة العمل مخصّصة للعملاء الذين يجمعهم اتفاق مستمر مع الاستوديو.") +
         (req.reason ? `<p style="margin:14px 0 0;color:#DCE3F0">${h(req.reason)}</p>` : "") +
-        `<p style="margin:14px 0 0">${en ? "You can still order any service and follow it from your account." : "لسا فيك تطلب أي خدمة وتتابعها من حسابك عادي."}</p>`,
+        `<p style="margin:14px 0 0">${en ? "You can still order any service and follow it from your account." : "ولا يزال بإمكانك طلب أي خدمة ومتابعتها من حسابك كالمعتاد."}</p>`,
         en ? "Open my account" : "افتح حسابي", acctLink(lang), greet({ name: u.name, lang }))));
     return json({ ok: true });
   }
@@ -256,7 +256,7 @@ const INV_T = {
        adj:"Adjustment (agreed on the brief)", disc:"Discount", note:{ deposit:"The balance is due before final delivery.", other:"Thank you for working with Eyeblink Studio." }, svc:"Video editing · Motion graphics · Film" },
   ar:{ title:"فاتورة", no:"رقم الفاتورة", date:"تاريخ الإصدار", order:"رقم الطلب", status:"الحالة", from:"من", to:"إلى", desc:"البيان", qty:"الكمية", unit:"سعر الوحدة", amount:"المبلغ",
        sub:"المجموع", dep:"العربون المدفوع", paid:"المبلغ المدفوع", bal:"المتبقي", method:"طريقة الدفع", paidOn:"تاريخ الدفع", st:{ full:"مدفوعة", final:"مدفوعة بالكامل", deposit:"عربون مدفوع" },
-       adj:"تعديل حسب البريف المتفق عليه", disc:"خصم", note:{ deposit:"المبلغ المتبقي يُدفع قبل التسليم النهائي.", other:"شكراً لتعاملك مع Eyeblink Studio." }, svc:"مونتاج · موشن غرافيك · أفلام" } };
+       adj:"تعديل وفق المتطلبات المتفق عليها", disc:"خصم", note:{ deposit:"المبلغ المتبقي يُدفع قبل التسليم النهائي.", other:"شكراً لتعاملك مع Eyeblink Studio." }, svc:"مونتاج · موشن غرافيك · أفلام" } };
 function invoiceHTML(o, inv, opt){
   opt = opt || {}; const en = o.lang === "en", L = INV_T[en ? "en" : "ar"], dir = en ? "ltr" : "rtl", s = en ? "left" : "right", e = en ? "right" : "left";
   const c = curOf(o), total = totalOf(o);
@@ -334,9 +334,9 @@ async function mailReceived(env, o){
   const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, rtl = !en;
   const c = await siteContent(env); let next = ((c.order||{}).next||{})[en?"en":"ar"] || [];
   if (!next.length) next = en ? ["We review your request and reply in your account within 24 hours","We agree on the details and date, then you get the payment details","We start production; you follow every stage until delivery"]
-                              : ["نراجع طلبك ونرد عليك بحسابك خلال 24 ساعة","نتفق على التفاصيل والموعد، وبعدها توصلك تفاصيل الدفع","نبدأ التنفيذ، وتتابع كل مرحلة لحد التسليم"];
+                              : ["نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة","نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع","نبدأ التنفيذ، وتتابع كل مرحلة حتى التسليم"];
   const T = en ? ["Request no.","Service","Quantity","Add-ons","Platforms","Preferred payment","Target date","Estimated total","What happens next","Thank you — your request is in. Here is the summary; keep the request number for any question."]
-               : ["رقم الطلب","الخدمة","العدد","الإضافات","المنصات","طريقة الدفع المفضّلة","الموعد المستهدف","المجموع التقديري","الخطوات الجاية","شكراً لك، وصلنا طلبك. هذا ملخّصه، واحتفظ برقم الطلب لأي استفسار."];
+               : ["رقم الطلب","الخدمة","العدد","الإضافات","المنصات","طريقة الدفع المفضّلة","الموعد المستهدف","المجموع التقديري","الخطوات التالية","شكراً لك، وصلنا طلبك. هذا ملخّصه، واحتفظ برقم الطلب لأي استفسار."];
   const body = `<p style="margin:0 0 10px">${h(T[9])}</p>` +
     rows([[T[0], `<span style="font:bold 16px Arial;letter-spacing:2px;color:#3FE0E8">${h(o.code)}</span>`],[T[1], h(o.packageName)],[T[2], o.qty>1? "×"+o.qty : ""],[T[3], h((o.addons||[]).join(en?", ":"، "))],
       [T[4], h((o.platforms||[]).join(", "))],[T[5], h(o.payPref)],[T[6], h(o.deadline)],[T[7], `<span dir="ltr">${h(o.total)}</span>`, 1]], rtl) +
@@ -351,8 +351,8 @@ async function mailInvoice(env, o, kind){
                    depositP:"Your deposit is confirmed and production starts now. The remaining "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" is due before final delivery. Your invoice is below.",
                    finalP:"Your request is now fully paid. Thank you! Your invoice is below.", fullP:"Your payment is confirmed and production starts now. You can follow every stage from your account. Your invoice is below.", cta:"View my request" }
                : { deposit:"وصل العربون ✓", final:"وصلت الدفعة النهائية ✓", full:"وصلت دفعتك ✓",
-                   depositP:"تأكّد العربون وبدأنا التنفيذ. المتبقي "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" يُدفع قبل التسليم النهائي. الفاتورة تحت.",
-                   finalP:"صار طلبك مدفوع بالكامل، شكراً لك! الفاتورة تحت.", fullP:"تأكّدت دفعتك وبدأنا التنفيذ، وتقدر تتابع كل مرحلة من حسابك. الفاتورة تحت.", cta:"عرض طلبي" };
+                   depositP:"تأكّد وصول العربون وبدأنا التنفيذ. يُدفع المتبقي "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" قبل التسليم النهائي. تجد الفاتورة أدناه.",
+                   finalP:"أصبح طلبك مدفوعاً بالكامل، شكراً لك! تجد الفاتورة أدناه.", fullP:"تأكّد وصول دفعتك وبدأنا التنفيذ، ويمكنك متابعة كل مرحلة من حسابك. تجد الفاتورة أدناه.", cta:"عرض طلبي" };
   const k = inv.kind || "full", body = `<p style="margin:0 0 18px">${h(T[k+"P"])}</p>` + invoiceHTML(o, inv, { email: s.email });
   await sendMail(env, o.email, (en ? "Invoice " : "فاتورة ") + inv.no + " · Eyeblink Studio", mail(en?"en":"ar", T[k] + " · " + o.code, body, T.cta, link, greet(o)));
 }
@@ -376,7 +376,7 @@ async function sweepReminders(env){
         p.reminded = new Date().toISOString(); await env.EB.put(k.name, JSON.stringify(o));
         const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
         const body = en ? `A quick reminder: the payment details for <b style="color:#fff">${h(o.code)}</b> are waiting in your account (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). Once you pay, attach the receipt there and we start right away. If anything is unclear, just reply in the chat.`
-                        : `تذكير صغير: تفاصيل الدفع لطلبك <b style="color:#fff">${h(o.code)}</b> بانتظارك بحسابك (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). بعد الدفع أرفق الإيصال هناك ومنبلّش فوراً. وإذا في شي مو واضح احكينا بالمحادثة.`;
+                        : `تذكير لطيف: تفاصيل الدفع لطلبك <b style="color:#fff">${h(o.code)}</b> بانتظارك في حسابك (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). بعد الدفع أرفق الإيصال هناك وسنبدأ فوراً. وإن كان أي أمر غير واضح، فراسلنا في المحادثة.`;
         await sendMail(env, o.email, en ? "Reminder: payment for " + o.code : "تذكير بالدفع لطلبك " + o.code, mail(en?"en":"ar", en ? "Your payment details are waiting" : "تفاصيل الدفع بانتظارك", body, en ? "Open my request" : "افتح طلبي", link, greet(o)));
         await telegram(env, "⏰ أُرسل تذكير دفع تلقائي — " + o.code + " · " + o.name);
       }

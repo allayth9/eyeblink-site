@@ -9,7 +9,7 @@
         doLogin:'دخول',doRegister:'إنشاء الحساب',or:'أو',wait:'لحظة…',close:'إغلاق',
         e:{exists:'هذا البريد مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك.',wrong:'البريد أو كلمة السر غير صحيحة.',google:'هذا الحساب مسجّل عبر Google، استخدم زر Google.',
            email:'اكتب بريداً إلكترونياً صحيحاً.',code:'الرمز غير صحيح أو انتهت صلاحيته.',password:'كلمة السر 8 أحرف على الأقل.',name:'اكتب اسمك.','too many attempts':'محاولات كثيرة، جرّب بعد قليل.',net:'تعذّر الاتصال، حاول مرة أخرى.'},
-        W:{chip:'عميل متعاقد',since:'منذ ',on:'حسابك مفعّل كعميل متعاقد. مشاريعك ومهامك بتظهر هون أول ما يفتحلك الاستوديو مشروع.',askH:'عندك تعاون مستمر مع Eyeblink؟',askP:'إذا كنت عميلاً حالياً لدى الاستوديو، اطلب الوصول إلى مساحة العمل لترسل مهامك وتتابع التنفيذ والتسليمات من مكان واحد.',ask:'أنا عميل حالي وأريد الوصول إلى مساحة العمل',company:'اسم الجهة أو المشروع (اختياري)',note:'شو الاتفاق بينك وبين الاستوديو؟ (اختياري)',send:'أرسل الطلب',cancel:'إلغاء',pending:'وصل طلبك للاستوديو، ورح نرد عليك بعد المراجعة. ما بتتفعّل المساحة قبل موافقتنا.',rejected:'ما تفعّلت مساحة العمل بطلبك السابق.',again:'أرسل طلباً جديداً',invH:'دعوة إلى مساحة عمل Eyeblink',invP:'سجّل دخولك أو أنشئ حسابك بنفس البريد اللي وصلته الدعوة:',invOk:'تمّ! صار حسابك حساب عميل متعاقد.',invUsed:'هذه الدعوة استُخدمت من قبل.',invBad:'رابط الدعوة غير صالح أو انتهت صلاحيته. اطلب من الاستوديو دعوة جديدة.',invOther:'هذه الدعوة مرسلة إلى بريد آخر: ',invSwitch:'سجّل الخروج وادخل بذلك البريد'},
+        W:{chip:'عميل متعاقد',since:'منذ ',on:'حسابك مفعّل بصفة عميل متعاقد، وستظهر مشاريعك ومهامك هنا فور أن يفتح لك الاستوديو مشروعاً.',askH:'هل لديك تعاون مستمر مع Eyeblink؟',askP:'إذا كنت عميلاً حالياً لدى الاستوديو، اطلب الوصول إلى مساحة العمل لترسل مهامك وتتابع التنفيذ والتسليمات من مكان واحد.',ask:'أنا عميل حالي وأريد الوصول إلى مساحة العمل',company:'اسم الجهة أو المشروع (اختياري)',note:'ما طبيعة الاتفاق بينك وبين الاستوديو؟ (اختياري)',send:'أرسل الطلب',cancel:'إلغاء',pending:'وصل طلبك إلى الاستوديو، وسنرد عليك بعد المراجعة. لن تُفعَّل مساحة العمل قبل موافقتنا.',rejected:'لم تُفعَّل مساحة العمل بناءً على طلبك السابق.',again:'أرسل طلباً جديداً',invH:'دعوة إلى مساحة عمل Eyeblink',invP:'سجّل دخولك أو أنشئ حسابك بالبريد نفسه الذي وصلته الدعوة:',invOk:'تمّ! أصبح حسابك حساب عميل متعاقد.',invUsed:'هذه الدعوة استُخدمت من قبل.',invBad:'رابط الدعوة غير صالح أو انتهت صلاحيته. اطلب من الاستوديو دعوة جديدة.',invOther:'هذه الدعوة مرسلة إلى بريد آخر: ',invSwitch:'سجّل الخروج وادخل بذلك البريد'},
         hi:'أهلاً، ',logout:'خروج',newOrder:'طلب جديد',orders:'طلباتك',none:'لا توجد طلبات بعد.',noneP:'اختر خدمة من صفحة الأسعار وأرسل طلبك، وستتابعه من هنا.',seePricing:'تصفّح الخدمات',
         st:{'new':'استلمنا الطلب','confirmed':'تأكيد التفاصيل','awaiting-payment':'بانتظار الدفع','paid':'تم الدفع','in-progress':'قيد التنفيذ','review':'بانتظار مراجعتك','delivered':'تم التسليم','cancelled':'ملغى'},
         steps:['استلام الطلب','تأكيد التفاصيل','الدفع','التنفيذ','مراجعتك','التسليم'],
@@ -23,7 +23,7 @@
         forgot:'نسيت كلمة السر؟',forgotH:'استعادة كلمة السر',forgotP:'اكتب بريدك، وسنرسل لك رمزاً من 6 أرقام.',sendCode:'أرسل الرمز',codeSent:'إن كان البريد مسجلاً لدينا، وصلك رمز الآن. تحقق من البريد غير المرغوب أيضاً.',
         code:'الرمز',newPw:'كلمة السر الجديدة',saveIn:'حفظ والدخول',backIn:'رجوع لتسجيل الدخول',mailOff:'الاستعادة التلقائية غير مفعّلة بعد. راسلنا على إنستغرام ونعيد تعيينها لك فوراً.',
         inv:{t:'فاتورة',no:'رقم',date:'التاريخ',to:'إلى',item:'البند',amount:'المبلغ',total:'الإجمالي',paid:'مدفوعة',unpaid:'غير مدفوعة بعد',method:'طريقة الدفع',thanks:'شكراً لثقتك بنا.'},
-        ext:'تواصل خارجي',extP:'تفضّل محادثة أسرع؟ راسلنا وأرفق رقم طلبك.',ig:'إنستغرام',wa:'واتساب',mail:'إيميل',back:'كل الطلبات',paid:'مدفوع',unread:'رسائل جديدة'},
+        ext:'تواصل خارجي',extP:'تفضّل محادثة أسرع؟ راسلنا وأرفق رقم طلبك.',ig:'إنستغرام',wa:'واتساب',mail:'البريد الإلكتروني',back:'كل الطلبات',paid:'مدفوع',unread:'رسائل جديدة'},
     en:{inH:'Sign in to follow your request',inP:'One account to track your order and talk to us directly until delivery.',
         login:'Sign in',register:'New account',name:'Your name or company',email:'Email',pw:'Password',pwHint:'At least 8 characters',
         doLogin:'Sign in',doRegister:'Create account',or:'or',wait:'One moment…',close:'Close',
@@ -255,11 +255,11 @@
   function paySteps(o){
     if(o.status==='cancelled') return '';
     var dep=o.deposit&&o.deposit.paid, split=o.plan==='split'||!!o.deposit, L=[];
-    L.push([!!o.price, AR?'السعر النهائي'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — منأكّده معك بالمحادثة'):'Final price'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — we confirm it with you in the chat')]);
-    if(split){ L.push([dep, AR?'العربون'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — قبل ما نبلّش':'Deposit'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — before we start']);
+    L.push([!!o.price, AR?'السعر النهائي'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — نؤكّده معك في المحادثة'):'Final price'+(o.price?': <b dir="ltr">'+esc(o.price)+'</b>':' — we confirm it with you in the chat')]);
+    if(split){ L.push([dep, AR?'العربون'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — قبل بدء العمل':'Deposit'+(dep?' <b dir="ltr">'+esc(String(o.deposit.amount))+'</b>':'')+' — before we start']);
       L.push([!!o.paid, AR?'الباقي — قبل التسليم النهائي':'The rest — before final delivery']); }
     else L.push([!!o.paid, AR?'الدفع — بعد تأكيد التفاصيل':'Payment — once the details are agreed']);
-    L.push([!!(o.invoice||(o.deposit&&o.deposit.invoice)), AR?'الفاتورة توصلك على إيميلك بعد كل دفعة':'An invoice reaches your email after each payment']);
+    L.push([!!(o.invoice||(o.deposit&&o.deposit.invoice)), AR?'تصلك الفاتورة على بريدك الإلكتروني بعد كل دفعة':'An invoice reaches your email after each payment']);
     var cur=L.findIndex(function(x){return !x[0]});
     return '<div class="psteps"><h3>'+(AR?'مراحل الدفع':'Payment steps')+'</h3><ol>'+L.map(function(x,i){ return '<li class="'+(x[0]?'ok':i===cur?'now':'')+'"><i>'+(x[0]?'✓':i+1)+'</i><span>'+x[1]+'</span></li>'; }).join('')+'</ol></div>';
   }

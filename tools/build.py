@@ -14,6 +14,12 @@ SERVICES = [s["id"] for s in CONTENT["services"]]
 import hashlib
 def _v(path):
     return hashlib.md5(open(os.path.join(ROOT, path),"rb").read()).hexdigest()[:8]
+# retired default texts → current wording: injected into render.js / admin.js so content saved before a wording change is updated too
+_MIG = json.dumps(json.load(open(os.path.join(ROOT, "tools/fusha_mig.json"), encoding="utf-8")), ensure_ascii=False)
+for _f in ["assets/js/render.js", "admin/admin.js"]:
+    _p = os.path.join(ROOT, _f); _t = open(_p, encoding="utf-8").read()
+    _n = re.sub(r"/\*MIG\*/.*?/\*/MIG\*/", lambda m: "/*MIG*/" + _MIG + "/*/MIG*/", _t, flags=re.S)
+    if _n != _t: open(_p, "w", encoding="utf-8").write(_n)
 ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/brands.js","assets/img/favicon.svg"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "privacy"]
 
@@ -196,7 +202,7 @@ def order_modal(U, lang):
         <label><span data-ot="deadline">{U["f_deadline"]}</span><input id="f-deadline" name="deadline" type="date"></label></div>
         <div class="row2"><label><span data-ot="contact">{U["f_contact"]}</span><input id="f-contact" name="contact" dir="auto"></label>
         <label><span data-ot="pay">{T("طريقة الدفع المفضّلة", "Preferred payment")}</span><select id="f-pay" name="pay"></select></label></div>
-        <div class="onext"><p class="olab" data-ot="next">{T("شو بيصير بعد الإرسال؟", "What happens next?")}</p><ol id="oNext"></ol></div>
+        <div class="onext"><p class="olab" data-ot="next">{T("ماذا يحدث بعد الإرسال؟", "What happens next?")}</p><ol id="oNext"></ol></div>
         <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0">
         <button class="btn btn-primary osend" type="submit"><span data-ot="send">{U["send"]}</span> <span class="arr">{U["arrow"]}</span></button>
         <p class="who" id="who"></p>
@@ -253,7 +259,7 @@ def p_contact(U, lang):
 PRIVACY = {
  "ar": [("ما نجمعه", ["عند إنشاء حساب أو إرسال طلب نحفظ: اسمك، بريدك الإلكتروني، تفاصيل الطلب التي تكتبها، والرسائل بينك وبيننا داخل الموقع.", "إن سجّلت عبر Google نستلم من Google اسمك وبريدك الإلكتروني فقط، ولا نصل إلى أي بيانات أخرى في حسابك.", "كلمة السر تُحفظ مشفّرة، ولا يمكن لأحد قراءتها، بما في ذلك نحن."]),
         ("لماذا نجمعه", ["لتنفيذ طلبك، والتواصل معك بخصوصه، وإظهار حالته في حسابك. لا نستخدم بياناتك لأي غرض آخر."]),
-        ("مع من نشاركها", ["لا نبيع بياناتك ولا نستخدمها للإعلانات. لتشغيل الموقع نعتمد على مزوّدين يعالجون جزءاً منها نيابةً عنا فقط:", "Cloudflare: استضافة الموقع وتخزين حسابك وطلباتك ورسائلك وملفاتك.", "Resend: إرسال الإيميلات إليك (تأكيد الطلب، الرسائل، الفواتير، الدعوات)، فيصلها بريدك ومحتوى الرسالة.", "Google: فقط إن اخترت الدخول عبر Google، فنستلم اسمك وبريدك.", "Telegram: تصل إلى الاستوديو تنبيهات داخلية بالطلبات الجديدة والرسائل، وفيها اسمك وبريدك وتفاصيل الطلب.", "WhatsApp (Meta): فقط إن فعّلت إشعارات واتساب بنفسك ووافقت عليها من «إعدادات الإشعارات»، فيصل Meta رقمك ونص الإشعار. فيك توقفها بأي وقت من نفس الصفحة أو بالرد على أي رسالة بكلمة «إيقاف»."]),
+        ("مع من نشاركها", ["لا نبيع بياناتك ولا نستخدمها للإعلانات. لتشغيل الموقع نعتمد على مزوّدين يعالجون جزءاً منها نيابةً عنا فقط:", "Cloudflare: استضافة الموقع وتخزين حسابك وطلباتك ورسائلك وملفاتك.", "Resend: إرسال رسائل البريد الإلكتروني إليك (تأكيد الطلب، والرسائل، والفواتير، والدعوات)، فيصل إليها بريدك ومحتوى الرسالة.", "Google: فقط إن اخترت الدخول عبر Google، فنستلم اسمك وبريدك.", "Telegram: تصل إلى الاستوديو تنبيهات داخلية بالطلبات الجديدة والرسائل، وفيها اسمك وبريدك وتفاصيل الطلب.", "WhatsApp (Meta): فقط إن فعّلت إشعارات واتساب بنفسك ووافقت عليها من «إعدادات الإشعارات»، فيصل إلى Meta رقمك ونص الإشعار. ويمكنك إيقافها في أي وقت من الصفحة نفسها أو بالرد على أي رسالة بكلمة «إيقاف»."]),
         ("ملفات تعريف الارتباط والإحصائيات", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات.", "نعدّ الزيارات بشكل مجهول لنعرف أي الصفحات مفيدة ومن أين يصل الزوار (الصفحة، الدولة، نوع الجهاز، الموقع الذي أحالك). لا نحفظ عنوان IP ولا أي بيانات تعرّف بك، ولا نشاركها مع أي جهة."]),
         ("حقوقك", ["يمكنك طلب نسخة من بياناتك أو حذف حسابك وكل ما يتعلق به في أي وقت عبر البريد: hello@eyeblinkstudio.com"]),
         ("التحديثات", ["قد نحدّث هذه السياسة عند الحاجة، وتظهر أحدث نسخة دائماً في هذه الصفحة. آخر تحديث: نوفمبر 2026."])],

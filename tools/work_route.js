@@ -161,11 +161,11 @@ async function waSend(env, cfg, to, lang, p){
   } catch { return { ok: false, error: "network", retry: true }; }
 }
 const WA_TXT = {
-  ar: { accept: d => `قبلنا مهمة «${d.title}» (${d.ref})، وموعد التسليم المؤكد ${d.dateText}.`, info: d => `محتاجين منك معلومات لنبلّش بمهمة «${d.title}» (${d.ref}).`,
-        reject: d => `بخصوص مهمة «${d.title}» (${d.ref}): ما منقدر ننفّذها متل ما انطلبت، والسبب بمساحة العمل.`, progress: d => `بلّشنا التنفيذ على «${d.title}» (${d.ref}).`,
-        status: d => `حالة «${d.title}» (${d.ref}) صارت: ${d.statusText}.`, date: d => `موعد تسليم «${d.title}» (${d.ref}) صار ${d.dateText}.`, dateNo: d => `ضلّ موعد تسليم «${d.title}» (${d.ref}) على ${d.dateText}.`,
-        completed: d => `خلصت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
-        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنالك مشروع «${d.name}» بمساحة العمل.`, file: d => `أضفنا ملف «${d.file}» لمشروع «${d.name}».` },
+  ar: { accept: d => `قُبلت مهمة «${d.title}» (${d.ref})، وموعد التسليم المؤكد ${d.dateText}.`, info: d => `نحتاج إلى بعض المعلومات منك لبدء مهمة «${d.title}» (${d.ref}).`,
+        reject: d => `بخصوص مهمة «${d.title}» (${d.ref}): تعذّر تنفيذها كما طُلبت، والسبب موضّح في مساحة العمل.`, progress: d => `بدأنا تنفيذ «${d.title}» (${d.ref}).`,
+        status: d => `أصبحت حالة «${d.title}» (${d.ref}): ${d.statusText}.`, date: d => `أصبح موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`, dateNo: d => `بقي موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`,
+        completed: d => `اكتملت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
+        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
         status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
@@ -184,26 +184,26 @@ async function tellClient(env, t, kind, extra){
   if (!P || P.email_cats[cat]) jobs.push((async () => {
   const T = {
     accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["قبلنا مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    info:    en ? ["We need a little more · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need:`] : ["محتاجين منك شي صغير · " + t.ref, `لنبلّش بمهمة <b style="color:#fff">${h(t.title)}</b> محتاجين:`],
-    reject:  en ? ["About your task · " + t.ref, `We can't take <b style="color:#fff">${h(t.title)}</b> as requested.`] : ["بخصوص مهمتك · " + t.ref, `ما منقدر ننفّذ مهمة <b style="color:#fff">${h(t.title)}</b> متل ما انطلبت.`],
-    progress:en ? ["Work has started · " + t.ref, `We started working on <b style="color:#fff">${h(t.title)}</b>.`] : ["بلّشنا الشغل · " + t.ref, `بلّشنا التنفيذ على <b style="color:#fff">${h(t.title)}</b>.`],
+                : ["قُبلت مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    info:    en ? ["We need a little more · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need:`] : ["نحتاج إلى أمر بسيط منك · " + t.ref, `لنبدأ مهمة <b style="color:#fff">${h(t.title)}</b> نحتاج إلى ما يلي:`],
+    reject:  en ? ["About your task · " + t.ref, `We can't take <b style="color:#fff">${h(t.title)}</b> as requested.`] : ["بخصوص مهمتك · " + t.ref, `تعذّر علينا تنفيذ مهمة <b style="color:#fff">${h(t.title)}</b> كما طُلبت.`],
+    progress:en ? ["Work has started · " + t.ref, `We started working on <b style="color:#fff">${h(t.title)}</b>.`] : ["بدأ العمل · " + t.ref, `بدأنا تنفيذ <b style="color:#fff">${h(t.title)}</b>.`],
     date:    en ? ["New delivery date · " + t.ref, `The confirmed delivery date for <b style="color:#fff">${h(t.title)}</b> is now <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["موعد تسليم جديد · " + t.ref, `موعد التسليم المؤكد لمهمة <b style="color:#fff">${h(t.title)}</b> صار <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+                : ["موعد تسليم جديد · " + t.ref, `أصبح موعد التسليم المؤكد لمهمة <b style="color:#fff">${h(t.title)}</b> <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
     dateNo:  en ? ["About the date change · " + t.ref, `We kept the delivery date of <b style="color:#fff">${h(t.title)}</b> on <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["بخصوص تغيير الموعد · " + t.ref, `ضلّ موعد تسليم <b style="color:#fff">${h(t.title)}</b> على <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    completed: en ? ["Task completed · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is complete. Thank you!`] : ["خلصت المهمة · " + t.ref, `خلصت مهمة <b style="color:#fff">${h(t.title)}</b>. شكراً لك!`],
-    status:  en ? ["Task update · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is now: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`] : ["تحديث على مهمتك · " + t.ref, `حالة مهمة <b style="color:#fff">${h(t.title)}</b> صارت: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`],
+                : ["بخصوص تغيير الموعد · " + t.ref, `بقي موعد تسليم <b style="color:#fff">${h(t.title)}</b> كما هو: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    completed: en ? ["Task completed · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is complete. Thank you!`] : ["اكتملت المهمة · " + t.ref, `اكتملت مهمة <b style="color:#fff">${h(t.title)}</b>. شكراً لك!`],
+    status:  en ? ["Task update · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is now: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`] : ["تحديث على مهمتك · " + t.ref, `أصبحت حالة مهمة <b style="color:#fff">${h(t.title)}</b>: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`],
     deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
-                 : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. شوفها وابعتلنا موافقتك أو ملاحظاتك.`],
+                 : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. اطّلع عليها وأرسل إلينا موافقتك أو ملاحظاتك.`],
     comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>:`],
     file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
-                 : ["ملف جديد بمشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> لملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
+                 : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
-                : ["مشروع جديد بمساحة العمل", `فتحلك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>. فيك تبعت مهامك عليه من مساحة العمل.`],
+                : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح بمساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
+    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
@@ -358,7 +358,7 @@ export async function onRequestPost(ctx) {
       await D.prepare("UPDATE tasks SET status=?, updated_at=?" + (to === "completed" ? ", completed_at=?" : "") + " WHERE id=?").bind(...[to, at].concat(to === "completed" ? [at] : []), t.id).run();
       await act(D, { ...tw, kind: "approved", data: { label: dl.label, final: dl.is_final, note: note || undefined } });
       await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
-      toStudio(ctx, env, (dl.is_final ? "العميل وافق على التسليم النهائي " : "العميل وافق على النسخة " + dl.label + " ") + t.ref, u.name + " · " + t.title + (note ? "\n" + note : "") + (dl.is_final ? "\n\nالمهمة صارت مكتملة." : "\n\nجهّز التسليم النهائي.") + "\n\n" + adminLink(t.ref));
+      toStudio(ctx, env, (dl.is_final ? "العميل وافق على التسليم النهائي " : "العميل وافق على النسخة " + dl.label + " ") + t.ref, u.name + " · " + t.title + (note ? "\n" + note : "") + (dl.is_final ? "\n\nأصبحت المهمة مكتملة." : "\n\nيمكنك تجهيز التسليم النهائي.") + "\n\n" + adminLink(t.ref));
       return json({ ok: true, status: to });
     }
     if (d.decision === "changes") {
@@ -389,7 +389,7 @@ export async function onRequestPost(ctx) {
     const cr = { date, reason: clip(d.reason, 1500), at, status: "pending" };
     await D.prepare("UPDATE tasks SET change_request=?, updated_at=? WHERE id=?").bind(JSON.stringify(cr), at, t.id).run();
     await act(D, { ...tw, kind: "date_change_requested", data: { date, reason: cr.reason, current: t.confirmed_date } });
-    toStudio(ctx, env, "طلب تغيير موعد " + t.ref, u.name + " بدّه الموعد يصير " + date + " بدل " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref));
+    toStudio(ctx, env, "طلب تغيير موعد " + t.ref, u.name + " يطلب تغيير الموعد إلى " + date + " بدلاً من " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref));
     return json({ ok: true });
   }
   if (d.action === "cancel") {
@@ -485,7 +485,7 @@ async function adminPost(ctx, d){
   if (d.action === "waTest") {
     const ph = normPhone(d.phone); if (!ph) return json({ ok: false, error: "phone" }, 400);
     const cfg = await waConfig(env), lang = d.lang === "en" ? "en" : "ar";
-    const r = await waSend(env, cfg, ph, lang, { name: "Eyeblink", text: lang === "en" ? "This is a test message from your Eyeblink Studio setup." : "هي رسالة تجريبية من إعدادات Eyeblink Studio.", path: lang === "en" ? "en/w" : "w" });
+    const r = await waSend(env, cfg, ph, lang, { name: "Eyeblink", text: lang === "en" ? "This is a test message from your Eyeblink Studio setup." : "هذه رسالة تجريبية من إعدادات Eyeblink Studio.", path: lang === "en" ? "en/w" : "w" });
     await logSend(D, { channel: "whatsapp", recipient: "studio", target: ph, kind: "test", status: r.ok ? "sent" : r.skip ? "skipped" : "failed", error: r.error || r.skip, provider_id: r.id });
     return json({ ok: !!r.ok, error: r.error || r.skip || null, id: r.id || null });
   }

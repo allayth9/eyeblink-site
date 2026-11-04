@@ -6,11 +6,11 @@
   var BASE=document.body.getAttribute('data-base')||'';
   var SVC_ID=document.body.getAttribute('data-service')||'';
   var UI={
-    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالإيميل أو Google، لتتابع طلبك وتتحدث معنا من حسابك.',goAcct:'افتح حسابي',ask:'عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
-        svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب البريف',
+    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.',goAcct:'افتح حسابي',ask:'عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
+        svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب المتطلبات',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
-        pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',challenge:'التحدي',idea:'الفكرة',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'شو بيصير بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
+        pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',challenge:'التحدي',idea:'الفكرة',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'ماذا يحدث بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
     en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
@@ -187,6 +187,9 @@
   }
   /* ---------------- layout + look (admin → التصميم والترتيب) ---------------- */
   var ACCENTS={cyan:['#3FE0E8','#8B5CFF','#E07BE0'],violet:['#A78BFA','#5B7CFF','#E07BE0'],gold:['#F5C66B','#E0833F','#E07BE0'],rose:['#FF7AB6','#8B5CFF','#3FE0E8'],mint:['#5EF0B0','#2E9BFF','#8B5CFF']};
+  // wording that changed after it was saved from the admin: swap exact old defaults for the current ones
+  var MIG=/*MIG*/{"نراجع طلبك ونرد عليك بحسابك خلال 24 ساعة": "نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة", "نتفق على التفاصيل والموعد، وبعدها توصلك تفاصيل الدفع": "نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع", "نبدأ التنفيذ، وتتابع كل مرحلة وتحكي معنا لحد التسليم": "نبدأ التنفيذ، وتتابع كل مرحلة وتتواصل معنا حتى التسليم", "شو بيصير بعد الإرسال؟": "ماذا يحدث بعد الإرسال؟", "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالإيميل أو Google، لتتابع طلبك وتتحدث معنا من حسابك.": "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.", "حسب البريف": "حسب المتطلبات"}/*/MIG*/;
+  function reword(x){ if(typeof x==='string') return MIG.hasOwnProperty(x)?MIG[x]:x; if(Array.isArray(x)) return x.map(reword); if(x&&typeof x==='object'){ for(var k in x) x[k]=reword(x[k]); } return x; }
   function migrate(Ly){ if(!Ly||(Ly.v||0)>=2) return; (Ly.home||[]).forEach(function(s){ if(/^(services|work|packages|reviews)$/.test(s.id)) s.show=false; }); Ly.v=2; }
   function applyLayout(pg){
     var Ly=C.layout||{}; migrate(Ly);
@@ -572,7 +575,7 @@
     bar.querySelector('a').addEventListener('click',function(e){ e.preventDefault(); try{ localStorage.removeItem('eb-preview'); }catch(_){} location.reload(); }); }
   else if(/^https?:/.test(location.protocol)){
     fetch(BASE+'api/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json():null; }).then(function(j){
-      if(j && j.services){ var sd={}; try{ sd=JSON.parse(document.getElementById('eb-seed').textContent); }catch(_){}
+      if(j && j.services){ var sd={}; try{ sd=JSON.parse(document.getElementById('eb-seed').textContent); }catch(_){} j=reword(j);
         for(var k in sd) if(!(k in j)) j[k]=sd[k];                 // sections added after the last publish keep their defaults
         if(JSON.stringify(j)!==JSON.stringify(C)){ C=j; renderAll(); } }
       window.EBLive=true; document.dispatchEvent(new Event('eb:content'));

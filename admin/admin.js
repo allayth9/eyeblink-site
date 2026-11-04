@@ -50,11 +50,11 @@
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return ((x.name&&x.name.ar)||'إضافة')+' · '+(x.type==='percent'?x.price+'%':x.price)},
         add:function(){return {id:'add-'+Date.now().toString(36),name:bi('إضافة','Add-on'),price:10,type:'fixed'}},
         fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}},
-      {h:'نافذة الطلب', hint:'تنفتح فوق الصفحة لما العميل يضغط «اطلب». حدّد شو يسأل وشو يشوف.', fields:[
+      {h:'نافذة الطلب', hint:'تنفتح فوق الصفحة عندما يضغط العميل «اطلب». حدّد ما تسأله النافذة وما يراه العميل فيها.', fields:[
         {row:[{p:'order.askQty', t:'check', l:'عدّاد عدد الفيديوهات (للخدمات)'},{p:'order.askPlatform', t:'check', l:'سؤال المنصة'},{p:'order.askPay', t:'check', l:'طريقة الدفع المفضّلة'}]},
         {row:[{p:'order.ask_link', t:'check', l:'خانة رابط المواد'},{p:'order.ask_deadline', t:'check', l:'خانة الموعد'},{p:'order.ask_contact', t:'check', l:'خانة التواصل الخارجي'}]},
         {p:'order.platforms', t:'list', l:'المنصات المعروضة', hint:'كل منصة بسطر (Instagram، TikTok…)', ltr:1},
-        {p:'order.next', t:'bilist', l:'«شو بيصير بعد الإرسال؟»', hint:'كل خطوة بسطر'}]},
+        {p:'order.next', t:'bilist', l:'«ماذا يحدث بعد الإرسال؟»', hint:'كل خطوة بسطر'}]},
       {h:'نصوص نافذة الطلب', hint:'اترك أي خانة فارغة ليبقى النص الافتراضي.', fields:[
         {p:'order.text.title', t:'bi', l:'عنوان النافذة'},{p:'order.text.details', t:'bi', l:'عنوان خانة التفاصيل'},{p:'order.text.detailsPh', t:'bi', l:'المثال داخل خانة التفاصيل'},
         {p:'order.text.platforms', t:'bi', l:'سؤال المنصة'},{p:'order.text.qty', t:'bi', l:'عدّاد الفيديوهات'},{p:'order.text.addons', t:'bi', l:'عنوان الإضافات'},
@@ -89,8 +89,8 @@
       {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.', rep:{p:'payments.methods',
         name:function(x){return (x.name||'طريقة')+(x.enabled===false?' (مخفية)':'')}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
         fields:[{row:[{p:'name', t:'text', l:'الاسم', ltr:1},{p:'enabled', t:'check', l:'ظاهرة على الموقع'}]},{p:'logo', t:'media', l:'الشعار (PNG أو SVG بخلفية شفافة)', accept:'image/*'},{p:'id', t:'text', l:'المعرّف', ltr:1}]}},
-      {h:'الدفع التلقائي والتذكير', hint:'«عربون» = يدفع العميل نسبة قبل البدء والباقي قبل التسليم، وكل دفعة إلها فاتورة. التذكير يوصل للعميل مرة وحدة إذا ما رفع الإيصال.', fields:[
-        {row:[{p:'payments.defaultPlan', t:'select', l:'خطة الدفع الافتراضية للطلبات', opts:function(){return [['full','كامل المبلغ دفعة وحدة'],['split','عربون + الباقي قبل التسليم']]}},{p:'payments.depositPct', t:'num', l:'نسبة العربون %'}]},
+      {h:'الدفع التلقائي والتذكير', hint:'«عربون» = يدفع العميل نسبة قبل البدء والباقي قبل التسليم، ولكل دفعة فاتورتها. يصل التذكير إلى العميل مرة واحدة إن لم يرفع الإيصال.', fields:[
+        {row:[{p:'payments.defaultPlan', t:'select', l:'خطة الدفع الافتراضية للطلبات', opts:function(){return [['full','كامل المبلغ دفعة واحدة'],['split','عربون + الباقي قبل التسليم']]}},{p:'payments.depositPct', t:'num', l:'نسبة العربون %'}]},
         {row:[{p:'payments.reminders', t:'check', l:'تذكير تلقائي بالدفع'},{p:'payments.reminderHours', t:'num', l:'بعد كم ساعة من إرسال التفاصيل'}]}]},
       {h:'تفاصيل الدفع الخاصة', hint:'لا تظهر على الموقع أبداً. تُستخدم فقط في رسائل الرد على الطلبات (رقم المحفظة، البريد، بيانات الاستلام…).', priv:'payments'} ]},
     {id:'layout', title:'التصميم والترتيب', layout:1},
@@ -273,18 +273,18 @@
     var step=function(n,ok,title,body){ return '<li class="pstep'+(ok?' ok':'')+'"><i>'+(ok?'✓':n)+'</i><div><b>'+title+'</b>'+body+'</div></li>'; };
     var methodSel='<select data-of="method" data-pmethod="'+k+'"><option value="">اختر…</option>'+methods.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===o.method?' selected':'')+'>'+esc(x.name)+'</option>'}).join('')+'</select>';
     var acct= !o.method? '' : has? '<div class="pnote ok">✓ حساب الاستلام جاهز: <span dir="auto">'+esc(String(pm[o.method]).split('\n')[0].slice(0,60))+'</span></div>'
-      : '<div class="pnote warn">لسا ما كتبت على أي حساب بيدفع العميل بـ'+esc(m?m.name:o.method)+'. اكتبه هون مرة وحدة وبينحفظ لكل الطلبات:<textarea data-pacct="'+esc(o.method)+'" dir="auto" placeholder="مثال: إيميل PayPal أو Binance ID أو اسم المستلم والمدينة"></textarea></div>';
+      : '<div class="pnote warn">لم تكتب بعد الحساب الذي يدفع إليه العميل عبر '+esc(m?m.name:o.method)+'. اكتبه هنا مرة واحدة ويُحفظ لجميع الطلبات:<textarea data-pacct="'+esc(o.method)+'" dir="auto" placeholder="مثال: إيميل PayPal أو Binance ID أو اسم المستلم والمدينة"></textarea></div>';
     var ask='', got='';
     if(S.done) got='<div class="pnote ok">✓ مدفوع بالكامل'+(o.invoice?' · فاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="final">أعد إرسالها</button>':'')+'</div>';
     else {
       ask='<button class="btn sm primary" type="button" data-pask="'+k+'"'+(o.email?'':' disabled')+'>'+(S.asked?'أعد إرسال طلب الدفع':'اطلب الدفع من العميل')+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span>'+(S.stage!=='full'?' ('+STG[S.stage]+')':'')+'</button>'+
         (S.asked?'<div class="pnote">'+(S.receipt?'📎 العميل رفع إيصال الدفع — تأكّد من وصول المبلغ واكبس «وصل الدفع».':'⏳ وصل للعميل طلب دفع '+esc(o.payInfo.amount)+' · '+esc(new Date(o.payInfo.at).toLocaleString('ar',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+(o.payInfo.reminded?' · ⏰ وصله تذكير':'')+'</div>'):'');
-      got='<button class="btn sm'+(S.asked?' primary':'')+'" type="button" data-pgot="'+k+'">✓ وصل '+STG[S.stage]+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span></button><div class="pnote">بينعمل فاتورة برقم تسلسلي وبتنبعت للعميل بالإيميل تلقائياً.</div>';
+      got='<button class="btn sm'+(S.asked?' primary':'')+'" type="button" data-pgot="'+k+'">✓ وصل '+STG[S.stage]+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span></button><div class="pnote">تُنشأ فاتورة برقم تسلسلي وتُرسل إلى العميل بالبريد الإلكتروني تلقائياً.</div>';
     }
     var depLine= o.deposit&&o.deposit.paid? '<div class="pnote ok">✓ العربون مدفوع <span dir="ltr">'+esc(pfmt(pnum(o.deposit.amount),c))+'</span>'+(o.deposit.invoice?' · فاتورة <b dir="ltr">'+esc(o.deposit.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="deposit">أعد إرسالها</button>':'')+'</div>':'';
     return '<div class="pflow"><div class="ph"><b>مسار الدفع</b><span class="small muted">'+(S.done?'مكتمل':S.stage==='final'?'باقي الدفعة النهائية':'خطوة بخطوة')+'</span></div><ol>'+
       step(1,S.total>0,'السعر النهائي','<input data-of="price" dir="ltr" value="'+esc(o.price)+'" placeholder="'+esc(o.total)+'">')+
-      step(2,true,'خطة الدفع','<div class="prow"><select data-of="plan" data-pplan="'+k+'"><option value="full"'+(S.plan==='full'?' selected':'')+'>المبلغ كامل دفعة وحدة</option><option value="split"'+(S.plan==='split'?' selected':'')+'>عربون والباقي قبل التسليم</option></select>'+
+      step(2,true,'خطة الدفع','<div class="prow"><select data-of="plan" data-pplan="'+k+'"><option value="full"'+(S.plan==='full'?' selected':'')+'>المبلغ كاملاً دفعة واحدة</option><option value="split"'+(S.plan==='split'?' selected':'')+'>عربون والباقي قبل التسليم</option></select>'+
         (S.plan==='split'?'<label class="pct">العربون <input data-of="depositPct" type="number" min="10" max="90" value="'+esc(S.pct)+'">%</label>':'')+'</div>')+
       step(3,has,'طريقة الدفع وحساب الاستلام',methodSel+acct)+
       step(4,S.done,'الدفع',depLine+ask+got)+
@@ -308,10 +308,10 @@
       if(ta){ var v=ta.value.trim(); if(!v){ toast('اكتب حساب الاستلام بالخطوة 3',true); ta.focus(); return; }
         P=P||{}; P.payments=P.payments||{}; P.payments[ta.dataset.pacct]=v;
         save= LIVE? fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); }) : Promise.resolve(savePrivDraft()); }
-      save.then(function(){ return orderReq(o,{sendPayment:true},b,'وصل طلب الدفع لحساب العميل وإيميله'); }).catch(function(){ toast('ما انحفظ حساب الاستلام، جرّب مرة ثانية',true); });
+      save.then(function(){ return orderReq(o,{sendPayment:true},b,'وصل طلب الدفع لحساب العميل وإيميله'); }).catch(function(){ toast('لم يُحفظ حساب الاستلام، حاول مرة أخرى',true); });
     } else {
       var S=payState(Object.assign({},o,d)), extra= S.stage==='deposit'? {depositPaid:true} : {paid:true};
-      orderReq(o,extra,b,'تمام! انعملت الفاتورة وانبعتت للعميل');
+      orderReq(o,extra,b,'تمّ! أُنشئت الفاتورة وأُرسلت إلى العميل');
     }
   });
   document.addEventListener('change',function(e){ var el=e.target; if(!el.matches('[data-pmethod],[data-pplan]')) return;
@@ -335,7 +335,7 @@
         '<div class="grid2"><div>'+
           '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
-          (o.visit?'<div class="small muted" style="margin-top:8px">من وين إجا</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
+          (o.visit?'<div class="small muted" style="margin-top:8px">مصدر الزيارة</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
           (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
@@ -437,9 +437,9 @@
       '<section class="sec"><h3>اللون المميّز</h3><p class="hint">يغيّر لون الروابط والإضاءات والأزرار الثانوية في كل الموقع.</p><div class="accents">'+
         ACC.map(function(a){ return '<label class="acc'+((L.accent||'cyan')===a[0]?' on':'')+'"><input type="radio" name="acc" value="'+a[0]+'"'+((L.accent||'cyan')===a[0]?' checked':'')+' data-lacc hidden><i style="background:linear-gradient(135deg,'+a[2]+','+a[3]+')"></i>'+a[1]+'</label>'; }).join('')+'</div></section>'+
       '<section class="sec"><h3>عناصر بصرية</h3>'+
-        '<label class="check"><input type="checkbox" data-ltog="intro"'+(L.intro!==false?' checked':'')+'> انترو فتح العين عند أول زيارة</label>'+
+        '<label class="check"><input type="checkbox" data-ltog="intro"'+(L.intro!==false?' checked':'')+'> مقدّمة فتح العين عند أول زيارة</label>'+
         '<label class="check"><input type="checkbox" data-ltog="particles"'+(L.particles!==false?' checked':'')+'> خلفية الجزيئات المتحركة</label>'+
-        '<label class="check"><input type="checkbox" data-ltog="countUp"'+(L.countUp!==false?' checked':'')+'> عدّاد الأرقام (يعدّ من الصفر لما تظهر الخانات)</label>'+
+        '<label class="check"><input type="checkbox" data-ltog="countUp"'+(L.countUp!==false?' checked':'')+'> عدّاد الأرقام (يعدّ من الصفر عند ظهور الخانات)</label>'+
         '<div class="field"><label>مؤشر الماوس</label><select data-lsel="cursor">'+[['glass','السهم الزجاجي (Eyeblink)'],['soft','المؤشر الناعم السابق'],['system','مؤشر النظام الافتراضي']].map(function(o){return '<option value="'+o[0]+'"'+((L.cursor||'glass')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
         '<div class="field"><label>خانة التواصل أسفل الصفحات</label><select data-lsel="cta">'+[['aurora','بلون خاص (أورورا)'],['glass','زجاجية مثل باقي الخانات']].map(function(o){return '<option value="'+o[0]+'"'+((L.cta||'aurora')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
         '<p class="hint" style="margin-top:8px">التغييرات تظهر بعد «نشر التعديلات». استخدم «معاينة» لتراها قبل النشر.</p></section>';
@@ -457,7 +457,7 @@
   var WST={new:'طلب جديد',review:'قيد المراجعة',info:'بانتظار معلومات العميل',accepted:'تم القبول',progress:'قيد التنفيذ',feedback:'بانتظار الملاحظات',revision:'تعديلات مطلوبة',final:'التسليم النهائي',completed:'مكتملة',rejected:'مرفوضة',cancelled:'ملغاة'};
   var WOPENST=['new','review','info','accepted','progress','feedback','revision','final'];
   var WPT={once:'مشروع لمرة واحدة',monthly:'تعاون شهري',campaign:'حملة إعلانية',content:'إدارة محتوى',editing:'مونتاج فيديوهات',motion:'موشن غرافيك',commercial:'إنتاج تجاري',custom:'مشروع مخصص'};
-  var WPS={active:'نشط',paused:'متوقف مؤقتاً',completed:'منتهي',archived:'مؤرشف'};
+  var WPS={active:'نشط',paused:'متوقف مؤقتاً',completed:'منتهٍ',archived:'مؤرشف'};
   var WPR={normal:'عادية',high:'عالية',urgent:'عاجلة'};
   var WDS={sent:'بانتظار رد العميل',approved:'وافق العميل',changes:'طلب تعديلات',superseded:'نسخة أقدم'};
   var WFC={brand:'الهوية البصرية',raw:'مواد خام',reference:'مراجع',document:'مستندات',other:'أخرى'};
@@ -466,25 +466,25 @@
     fetch(API+'/work?admin=1&space='+encodeURIComponent(id),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ WSPACE=j.ok?{id:id,d:j}:{id:id,err:1}; renderWork(); var el=document.getElementById('wspace'); if(el) el.scrollIntoView({block:'start',behavior:'smooth'}); }).catch(function(){ WSPACE={id:id,err:1}; renderWork(); }); }
   function wcomments(list,composer){ return '<div class="wcl">'+((list||[]).length?list.map(function(c){ var st=c.author==='studio';
       return '<div class="wcm'+(st?' st':'')+'"><div class="small"><b>'+esc(st?'أنت (الاستوديو)':c.author_name||c.author)+'</b> <span class="muted">· '+esc(new Date(c.created_at).toLocaleString('ar'))+'</span> <button class="linkbtn small" type="button" data-wcmd="'+esc(c.id)+'">حذف</button></div>'+
-        '<pre>'+esc(c.body)+'</pre>'+((c.links||[]).length?'<div>'+wlinks(c.links)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في تعليقات بعد.</div>')+'</div>'+composer; }
-  function wcomposer(attr){ return '<div class="wcmp"><textarea data-wcm dir="auto" placeholder="اكتب رد أو تعليق — بيوصل العميل بإيميل"></textarea><div class="row"><div class="field"><input data-wcml dir="ltr" placeholder="رابط (اختياري)"></div><div class="field"><button class="btn sm primary" type="button" '+attr+'>إرسال التعليق</button></div></div></div>'; }
+        '<pre>'+esc(c.body)+'</pre>'+((c.links||[]).length?'<div>'+wlinks(c.links)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">لا توجد تعليقات بعد.</div>')+'</div>'+composer; }
+  function wcomposer(attr){ return '<div class="wcmp"><textarea data-wcm dir="auto" placeholder="اكتب رداً أو تعليقاً — يصل إلى العميل بالبريد الإلكتروني"></textarea><div class="row"><div class="field"><input data-wcml dir="ltr" placeholder="رابط (اختياري)"></div><div class="field"><button class="btn sm primary" type="button" '+attr+'>إرسال التعليق</button></div></div></div>'; }
   function wdelivs(t){ var L=WORK.deliverables||[], can=['accepted','progress','revision','feedback','final'].indexOf(t.status)>=0, next=(L.length?L[0].version:0)+1;
     var rounds=L.filter(function(d){return d.status==='changes'}).length;
     return '<div class="wdv"><div class="ph"><b>التسليمات'+(rounds?' · جولة التعديل '+rounds:'')+'</b></div>'+
       (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b> · <span class="wpill s-'+(d.status==='sent'?'feedback':d.status==='approved'?'completed':d.status==='changes'?'revision':'cancelled')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
         '<div>'+wlinks([{url:d.url,label:'افتح الملف'}].concat(d.links||[]))+'</div>'+(d.note?'<div class="small muted">ملاحظتك مع التسليم: '+esc(d.note)+'</div>':'')+
-        ((d.points||[]).length?'<div class="small muted" style="margin-top:6px">تعديلات العميل — علّم اللي خلصته:</div><ol class="wpts-a">'+d.points.map(function(p,k){ return '<li><label class="check"><input type="checkbox" data-wpd="'+esc(d.id)+'" data-wpi="'+k+'"'+(p.done?' checked':'')+'> '+(p.t?'<span class="tc">'+esc(p.t)+'</span> ':'')+esc(p.text)+'</label></li>'; }).join('')+'</ol>':'')+
-        (d.decision_note?'<div class="small">ملاحظة العميل: '+esc(d.decision_note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في تسليمات بعد.</div>')+
-      (can?'<div class="wsend"><div class="small muted">تسليم جديد — رح ينحفظ كـ <b>V'+next+'</b> (أو Final إذا علّمته نهائي)</div>'+
+        ((d.points||[]).length?'<div class="small muted" style="margin-top:6px">تعديلات العميل — علّم ما أنجزته منها:</div><ol class="wpts-a">'+d.points.map(function(p,k){ return '<li><label class="check"><input type="checkbox" data-wpd="'+esc(d.id)+'" data-wpi="'+k+'"'+(p.done?' checked':'')+'> '+(p.t?'<span class="tc">'+esc(p.t)+'</span> ':'')+esc(p.text)+'</label></li>'; }).join('')+'</ol>':'')+
+        (d.decision_note?'<div class="small">ملاحظة العميل: '+esc(d.decision_note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">لا توجد تسليمات بعد.</div>')+
+      (can?'<div class="wsend"><div class="small muted">تسليم جديد — سيُحفظ بوصفه <b>V'+next+'</b> (أو Final إن علّمته نهائياً)</div>'+
         '<div class="row"><div class="field"><label>رابط الملف (Google Drive / YouTube / Vimeo…)</label><input data-wdu dir="ltr" placeholder="https://drive.google.com/file/d/…"></div><div class="field"><label>عنوان (اختياري)</label><input data-wdt2 dir="auto" placeholder="'+esc(t.title)+'"></div></div>'+
-        '<div class="field"><label>ملاحظة للعميل (اختياري)</label><textarea data-wdn dir="auto" placeholder="مثلاً: هي النسخة الأولى، الموسيقى مؤقتة."></textarea></div>'+
-        '<div class="actions"><label class="check"><input type="checkbox" data-wdf> هاد التسليم النهائي (Final)</label><button class="btn sm primary" type="button" data-wdl="'+esc(t.ref)+'">أرسل التسليم للعميل</button></div></div>':'')+'</div>'; }
+        '<div class="field"><label>ملاحظة للعميل (اختياري)</label><textarea data-wdn dir="auto" placeholder="مثلاً: هذه النسخة الأولى، والموسيقى مؤقتة."></textarea></div>'+
+        '<div class="actions"><label class="check"><input type="checkbox" data-wdf> هذا هو التسليم النهائي (Final)</label><button class="btn sm primary" type="button" data-wdl="'+esc(t.ref)+'">أرسل التسليم للعميل</button></div></div>':'')+'</div>'; }
   function wspacePanel(){ var S=WSPACE; if(!S) return '';
     if(S.loading) return '<section class="sec" id="wspace"><div class="empty">…</div></section>'; if(S.err) return '<section class="sec" id="wspace"><div class="empty">تعذّر التحميل.</div></section>';
     var D=S.d, p=D.project;
     return '<section class="sec" id="wspace"><div class="ph"><h3>'+esc(p.name)+' — النقاش والملفات</h3><button class="btn sm" type="button" data-wspx>إغلاق</button></div>'+
       '<div class="wsp2"><div><div class="small muted">نقاش المشروع</div>'+wcomments(D.comments,wcomposer('data-wpcm="'+esc(p.id)+'"'))+'</div>'+
-      '<div><div class="small muted">مركز الملفات</div><div class="wfl2">'+((D.files||[]).length?D.files.map(function(f){ return '<div class="wfi"><span class="tag">'+esc(WFC[f.category]||f.category)+'</span> '+wlinks([{url:f.url,label:f.title}])+' <span class="small muted">'+esc(f.added_by==='studio'?'أنت':f.added_name)+' · '+esc(new Date(f.created_at).toLocaleDateString('ar'))+'</span> <button class="linkbtn small" type="button" data-wfd="'+esc(f.id)+'">حذف</button>'+(f.note?'<div class="small muted">'+esc(f.note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في ملفات مضافة.</div>')+
+      '<div><div class="small muted">مركز الملفات</div><div class="wfl2">'+((D.files||[]).length?D.files.map(function(f){ return '<div class="wfi"><span class="tag">'+esc(WFC[f.category]||f.category)+'</span> '+wlinks([{url:f.url,label:f.title}])+' <span class="small muted">'+esc(f.added_by==='studio'?'أنت':f.added_name)+' · '+esc(new Date(f.created_at).toLocaleDateString('ar'))+'</span> <button class="linkbtn small" type="button" data-wfd="'+esc(f.id)+'">حذف</button>'+(f.note?'<div class="small muted">'+esc(f.note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">لا توجد ملفات مضافة.</div>')+
         ((D.delivered||[]).length?'<div class="small muted" style="margin-top:8px">التسليمات ('+D.delivered.length+')</div>'+D.delivered.map(function(d){ return '<div class="wfi"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> '+wlinks([{url:d.url,label:(d.title||d.task_title)}])+' <span class="small muted">'+esc(d.ref)+'</span></div>'; }).join(''):'')+'</div>'+
         '<div class="row"><div class="field"><label>التصنيف</label><select data-wfc>'+Object.keys(WFC).map(function(k){ return '<option value="'+k+'">'+WFC[k]+'</option>'; }).join('')+'</select></div><div class="field"><label>الاسم</label><input data-wft dir="auto"></div></div>'+
         '<div class="field"><label>الرابط</label><input data-wfu dir="ltr" placeholder="https://"></div><div class="actions"><button class="btn sm primary" type="button" data-wfa="'+esc(p.id)+'">أضف الملف للعميل</button></div></div></div></section>'; }
@@ -498,7 +498,7 @@
     if(btn) btn.disabled=true;
     return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ if(ok) toast(ok); loadWork(); return j; })
-      .catch(function(e){ if(btn) btn.disabled=false; toast(({date:'اختر تاريخاً صحيحاً',note:'اكتب شو المعلومات المطلوبة','not client':'هالعميل لسا مو متعاقد — رقّيه أولاً من تبويب العملاء','no account':'ما في حساب بهالبريد',name:'اكتب اسم المشروع','date first':'حدّد الموعد المؤكد أولاً','no request':'الطلب ما عاد موجود'})[e.message]||'تعذّر التنفيذ',true); throw e; });
+      .catch(function(e){ if(btn) btn.disabled=false; toast(({date:'اختر تاريخاً صحيحاً',note:'اكتب المعلومات المطلوبة','not client':'هذا العميل ليس متعاقداً بعد — رقِّه أولاً من تبويب العملاء','no account':'لا يوجد حساب بهذا البريد',name:'اكتب اسم المشروع','date first':'حدّد الموعد المؤكد أولاً','no request':'لم يعد الطلب موجوداً'})[e.message]||'تعذّر التنفيذ',true); throw e; });
   }
   function wd(s){ if(!s) return '—'; try{ return new Date(s.length===10?s+'T12:00:00Z':s).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short',year:'numeric'}); }catch(_){ return s; } }
   function wlinks(ls){ return (ls||[]).map(function(l){ return '<a class="adoc" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">↗ '+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,50))+'</a>'; }).join(' '); }
@@ -516,7 +516,7 @@
         '<div class="wrev"><div class="ph"><b>مراجعة الطلب</b>'+(t.status==='new'?'<button class="btn sm" type="button" data-wrv="'+esc(t.ref)+'">علّمها «قيد المراجعة»</button>':'')+'</div>'+
         '<div class="row"><div class="field"><label>الموعد المؤكد للتسليم</label><input type="date" data-wcd value="'+esc(t.confirmed_date||t.requested_date||'')+'"></div><div class="field"><label>ملاحظة للعميل (اختياري)</label><input data-wnote dir="auto"></div></div>'+
         '<div class="actions"><button class="btn sm primary" type="button" data-wacc="'+esc(t.ref)+'">قبول وتأكيد الموعد</button></div>'+
-        '<div class="field"><label>أو اطلب معلومات / ملفات ناقصة</label><textarea data-winfo dir="auto" placeholder="مثلاً: ابعتلنا اللوغو بجودة عالية ورابط الفيديوهات الخام."></textarea></div><div class="actions"><button class="btn sm" type="button" data-winq="'+esc(t.ref)+'">أرسل طلب المعلومات</button></div>'+
+        '<div class="field"><label>أو اطلب معلومات / ملفات ناقصة</label><textarea data-winfo dir="auto" placeholder="مثلاً: أرسل إلينا الشعار بجودة عالية ورابط الفيديوهات الخام."></textarea></div><div class="actions"><button class="btn sm" type="button" data-winq="'+esc(t.ref)+'">أرسل طلب المعلومات</button></div>'+
         '<div class="field"><label>أو ارفض مع سبب</label><textarea data-wrej dir="auto"></textarea></div><div class="actions"><button class="btn sm danger" type="button" data-wrjt="'+esc(t.ref)+'">رفض المهمة</button></div></div>'
       : (t.status!=='rejected'&&t.status!=='cancelled'?
         '<div class="row"><div class="field"><label>الحالة</label><select data-wst>'+['accepted','progress','feedback','revision','final','completed','cancelled'].map(function(s){ return '<option value="'+s+'"'+(s===t.status?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select></div>'+
@@ -532,18 +532,18 @@
   }
   function wtaskCard(t){ return '<details class="order item wt" data-wref="'+esc(t.ref)+'"'+(WOPEN===t.ref?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(t.ref)+'</span>'+wpill(t.status)+'<b>'+esc(t.title)+'</b><span class="muted small">'+esc(t.project_name)+' · المطلوب '+esc(wd(t.requested_date))+(t.confirmed_date?' · المؤكد '+esc(wd(t.confirmed_date)):'')+'</span></summary><div class="body">'+wtaskBody(t)+'</div></details>'; }
   function projForm(p){ p=p||{}; var svc=C.services||[], cl=WORK.clients||[];
-    return '<form class="wpf" data-wpid="'+esc(p.id||'')+'"><div class="row"><div class="field"><label>العميل المتعاقد</label><select name="client_email">'+(cl.length?'':'<option value="">ما في عملاء متعاقدين بعد</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===p.client_email?' selected':'')+'>'+esc(c.name)+' — '+esc(c.email)+'</option>'; }).join('')+'</select></div>'+
+    return '<form class="wpf" data-wpid="'+esc(p.id||'')+'"><div class="row"><div class="field"><label>العميل المتعاقد</label><select name="client_email">'+(cl.length?'':'<option value="">لا يوجد عملاء متعاقدون بعد</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===p.client_email?' selected':'')+'>'+esc(c.name)+' — '+esc(c.email)+'</option>'; }).join('')+'</select></div>'+
       '<div class="field"><label>اسم المشروع</label><input name="name" value="'+esc(p.name||'')+'" required></div></div>'+
       '<div class="row"><div class="field"><label>النوع</label><select name="type">'+Object.keys(WPT).map(function(k){ return '<option value="'+k+'"'+(k===(p.type||'monthly')?' selected':'')+'>'+WPT[k]+'</option>'; }).join('')+'</select></div>'+
       '<div class="field"><label>الحالة</label><select name="status">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(k===(p.status||'active')?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div>'+
       '<div class="field"><label>البداية</label><input type="date" name="start_date" value="'+esc(p.start_date||'')+'"></div><div class="field"><label>النهاية (اختياري)</label><input type="date" name="end_date" value="'+esc(p.end_date||'')+'"></div></div>'+
       '<div class="field"><label>الخدمات المتفق عليها</label><div class="wsvc">'+svc.map(function(s){ return '<label class="check"><input type="checkbox" name="svc" value="'+esc(s.id)+'"'+((p.services||[]).indexOf(s.id)>=0?' checked':'')+'> '+esc((s.name&&s.name.ar)||s.id)+'</label>'; }).join('')+'</div></div>'+
-      '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">للتقارير الشهرية لاحقاً. اتركها فارغة إذا ما في عدد ثابت.</p></div></div>'+
+      '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">للتقارير الشهرية لاحقاً. اتركها فارغة إن لم يكن هناك عدد ثابت.</p></div></div>'+
       '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button>':'')+'</div></form>'; }
   function renderWork(){
     var W=WORK;
     if(!W){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; if(LIVE) loadWork(); return; }
-    if(W.err){ $('#panel').innerHTML='<section class="sec"><h3>المشاريع والمهام</h3><div class="empty">'+(W.err==='db'?'قاعدة البيانات (D1) مو مربوطة بالموقع بعد. اربطها باسم DB من Cloudflare ← Workers & Pages ← المشروع ← Settings ← Bindings.':W.err==='live'?'هالقسم بيشتغل على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
+    if(W.err){ $('#panel').innerHTML='<section class="sec"><h3>المشاريع والمهام</h3><div class="empty">'+(W.err==='db'?'قاعدة البيانات (D1) غير مربوطة بالموقع بعد. اربطها باسم DB من Cloudflare ← Workers & Pages ← المشروع ← Settings ← Bindings.':W.err==='live'?'يعمل هذا القسم على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
     var T=W.tasks||[], td=W.today, cnt=function(f){ return T.filter(f).length; };
     var fresh=T.filter(function(t){ return t.status==='new'||t.status==='review'; }), dates=T.filter(function(t){ return t.change_request&&t.change_request.status==='pending'; });
     var queued=fresh.concat(dates.filter(function(x){return fresh.indexOf(x)<0}));
@@ -551,18 +551,18 @@
     $('#panel').innerHTML=
       '<section class="sec"><div class="kpis"><div><b>'+cnt(function(t){return t.status==='new'||t.status==='review'})+'</b><span>طلبات جديدة</span></div><div><b>'+cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0})+'</b><span>قيد التنفيذ</span></div>'+
         '<div><b>'+cnt(function(t){return ['info','feedback','final'].indexOf(t.status)>=0})+'</b><span>بانتظار العميل</span></div><div><b>'+cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0})+'</b><span>متأخرة</span></div>'+
-        '<div><b>'+cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)})+'</b><span>مكتملة هالشهر</span></div><div><b>'+(W.projects||[]).filter(function(p){return p.status==='active'}).length+'</b><span>مشاريع نشطة</span></div></div></section>'+
-      (queued.length?'<section class="sec wq"><h3>بانتظار قرارك ('+queued.length+')</h3><p class="hint">العميل حدّد موعد يتمناه. الموعد ما بيتأكد إلا لما تقبل وتحدّد «الموعد المؤكد».</p><div class="orders">'+queued.map(wtaskCard).join('')+'</div></section>':'')+
+        '<div><b>'+cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)})+'</b><span>مكتملة هذا الشهر</span></div><div><b>'+(W.projects||[]).filter(function(p){return p.status==='active'}).length+'</b><span>مشاريع نشطة</span></div></div></section>'+
+      (queued.length?'<section class="sec wq"><h3>بانتظار قرارك ('+queued.length+')</h3><p class="hint">حدّد العميل موعداً يرغب فيه، ولا يُعتمد الموعد إلا بعد أن تقبل المهمة وتحدّد «الموعد المؤكد».</p><div class="orders">'+queued.map(wtaskCard).join('')+'</div></section>':'')+
       '<section class="sec"><h3>كل المهام</h3><div class="wfl"><select data-wf="status"><option value="">كل الحالات</option><option value="open"'+(WF.status==='open'?' selected':'')+'>المفتوحة</option>'+Object.keys(WST).map(function(s){ return '<option value="'+s+'"'+(WF.status===s?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select>'+
         '<select data-wf="client"><option value="">كل العملاء</option>'+(W.clients||[]).map(function(c){ return '<option value="'+esc(c.email)+'"'+(WF.client===c.email?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('')+'</select>'+
         '<select data-wf="project"><option value="">كل المشاريع</option>'+(W.projects||[]).map(function(p){ return '<option value="'+esc(p.id)+'"'+(WF.project===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div>'+
         (list.length?'<div class="orders">'+list.map(wtaskCard).join('')+'</div>':'<div class="empty">'+(queued.length?'المهام الباقية فوق، بـ«بانتظار قرارك».':'لا مهام هنا.')+'</div>')+'</section>'+
-      '<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">المشروع بيربط عميل متعاقد بمساحة عمله. العميل بيشوف مشاريعه بس، وبيبعت المهام من جواتها.</p>'+
+      '<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">يربط المشروع عميلاً متعاقداً بمساحة عمله. يرى العميل مشاريعه فقط، ويرسل المهام من داخلها.</p>'+
         ((W.projects||[]).length?'<div class="clients">'+W.projects.map(function(p){ var cn=(W.clients||[]).filter(function(c){return c.email===p.client_email})[0];
           return '<div class="client"'+(WPEDIT===p.id?' data-editing':'')+'>'+(WPEDIT===p.id?projForm(p):'<div><b>'+esc(p.name)+'</b> <span class="rpill'+(p.status==='active'?' on':'')+'">'+esc(WPS[p.status]||p.status)+'</span> <span class="muted small">'+esc(WPT[p.type]||p.type)+' · '+esc(cn?cn.name:p.client_email)+'</span></div>'+
             '<span class="muted small">'+p.open_tasks+' مفتوحة من '+p.all_tasks+(p.start_date?' · من '+esc(wd(p.start_date)):'')+(p.end_date?' إلى '+esc(wd(p.end_date)):'')+'</span><div class="actions"><button class="btn sm" type="button" data-wpe="'+esc(p.id)+'">تعديل</button><button class="btn sm" type="button" data-wpt="'+esc(p.id)+'">مهامه</button><button class="btn sm" type="button" data-wsp="'+esc(p.id)+'">النقاش والملفات</button></div>')+'</div>'; }).join('')+'</div>':'')+
         '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+wspacePanel()+
-      '<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">أنواع المهام بتظهر للعميل كاقتراحات، وأسماء الأولويات قابلة للتعديل. بتنحفظ مع «نشر التعديلات».</p>'+
+      '<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">تظهر أنواع المهام للعميل على شكل اقتراحات، وأسماء الأولويات قابلة للتعديل. تُحفظ مع «نشر التعديلات».</p>'+
         field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>';
     if(WOPEN){ var op=document.querySelector('[data-wref="'+WOPEN+'"]'); if(op){ op.open=true; setTimeout(function(){ op.scrollIntoView({block:'start',behavior:'smooth'}); },80); } }
   }
@@ -573,31 +573,31 @@
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList.contains('wpf')) return; e.preventDefault(); var E=f.elements;
     var body={action:'project',id:f.dataset.wpid||undefined,client_email:E.client_email.value,name:E.name.value.trim(),type:E.type.value,status:E.status.value,start_date:E.start_date.value,end_date:E.end_date.value,
       description:E.description.value.trim(),quota:E.quota.value,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
-    wreq(body,f.querySelector('button[type=submit]'),f.dataset.wpid?'انحفظ المشروع':'انعمل المشروع ووصل للعميل إيميل').then(function(){ WPEDIT=null; }).catch(function(){}); });
+    wreq(body,f.querySelector('button[type=submit]'),f.dataset.wpid?'حُفظ المشروع':'أُنشئ المشروع وأُرسل بريد إلى العميل').then(function(){ WPEDIT=null; }).catch(function(){}); });
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
     if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
     if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; renderWork(); return; }
     if(b.dataset.wsp){ loadSpace(b.dataset.wsp); return; }
     if(b.hasAttribute('data-wspx')){ WSPACE=null; renderWork(); return; }
-    if(b.dataset.wdl){ var u=box.querySelector('[data-wdu]').value.trim(); if(!/^https?:\/\//i.test(u)){ toast('حط رابط الملف (يبلّش بـ https://)',true); return; }
+    if(b.dataset.wdl){ var u=box.querySelector('[data-wdu]').value.trim(); if(!/^https?:\/\//i.test(u)){ toast('أدخل رابط الملف (يبدأ بـ https://)',true); return; }
       var fin=box.querySelector('[data-wdf]').checked;
-      wreq({action:'deliver',task:b.dataset.wdl,url:u,title:box.querySelector('[data-wdt2]').value.trim(),note:box.querySelector('[data-wdn]').value.trim(),final:fin},b,fin?'انبعت التسليم النهائي للعميل':'انبعتت النسخة للعميل').catch(function(){}); return; }
+      wreq({action:'deliver',task:b.dataset.wdl,url:u,title:box.querySelector('[data-wdt2]').value.trim(),note:box.querySelector('[data-wdn]').value.trim(),final:fin},b,fin?'أُرسل التسليم النهائي إلى العميل':'أُرسلت النسخة إلى العميل').catch(function(){}); return; }
     if(b.dataset.wtcm||b.dataset.wpcm){ var cb=b.closest('.wcmp'), txt=cb.querySelector('[data-wcm]').value.trim(), lu=cb.querySelector('[data-wcml]').value.trim();
       if(!txt&&!/^https?:\/\//i.test(lu)){ toast('اكتب التعليق',true); return; }
       var body={action:'studioComment',scope:b.dataset.wtcm?'task':'project',body:txt,links:/^https?:\/\//i.test(lu)?[{url:lu}]:[]}; if(b.dataset.wtcm) body.task=b.dataset.wtcm; else body.project=b.dataset.wpcm;
-      wreq(body,b,'انبعت التعليق').then(function(){ if(b.dataset.wpcm) loadSpace(); }).catch(function(){}); return; }
+      wreq(body,b,'أُرسل التعليق').then(function(){ if(b.dataset.wpcm) loadSpace(); }).catch(function(){}); return; }
     if(b.dataset.wcmd||b.dataset.wfd){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟'; return; }
-      wreq({action:b.dataset.wcmd?'removeComment':'removeFile',id:b.dataset.wcmd||b.dataset.wfd},b,'انحذف').then(function(){ if(WSPACE) loadSpace(); }).catch(function(){}); return; }
-    if(b.dataset.wfa){ var sp=b.closest('#wspace'), fu=sp.querySelector('[data-wfu]').value.trim(); if(!/^https?:\/\//i.test(fu)){ toast('حط رابط يبلّش بـ https://',true); return; }
-      wreq({action:'studioFile',project:b.dataset.wfa,category:sp.querySelector('[data-wfc]').value,title:sp.querySelector('[data-wft]').value.trim(),url:fu},b,'انضاف الملف').then(function(){ loadSpace(); }).catch(function(){}); return; }
-    if(b.dataset.wrv){ wreq({action:'review',task:b.dataset.wrv,decision:'review'},b,'صارت «قيد المراجعة»').catch(function(){}); return; }
+      wreq({action:b.dataset.wcmd?'removeComment':'removeFile',id:b.dataset.wcmd||b.dataset.wfd},b,'حُذف').then(function(){ if(WSPACE) loadSpace(); }).catch(function(){}); return; }
+    if(b.dataset.wfa){ var sp=b.closest('#wspace'), fu=sp.querySelector('[data-wfu]').value.trim(); if(!/^https?:\/\//i.test(fu)){ toast('أدخل رابطاً يبدأ بـ https://',true); return; }
+      wreq({action:'studioFile',project:b.dataset.wfa,category:sp.querySelector('[data-wfc]').value,title:sp.querySelector('[data-wft]').value.trim(),url:fu},b,'أُضيف الملف').then(function(){ loadSpace(); }).catch(function(){}); return; }
+    if(b.dataset.wrv){ wreq({action:'review',task:b.dataset.wrv,decision:'review'},b,'أصبحت «قيد المراجعة»').catch(function(){}); return; }
     if(b.dataset.wacc){ var cd=box.querySelector('[data-wcd]').value; if(!cd){ toast('حدّد الموعد المؤكد',true); return; }
-      wreq({action:'review',task:b.dataset.wacc,decision:'accept',confirmed_date:cd,note:box.querySelector('[data-wnote]').value.trim()},b,'انقبلت المهمة ووصل للعميل الموعد المؤكد').catch(function(){}); return; }
+      wreq({action:'review',task:b.dataset.wacc,decision:'accept',confirmed_date:cd,note:box.querySelector('[data-wnote]').value.trim()},b,'قُبلت المهمة وأُبلغ العميل بالموعد المؤكد').catch(function(){}); return; }
     if(b.dataset.winq){ wreq({action:'review',task:b.dataset.winq,decision:'info',note:box.querySelector('[data-winfo]').value.trim()},b,'وصل للعميل طلب المعلومات').catch(function(){}); return; }
-    if(b.dataset.wrjt){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ اكبس مرة ثانية'; return; }
-      wreq({action:'review',task:b.dataset.wrjt,decision:'reject',note:box.querySelector('[data-wrej]').value.trim()},b,'انرفضت المهمة ووصل للعميل السبب').catch(function(){}); return; }
-    if(b.dataset.wsts){ wreq({action:'status',task:b.dataset.wsts,status:box.querySelector('[data-wst]').value,note:box.querySelector('[data-wnote2]').value.trim()},b,'انحفظت الحالة').catch(function(){}); return; }
+    if(b.dataset.wrjt){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='هل أنت متأكد؟ اضغط مرة أخرى'; return; }
+      wreq({action:'review',task:b.dataset.wrjt,decision:'reject',note:box.querySelector('[data-wrej]').value.trim()},b,'رُفضت المهمة وأُبلغ العميل بالسبب').catch(function(){}); return; }
+    if(b.dataset.wsts){ wreq({action:'status',task:b.dataset.wsts,status:box.querySelector('[data-wst]').value,note:box.querySelector('[data-wnote2]').value.trim()},b,'حُفظت الحالة').catch(function(){}); return; }
     if(b.dataset.wdt){ wreq({action:'date',task:b.dataset.wdt,confirmed_date:box.querySelector('[data-wcd2]').value},b,'تغيّر الموعد ووصل للعميل').catch(function(){}); return; }
     if(b.dataset.wdd){ wreq({action:'dateDecision',task:b.dataset.wdd,approve:b.dataset.ok==='1'},b,b.dataset.ok==='1'?'تأكد الموعد الجديد':'بقي الموعد كما هو').catch(function(){}); return; }
   });
@@ -605,7 +605,7 @@
   /* ---------------- notifications: studio inbox, send log, WhatsApp setup ---------------- */
   var NOTI=null, NF={channel:'',status:''}, WATEST='';
   var NKIND={accept:'قبول مهمة',info:'طلب معلومات',reject:'رفض',progress:'بدء التنفيذ',status:'تغيير حالة',date:'تغيير موعد',dateNo:'إبقاء الموعد',completed:'اكتمال',deliver:'تسليم',comment:'تعليق',project:'مشروع جديد',file:'ملف جديد',test:'رسالة تجريبية',opt_out:'العميل أوقف واتساب'};
-  var NST={sent:'انبعت',failed:'فشل',retry:'رح يعيد المحاولة',skipped:'ما انبعت (غير مفعّل)',received:'وصل'};
+  var NST={sent:'أُرسل',failed:'فشل',retry:'ستُعاد المحاولة',skipped:'لم يُرسل (غير مفعّل)',received:'وصل'};
   function loadNotify(){ if(!LIVE){ NOTI={err:'live'}; if(TAB==='notify') renderNotify(); return; }
     var q='?admin=1&view=notify'+(NF.channel?'&channel='+NF.channel:'')+(NF.status?'&status='+NF.status:'');
     fetch(API+'/work'+q,{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ NOTI=j.ok?j:{err:j.error||'fail'}; renderTabs(); if(TAB==='notify') renderNotify(); }).catch(function(){ NOTI={err:'net'}; if(TAB==='notify') renderNotify(); }); }
@@ -613,31 +613,31 @@
     return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json(); }).then(function(j){ if(btn) btn.disabled=false; if(ok&&j.ok) toast(ok); return j; }).catch(function(){ if(btn) btn.disabled=false; toast('تعذّر التنفيذ',true); return {ok:false}; }); }
   function renderNotify(){ var N=NOTI;
     if(!N){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; loadNotify(); return; }
-    if(N.err){ $('#panel').innerHTML='<section class="sec"><h3>الإشعارات</h3><div class="empty">'+(N.err==='db'?'قاعدة البيانات مو مربوطة.':N.err==='live'?'هالقسم بيشتغل على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
+    if(N.err){ $('#panel').innerHTML='<section class="sec"><h3>الإشعارات</h3><div class="empty">'+(N.err==='db'?'قاعدة البيانات غير مربوطة.':N.err==='live'?'يعمل هذا القسم على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
     var st=function(ch,s2){ return (N.stats||[]).filter(function(x){ return x.channel===ch&&(!s2||x.status===s2); }).reduce(function(a,x){ return a+x.n; },0); };
     var W=N.wa||{}, S=W.secrets||{}, C2=W.config||{}, ok=function(b){ return b?'<b class="okc">✓</b>':'<b class="noc">✗</b>'; };
     $('#panel').innerHTML=
-      '<section class="sec"><div class="kpis"><div><b>'+N.unread+'</b><span>غير مقروءة عندك</span></div><div><b>'+st('email','sent')+'</b><span>إيميلات انبعتت (30 يوم)</span></div><div><b>'+(st('email','failed')+st('email','retry'))+'</b><span>إيميلات فشلت</span></div>'+
-        '<div><b>'+st('whatsapp','sent')+'</b><span>رسائل واتساب انبعتت</span></div><div><b>'+(st('whatsapp','failed')+st('whatsapp','retry'))+'</b><span>واتساب فشلت</span></div><div><b>'+N.consents+'</b><span>عملاء وافقوا على واتساب</span></div></div></section>'+
-      '<section class="sec"><div class="ph"><h3>صندوق الإشعارات</h3>'+(N.unread?'<button class="btn sm" type="button" data-nall>تعليم الكل كمقروء</button>':'')+'</div><p class="hint">كل شي بيعمله العملاء بمساحة العمل: مهام جديدة، ردود، موافقات، تعديلات، تعليقات وملفات. نفس الشي بيوصلك على الإيميل وتيليغرام.</p>'+
-        ((N.inbox||[]).length?'<div class="ninbox">'+N.inbox.map(function(n){ var d=n.data||{}; return '<a class="ni'+(n.read_at?'':' new')+'" href="'+esc(n.link||'#tasks')+'" data-ni="'+n.id+'"><b>'+esc(d.subject||'')+'</b><span class="small muted">'+esc(d.text||'')+'</span><small class="muted">'+esc(new Date(n.created_at).toLocaleString('ar'))+'</small></a>'; }).join('')+'</div>':'<div class="empty">ما في إشعارات بعد.</div>')+'</section>'+
-      '<section class="sec"><h3>سجل الإرسال للعملاء</h3><p class="hint">كل إيميل أو رسالة واتساب انبعتت لعميل. الفاشلة بتنعاد لحالها (بعد 5 دقايق، 30 دقيقة، ساعتين)، وفيك تعيدها يدوياً.</p>'+
+      '<section class="sec"><div class="kpis"><div><b>'+N.unread+'</b><span>غير مقروءة عندك</span></div><div><b>'+st('email','sent')+'</b><span>رسائل بريد أُرسلت (30 يوماً)</span></div><div><b>'+(st('email','failed')+st('email','retry'))+'</b><span>إيميلات فشلت</span></div>'+
+        '<div><b>'+st('whatsapp','sent')+'</b><span>رسائل واتساب أُرسلت</span></div><div><b>'+(st('whatsapp','failed')+st('whatsapp','retry'))+'</b><span>واتساب فشلت</span></div><div><b>'+N.consents+'</b><span>عملاء وافقوا على واتساب</span></div></div></section>'+
+      '<section class="sec"><div class="ph"><h3>صندوق الإشعارات</h3>'+(N.unread?'<button class="btn sm" type="button" data-nall>تعليم الكل كمقروء</button>':'')+'</div><p class="hint">كل ما يفعله العملاء في مساحة العمل: مهام جديدة، وردود، وموافقات، وتعديلات، وتعليقات، وملفات. ويصلك الأمر نفسه عبر البريد الإلكتروني وتيليغرام.</p>'+
+        ((N.inbox||[]).length?'<div class="ninbox">'+N.inbox.map(function(n){ var d=n.data||{}; return '<a class="ni'+(n.read_at?'':' new')+'" href="'+esc(n.link||'#tasks')+'" data-ni="'+n.id+'"><b>'+esc(d.subject||'')+'</b><span class="small muted">'+esc(d.text||'')+'</span><small class="muted">'+esc(new Date(n.created_at).toLocaleString('ar'))+'</small></a>'; }).join('')+'</div>':'<div class="empty">لا توجد إشعارات بعد.</div>')+'</section>'+
+      '<section class="sec"><h3>سجل الإرسال للعملاء</h3><p class="hint">كل رسالة بريد أو واتساب أُرسلت إلى عميل. تُعاد الرسائل الفاشلة تلقائياً (بعد 5 دقائق، ثم 30 دقيقة، ثم ساعتين)، ويمكنك إعادتها يدوياً.</p>'+
         '<div class="wfl"><select data-nf="channel"><option value="">كل القنوات</option><option value="email"'+(NF.channel==='email'?' selected':'')+'>الإيميل</option><option value="whatsapp"'+(NF.channel==='whatsapp'?' selected':'')+'>واتساب</option></select>'+
         '<select data-nf="status"><option value="">كل الحالات</option>'+['sent','failed','retry','skipped'].map(function(k){ return '<option value="'+k+'"'+(NF.status===k?' selected':'')+'>'+NST[k]+'</option>'; }).join('')+'</select></div>'+
         ((N.log||[]).length?'<div class="nlog"><table><thead><tr><th>الوقت</th><th>القناة</th><th>إلى</th><th>الحدث</th><th>الحالة</th><th></th></tr></thead><tbody>'+N.log.map(function(r){
           return '<tr><td class="small">'+esc(new Date(r.at).toLocaleString('ar'))+'</td><td>'+(r.channel==='whatsapp'?'واتساب':'إيميل')+'</td><td class="small" dir="ltr">'+esc(r.channel==='whatsapp'&&r.target?'+'+String(r.target).replace(/\d(?=\d{4})/g,'•'):r.recipient)+'</td><td class="small">'+esc(NKIND[r.kind]||r.kind)+'</td>'+
             '<td><span class="npill s-'+esc(r.status)+'">'+esc(NST[r.status]||r.status)+'</span>'+(r.attempts>1?' <span class="small muted">× '+r.attempts+'</span>':'')+(r.delivery?' <span class="small muted">· '+esc(r.delivery)+'</span>':'')+(r.error?'<div class="small muted nerr" dir="auto">'+esc(r.error)+'</div>':'')+'</td>'+
-            '<td>'+(r.status==='failed'||r.status==='retry'?'<button class="btn sm" type="button" data-nretry="'+r.id+'">أعد الإرسال</button>':'')+'</td></tr>'; }).join('')+'</tbody></table></div>':'<div class="empty">ما في إرسال مسجّل بعد.</div>')+'</section>'+
-      '<section class="sec nwa"><h3>واتساب (WhatsApp Cloud API الرسمي من Meta)</h3><p class="hint">الرسائل بتنبعت بس للعملاء اللي وافقوا وحطّوا رقمهم بإعدادات الإشعارات. إذا فشل الإرسال، ولا شي بيوقف: المهمة والتسليم بيكملوا والرسالة بتنعاد لحالها.</p>'+
+            '<td>'+(r.status==='failed'||r.status==='retry'?'<button class="btn sm" type="button" data-nretry="'+r.id+'">أعد الإرسال</button>':'')+'</td></tr>'; }).join('')+'</tbody></table></div>':'<div class="empty">لا يوجد إرسال مسجّل بعد.</div>')+'</section>'+
+      '<section class="sec nwa"><h3>واتساب (WhatsApp Cloud API الرسمي من Meta)</h3><p class="hint">تُرسل الرسائل فقط إلى العملاء الذين وافقوا وأدخلوا أرقامهم في إعدادات الإشعارات. وإن فشل الإرسال فلا يتوقف شيء: تستمر المهمة والتسليم، وتُعاد الرسالة تلقائياً.</p>'+
         '<div class="nchk"><div>'+ok(N.email&&N.email.ready)+' RESEND_API_KEY <span class="small muted">(الإيميل)</span></div><div>'+ok(S.token)+' WHATSAPP_TOKEN</div><div>'+ok(S.phoneId)+' WHATSAPP_PHONE_ID</div><div>'+ok(S.appSecret)+' WHATSAPP_APP_SECRET</div><div>'+ok(S.verifyToken)+' WHATSAPP_VERIFY_TOKEN</div>'+
-          '<div>'+ok(C2.enabled)+' مفعّل من هون</div></div><p class="hint">'+(W.ready?'✓ واتساب شغّال وعم يبعت للعملاء الموافقين.':'واتساب لسا مو شغّال. المفاتيح بتنحط كـ Secrets بـ Cloudflare ← المشروع ← Settings ← Variables and Secrets، وبعدها فعّله من هون.')+'</p>'+
+          '<div>'+ok(C2.enabled)+' مفعّل من هنا</div></div><p class="hint">'+(W.ready?'✓ واتساب يعمل ويرسل إلى العملاء الموافقين.':'واتساب لا يعمل بعد. تُضاف المفاتيح بوصفها Secrets في Cloudflare ← المشروع ← Settings ← Variables and Secrets، ثم فعّله من هنا.')+'</p>'+
         '<div class="row"><div class="field"><label>اسم القالب المعتمد بـ Meta</label><input data-wa="template" dir="ltr" value="'+esc(C2.template||'eyeblink_update')+'"></div><div class="field"><label>لغة القالب العربي</label><input data-wa="langAr" dir="ltr" value="'+esc(C2.langAr||'ar')+'"></div>'+
           '<div class="field"><label>لغة القالب الإنجليزي</label><input data-wa="langEn" dir="ltr" value="'+esc(C2.langEn||'en')+'"></div><div class="field"><label>نسخة Graph API</label><input data-wa="version" dir="ltr" value="'+esc(C2.version||'v25.0')+'"></div></div>'+
         '<div class="actions"><label class="check"><input type="checkbox" data-wa="button"'+(C2.button!==false?' checked':'')+'> القالب فيه زر رابط (Visit website)</label><label class="check"><input type="checkbox" data-wa="enabled"'+(C2.enabled?' checked':'')+'> فعّل الإرسال على واتساب</label><button class="btn sm primary" type="button" data-wasave>حفظ</button></div>'+
         '<details class="nhow"><summary>نص القالب لتقدّمه بـ Meta (فئة Utility)</summary><div class="small"><p><b>الاسم:</b> <code>'+esc(C2.template||'eyeblink_update')+'</code> — نفس الاسم بلغتين: العربية <code>ar</code> والإنجليزية <code>en</code>.</p>'+
-          '<p><b>النص بالعربي:</b></p><pre>مرحباً {{1}}، عندك تحديث جديد من Eyeblink Studio:\n{{2}}\nالتفاصيل كاملة بمساحة العمل تبعك.</pre><p><b>النص بالإنجليزي:</b></p><pre>Hi {{1}}, you have a new update from Eyeblink Studio:\n{{2}}\nFull details are in your workspace.</pre>'+
+          '<p><b>النص بالعربي:</b></p><pre>مرحباً {{1}}، عندك تحديث جديد من Eyeblink Studio:\n{{2}}\nالتفاصيل كاملة في مساحة العمل الخاصة بك.</pre><p><b>النص بالإنجليزي:</b></p><pre>Hi {{1}}, you have a new update from Eyeblink Studio:\n{{2}}\nFull details are in your workspace.</pre>'+
           '<p><b>الزر:</b> Visit website ← Dynamic ← <code dir="ltr">'+esc(N.goBase||'https://eyeblinkstudio.com/go/')+'{{1}}</code> — مثال للقيمة: <code dir="ltr">t/T-ABC12</code></p>'+
-          '<p><b>Webhook:</b> <code dir="ltr">'+esc(N.webhook||'')+'</code> — Verify token = نفس قيمة <code>WHATSAPP_VERIFY_TOKEN</code>، واشترك بحقل <code>messages</code>. منه بتوصل حالة كل رسالة (وصلت/انقرأت/فشلت)، وإذا العميل ردّ «إيقاف» أو STOP بتوقف رسائله فوراً.</p></div></details>'+
+          '<p><b>Webhook:</b> <code dir="ltr">'+esc(N.webhook||'')+'</code> — Verify token = قيمة <code>WHATSAPP_VERIFY_TOKEN</code> نفسها، واشترك في حقل <code>messages</code>. من خلاله تصل حالة كل رسالة (وصلت/قُرئت/فشلت)، وإن ردّ العميل بـ«إيقاف» أو STOP تتوقف رسائله فوراً.</p></div></details>'+
         '<div class="row"><div class="field"><label>رسالة تجريبية لرقم (مع رمز الدولة)</label><input data-watp dir="ltr" placeholder="+9665xxxxxxxx"></div><div class="field"><label>لغة القالب</label><select data-watl><option value="ar">العربية</option><option value="en">English</option></select></div>'+
           '<div class="field"><label>&nbsp;</label><button class="btn sm" type="button" data-watest>أرسل تجربة</button></div></div><div class="small muted" id="waOut">'+esc(WATEST)+'</div></section>';
   }
@@ -647,11 +647,11 @@
       var m=/^#tasks\/(T-[A-Z0-9]+)/.exec(a.getAttribute('href')||''); TAB='tasks'; WOPEN=m?m[1]:null; try{ history.replaceState(null,'',a.getAttribute('href')); }catch(_){} render(); loadWork(); scrollTo(0,0); return; }
     var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-nall')){ npost({action:'studioRead',all:true},b).then(function(){ loadNotify(); }); return; }
-    if(b.dataset.nretry){ npost({action:'retryNotif',id:+b.dataset.nretry},b).then(function(j){ toast(j.ok?'انبعتت ✓':'لسا فشلت: '+(j.error||''),!j.ok); loadNotify(); }); return; }
+    if(b.dataset.nretry){ npost({action:'retryNotif',id:+b.dataset.nretry},b).then(function(j){ toast(j.ok?'أُرسلت ✓':'ما زالت تفشل: '+(j.error||''),!j.ok); loadNotify(); }); return; }
     if(b.hasAttribute('data-wasave')){ var g=function(k){ return document.querySelector('[data-wa="'+k+'"]'); };
-      npost({action:'waConfig',enabled:g('enabled').checked,button:g('button').checked,template:g('template').value.trim(),langAr:g('langAr').value.trim(),langEn:g('langEn').value.trim(),version:g('version').value.trim()},b,'انحفظت إعدادات واتساب').then(function(){ loadNotify(); }); return; }
+      npost({action:'waConfig',enabled:g('enabled').checked,button:g('button').checked,template:g('template').value.trim(),langAr:g('langAr').value.trim(),langEn:g('langEn').value.trim(),version:g('version').value.trim()},b,'حُفظت إعدادات واتساب').then(function(){ loadNotify(); }); return; }
     if(b.hasAttribute('data-watest')){ var out=$('#waOut'); out.textContent='جارٍ الإرسال…';
-      npost({action:'waTest',phone:document.querySelector('[data-watp]').value.trim(),lang:document.querySelector('[data-watl]').value},b).then(function(j){ WATEST=j.ok?'✓ انبعتت. المعرّف: '+(j.id||''):'✗ '+(j.error==='phone'?'الرقم غلط — اكتبه مع رمز الدولة':(j.error||'فشل')); out.textContent=WATEST; loadNotify(); }); return; }
+      npost({action:'waTest',phone:document.querySelector('[data-watp]').value.trim(),lang:document.querySelector('[data-watl]').value},b).then(function(j){ WATEST=j.ok?'✓ أُرسلت. المعرّف: '+(j.id||''):'✗ '+(j.error==='phone'?'الرقم غير صحيح — اكتبه مع رمز الدولة':(j.error||'فشل')); out.textContent=WATEST; loadNotify(); }); return; }
   });
 
   /* ---------------- stats ---------------- */
@@ -679,7 +679,7 @@
     $('#panel').innerHTML=
       '<section class="sec"><div class="srange">'+[7,30,90].map(function(n){ return '<button type="button" class="btn sm'+(SDAYS===n?' primary':'')+'" data-sdays="'+n+'">آخر '+n+' يوم</button>'; }).join('')+'<button type="button" class="btn sm" data-sreload>تحديث</button></div>'+
         '<div class="kpis"><div><b>'+T('views')+'</b><span>مشاهدة صفحة</span></div><div><b>'+visits+'</b><span>زيارة</span></div><div><b>'+T('visitors')+'</b><span>زائر جديد</span></div><div><b>'+ord.length+'</b><span>طلب</span></div><div><b>'+conv+'</b><span>نسبة الطلب من الزيارات</span></div><div><b>'+paid.length+'</b><span>طلب مدفوع</span></div></div>'+chart+
-        (!LIVE?'<p class="hint">أرقام تجريبية. الأرقام الحقيقية تبدأ بعد النشر.</p>':'<p class="hint">إحصائيات مجهولة الهوية: ما منخزّن IP ولا أي بيانات شخصية. الزيارة = جلسة تصفّح وحدة، والزائر الجديد = أول مرة بيفتح الموقع من هالجهاز.</p>')+'</section>'+
+        (!LIVE?'<p class="hint">أرقام تجريبية. الأرقام الحقيقية تبدأ بعد النشر.</p>':'<p class="hint">إحصائيات مجهولة الهوية: لا نخزّن عنوان IP ولا أي بيانات شخصية. الزيارة = جلسة تصفّح واحدة، والزائر الجديد = أول مرة يُفتح فيها الموقع من هذا الجهاز.</p>')+'</section>'+
       '<div class="sgrid">'+
         '<section class="sec"><h3>مصادر الزيارات</h3>'+bars(sum(D,'sources'),function(n){return SRCN[n]||n})+'</section>'+
         '<section class="sec"><h3>مصادر الطلبات</h3>'+bars(osrc,function(n){return SRCN[n]||n})+'</section>'+
@@ -705,7 +705,7 @@
     if(btn) btn.disabled=true;
     return fetch(API+'/access',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ if(ok) toast(ok); loadUsers(); return j; })
-      .catch(function(e){ if(btn) btn.disabled=false; toast(({already:'هذا العميل متعاقد أصلاً',email:'اكتب بريداً صحيحاً','no account':'ما في حساب بهالبريد','no request':'الطلب ما عاد موجود'})[e.message]||'تعذّر التنفيذ',true); throw e; });
+      .catch(function(e){ if(btn) btn.disabled=false; toast(({already:'هذا العميل متعاقد أصلاً',email:'اكتب بريداً صحيحاً','no account':'لا يوجد حساب بهذا البريد','no request':'لم يعد الطلب موجوداً'})[e.message]||'تعذّر التنفيذ',true); throw e; });
   }
   var ROLE={client:'عميل متعاقد',customer:'عميل عادي'}, VIA={invite:'بدعوة',request:'بطلب وصول',upgrade:'ترقية من الإدارة'};
   function renderClients(){
@@ -715,18 +715,18 @@
     var nC=U.filter(function(u){return u.role==='client'}).length;
     var list=U.filter(function(u){ return UFILTER==='all'||(UFILTER==='client'?u.role==='client':u.role!=='client'); });
     $('#panel').innerHTML=
-      (pend.length?'<section class="sec acc-req"><h3>طلبات الوصول لمساحة العمل ('+pend.length+')</h3><p class="hint">عملاء موجودين طلبوا مساحة العمل. ما بياخدوا أي صلاحية قبل ما تقبل.</p>'+
+      (pend.length?'<section class="sec acc-req"><h3>طلبات الوصول لمساحة العمل ('+pend.length+')</h3><p class="hint">عملاء حاليون طلبوا الوصول إلى مساحة العمل. لا يحصلون على أي صلاحية قبل موافقتك.</p>'+
         pend.map(function(r){ return '<div class="client"><div><b>'+esc(r.name)+'</b> <span dir="ltr" class="muted small">'+esc(r.email)+'</span>'+(r.company?' · '+esc(r.company):'')+'</div>'+
           (r.note?'<div class="small">'+esc(r.note).replace(/\n/g,'<br>')+'</div>':'')+'<span class="muted small">'+esc(new Date(r.at).toLocaleString('ar'))+'</span>'+
           '<div class="actions"><button class="btn sm primary" type="button" data-aapprove="'+esc(r.email)+'">قبول — تفعيل مساحة العمل</button><button class="btn sm" type="button" data-areject="'+esc(r.email)+'">رفض</button></div>'+
           '<div class="arej" hidden><textarea placeholder="سبب مختصر يوصل للعميل (اختياري)" dir="auto"></textarea><div class="actions"><button class="btn sm danger" type="button" data-arejgo="'+esc(r.email)+'">أرسل الرفض</button></div></div></div>'; }).join('')+'</section>':'')+
-      '<section class="sec"><h3>دعوة عميل متعاقد</h3><p class="hint">بيوصله إيميل فيه رابط آمن (مرة وحدة، 14 يوم). بيسجّل دخوله أو بينشئ حساب بنفس البريد، وبيتفعّل حسابه كعميل متعاقد. إذا الإيميل مو مفعّل، انسخ الرابط وابعته على واتساب.</p>'+
+      '<section class="sec"><h3>دعوة عميل متعاقد</h3><p class="hint">يصله بريد إلكتروني فيه رابط آمن (يُستخدم مرة واحدة، صالح 14 يوماً). يسجّل دخوله أو ينشئ حساباً بالبريد نفسه، فيُفعَّل حسابه بصفة عميل متعاقد. وإن لم يكن البريد مفعّلاً، فانسخ الرابط وأرسله عبر واتساب.</p>'+
         '<form class="inv-form" id="invForm"><div class="row"><div class="field"><label>البريد</label><input name="email" type="email" dir="ltr" required></div><div class="field"><label>الاسم</label><input name="name"></div>'+
         '<div class="field"><label>لغة الدعوة</label><select name="lang"><option value="ar">العربية</option><option value="en">English</option></select></div></div>'+
-        '<div class="field"><label>رسالة قصيرة (اختياري)</label><textarea name="note" dir="auto" placeholder="مثلاً: حسب اتفاقنا الشهري، من هون رح تبعتلنا المهام."></textarea></div>'+
+        '<div class="field"><label>رسالة قصيرة (اختياري)</label><textarea name="note" dir="auto" placeholder="مثلاً: وفق اتفاقنا الشهري، سترسل إلينا المهام من هنا."></textarea></div>'+
         '<div class="actions"><button class="btn primary sm" type="submit">أرسل الدعوة</button></div><div class="inv-out" hidden></div></form>'+
         (A.invites.length?'<div class="small muted" style="margin-top:12px">دعوات مفتوحة</div><div class="clients">'+A.invites.map(function(i){ return '<div class="client inv"><div><b dir="ltr">'+esc(i.email)+'</b>'+(i.name?' · '+esc(i.name):'')+' <span class="muted small">تنتهي '+esc(new Date(i.expires).toLocaleDateString('ar'))+'</span></div><div class="actions"><button class="btn sm" type="button" data-icopy="'+esc(i.token)+'" data-ilang="'+esc(i.lang||'ar')+'">نسخ الرابط</button><button class="btn sm danger" type="button" data-irevoke="'+esc(i.token)+'">إلغاء الدعوة</button></div></div>'; }).join('')+'</div>':'')+'</section>'+
-      '<section class="sec"><h3>حسابات العملاء ('+U.length+')</h3><p class="hint">العميل العادي يشتري ويتابع طلباته. العميل المتعاقد ياخد كمان مساحة العمل. الترقية بتحتفظ بكل طلباته وفواتيره.</p>'+
+      '<section class="sec"><h3>حسابات العملاء ('+U.length+')</h3><p class="hint">العميل العادي يشتري ويتابع طلباته، والعميل المتعاقد يحصل أيضاً على مساحة العمل. تحتفظ الترقية بجميع طلباته وفواتيره.</p>'+
         '<div class="chips">'+[['all','الكل ('+U.length+')'],['client','متعاقدون ('+nC+')'],['customer','عاديون ('+(U.length-nC)+')']].map(function(x){ return '<button type="button" class="btn sm'+(UFILTER===x[0]?' primary':'')+'" data-ufilter="'+x[0]+'">'+x[1]+'</button>'; }).join('')+'</div>'+
       (list.length? '<div class="clients">'+list.map(function(u){ var cl=u.role==='client';
         return '<div class="client'+(cl?' is-client':'')+'"><div><b>'+esc(u.name)+'</b> <span class="rpill'+(cl?' on':'')+'">'+ROLE[cl?'client':'customer']+'</span> <span dir="ltr" class="muted small" style="user-select:all">'+esc(u.email)+'</span></div>'+
@@ -737,24 +737,24 @@
         '<div class="newpw small" hidden></div></div>'; }).join('')+'</div>'
         : '<div class="empty">لا يوجد عملاء هنا.</div>')+'</section>';
   }
-  var LOGN={'requested workspace access':'طلب الوصول لمساحة العمل','accepted the invitation':'قبل الدعوة','invited to the workspace':'انبعتتله دعوة','access request approved':'انقبل طلب الوصول','access request declined':'انرفض طلب الوصول','upgraded to Active Client':'ترقية إلى عميل متعاقد','workspace access removed':'انلغت مساحة العمل'};
+  var LOGN={'requested workspace access':'طلب الوصول لمساحة العمل','accepted the invitation':'قبل الدعوة','invited to the workspace':'أُرسلت إليه دعوة','access request approved':'قُبل طلب الوصول','access request declined':'رُفض طلب الوصول','upgraded to Active Client':'ترقية إلى عميل متعاقد','workspace access removed':'أُلغيت مساحة العمل'};
   document.addEventListener('submit',function(e){ var f=e.target; if(f.id!=='invForm') return; e.preventDefault();
     var E=f.elements, b=f.querySelector('button[type=submit]');
     accReq({action:'invite',email:E.email.value.trim(),name:E.name.value.trim(),lang:E.lang.value,note:E.note.value.trim()},b).then(function(j){
       var out=f.querySelector('.inv-out'); out.hidden=false;
-      out.innerHTML=(j.sent?'✓ وصلت الدعوة على بريده.':'⚠️ ما انبعت إيميل (الإيميل مو مفعّل). انسخ الرابط وابعته للعميل:')+'<div class="lnk" dir="ltr">'+esc(j.link)+'</div><button class="btn sm" type="button" data-copylink="'+esc(j.link)+'">نسخ الرابط</button>';
+      out.innerHTML=(j.sent?'✓ وصلت الدعوة على بريده.':'⚠️ لم يُرسل البريد (البريد الإلكتروني غير مفعّل). انسخ الرابط وأرسله إلى العميل:')+'<div class="lnk" dir="ltr">'+esc(j.link)+'</div><button class="btn sm" type="button" data-copylink="'+esc(j.link)+'">نسخ الرابط</button>';
     }).catch(function(){});
   });
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='clients') return;
     if(b.dataset.ufilter){ UFILTER=b.dataset.ufilter; renderClients(); return; }
     if(b.dataset.aapprove){ accReq({action:'approve',email:b.dataset.aapprove},b,'تفعّلت مساحة العمل ووصل للعميل إيميل').catch(function(){}); return; }
     if(b.dataset.areject){ var bx=b.closest('.client').querySelector('.arej'); bx.hidden=!bx.hidden; return; }
-    if(b.dataset.arejgo){ var r=b.closest('.arej').querySelector('textarea').value.trim(); accReq({action:'reject',email:b.dataset.arejgo,reason:r},b,'انرفض الطلب ووصل للعميل إيميل').catch(function(){}); return; }
-    if(b.dataset.urole){ if(b.dataset.to==='customer'&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ اكبس مرة ثانية'; return; }
-      accReq({action:'setRole',email:b.dataset.urole,role:b.dataset.to},b,b.dataset.to==='client'?'صار عميل متعاقد، ووصله إيميل':'انلغت مساحة العمل').catch(function(){}); return; }
-    if(b.dataset.irevoke){ accReq({action:'revoke',token:b.dataset.irevoke},b,'انلغت الدعوة').catch(function(){}); return; }
+    if(b.dataset.arejgo){ var r=b.closest('.arej').querySelector('textarea').value.trim(); accReq({action:'reject',email:b.dataset.arejgo,reason:r},b,'رُفض الطلب وأُرسل بريد إلى العميل').catch(function(){}); return; }
+    if(b.dataset.urole){ if(b.dataset.to==='customer'&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='هل أنت متأكد؟ اضغط مرة أخرى'; return; }
+      accReq({action:'setRole',email:b.dataset.urole,role:b.dataset.to},b,b.dataset.to==='client'?'أصبح عميلاً متعاقداً، ووصله بريد إلكتروني':'أُلغيت مساحة العمل').catch(function(){}); return; }
+    if(b.dataset.irevoke){ accReq({action:'revoke',token:b.dataset.irevoke},b,'أُلغيت الدعوة').catch(function(){}); return; }
     if(b.dataset.icopy||b.dataset.copylink){ var l=b.dataset.copylink||('https://eyeblinkstudio.com'+(b.dataset.ilang==='en'?'/en':'')+'/account.html?invite='+b.dataset.icopy);
-      try{ navigator.clipboard.writeText(l).then(function(){ toast('انتسخ الرابط'); }); }catch(_){ toast(l); } return; }
+      try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ الرابط'); }); }catch(_){ toast(l); } return; }
     if(b.hasAttribute('data-ulog')){ var lg=b.closest('.client').querySelector('.ulog'); if(lg) lg.hidden=!lg.hidden; return; }
   });
   document.addEventListener('click',function(e){
@@ -775,7 +775,7 @@
     var tog=function(k,l){ return '<label class="check"><input type="checkbox" data-p="settings.'+k+'" data-t="check"'+(S[k]!==false?' checked':'')+'> '+l+'</label>'; };
     $('#panel').innerHTML=
       '<section class="sec"><h3>ما يظهر على الموقع</h3>'+tog('showStats','خانة الأرقام في الرئيسية')+tog('showWorkTeaser','الأعمال في الرئيسية')+tog('showPackagesTeaser','الباقات في الرئيسية')+tog('showPayments','طرق الدفع (صفحة الباقات وأسفل الموقع)')+tog('ordersOpen','استقبال الطلبات من صفحة الباقات')+'</section>'+
-      '<section class="sec"><h3>التنبيهات</h3><p class="hint">يبعت رسالة تجريبية على تيليغرام وإيميل تجريبي، ويقلّك شو ردّ كل واحد. (بعد أي تغيير بمتغيرات Cloudflare لازم Retry deployment.)</p><div><button class="btn" type="button" id="notifyTest">أرسل تنبيهاً تجريبياً</button></div><pre id="notifyOut" class="small" hidden style="white-space:pre-wrap;margin-top:10px"></pre></section>'+
+      '<section class="sec"><h3>التنبيهات</h3><p class="hint">يرسل رسالة تجريبية عبر تيليغرام ورسالة بريد تجريبية، ويعرض ردّ كل منهما. (بعد أي تغيير في متغيرات Cloudflare يلزم إجراء Retry deployment.)</p><div><button class="btn" type="button" id="notifyTest">أرسل تنبيهاً تجريبياً</button></div><pre id="notifyOut" class="small" hidden style="white-space:pre-wrap;margin-top:10px"></pre></section>'+
       '<section class="sec"><h3>تسجيل العملاء عبر Google</h3><p class="hint">العملاء يسجّلون بالإيميل وكلمة السر دائماً. لإضافة زر «المتابعة عبر Google» الصق هنا الـ Client ID من Google Cloud (ينتهي بـ apps.googleusercontent.com) ثم انشر.</p>'+
         '<div class="field"><label>Google Client ID</label><input data-p="settings.googleClientId" data-t="text" dir="ltr" value="'+esc(S.googleClientId||'')+'" placeholder="1234567890-xxxx.apps.googleusercontent.com"></div></section>'+
       '<section class="sec"><h3>عنوان علامة التبويب لكل صفحة</h3><p class="hint">النص الذي يظهر في تبويب المتصفح. اتركه فارغاً ليبقى العنوان الافتراضي (الظاهر باهتاً).</p>'+
@@ -792,7 +792,7 @@
     var nt=$('#notifyTest'); if(nt) nt.onclick=function(){ var out=$('#notifyOut'); out.hidden=false;
       if(!LIVE){ out.textContent='يعمل على الموقع المنشور فقط.'; return; } out.textContent='…';
       fetch(API+'/notify-test',{method:'POST',headers:headers({})}).then(function(r){ return r.json(); }).then(function(j){
-        var tr=function(d){ d=String(d||''); if(/chat not found/i.test(d)) return 'رقم TELEGRAM_CHAT غلط، أو ما بعتت رسالة للبوت بعد.'; if(/Unauthorized|Not Found/i.test(d)) return 'TELEGRAM_TOKEN غلط أو انلغى. انسخه من جديد من BotFather.'; if(/not set/i.test(d)) return 'المتغيّر غير موجود (أو لسا ما عملت Retry deployment).'; return d; };
+        var tr=function(d){ d=String(d||''); if(/chat not found/i.test(d)) return 'رقم TELEGRAM_CHAT غير صحيح، أو لم ترسل رسالة إلى البوت بعد.'; if(/Unauthorized|Not Found/i.test(d)) return 'TELEGRAM_TOKEN غير صحيح أو أُلغي. انسخه من جديد من BotFather.'; if(/not set/i.test(d)) return 'المتغيّر غير موجود (أو لم تُجرِ Retry deployment بعد).'; return d; };
         out.textContent='تيليغرام: '+(j.telegram&&j.telegram.ok?'✅ وصلت':'❌ '+tr(j.telegram&&j.telegram.description))+'\nالإيميل: '+(j.email&&j.email.ok?'✅ '+j.email.description:'❌ '+tr(j.email&&j.email.description)); })
         .catch(function(){ out.textContent='تعذّر الاتصال.'; }); };
     var pc=$('#pwChange'); if(pc) pc.onclick=function(){
@@ -821,6 +821,8 @@
     $('#resetDraft').onclick=function(){ try{ localStorage.removeItem('eb-draft'); localStorage.removeItem('eb-preview'); }catch(_){} C=JSON.parse(SAVED); dirty(); toast('عادت اللوحة للنسخة المنشورة'); };
   }
 
+  var MIG=/*MIG*/{"نراجع طلبك ونرد عليك بحسابك خلال 24 ساعة": "نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة", "نتفق على التفاصيل والموعد، وبعدها توصلك تفاصيل الدفع": "نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع", "نبدأ التنفيذ، وتتابع كل مرحلة وتحكي معنا لحد التسليم": "نبدأ التنفيذ، وتتابع كل مرحلة وتتواصل معنا حتى التسليم", "شو بيصير بعد الإرسال؟": "ماذا يحدث بعد الإرسال؟", "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالإيميل أو Google، لتتابع طلبك وتتحدث معنا من حسابك.": "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.", "حسب البريف": "حسب المتطلبات"}/*/MIG*/;
+  function reword(x){ if(typeof x==='string') return MIG.hasOwnProperty(x)?MIG[x]:x; if(Array.isArray(x)) return x.map(reword); if(x&&typeof x==='object'){ for(var k in x) x[k]=reword(x[k]); } return x; }
   /* ---------------- boot ---------------- */
   function loadContent(){
     var fromFile=function(){
@@ -831,6 +833,7 @@
     var p= LIVE? fetch(API+'/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json() : fromFile(); }).catch(fromFile) : fromFile();
     return p.then(function(j){
       if(window.EB_SEED) for(var sk in EB_SEED) if(!(sk in j)) j[sk]=JSON.parse(JSON.stringify(EB_SEED[sk]));   // sections added since the last publish
+      j=reword(j);   // retired default wording → current
       SAVED=JSON.stringify(j);
       var draft=null; try{ draft=JSON.parse(localStorage.getItem('eb-draft')||'null'); }catch(_){}
       C= (draft && JSON.stringify(draft)!==SAVED && !LIVE)? draft : j;
