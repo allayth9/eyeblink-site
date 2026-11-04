@@ -1,5 +1,6 @@
 /* Eyeblink — the client workspace (Active Clients only; the server checks every request).
-   Lives inside the account page:  #w  dashboard · #w/p/ID  project · #w/t/REF  task · #w/new/ID  new task */
+   Its own page, workspace.html:  #w overview · #w/projects · #w/tasks[/filter] · #w/invoices · #w/notifications · #w/settings
+   #w/p/ID[/talk|files|report]  project · #w/t/REF  task · #w/new[/ID]  new tasks (one or several at once) */
 (function(){
   var root=document.documentElement, lang=root.lang==='en'?'en':'ar', AR=lang==='ar';
   var BASE=document.body.getAttribute('data-base')||'', API=BASE+'api/';
@@ -133,65 +134,226 @@
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
-  var host=null, shell=null, DASH=null, UNREAD=0;
-  var BELL='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>';
+  /* ======== the workspace page (workspace.html): its own bar, colour per section ======== */
+  var host=null, shell=null, DASH=null, CUR='overview';
+  var U2=AR?{nav:{overview:'نظرة عامة',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
+      g:{login:'سجّل دخولك لفتح مساحة العمل.',client:'مساحة العمل متاحة للعملاء المتعاقدين مع الاستوديو. إن كان لديك تعاون مستمر معنا، فاطلب الوصول من صفحة حسابك.',in:'تسجيل الدخول',acct:'صفحة حسابي'},
+      allTasks:'كل المهام',allTasksP:'جميع مهامك في كل المشاريع، مع حالتها ومواعيدها.',search:'ابحث في المهام…',allProj:'كل المشاريع',
+      f:{all:'الكل',fresh:'جديدة',progress:'قيد التنفيذ',waiting:'بانتظار ردّك',done:'مكتملة',closed:'ملغاة ومرفوضة',upcoming:'مواعيد قادمة'},none:'لا توجد مهام تطابق هذا الاختيار.',
+      projectsP:'كل مشاريعك مع الاستوديو، وحصة كل منها هذا الشهر.',showAll:'عرض المنتهية أيضاً',
+      ntP:'كل ما وصلك من الاستوديو، مرتّباً حسب الوقت.',today:'اليوم',yesterday:'أمس',earlier:'أقدم',ntAll:'الكل',
+      nt:{tasks:'المهام',requests:'طلبات المعلومات',deliveries:'التسليمات',comments:'التعليقات',projects:'المشاريع',billing:'الفواتير'},
+      nw:{h:'مهام جديدة',p:'أضف مهمة واحدة أو عدة مهام دفعة واحدة، وكلها تصل إلى الاستوديو معاً.',card:'المهمة',add:'+ أضف مهمة أخرى',copy:'تبدأ المهمة الجديدة بنوع المهمة السابقة وموعدها وأولويتها.',
+        rm:'إزالة',more:'تفاصيل وروابط وموجز إبداعي',review:'معاينة وإرسال',count:function(n){ return n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام'; },max:'الحد الأقصى 10 مهام في الإرسال الواحد.',
+        sendAll:function(n){ return n===1?'أرسل المهمة':'أرسل '+(n===2?'المهمتين':n+' مهام'); },sentAll:function(n){ return n===1?'وصلت المهمة إلى الاستوديو.':'وصلت '+(n===2?'المهمتان':n+' مهام')+' إلى الاستوديو.'; },noProj:'لا يوجد مشروع نشط بعد لإرسال المهام إليه.'}}
+    :{nav:{overview:'Overview',projects:'Projects',tasks:'Tasks',invoices:'Invoices',notifications:'Notifications',settings:'Settings'},hi:'Hi',hiP:'Your workspace with Eyeblink Studio: projects, tasks, dates and deliveries in one place.',
+      g:{login:'Sign in to open your workspace.',client:'The workspace is for clients with an ongoing agreement with the studio. If that is you, request access from your account page.',in:'Sign in',acct:'My account'},
+      allTasks:'All tasks',allTasksP:'Every task across your projects, with status and dates.',search:'Search tasks…',allProj:'All projects',
+      f:{all:'All',fresh:'New',progress:'In progress',waiting:'Waiting for you',done:'Completed',closed:'Cancelled & rejected',upcoming:'Upcoming dates'},none:'No tasks match this view.',
+      projectsP:'All your projects with the studio, and this month’s quota for each.',showAll:'Show finished too',
+      ntP:'Everything the studio sent you, newest first.',today:'Today',yesterday:'Yesterday',earlier:'Earlier',ntAll:'All',
+      nt:{tasks:'Tasks',requests:'Information requests',deliveries:'Deliveries',comments:'Comments',projects:'Projects',billing:'Invoices'},
+      nw:{h:'New tasks',p:'Add one task or several at once — they all reach the studio together.',card:'Task',add:'+ Add another task',copy:'A new task starts with the previous task’s type, date and priority.',
+        rm:'Remove',more:'Details, links and creative brief',review:'Review and send',count:function(n){ return n===1?'1 task':n+' tasks'; },max:'Up to 10 tasks in one go.',
+        sendAll:function(n){ return n===1?'Send task':'Send '+n+' tasks'; },sentAll:function(n){ return n===1?'Your task reached the studio.':n+' tasks reached the studio.'; },noProj:'There is no active project to send tasks to yet.'}};
+  var SVG=function(d){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>'; };
+  var ICO={overview:SVG('<path d="M4 13.5 12 5l8 8.5"/><path d="M6.5 11.5V19h11v-7.5"/>'),projects:SVG('<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>'),
+    tasks:SVG('<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="m3.8 6.5 1.3 1.3 2.2-2.6M3.8 12l1.3 1.3 2.2-2.6M3.8 17.5l1.3 1.3 2.2-2.6"/>'),invoices:SVG('<path d="M6 3.5h9l3 3v14l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2z"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>'),
+    notifications:SVG('<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),settings:SVG('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
+    plus:SVG('<path d="M12 5v14M5 12h14"/>'),fresh:SVG('<path d="M12 4.5v15M4.5 12h15"/>'),progress:SVG('<path d="M12 4a8 8 0 1 0 8 8"/><path d="M12 8v4l2.5 2.5"/>'),waiting:SVG('<path d="M5 12.5 9.5 17 19 7.5"/>'),
+    done:SVG('<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'),dates:SVG('<rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>'),arrow:SVG('<path d="M15 6l-6 6 6 6"/>')};
+  var TYPEC={monthly:'#A78BFA',campaign:'#F5C66B',content:'#5EF0B0',editing:'#6E8BFF',motion:'#E07BE0',commercial:'#FFC56B',once:'#3FE0E8',custom:'#7DD3FC'};
+  var PAL=['#6E8BFF','#E07BE0','#3FE0E8','#F5C66B','#5EF0B0','#A78BFA','#FF7AB6','#7DD3FC','#FFC56B','#8FA2FF'];
+  var NAV=[['overview','#w'],['projects','#w/projects'],['tasks','#w/tasks'],['invoices','#w/invoices'],['notifications','#w/notifications'],['settings','#w/settings']];
   function mount(el){ shell=el;
-    if(!el.querySelector('.wview')){ el.innerHTML='<div class="wtop"><a class="wtop-set" href="#w/invoices">'+T.bl.h+'</a><a class="wtop-set" href="#w/settings">'+T.nt.set+'</a><div class="wbellw"><button type="button" class="wbell glass" aria-label="'+T.nt.bell+'" aria-expanded="false">'+BELL+'<span class="wbadge" hidden></span></button>'+
-        '<div class="wnp glass" hidden><div class="wnp-h"><b>'+T.nt.h+'</b><button type="button" class="linkbtn" data-nall>'+T.nt.all+'</button></div><div class="wnp-l"></div><a class="wnp-f" href="#w/settings">'+T.nt.set+'</a></div></div></div><div class="wview"></div>';
-      bindBell(el); }
-    host=el.querySelector('.wview'); route(); pollUnread(); }
-  function setUnread(n){ UNREAD=+n||0; var b=shell&&shell.querySelector('.wbadge'); if(b){ b.hidden=!UNREAD; b.textContent=UNREAD>9?'9+':UNREAD; }
-    var tb=document.querySelector('.acct-tabs [data-tab="w"]'); if(tb){ var x=tb.querySelector('.wtb-n'); if(!x&&UNREAD){ x=document.createElement('span'); x.className='wtb-n'; tb.appendChild(x); } if(x){ x.hidden=!UNREAD; x.textContent=UNREAD>9?'9+':UNREAD; } } }
-  var POLL=null; function pollUnread(){ if(POLL) return; var tick=function(){ if(document.hidden||!shell||shell.hidden) return; api('?view=unread').then(function(j){ if(j.ok) setUnread(j.unread); }); }; tick(); POLL=setInterval(tick,90000); }
-  function bindBell(el){ var btn=el.querySelector('.wbell'), pnl=el.querySelector('.wnp'), list=el.querySelector('.wnp-l');
-    var close=function(){ pnl.hidden=true; btn.setAttribute('aria-expanded','false'); };
-    btn.onclick=function(e){ e.stopPropagation(); if(!pnl.hidden) return close(); pnl.hidden=false; btn.setAttribute('aria-expanded','true'); list.innerHTML='<div class="acct-load"><span></span></div>';
-      api('?view=notifications').then(function(j){ if(!j.ok){ list.innerHTML='<p class="muted small">'+T.err+'</p>'; return; } setUnread(j.unread);
-        list.innerHTML=j.items.length?j.items.map(function(n){ return '<a class="wn'+(n.read_at?'':' new')+'" href="'+esc(n.link||'#w')+'" data-nid="'+n.id+'"><i class="c-'+esc(n.cat)+'"></i><span><span class="wn-t">'+esc(nText(n))+'</span>'+(n.data&&n.data.note?'<span class="wn-n">'+esc(n.data.note)+'</span>':'')+'<small>'+esc(ago(n.created_at))+'</small></span></a>'; }).join(''):'<p class="muted small wnp-e">'+T.nt.none+'</p>'; }); };
-    list.onclick=function(e){ var a=e.target.closest('a[data-nid]'); if(!a) return; if(a.classList.contains('new')){ a.classList.remove('new'); setUnread(UNREAD-1); api('',{action:'read',ids:[+a.dataset.nid]}); } close(); };
-    el.querySelector('[data-nall]').onclick=function(){ api('',{action:'read',all:true}).then(function(r){ if(r.ok){ setUnread(0); [].forEach.call(list.querySelectorAll('.wn.new'),function(x){ x.classList.remove('new'); }); } }); };
-    el.querySelector('.wnp-f').onclick=close;
-    document.addEventListener('click',function(e){ if(!pnl.hidden&&!e.target.closest('.wbellw')) close(); });
-    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!pnl.hidden){ close(); btn.focus(); } }); }
-  function route(){ if(!shell||shell.hidden) return; var h=(location.hash||'').slice(1), m;
-    if(h==='w/settings') return settings();
-    if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))) return invoices(m[1]);
-    if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))) return task(m[1]);
-    if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files|report)(?:\/(\d{4}-\d{2}))?)?$/.exec(h))) return project(m[1],m[2]||'tasks',false,m[3]);
-    if((m=/^w\/new\/(p_[a-f0-9]+)$/.exec(h))) return newTask(m[1]);
-    return dash(); }
-  addEventListener('hashchange',function(){ if(/^#w/.test(location.hash)) route(); });
-  function loading(){ host.innerHTML='<div class="acct-load glass"><span></span></div>'; }
+    el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+NAV.map(function(n){ return '<a class="c-'+n[0]+'" data-s="'+n[0]+'" href="'+n[1]+'">'+ICO[n[0]]+'<span>'+U2.nav[n[0]]+'</span>'+(n[0]==='notifications'?'<b class="wn-n" hidden></b>':'')+'</a>'; }).join('')+'</div>'+
+      '<a class="wnav-new" href="#w/new">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
+    host=el.querySelector('.wview'); route(); }
+  function setSec(sec){ if(sec!=='tasks') TC=null; CUR=sec; shell.dataset.sec=sec;
+    [].forEach.call(shell.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); if(on&&a.scrollIntoView&&innerWidth<860) a.scrollIntoView({inline:'center',block:'nearest'}); });
+    shell.querySelector('.wnav-new').classList.toggle('on',sec==='new'); }
+  function paintN(n){ var b=shell&&shell.querySelector('.wnav .wn-n'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } }
+  function setUnread(n){ n=+n||0; paintN(n); if(window.EBHdr) EBHdr.setUnread(n); }
+  addEventListener('eb:unread',function(e){ paintN(+e.detail||0); });
+  function route(){ if(!shell) return; var h=(location.hash||'').slice(1), m;
+    if(h==='w/settings'){ setSec('settings'); return settings(); }
+    if(h==='w/notifications'){ setSec('notifications'); return notifications(); }
+    if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))){ setSec('invoices'); return invoices(m[1]); }
+    if((m=/^w\/tasks(?:\/(all|fresh|progress|waiting|done|closed|upcoming))?$/.exec(h))){ setSec('tasks'); return allTasks(m[1]||'all'); }
+    if(h==='w/projects'){ setSec('projects'); return projectsView(); }
+    if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))){ setSec('tasks'); return task(m[1]); }
+    if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files|report)(?:\/(\d{4}-\d{2}))?)?$/.exec(h))){ setSec('projects'); return project(m[1],m[2]||'tasks',false,m[3]); }
+    if((m=/^w\/new(?:\/(p_[a-f0-9]+))?$/.exec(h))){ setSec('new'); return newTasks(m[1]); }
+    setSec('overview'); return dash(); }
+  var lastRoute='';
+  addEventListener('hashchange',function(){ if(!shell) return; if(!/^#w/.test(location.hash)&&location.hash) return; var k=location.hash.split('/').slice(0,2).join('/');
+    route(); if(k!==lastRoute){ var top=shell.getBoundingClientRect().top+scrollY-110; if(scrollY>top) scrollTo(0,Math.max(0,top)); } lastRoute=k; });
+  function loading(){ host.innerHTML='<div class="wskel"><i></i><i></i><i></i><i></i></div>'; }
   function fail(j){ host.innerHTML='<div class="wcard glass"><p class="muted">'+(j&&j.error==='db'?(AR?'مساحة العمل قيد التجهيز. يُرجى المحاولة بعد قليل.':'The workspace is being set up. Try again shortly.'):T.err)+'</p></div>'; }
+  // a short rise for each block of a view (respects reduced motion in CSS)
+  var RK='';
+  function rise(){ var k=(location.hash||'#w').replace(/^(#w\/p\/p_[a-f0-9]+).*$/,'$1').replace(/^#w\/tasks.*$/,'#w/tasks'); if(k===RK) return; RK=k;
+    [].forEach.call(host.children,function(c,i){ c.style.setProperty('--i',Math.min(i,8)); c.classList.add('wrise'); }); }
+  function head(sec,eyebrow,title,p,actions){ return '<header class="whd"><div><span class="eyebrow">'+eyebrow+'</span><h2>'+title+'</h2>'+(p?'<p class="muted">'+p+'</p>':'')+'</div>'+(actions||'')+'</header>'; }
+  function wh(text,k,extra){ return '<h3 class="wh" style="--k:'+k+'">'+text+(extra||'')+'</h3>'; }
+  // boot on the workspace page: signed in + Active Client → mount; otherwise a clear gate
+  (function(){ var el=document.getElementById('ws'); if(!el) return;
+    api('?view=dash').then(function(j){
+      if(j._s===401||j._s===403){ var lg=j._s===401; el.innerHTML='<div class="wgate glass"><span class="wg-ic">'+ICO.overview+'</span><span class="eyebrow">WORKSPACE</span><h1>'+T.ws+'</h1><p class="muted">'+(lg?U2.g.login:U2.g.client)+'</p>'+
+        '<div class="actions"><a class="btn btn-primary" href="account.html'+(lg?'?next=workspace'+esc(location.hash):'')+'">'+(lg?U2.g.in:U2.g.acct)+'</a></div></div>'; return; }
+      if(!j.ok){ el.innerHTML='<div class="wcard glass"><p class="muted">'+(j.error==='db'?(AR?'مساحة العمل قيد التجهيز. يُرجى المحاولة بعد قليل.':'The workspace is being set up. Try again shortly.'):T.err)+'</p></div>'; return; }
+      j._at=Date.now(); DASH=j; mount(el); setUnread(j.unread);
+    }); })();
 
-  /* ---- dashboard ---- */
+  /* ---- overview ---- */
+  function firstName(u){ return u&&u.name?String(u.name).trim().split(/\s+/)[0]:''; }
+  function greet(first){ return U2.hi+(first?(AR?'، ':', ')+first:''); }
+  addEventListener('eb:who',function(e){ var g=host&&host.querySelector('.wgreet'); if(g) g.textContent=greet(firstName(e.detail)); });
   function dash(){
-    loading();
-    api('?view=dash').then(function(j){ if(!j.ok) return fail(j); DASH=j; if('unread' in j) setUnread(j.unread);
-      var c=j.counts||{}, n=function(a){ return a.reduce(function(s,k){ return s+(c[k]||0); },0); };
-      var act=j.projects.filter(function(p){return p.status==='active'});
-      var tiles=[[T.k.active,act.length],[T.k.fresh,n(['new','review','info'])],[T.k.progress,n(['accepted','progress','revision'])],[T.k.review,n(['feedback','final'])],[T.k.done,c.completed||0],[T.k.dates,(j.upcoming||[]).length]];
-      host.innerHTML='<div class="wsp-head"><div><span class="eyebrow">WORKSPACE</span><h2>'+T.ws+'</h2><p class="muted">'+T.wsP+'</p></div></div>'+
-        '<div class="wkpis">'+tiles.map(function(t){ return '<div class="wkpi glass"><b>'+t[1]+'</b><span>'+esc(t[0])+'</span></div>'; }).join('')+'</div>'+
-        (j.bills&&j.bills.open?'<a class="wcard glass wbillstrip'+(j.bills.overdue?' late':'')+'" href="#w/invoices"><b>'+T.bl.strip+' ('+j.bills.open+')</b><small class="muted">'+(j.bills.overdue?j.bills.overdue+' '+T.bl.overdue+' · ':'')+T.bl.stripP+'</small><span class="go">←</span></a>':'')+
-        ((j.waiting||[]).length?'<section class="wcard glass wwait"><h3>'+T.waiting+' ('+j.waiting.length+')</h3><p class="muted small">'+T.waitingP+'</p><ul>'+j.waiting.map(function(w){ return '<li><a href="#w/t/'+esc(w.ref)+'">'+pill(w.status)+'<b><bdi>'+esc(w.title)+'</bdi></b><small class="muted"><bdi>'+esc(w.project_name)+'</bdi> · <bdi dir="ltr">'+esc(w.ref)+'</bdi></small><span class="go">←</span></a></li>'; }).join('')+'</ul></section>':'')+
-        (j.projects.length? '<section class="wsec"><h3>'+T.projects+'</h3><div class="wprojects">'+j.projects.map(projCard).join('')+'</div></section>' : '<div class="wcard glass wempty"><p>'+T.empty+'</p></div>')+
-        (j.projects.length? '<div class="wcols"><section class="wsec"><h3>'+T.recent+'</h3>'+taskTable(j.tasks,true)+'</section>'+
-          '<aside class="wside"><section class="wsec"><h3>'+T.upcoming+'</h3>'+((j.upcoming||[]).length?'<ul class="wdates">'+j.upcoming.map(function(u){ return '<li><a href="#w/t/'+esc(u.ref)+'"><b>'+esc(d8(u.confirmed_date))+'</b><span>'+esc(u.title)+'</span><small class="muted">'+esc(u.project_name)+'</small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.noDates+'</p>')+'</section>'+
-          '<section class="wsec"><h3>'+T.activity+'</h3>'+((j.activity||[]).length?'<ul class="wact">'+j.activity.map(actText).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>' : '');
-    });
+    if(DASH&&DASH._at&&Date.now()-DASH._at<5000) return drawDash(DASH);
+    loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; if('unread' in j) setUnread(j.unread); drawDash(j); });
   }
-  function projCard(p){ var open=p.status==='active';
-    return '<article class="wproj glass"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+'</span><h4>'+esc(p.name)+'</h4>'+
-      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</p>'+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
-      (open?'<a class="btn btn-primary wnew" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</article>'; }
+  function drawDash(j){
+    var c=j.counts||{}, n=function(a){ return a.reduce(function(s,k){ return s+(c[k]||0); },0); }, act=j.projects.filter(function(p){return p.status==='active'});
+    var first=firstName(window.EBHdr&&EBHdr.user());
+    var tiles=[['projects',T.k.active,act.length,'#A78BFA','#w/projects'],['fresh',T.k.fresh,n(['new','review']),'#6E8BFF','#w/tasks/fresh'],['progress',T.k.progress,n(['accepted','progress','revision']),'#3FE0E8','#w/tasks/progress'],
+      ['waiting',U2.f.waiting,n(['info','feedback','final']),'#E07BE0','#w/tasks/waiting'],['done',T.k.done,c.completed||0,'#5EF0B0','#w/tasks/done'],['dates',T.k.dates,(j.upcoming||[]).length,'#F5C66B','#w/tasks/upcoming']];
+    host.innerHTML=head('overview','WORKSPACE','<span class="wgreet">'+esc(greet(first))+'</span>',U2.hiP)+
+      '<div class="wkpis">'+tiles.map(function(t){ return '<a class="wkpi glass" href="'+t[4]+'" style="--k:'+t[3]+'"><span class="wk-ic">'+(ICO[t[0]]||'')+'</span><b>'+t[2]+'</b><span>'+esc(t[1])+'</span><i class="wk-go">'+ICO.arrow+'</i></a>'; }).join('')+'</div>'+
+      (j.bills&&j.bills.open?'<a class="wcard glass wbillstrip'+(j.bills.overdue?' late':'')+'" href="#w/invoices"><span class="ws-ic">'+ICO.invoices+'</span><b>'+T.bl.strip+' ('+j.bills.open+')</b><small class="muted">'+(j.bills.overdue?j.bills.overdue+' '+T.bl.overdue+' · ':'')+T.bl.stripP+'</small><span class="go">←</span></a>':'')+
+      ((j.waiting||[]).length?'<section class="wcard glass wwait"><div class="wwait-h"><span class="ws-ic">'+ICO.waiting+'</span><div><h3>'+T.waiting+' ('+j.waiting.length+')</h3><p class="muted small">'+T.waitingP+'</p></div></div><ul>'+j.waiting.map(function(w){ return '<li><a href="#w/t/'+esc(w.ref)+'">'+pill(w.status)+'<b><bdi>'+esc(w.title)+'</bdi></b><small class="muted"><bdi>'+esc(w.project_name)+'</bdi> · <bdi dir="ltr">'+esc(w.ref)+'</bdi></small><span class="go">←</span></a></li>'; }).join('')+'</ul></section>':'')+
+      (j.projects.length?'<section class="wsec">'+wh(T.projects,'#A78BFA','<a class="wh-more" href="#w/projects">'+U2.nav.projects+' '+(AR?'←':'→')+'</a>')+'<div class="wprojects">'+j.projects.filter(function(p){ return p.status==='active'||p.status==='paused'; }).slice(0,6).map(projCard).join('')+'</div></section>':'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>')+
+      (j.projects.length?'<div class="wcols"><section class="wsec">'+wh(T.recent,'#6E8BFF','<a class="wh-more" href="#w/tasks">'+U2.allTasks+' '+(AR?'←':'→')+'</a>')+taskTable((j.tasks||[]).slice(0,8),true)+'</section>'+
+        '<aside class="wside"><section class="wsec">'+wh(T.upcoming,'#F5C66B')+((j.upcoming||[]).length?'<ul class="wdates">'+j.upcoming.map(function(u){ return '<li><a href="#w/t/'+esc(u.ref)+'"><b>'+esc(d8(u.confirmed_date))+'</b><span>'+esc(u.title)+'</span><small class="muted">'+esc(u.project_name)+'</small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.noDates+'</p>')+'</section>'+
+        '<section class="wsec">'+wh(T.activity,'#3FE0E8')+((j.activity||[]).length?'<ul class="wact">'+j.activity.slice(0,10).map(actText).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>':'');
+    rise();
+  }
+  function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
+    return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
+      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
+      (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
     if(!list||!list.length) return '<p class="muted small">'+T.noTasks+'</p>';
     return '<div class="wtable"><table><thead><tr><th>'+T.task+'</th>'+(withProject?'<th>'+T.project+'</th>':'')+'<th>'+T.status+'</th><th>'+T.req+'</th><th>'+T.conf+'</th><th>'+T.upd+'</th></tr></thead><tbody>'+
-      list.map(function(t){ return '<tr data-go="#w/t/'+esc(t.ref)+'"><td><a href="#w/t/'+esc(t.ref)+'"><b>'+esc(t.title)+'</b></a><small class="muted ref">'+esc(t.ref)+'</small>'+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</td>'+(withProject?'<td class="tp" data-l="'+esc(T.project)+'">'+esc(t.project_name||'')+'</td>':'')+
+      list.map(function(t){ return '<tr class="r-'+esc(t.status)+'" data-go="#w/t/'+esc(t.ref)+'"><td><a href="#w/t/'+esc(t.ref)+'"><b>'+esc(t.title)+'</b></a><small class="muted ref">'+esc(t.ref)+'</small>'+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</td>'+(withProject?'<td class="tp" data-l="'+esc(T.project)+'">'+esc(t.project_name||'')+'</td>':'')+
         '<td class="ts">'+pill(t.status)+'</td><td data-l="'+esc(T.req)+'">'+esc(t.requested_date?d8(t.requested_date):'—')+'</td><td data-l="'+esc(T.conf)+'" class="'+(t.confirmed_date?'cf':'muted')+'">'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</td><td class="muted small tu">'+esc(ago(t.updated_at))+'</td></tr>'; }).join('')+'</tbody></table></div>'; }
   document.addEventListener('click',function(e){ var tr=e.target.closest('tr[data-go]'); if(tr&&!e.target.closest('a')) location.hash=tr.dataset.go; });
+
+  /* ---- all projects ---- */
+  function projectsView(){ loading();
+    api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; var all=false;
+      var draw=function(){ var L2=j.projects.filter(function(p){ return all||p.status==='active'||p.status==='paused'; });
+        host.querySelector('.wprojects').innerHTML=L2.length?L2.map(projCard).join(''):'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>'; };
+      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+'<div class="wprojects wprojects-lg"></div>';
+      var tg=host.querySelector('.wtoggle input'); if(tg) tg.onchange=function(){ all=tg.checked; draw(); };
+      draw(); rise(); }); }
+
+  /* ---- all tasks, filtered ---- */
+  var TF={fresh:['new','review'],progress:['accepted','progress','revision'],waiting:['info','feedback','final'],done:['completed'],closed:['rejected','cancelled']};
+  var FC={all:'#AEBBD2',fresh:'#6E8BFF',progress:'#3FE0E8',waiting:'#E07BE0',done:'#5EF0B0',closed:'#ff8c9c',upcoming:'#F5C66B'};
+  var TC=null;
+  function allTasks(f){ if(TC&&Date.now()-TC.at<20000) return drawTasks(TC.j,f); loading();
+    api('?view=tasks').then(function(j){ if(!j.ok) return fail(j); TC={j:j,at:Date.now()}; drawTasks(j,f); }); }
+  var TQ={p:'',q:''};
+  function drawTasks(j,f){ var td=new Date().toISOString().slice(0,10);
+    if(TQ.p&&!j.projects.some(function(p){ return p.id===TQ.p; })) TQ.p='';
+    var match=function(t,k){ if(k==='all') return true; if(k==='upcoming') return t.confirmed_date&&t.confirmed_date>=td&&OPEN.indexOf(t.status)>=0; return TF[k].indexOf(t.status)>=0; };
+    var scope=function(t){ return !TQ.p||t.project_id===TQ.p; };
+    var draw=function(){ var q=TQ.q.toLowerCase(), L2=j.tasks.filter(function(t){ return match(t,f)&&scope(t)&&(!q||(t.title+' '+t.ref+' '+(t.type||'')+' '+(t.project_name||'')).toLowerCase().indexOf(q)>=0); });
+      if(f==='upcoming') L2.sort(function(a,b){ return a.confirmed_date<b.confirmed_date?-1:1; });
+      host.querySelector('.wtasks').innerHTML=L2.length?taskTable(L2,!TQ.p):'<div class="wcard glass wempty"><p>'+U2.none+'</p></div>';
+      [].forEach.call(host.querySelectorAll('.wtf a'),function(a){ var k=a.dataset.f, on=k===f; a.classList.toggle('on',on); a.setAttribute('aria-current',on?'true':'false');
+        a.querySelector('small').textContent=j.tasks.filter(function(t){ return match(t,k)&&scope(t); }).length; }); };
+    host.innerHTML=head('tasks','TASKS',U2.allTasks,U2.allTasksP,'<div class="whd-a"><a class="btn btn-primary" href="#w/new'+(TQ.p?'/'+esc(TQ.p):'')+'">+ '+T.newTask+'</a></div>')+
+      '<div class="wtools glass"><div class="wtf" role="toolbar">'+['all','fresh','progress','waiting','upcoming','done','closed'].map(function(k){
+        return '<a class="chipc" data-f="'+k+'" href="#w/tasks'+(k==='all'?'':'/'+k)+'" style="--k:'+FC[k]+'"><i></i>'+U2.f[k]+' <small></small></a>'; }).join('')+'</div>'+
+      '<div class="wtq"><label class="wsearch"><input type="search" dir="auto" placeholder="'+U2.search+'" aria-label="'+U2.search+'" value="'+esc(TQ.q)+'"></label>'+(j.projects.length>1?'<select aria-label="'+T.project+'"><option value="">'+U2.allProj+'</option>'+j.projects.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===TQ.p?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select>':'')+'</div></div><div class="wtasks"></div>';
+    host.querySelector('.wtq input').oninput=function(){ TQ.q=this.value.trim(); draw(); };
+    var ps=host.querySelector('.wtq select'); if(ps) ps.onchange=function(){ TQ.p=ps.value; draw(); };
+    draw(); rise(); }
+
+  /* ---- notifications, full page ---- */
+  var NCAT={tasks:'#6E8BFF',requests:'#FFC56B',deliveries:'#E07BE0',comments:'#8FA2FF',projects:'#A78BFA',billing:'#F5C66B'};
+  function notifications(){ loading();
+    api('?view=notifications').then(function(j){ if(!j.ok) return fail(j); setUnread(j.unread); var cat='';
+      var day=function(s){ var d=new Date(s), t=new Date(), y=new Date(Date.now()-864e5); return d.toDateString()===t.toDateString()?U2.today:d.toDateString()===y.toDateString()?U2.yesterday:U2.earlier; };
+      var draw=function(){ var L2=j.items.filter(function(n){ return !cat||n.cat===cat; }), out='', g='';
+        L2.forEach(function(n){ var dd=day(n.created_at); if(dd!==g){ g=dd; out+='<div class="wng">'+esc(dd)+'</div>'; }
+          out+='<a class="wni'+(n.read_at?'':' new')+'" href="'+esc(n.link||'#w')+'" data-id="'+n.id+'" style="--k:'+(NCAT[n.cat]||'#6E8BFF')+'"><i aria-hidden="true"></i><span><b>'+esc(nText(n))+'</b>'+(n.data&&n.data.note?'<em>'+esc(n.data.note)+'</em>':'')+'<small><span class="wni-c">'+esc(U2.nt[n.cat]||'')+'</span> · '+esc(ago(n.created_at))+'</small></span></a>'; });
+        host.querySelector('.wnl').innerHTML=out||'<div class="wcard glass wempty"><p>'+T.nt.none+'</p></div>';
+        [].forEach.call(host.querySelectorAll('.wncf button'),function(b){ b.classList.toggle('on',b.dataset.c===cat); }); };
+      var cats=Object.keys(NCAT).filter(function(k){ return j.items.some(function(n){ return n.cat===k; }); });
+      host.innerHTML=head('notifications','NOTIFICATIONS',T.nt.h,U2.ntP,'<div class="whd-a">'+(j.unread?'<button type="button" class="btn btn-glass glass" data-nall>'+T.nt.all+'</button>':'')+'<a class="btn btn-glass glass" href="#w/settings">'+T.nt.set+'</a></div>')+
+        (cats.length>1?'<div class="wncf">'+['' ].concat(cats).map(function(k){ return '<button type="button" class="chipc" data-c="'+k+'" style="--k:'+(k?NCAT[k]:'#AEBBD2')+'"><i></i>'+(k?U2.nt[k]:U2.ntAll)+'</button>'; }).join('')+'</div>':'')+'<div class="wnl"></div>';
+      var cf=host.querySelector('.wncf'); if(cf) cf.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; cat=b.dataset.c; draw(); };
+      host.querySelector('.wnl').onclick=function(e){ var a=e.target.closest('a[data-id]'); if(!a||!a.classList.contains('new')) return; a.classList.remove('new'); var it=j.items.filter(function(x){ return x.id===+a.dataset.id; })[0]; if(it) it.read_at=new Date().toISOString(); j.unread=Math.max(0,j.unread-1); setUnread(j.unread); api('',{action:'read',ids:[+a.dataset.id]}); };
+      var na=host.querySelector('[data-nall]'); if(na) na.onclick=function(){ na.disabled=true; api('',{action:'read',all:true}).then(function(r){ if(r.ok){ setUnread(0); notifications(); } }); };
+      draw(); rise(); }); }
+
+  /* ---- new tasks: one or several, sent together ---- */
+  function newTasks(pid){
+    var W=C().workspace||{}, types=L(W.taskTypes)||[];
+    var go=function(projects){ var act=projects.filter(function(p){return p.status==='active'});
+      if(!act.length){ host.innerHTML=head('new','NEW TASKS',U2.nw.h,'')+'<div class="wcard glass wempty"><p>'+U2.nw.noProj+'</p></div>'; return; }
+      if(!act.some(function(p){return p.id===pid})) pid=act[0].id;
+      var minD=new Date().toISOString().slice(0,10);
+      host.innerHTML=head('new','NEW TASKS',U2.nw.h,U2.nw.p)+
+        '<form class="wmulti form" id="wNew" novalidate><div class="wm-top wcard glass"><label>'+T.project+'<select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===pid?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></label>'+
+          '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p></div><datalist id="wTypes">'+types.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'+
+          '<div class="wm-list"></div><div class="wm-add"><button type="button" class="wm-addb">'+ICO.plus+'<span>'+U2.nw.add+'</span></button><small class="muted">'+U2.nw.copy+'</small></div>'+
+          '<div class="wm-bar glass"><span class="wm-count"></span><p class="msg" role="alert"></p><button class="btn btn-primary" type="submit">'+U2.nw.review+'</button></div></form>';
+      var f=document.getElementById('wNew'), list=f.querySelector('.wm-list'), N=0;
+      var card=function(prev){ var i=N++, k=PAL[i%PAL.length], d=document.createElement('section'); d.className='wm-card glass'; d.style.setProperty('--k',k);
+        d.innerHTML='<div class="wm-h"><span class="wm-n">'+(list.children.length+1)+'</span><b>'+U2.nw.card+'</b><button type="button" class="wm-rm" aria-label="'+U2.nw.rm+'">×</button></div>'+
+          '<div class="wgrid"><label>'+T.f.title+'<input name="title" maxlength="140" dir="auto" required></label><label>'+T.f.type+'<input name="type" list="wTypes" maxlength="60" dir="auto" value="'+esc(prev?prev.type:'')+'"></label>'+
+          '<label>'+T.f.date+'<input name="requested_date" type="date" min="'+minD+'" value="'+esc(prev?prev.date:'')+'"></label>'+
+          '<fieldset class="wprio"><legend>'+T.f.prio+'</legend>'+['normal','high','urgent'].map(function(p){ var on=(prev?prev.prio:'normal')===p; return '<label class="chipb'+(on?' on':'')+'"><input type="radio" name="priority_'+i+'" value="'+p+'"'+(on?' checked':'')+'>'+esc(L((W.priorities||{})[p])||T.p[p])+'</label>'; }).join('')+'</fieldset></div>'+
+          '<label>'+T.f.desc+'<textarea name="description" maxlength="4000" dir="auto" rows="2"></textarea></label>'+
+          '<details class="wm-more"><summary>'+U2.nw.more+'</summary><label>'+T.f.details+'<textarea name="details" maxlength="6000" dir="auto"></textarea></label>'+
+            '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
+            '<label>'+T.f.notes+'<textarea name="notes" maxlength="3000" dir="auto"></textarea></label>'+
+            '<div class="wbrief-in"><b>'+T.x.brief+'</b> <small class="muted">'+T.x.briefHint+'</small><div class="wgrid">'+['goal','audience','format','duration','tone','message','cta','music'].map(function(b){ return '<label>'+T.x.b[b]+'<input name="b_'+b+'" maxlength="'+(b==='format'?120:600)+'" dir="auto"'+(b==='format'?' list="wFmts"':'')+'></label>'; }).join('')+'</div></div></details>';
+        d.addEventListener('input',function(){ if(d.classList.contains('err')){ d.classList.remove('err'); f.querySelector('.msg').textContent=''; } });
+        list.appendChild(d); var rows=d.querySelector('.rows'), addRow=function(){ if(rows.children.length>=10) return; var r=document.createElement('div'); r.className='lrow2'; r.innerHTML='<input name="ll" placeholder="'+T.f.linkLabel+'" maxlength="80" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'">'; rows.appendChild(r); };
+        addRow(); d.querySelector('.addl').onclick=addRow;
+        d.querySelector('.wprio').onchange=function(){ [].forEach.call(this.querySelectorAll('label'),function(l){ l.classList.toggle('on',l.querySelector('input').checked); }); };
+        d.querySelector('.wm-rm').onclick=function(){ if(list.children.length<2) return; d.classList.add('out'); setTimeout(function(){ d.remove(); sync(); },180); };
+        sync(); return d; };
+      var read=function(d){ var q=function(n){ return d.querySelector('[name='+n+']'); };
+        return {title:q('title').value.trim(),type:q('type').value.trim(),requested_date:q('requested_date').value,priority:(d.querySelector('.wprio input:checked')||{}).value||'normal',
+          description:q('description').value.trim(),details:q('details').value.trim(),notes:q('notes').value.trim(),
+          links:[].map.call(d.querySelectorAll('.lrow2'),function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); }),
+          brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
+      var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
+        f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
+        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&pp.quota&&(pp.month_tasks||0)+n>pp.quota); };
+      f.elements.project.onchange=sync;
+      f.querySelector('.wm-addb').onclick=function(){ var last=list.lastElementChild, x=last?read(last):null; var d=card(x?{type:x.type,date:x.requested_date,prio:x.priority}:null); d.querySelector('[name=title]').focus(); d.scrollIntoView({block:'center',behavior:'smooth'}); };
+      card(null); setTimeout(function(){ var t=list.querySelector('[name=title]'); if(t) t.focus({preventScroll:true}); },60);
+      f.onsubmit=function(e){ e.preventDefault(); var msg=f.querySelector('.msg'), items=[], bad=null; msg.textContent='';
+        [].forEach.call(list.children,function(d){ d.classList.remove('err'); var x=read(d); if(!bad&&!x.title){ bad=d; msg.textContent=T.f.need; } else if(!bad&&x.requested_date&&x.requested_date<minD){ bad=d; msg.textContent=T.f.bad; } items.push(x); });
+        if(bad){ bad.classList.add('err'); bad.scrollIntoView({block:'center',behavior:'smooth'}); var fi=bad.querySelector(msg.textContent===T.f.need?'[name=title]':'[name=requested_date]'); if(fi) fi.focus({preventScroll:true}); return; }
+        previewAll(f.elements.project.value,items,f,act); };
+    };
+    if(DASH&&DASH.projects) go(DASH.projects); else { loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; go(j.projects); }); }
+  }
+  function briefHTML(b){ if(!b) return ''; var k=Object.keys(b).filter(function(x){ return b[x]; }); if(!k.length) return '';
+    return '<h4>'+T.x.brief+'</h4><dl class="wbriefl">'+k.map(function(x){ return '<div><dt>'+esc(T.x.b[x]||x)+'</dt><dd>'+esc(b[x])+'</dd></div>'; }).join('')+'</dl>'; }
+  function previewAll(pid,items,form,act){
+    var p=act.filter(function(x){return x.id===pid})[0]||{}, box=document.createElement('div'); box.className='wprev-all';
+    box.innerHTML='<div class="wcard glass wpv-h"><span class="eyebrow">PREVIEW</span><h2>'+esc(p.name||'')+'</h2><p class="muted">'+U2.nw.count(items.length)+' · '+T.f.dateHint+'</p></div>'+
+      items.map(function(d,i){ return '<article class="wcard glass wpreview" style="--k:'+PAL[i%PAL.length]+'"><div class="wm-h"><span class="wm-n">'+(i+1)+'</span><h3>'+esc(d.title)+'</h3></div><dl class="wmeta">'+
+        (d.type?'<div><dt>'+T.f.type+'</dt><dd>'+esc(d.type)+'</dd></div>':'')+'<div><dt>'+T.req+'</dt><dd>'+esc(d.requested_date?d8(d.requested_date):T.reqNone)+'</dd></div><div><dt>'+T.f.prio+'</dt><dd>'+esc(T.p[d.priority])+'</dd></div></dl>'+
+        (d.description?'<h4>'+T.desc+'</h4><p>'+para(d.description)+'</p>':'')+(d.details?'<h4>'+T.details+'</h4><p>'+para(d.details)+'</p>':'')+
+        (d.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(d.links)+'</div>':'')+(d.notes?'<h4>'+T.notes+'</h4><p>'+para(d.notes)+'</p>':'')+briefHTML(d.brief)+'</article>'; }).join('')+
+      '<div class="wm-bar glass"><span class="wm-count">'+U2.nw.count(items.length)+'</span><p class="msg" role="alert"></p><button class="btn btn-glass glass" type="button" data-edit>'+T.f.edit+'</button><button class="btn btn-primary" type="button" data-send>'+U2.nw.sendAll(items.length)+'</button></div>';
+    form.hidden=true; form.parentNode.insertBefore(box,form.nextSibling); var top=host.getBoundingClientRect().top+scrollY-120; scrollTo({top:top,behavior:'smooth'});
+    box.querySelector('[data-edit]').onclick=function(){ box.remove(); form.hidden=false; };
+    box.querySelector('[data-send]').onclick=function(){ var b=this; b.disabled=true; b.textContent=T.f.sending;
+      api('',{action:'tasks',project:pid,items:items}).then(function(j){ if(j.ok){ DASH=null; PC=null; TC=null; toast(U2.nw.sentAll(j.refs.length)); location.hash=j.refs.length===1?'#w/t/'+j.refs[0]:'#w/p/'+pid; return; }
+        b.disabled=false; b.textContent=U2.nw.sendAll(items.length); box.querySelector('.msg').textContent=j.error==='date'?T.f.bad:j.error==='too many attempts'?(AR?'وصلت إلى الحد اليومي للمهام.':'Daily task limit reached.'):T.err; }); };
+  }
 
   /* ---- project: tasks · discussion · files ---- */
   var PC=null;
@@ -202,23 +364,23 @@
   }
   function drawProject(j,tab,month){ var p=j.project, F='all';
     var nf=(j.files||[]).length+(j.delivered||[]).length, nc=(j.comments||[]).length;
-    host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a>'+
-      '<div class="wcard glass wphead"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
+    host.innerHTML='<a class="wback" href="#w/projects">← '+U2.nav.projects+'</a>'+
+      '<div class="wcard glass wphead" style="--k:'+(TYPEC[p.type]||'#3FE0E8')+'"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
         '<dl class="wmeta">'+(p.start_date?'<div><dt>'+T.start+'</dt><dd>'+esc(d8(p.start_date))+'</dd></div>':'')+(p.end_date?'<div><dt>'+T.end+'</dt><dd>'+esc(d8(p.end_date))+'</dd></div>':'')+
         ((p.services||[]).length?'<div><dt>'+T.services+'</dt><dd>'+p.services.map(function(s){ var sv=(C().services||[]).filter(function(x){return x.id===s})[0]; return '<span class="tag">'+esc(sv?L(sv.name):s)+'</span>'; }).join(' ')+'</dd></div>':'')+'</dl></div>'+
         '<div class="wphx">'+(p.quota?quotaBar(j.quota_used||0,p.quota):'')+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
         (p.status==='active'?'<a class="btn btn-primary" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</div></div>'+
-      '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length],['talk',T.tabs.talk,nc],['files',T.tabs.files,nf],['report',T.x.report,0]].map(function(x){
-        return '<a role="tab" href="#w/p/'+esc(p.id)+(x[0]==='tasks'?'':'/'+x[0])+'" aria-selected="'+(tab===x[0])+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</a>'; }).join('')+'</div><div class="wpbody"></div>';
-    var body=host.querySelector('.wpbody');
+      '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length,'#6E8BFF'],['talk',T.tabs.talk,nc,'#8FA2FF'],['files',T.tabs.files,nf,'#5EF0B0'],['report',T.x.report,0,'#7DD3FC']].map(function(x){
+        return '<a role="tab" style="--k:'+x[3]+'" href="#w/p/'+esc(p.id)+(x[0]==='tasks'?'':'/'+x[0])+'" aria-selected="'+(tab===x[0])+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</a>'; }).join('')+'</div><div class="wpbody"></div>';
+    var body=host.querySelector('.wpbody'); rise();
     if(tab==='talk'){ body.innerHTML='<p class="muted small wtalkp">'+T.cm.talkP+'</p>'+thread(j.comments,j.me); bindThread(body,{scope:'project',project:p.id},function(){ project(p.id,'talk',true); }); return; }
     if(tab==='files'){ filesView(body,j); return; }
     if(tab==='report'){ reportView(body,p,month); return; }
     var draw=function(){ var list=j.tasks.filter(function(t){ return F==='all'||(F==='open'?OPEN.indexOf(t.status)>=0:t.status===F); });
       body.querySelector('.wtasks').innerHTML=taskTable(list,false); };
     body.innerHTML='<div class="wcols"><section class="wsec"><div class="wfilt">'+[['all',T.all],['open',AR?'المفتوحة':'Open'],['completed',T.st.completed]].map(function(x,i){ return '<button type="button" class="chipb'+(i===0?' on':'')+'" data-f="'+x[0]+'">'+x[1]+'</button>'; }).join('')+'</div><div class="wtasks"></div></section>'+
-      '<aside class="wside">'+((j.recurring||[]).length?'<section class="wsec"><h3>'+T.x.rec+'</h3><p class="muted small" style="margin:0">'+T.x.recP+'</p><div class="wrecs">'+j.recurring.map(function(r){ return '<div class="wrec glass"><b>'+esc(r.title)+'</b><small class="muted">'+esc(T.x.every[r.every])+' · '+esc(r.every==='week'?T.x.dows[r.dow||0]:T.x.dom+(r.dom||1))+' · '+T.x.next+': '+esc(d8(r.next_run))+'</small></div>'; }).join('')+'</div></section>':'')+
-        '<section class="wsec"><h3>'+T.activity+'</h3>'+(j.activity.length?'<ul class="wact">'+j.activity.map(function(a){ var t=j.tasks.filter(function(x){return x.id===a.task_id})[0]; a.task_ref=t&&t.ref; return actText(a); }).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>';
+      '<aside class="wside">'+((j.recurring||[]).length?'<section class="wsec">'+wh(T.x.rec,'#FFC56B')+'<p class="muted small" style="margin:0">'+T.x.recP+'</p><div class="wrecs">'+j.recurring.map(function(r){ return '<div class="wrec glass"><b>'+esc(r.title)+'</b><small class="muted">'+esc(T.x.every[r.every])+' · '+esc(r.every==='week'?T.x.dows[r.dow||0]:T.x.dom+(r.dom||1))+' · '+T.x.next+': '+esc(d8(r.next_run))+'</small></div>'; }).join('')+'</div></section>':'')+
+        '<section class="wsec">'+wh(T.activity,'#3FE0E8')+(j.activity.length?'<ul class="wact">'+j.activity.map(function(a){ var t=j.tasks.filter(function(x){return x.id===a.task_id})[0]; a.task_ref=t&&t.ref; return actText(a); }).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>';
     body.querySelector('.wfilt').onclick=function(e){ var b=e.target.closest('button'); if(!b) return; F=b.dataset.f; [].forEach.call(this.children,function(x){ x.classList.toggle('on',x===b); }); draw(); };
     draw();
   }
@@ -271,69 +433,15 @@
     draw();
   }
 
-  /* ---- new task: form → preview → send ---- */
-  function newTask(pid){
-    var W=C().workspace||{}, types=L(W.taskTypes)||[], projects=(DASH&&DASH.projects)||null;
-    var go=function(){ var act=projects.filter(function(p){return p.status==='active'}); if(!act.some(function(p){return p.id===pid})&&act[0]) pid=act[0].id;
-      var minD=new Date().toISOString().slice(0,10);
-      host.innerHTML='<a class="wback" href="#w/p/'+esc(pid)+'">← '+T.back+'</a><form class="wcard glass wform form" id="wNew" novalidate><span class="eyebrow">NEW TASK</span><h2>'+T.f.h+'</h2>'+
-        '<div class="wgrid"><label>'+T.f.title+'<input name="title" maxlength="140" required dir="auto"></label>'+
-        '<label>'+T.project+'<select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===pid?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></label>'+
-        '<label>'+T.f.type+'<input name="type" list="wTypes" maxlength="60" dir="auto"><datalist id="wTypes">'+types.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist></label>'+
-        '<label>'+T.f.date+'<input name="requested_date" type="date" min="'+minD+'"><small class="muted">'+T.f.dateHint+'</small></label></div>'+
-        '<fieldset class="wprio"><legend>'+T.f.prio+'</legend>'+['normal','high','urgent'].map(function(p,i){ return '<label class="chipb'+(i===0?' on':'')+'"><input type="radio" name="priority" value="'+p+'"'+(i===0?' checked':'')+'>'+esc(L((W.priorities||{})[p])||T.p[p])+'</label>'; }).join('')+'</fieldset>'+
-        '<label>'+T.f.desc+'<textarea name="description" maxlength="4000" dir="auto"></textarea></label>'+
-        '<label>'+T.f.details+'<textarea name="details" maxlength="6000" dir="auto"></textarea></label>'+
-        '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
-        '<label>'+T.f.notes+'<textarea name="notes" maxlength="3000" dir="auto"></textarea></label>'+
-        '<details class="wbrief"><summary><b>'+T.x.brief+'</b> <small class="muted">'+T.x.briefHint+'</small></summary><div class="wgrid">'+
-          ['goal','audience','format','duration','tone','message','cta','music'].map(function(k){ return k==='format'?'<label>'+T.x.b.format+'<input name="b_format" list="wFmts" maxlength="120" dir="auto"><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist></label>'
-            :'<label>'+T.x.b[k]+'<input name="b_'+k+'" maxlength="600" dir="auto"></label>'; }).join('')+'</div></details>'+
-        '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p>'+
-        '<p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+T.f.preview+'</button></div></form>';
-      var f=document.getElementById('wNew'), rows=f.querySelector('.wlinks .rows');
-      var addRow=function(){ if(rows.children.length>=10) return; var d=document.createElement('div'); d.className='lrow2'; d.innerHTML='<input name="ll" placeholder="'+T.f.linkLabel+'" maxlength="80" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'">'; rows.appendChild(d); };
-      addRow(); f.querySelector('.addl').onclick=addRow;
-      var qn=f.querySelector('.wqn'), qcheck=function(){ var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; qn.hidden=!(pp&&pp.quota&&(pp.month_tasks||0)>=pp.quota); }; f.elements.project.onchange=qcheck; qcheck();
-      f.querySelector('.wprio').onchange=function(){ [].forEach.call(this.querySelectorAll('label'),function(l){ l.classList.toggle('on',l.querySelector('input').checked); }); };
-      f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, msg=f.querySelector('.msg');
-        var data={action:'task',project:E.project.value,title:E.title.value.trim(),type:E.type.value.trim(),requested_date:E.requested_date.value,priority:(f.querySelector('input[name=priority]:checked')||{}).value||'normal',
-          description:E.description.value.trim(),details:E.details.value.trim(),notes:E.notes.value.trim(),
-          links:[].map.call(rows.children,function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); }),
-          brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,k){ var v=(E['b_'+k]||{}).value; if(v&&v.trim()) o[k]=v.trim(); return o; },{})};
-        if(!data.title){ msg.textContent=T.f.need; E.title.focus(); return; }
-        if(data.requested_date&&data.requested_date<minD){ msg.textContent=T.f.bad; return; }
-        preview(data,f); };
-    };
-    if(projects) go(); else { loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); DASH=j; projects=j.projects; go(); }); }
-  }
-  function briefHTML(b){ if(!b) return ''; var k=Object.keys(b).filter(function(x){ return b[x]; }); if(!k.length) return '';
-    return '<h4>'+T.x.brief+'</h4><dl class="wbriefl">'+k.map(function(x){ return '<div><dt>'+esc(T.x.b[x]||x)+'</dt><dd>'+esc(b[x])+'</dd></div>'; }).join('')+'</dl>'; }
-  function preview(data,form){
-    var p=(DASH.projects||[]).filter(function(x){return x.id===data.project})[0]||{};
-    var box=document.createElement('div'); box.className='wcard glass wpreview';
-    box.innerHTML='<span class="eyebrow">PREVIEW</span><h2>'+esc(data.title)+'</h2><dl class="wmeta">'+
-      '<div><dt>'+T.project+'</dt><dd>'+esc(p.name||'')+'</dd></div>'+(data.type?'<div><dt>'+T.f.type+'</dt><dd>'+esc(data.type)+'</dd></div>':'')+
-      '<div><dt>'+T.req+'</dt><dd>'+esc(data.requested_date?d8(data.requested_date):T.reqNone)+'</dd></div><div><dt>'+T.f.prio+'</dt><dd>'+esc(T.p[data.priority])+'</dd></div></dl>'+
-      (data.description?'<h4>'+T.desc+'</h4><p>'+para(data.description)+'</p>':'')+(data.details?'<h4>'+T.details+'</h4><p>'+para(data.details)+'</p>':'')+
-      (data.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(data.links)+'</div>':'')+(data.notes?'<h4>'+T.notes+'</h4><p>'+para(data.notes)+'</p>':'')+briefHTML(data.brief)+
-      '<p class="muted small">'+T.f.dateHint+'</p><p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="button" data-send>'+T.f.send+'</button><button class="btn btn-glass glass" type="button" data-edit>'+T.f.edit+'</button></div>';
-    form.hidden=true; form.parentNode.insertBefore(box,form.nextSibling); scrollTo({top:host.offsetTop-90,behavior:'smooth'});
-    box.querySelector('[data-edit]').onclick=function(){ box.remove(); form.hidden=false; };
-    box.querySelector('[data-send]').onclick=function(){ var b=this; b.disabled=true; b.textContent=T.f.sending;
-      api('',data).then(function(j){ if(j.ok){ DASH=null; toast(T.f.sent); location.hash='#w/t/'+j.ref; return; }
-        b.disabled=false; b.textContent=T.f.send; box.querySelector('.msg').textContent=j.error==='date'?T.f.bad:T.err; }); };
-  }
-
   /* ---- task ---- */
   var PATH=['new','review','accepted','progress','feedback','final','completed'];
   function task(ref){
-    loading();
+    loading(); TC=null;
     api('?task='+encodeURIComponent(ref)).then(function(j){ if(!j.ok) return fail(j); var t=j.task, cr=t.change_request;
       var at=PATH.indexOf(t.status==='info'?'review':t.status==='revision'?'feedback':t.status), off=t.status==='rejected'||t.status==='cancelled';
       var canChange=['accepted','progress','feedback','revision'].indexOf(t.status)>=0&&t.confirmed_date&&!(cr&&cr.status==='pending');
       host.innerHTML='<a class="wback" href="#w/p/'+esc(t.project_id)+'">← '+esc(t.project_name||T.back)+'</a>'+
-        '<div class="wcard glass wtask"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</div></div>'+
+        '<div class="wcard glass wtask r-'+esc(t.status)+'"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</div></div>'+
         (off?'':'<ol class="track wtrack" style="--p:'+(Math.max(0,at)/(PATH.length-1))+'">'+PATH.map(function(s,i){ return '<li class="'+(i<at||t.status==='completed'?'done':i===at?'now':'')+'"><i></i><b>'+esc(T.st[s])+'</b></li>'; }).join('')+'</ol>')+
         '<div class="wdates2"><div><span>'+T.req+'</span><b>'+esc(t.requested_date?d8(t.requested_date):T.reqNone)+'</b><small class="muted">'+(AR?'من طرفك':'from you')+'</small></div>'+
           '<div class="'+(t.confirmed_date?'ok':'')+'"><span>'+T.conf+'</span><b>'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</b><small class="muted">'+(t.confirmed_date?(AR?'معتمد من Eyeblink':'confirmed by Eyeblink'):T.confNone)+'</small></div></div>'+
@@ -346,9 +454,9 @@
           ((t.links||[]).length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(t.links)+'</div>':'')+(t.notes?'<h4>'+T.notes+'</h4><p>'+para(t.notes)+'</p>':'')+briefHTML(t.brief)+'</div>'+
         '<div class="actions wtact">'+(canChange?'<button type="button" class="btn btn-glass glass" data-chg>'+T.change+'</button>':'')+(['new','review','info'].indexOf(t.status)>=0?'<button type="button" class="btn btn-glass glass danger" data-cancel>'+T.cancel+'</button>':'')+'</div>'+
         '<form class="form wchange" hidden><b>'+T.changeH+'</b><label>'+T.newDate+'<input name="date" type="date" min="'+new Date().toISOString().slice(0,10)+'" required></label><label>'+T.why+'<textarea name="reason" dir="auto" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">'+T.changeSend+'</button></form>'+
-        '</div>'+deliveries(j)+'<section class="wsec"><h3>'+T.cm.h+((j.comments||[]).length?' ('+j.comments.length+')':'')+'</h3>'+thread(j.comments,j.me)+'</section>'+
-        '<section class="wsec"><h3>'+T.log+'</h3><ul class="wact">'+j.activity.map(actText).join('')+'</ul></section>';
-      bindDeliveries(host,j,function(){ task(ref); });
+        '</div>'+deliveries(j)+'<section class="wsec">'+wh(T.cm.h+((j.comments||[]).length?' ('+j.comments.length+')':''),'#8FA2FF')+thread(j.comments,j.me)+'</section>'+
+        '<section class="wsec">'+wh(T.log,'#AEBBD2')+'<ul class="wact">'+j.activity.map(actText).join('')+'</ul></section>';
+      bindDeliveries(host,j,function(){ task(ref); }); rise();
       bindThread(host.querySelector('.wthread').parentNode,{scope:'task',task:t.ref},function(){ task(ref); });
       var w=host.querySelector('.wreply'); if(w) w.onsubmit=function(e){ e.preventDefault(); var b=w.querySelector('button'); b.disabled=true; var u=w.elements.lu.value.trim();
         api('',{action:'reply',task:t.ref,text:w.elements.text.value.trim(),links:/^https?:\/\//i.test(u)?[{label:w.elements.ll.value.trim(),url:u}]:[]}).then(function(r){ if(r.ok){ toast(T.saved); task(ref); } else { b.disabled=false; toast(T.err); } }); };
@@ -366,16 +474,16 @@
     api('?view=invoices').then(function(j){ if(!j.ok) return fail(j); var L2=j.invoices||[], by={};
       L2.forEach(function(x){ if(x.state==='cancelled'||x.state==='refunded') return; var c=x.currency; by[c]=by[c]||{due:0,paid:0}; by[c].due+=x.balance; by[c].paid+=x.paid; });
       var cur=Object.keys(by);
-      host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a><div class="wsp-head"><div><span class="eyebrow">INVOICES</span><h2>'+T.bl.h+'</h2><p class="muted">'+T.bl.p+'</p></div></div>'+
-        (cur.length?'<div class="wkpis wkpis3">'+cur.map(function(c){ return '<div class="wkpi glass"><b dir="ltr">'+esc(money(by[c].due,c))+'</b><span>'+T.bl.open+'</span></div><div class="wkpi glass"><b dir="ltr">'+esc(money(by[c].paid,c))+'</b><span>'+T.bl.paidAll+'</span></div>'; }).join('')+
-          '<div class="wkpi glass"><b>'+L2.filter(function(x){return x.state==='overdue'}).length+'</b><span>'+T.bl.overdue+'</span></div></div>':'')+
+      host.innerHTML=head('invoices','INVOICES',T.bl.h,T.bl.p)+
+        (cur.length?'<div class="wkpis wkpis3">'+cur.map(function(c){ return '<div class="wkpi glass" style="--k:#F5C66B"><b dir="ltr">'+esc(money(by[c].due,c))+'</b><span>'+T.bl.open+'</span></div><div class="wkpi glass" style="--k:#5EF0B0"><b dir="ltr">'+esc(money(by[c].paid,c))+'</b><span>'+T.bl.paidAll+'</span></div>'; }).join('')+
+          '<div class="wkpi glass" style="--k:#ff8c9c"><b>'+L2.filter(function(x){return x.state==='overdue'}).length+'</b><span>'+T.bl.overdue+'</span></div></div>':'')+
         (L2.length?'<div class="wtable"><table><thead><tr><th>'+T.bl.no+'</th><th>'+T.status+'</th><th>'+T.bl.issued+'</th><th>'+T.bl.due+'</th><th>'+T.bl.total+'</th><th>'+T.bl.bal+'</th><th></th></tr></thead><tbody>'+L2.map(function(x){
           return '<tr><td><b><bdi dir="ltr">'+esc(x.no)+'</bdi></b>'+((x.title||x.period)?'<small class="muted ref">'+esc([x.title,x.period].filter(Boolean).join(' · '))+'</small>':'')+(x.project_name?'<small class="muted">'+esc(x.project_name)+'</small>':'')+'</td>'+
             '<td class="ts"><span class="bpill s-'+esc(x.state)+'">'+esc(T.bl.st[x.state]||x.state)+'</span></td><td data-l="'+esc(T.bl.issued)+'">'+esc(d8(x.issue_date))+'</td><td data-l="'+esc(T.bl.due)+'" class="'+(x.state==='overdue'?'late':'')+'">'+esc(x.due_date?d8(x.due_date):'—')+'</td>'+
             '<td data-l="'+esc(T.bl.total)+'"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi></td><td data-l="'+esc(T.bl.bal)+'"><bdi dir="ltr">'+esc(money(x.balance,x.currency))+'</bdi></td><td class="tu"><button type="button" class="btn btn-glass glass wbv" data-inv="'+esc(x.id)+'">'+T.bl.view+'</button></td></tr>'; }).join('')+'</tbody></table></div>'
           :'<div class="wcard glass wempty"><p>'+T.bl.none+'</p></div>');
       host.querySelectorAll('[data-inv]').forEach(function(b){ b.onclick=function(){ invDoc(b.dataset.inv); }; });
-      if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
+      rise(); if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
     });
   }
   function reportView(body,p,month){ var ms=[], d=new Date(); d.setUTCDate(1); for(var i=0;i<6;i++){ ms.push(d.toISOString().slice(0,7)); d.setUTCMonth(d.getUTCMonth()-1); } month=month||ms[0];
@@ -383,11 +491,11 @@
     body.innerHTML='<p class="muted small wtalkp">'+T.x.repP+'</p><div class="wfhead"><div class="wfilt">'+ms.map(function(m){ return '<a class="chipb'+(m===month?' on':'')+'" href="#w/p/'+esc(p.id)+'/report/'+m+'">'+esc(mn(m))+'</a>'; }).join('')+'</div><button type="button" class="btn btn-glass glass" data-rpdf>'+T.x.pdf+'</button></div><div class="wrep"><div class="acct-load"><span></span></div></div>';
     body.querySelector('[data-rpdf]').onclick=function(){ docModal(API+'work?reportDoc='+encodeURIComponent(p.id)+'&month='+month,T.x.report); };
     api('?report='+encodeURIComponent(p.id)+'&month='+month).then(function(j){ var box=body.querySelector('.wrep'); if(!j.ok){ box.innerHTML='<p class="muted">'+T.err+'</p>'; return; } var R=j.report;
-      var cards=[[T.x.k.created,p.quota?R.created+T.x.quotaOf+p.quota:R.created],[T.x.k.completed,R.completed.length],[T.x.k.versions,R.versions],[T.x.k.rounds,R.rounds],[T.x.k.ontime,R.on_time===null?'—':R.on_time+'%'],[T.x.k.open,R.open]];
+      var cards=[[T.x.k.created,p.quota?R.created+T.x.quotaOf+p.quota:R.created,'#6E8BFF'],[T.x.k.completed,R.completed.length,'#5EF0B0'],[T.x.k.versions,R.versions,'#E07BE0'],[T.x.k.rounds,R.rounds,'#FFC56B'],[T.x.k.ontime,R.on_time===null?'—':R.on_time+'%','#3FE0E8'],[T.x.k.open,R.open,'#A78BFA']];
       var paid=Object.keys(R.paid||{}).map(function(c){ return money(R.paid[c],c); }).join(' · ');
-      box.innerHTML='<div class="wkpis">'+cards.map(function(c){ return '<div class="wkpi glass"><b>'+esc(c[1])+'</b><span>'+esc(c[0])+'</span></div>'; }).join('')+'</div>'+
-        '<section class="wsec"><h3>'+T.x.doneList+'</h3>'+(R.completed.length?'<ul class="wdates">'+R.completed.map(function(t){ return '<li><a href="#w/t/'+esc(t.ref)+'"><b class="'+(t.on_time?'':'late')+'">'+esc(d8(t.completed_at))+(t.confirmed_date?' / '+esc(d8(t.confirmed_date)):'')+'</b><span>'+esc(t.title)+'</span><small class="muted"><bdi dir="ltr">'+esc(t.ref)+'</bdi></small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.x.none+'</p>')+'</section>'+
-        ((R.invoices||[]).length||paid?'<section class="wsec"><h3>'+T.x.inv+'</h3><div class="wrecs">'+(R.invoices||[]).map(function(x){ return '<div class="wrec glass"><b><bdi dir="ltr">'+esc(x.no)+'</bdi> · '+esc(x.title||'')+'</b><small class="muted"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi> · '+esc(T.bl.st[x.state]||x.state)+'</small></div>'; }).join('')+'</div>'+(paid?'<p class="small">'+T.x.paid+': <b><bdi dir="ltr">'+esc(paid)+'</bdi></b></p>':'')+'</section>':''); });
+      box.innerHTML='<div class="wkpis">'+cards.map(function(c){ return '<div class="wkpi glass" style="--k:'+c[2]+'"><b>'+esc(c[1])+'</b><span>'+esc(c[0])+'</span></div>'; }).join('')+'</div>'+
+        '<section class="wsec">'+wh(T.x.doneList,'#5EF0B0')+(R.completed.length?'<ul class="wdates">'+R.completed.map(function(t){ return '<li><a href="#w/t/'+esc(t.ref)+'"><b class="'+(t.on_time?'':'late')+'">'+esc(d8(t.completed_at))+(t.confirmed_date?' / '+esc(d8(t.confirmed_date)):'')+'</b><span>'+esc(t.title)+'</span><small class="muted"><bdi dir="ltr">'+esc(t.ref)+'</bdi></small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.x.none+'</p>')+'</section>'+
+        ((R.invoices||[]).length||paid?'<section class="wsec">'+wh(T.x.inv,'#F5C66B')+'<div class="wrecs">'+(R.invoices||[]).map(function(x){ return '<div class="wrec glass"><b><bdi dir="ltr">'+esc(x.no)+'</bdi> · '+esc(x.title||'')+'</b><small class="muted"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi> · '+esc(T.bl.st[x.state]||x.state)+'</small></div>'; }).join('')+'</div>'+(paid?'<p class="small">'+T.x.paid+': <b><bdi dir="ltr">'+esc(paid)+'</bdi></b></p>':'')+'</section>':''); });
   }
   function invDoc(id){ docModal(API+'work?invoiceDoc='+encodeURIComponent(id),T.bl.h); }
   function docModal(src,title){
@@ -406,15 +514,15 @@
     api('?view=prefs').then(function(j){ if(!j.ok) return fail(j); var P=j.prefs, wa=j.wa||{}, cats=j.cats||['tasks','requests','deliveries','comments','projects'];
       var sw=function(name,on,dis){ return '<label class="wsw"><input type="checkbox" name="'+name+'"'+(on?' checked':'')+(dis?' disabled':'')+'><i></i></label>'; };
       var masked=P.wa_phone?('+'+P.wa_phone).replace(/\d(?=\d{4})/g,'•'):'';
-      host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a><form class="wcard glass wset form" novalidate><span class="eyebrow">NOTIFICATIONS</span><h2>'+T.pf.h+'</h2><p class="muted">'+T.pf.p+'</p>'+
+      host.innerHTML=head('settings','SETTINGS',T.pf.h,T.pf.p,'<div class="whd-a"><a class="btn btn-glass glass" href="account.html">'+(AR?'بيانات الحساب':'Account details')+'</a></div>')+'<form class="wcard glass wset form" novalidate>'+
         '<div class="wprefs"><div class="wpr wpr-h"><span></span><span>'+T.pf.inapp+'</span><span>'+T.pf.email+'</span><span>'+T.pf.wa+'</span></div>'+cats.map(function(c){ var L2=T.pf.cats[c]||[c,''];
           return '<div class="wpr"><span class="wpr-l"><b>'+esc(L2[0])+'</b><small class="muted">'+esc(L2[1])+'</small></span><span data-l="'+T.pf.inapp+'">'+sw('in_'+c,true,true)+'</span><span data-l="'+T.pf.email+'">'+sw('em_'+c,P.email_cats[c])+'</span><span data-l="'+T.pf.wa+'">'+sw('wa_'+c,P.wa_cats[c],!P.consent)+'</span></div>'; }).join('')+'</div>'+
         '<div class="actions"><button class="btn btn-primary" type="submit">'+T.pf.save+'</button></div>'+
-        '<section class="wwa"><h3>'+T.pf.waH+'</h3>'+(wa.available?'':'<p class="wnote">'+T.pf.waOff+'</p>')+
+        '<section class="wwa">'+wh(T.pf.waH,'#5EF0B0')+(wa.available?'':'<p class="wnote">'+T.pf.waOff+'</p>')+
           (P.consent?'<p class="wwa-on"><b>✓ '+T.pf.active+'<bdi dir="ltr">'+esc(masked)+'</bdi></b><small class="muted">'+T.pf.since+esc(d8(P.wa_consent_at))+'</small></p><p class="muted small">'+T.pf.stopHint+'</p><div class="actions"><button type="button" class="btn btn-glass glass danger" data-wastop>'+T.pf.stop+'</button></div>'
             :(P.wa_withdrawn_at?'<p class="muted small">'+T.pf.stopped+esc(d8(P.wa_withdrawn_at))+'</p>':'')+'<label>'+T.pf.phone+'<input name="phone" type="tel" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="+966 5x xxx xxxx" value="'+esc(P.wa_phone?'+'+P.wa_phone:'')+'"></label>'+
             '<label class="wconsent"><input type="checkbox" name="consent"><span>'+T.pf.consent+'</span></label><p class="msg" role="alert"></p><div class="actions"><button type="button" class="btn btn-primary" data-waon>'+T.pf.on+'</button></div>')+'</section></form>';
-      var f=host.querySelector('.wset'), E=f.elements, collect=function(){ var ec={}, wc={}; cats.forEach(function(c){ ec[c]=E['em_'+c].checked; wc[c]=E['wa_'+c].checked; }); return {email_cats:ec,wa_cats:wc}; };
+      rise(); var f=host.querySelector('.wset'), E=f.elements, collect=function(){ var ec={}, wc={}; cats.forEach(function(c){ ec[c]=E['em_'+c].checked; wc[c]=E['wa_'+c].checked; }); return {email_cats:ec,wa_cats:wc}; };
       f.onsubmit=function(e){ e.preventDefault(); var b=f.querySelector('button[type=submit]'); b.disabled=true; var d=collect(); d.action='prefs';
         api('',d).then(function(r){ b.disabled=false; toast(r.ok?T.pf.saved:T.err); }); };
       var on=f.querySelector('[data-waon]'); if(on) on.onclick=function(){ var msg=f.querySelector('.msg'), ph=E.phone.value.trim();
@@ -450,7 +558,7 @@
       '</article>'; }
   function deliveries(j){ var t=j.task, list=j.deliverables||[], rounds=list.filter(function(d){return d.status==='changes'}).length;
     if(!list.length&&['accepted','progress','revision'].indexOf(t.status)<0) return '';
-    return '<section class="wsec wdls"><h3>'+T.dl.h+(rounds?' · '+T.dl.round+' '+rounds:'')+'</h3>'+(list.length?dlCard(list[0],t,true)+
+    return '<section class="wsec wdls">'+wh(T.dl.h+(rounds?' · '+T.dl.round+' '+rounds:''),'#E07BE0')+(list.length?dlCard(list[0],t,true)+
       (list.length>1?'<details class="wvh"><summary>'+T.dl.history+' ('+(list.length-1)+')</summary><div class="wvh-l">'+list.slice(1).map(function(d){ return dlCard(d,t,false); }).join('')+'</div></details>':'')
       :'<div class="wcard glass"><p class="muted" style="margin:0">'+T.dl.none+'</p></div>')+'</section>'; }
   var TCRE=/^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -474,5 +582,5 @@
       var b=f.querySelector('button[type=submit]'); b.disabled=true;
       api('',{action:'decide',task:t.ref,deliverable:id,decision:'changes',points:pts,note:note}).then(function(r){ if(r.ok){ toast(T.dl.chMsg); reload(); } else { b.disabled=false; msg.textContent=T.err; } }); };
   }
-  window.EBPortal={mount:mount, route:route, T:T};
+  window.EBPortal={mount:mount, route:route, T:T, notified:function(){ setUnread(0); if(CUR==='notifications') notifications(); }};
 })();

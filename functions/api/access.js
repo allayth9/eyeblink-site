@@ -108,7 +108,7 @@ async function adminAction(ctx, d, clip){
       mail(lang, en ? "Welcome to your client workspace" : "أهلاً بك في مساحة العمل",
         en ? "Your account is now an <b style=\"color:#fff\">Active Client</b> account. Your requests, invoices and history stay exactly as they were; the workspace is added on top of them."
            : "أصبح حسابك حساب <b style=\"color:#fff\">عميل متعاقد</b>. بقيت طلباتك وفواتيرك وسجلك كما هي، وأُضيفت إليها مساحة العمل.",
-        en ? "Open my account" : "افتح حسابي", acctLink(lang), greet({ name: u.name, lang }))));
+        en ? "Open my workspace" : "افتح مساحة العمل", SITE + (lang === "en" ? "/en" : "") + "/workspace.html", greet({ name: u.name, lang }))));
   };
   if (d.action === "approve") {
     const r = await env.EB.get("accreq:" + email); if (!r) return json({ ok: false, error: "no request" }, 404);

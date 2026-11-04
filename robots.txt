@@ -3,5 +3,7 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /account.html
 Disallow: /en/account.html
+Disallow: /workspace.html
+Disallow: /en/workspace.html
 
 Sitemap: https://eyeblinkstudio.com/sitemap.xml

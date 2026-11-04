@@ -8,6 +8,7 @@
 //   POST /api/work { action:"task", project, title, type, description, details, notes, priority, requested_date, links }
 //                  { action:"reply", task, text, links }            answer the studio's request for information
 //                  { action:"dateChange", task, date, reason }       ask to move the confirmed date (the studio decides)
+//                  { action:"tasks", project, items:[{ title, … same fields as "task" }] }   up to 10 tasks in one go
 //                  { action:"cancel", task }                         only before the studio accepts it
 //                  { action:"decide", task, deliverable, decision:"approve"|"changes", note, points:[{t:"00:12", text}] }   on the latest version
 //                  { action:"comment", scope:"task"|"project", task|project, body, links }   { action:"deleteComment", id }   (own only)
@@ -148,7 +149,7 @@ const MINE = "(SELECT id FROM projects WHERE client_email=?1 UNION SELECT projec
 async function myProject(D, email, id){ return D.prepare(`SELECT * FROM projects WHERE id=?2 AND id IN ${MINE}`).bind(email, id).first(); }
 async function myTask(D, email, ref){ return D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?2 AND t.project_id IN ${MINE}`).bind(email, ref).first(); }
 async function userOf(env, email){ const v = await env.EB.get("user:" + String(email || "").toLowerCase()); return v ? JSON.parse(v) : null; }
-const taskLink = (lang, ref) => SITE + (lang === "en" ? "/en" : "") + "/account.html#w/t/" + ref;
+const taskLink = (lang, ref) => SITE + (lang === "en" ? "/en" : "") + "/workspace.html#w/t/" + ref;
 const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
@@ -409,7 +410,7 @@ async function tellClient(env, t, kind, extra){
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
     const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
-    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
+    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/workspace.html" + hash, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
@@ -467,6 +468,8 @@ export async function onRequestGet(ctx) {
   const e = u.email, open = OPEN.map(s => `'${s}'`).join(",");
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
+  if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(parse),
+    projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
   if (q.get("report") || q.get("reportDoc")) {
     const p = await myProject(D, e, clip(q.get("report") || q.get("reportDoc"), 40)); if (!p) return q.get("reportDoc") ? htmlRes("not found", 404) : json({ ok: false }, 404);
@@ -536,22 +539,32 @@ export async function onRequestPost(ctx) {
     return json({ ok: true, prefs: await prefsOf(D, u.email) });
   }
 
-  if (d.action === "task") {
+  if (d.action === "task" || d.action === "tasks") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
     if (p.status !== "active") return json({ ok: false, error: "project closed" }, 409);
-    const title = clip(d.title, 140); if (!title) return json({ ok: false, error: "title" }, 400);
-    const rd = clip(d.requested_date, 10); if (rd && (!isDate(rd) || rd < today())) return json({ ok: false, error: "date" }, 400);
+    const items = d.action === "tasks" ? (Array.isArray(d.items) ? d.items.slice(0, 10) : []) : [d];
+    if (!items.length) return json({ ok: false, error: "title" }, 400);
+    for (let k = 0; k < items.length; k++) {          // check everything first: either all tasks are created or none
+      const x = items[k] || {}; if (!clip(x.title, 140)) return json({ ok: false, error: "title", index: k }, 400);
+      const rd = clip(x.requested_date, 10); if (rd && (!isDate(rd) || rd < today())) return json({ ok: false, error: "date", index: k }, 400);
+    }
     const n = (await D.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_email=? AND created_at>=?").bind(u.email, today()).first()).n;
-    if (n >= 40) return json({ ok: false, error: "too many attempts" }, 429);
-    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", brief = cleanBrief(d.brief);
-    const used = p.quota ? await quotaUse(D, p.id) : 0, over = p.quota && used >= p.quota ? 1 : 0;   // flagged for the studio, never blocked
-    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), clip(d.details, 6000), clip(d.notes, 3000), pr, rd || null,
-      JSON.stringify(cleanLinks(d.links)), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
+    if (n + items.length > 40) return json({ ok: false, error: "too many attempts" }, 429);
+    let used = p.quota ? await quotaUse(D, p.id) : 0; const made = [];
+    for (const x of items) {
+      const title = clip(x.title, 140), rd = clip(x.requested_date, 10), id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief);
+      const over = p.quota && used >= p.quota ? 1 : 0; used++;   // flagged for the studio, never blocked
+      await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(x.type, 60), clip(x.description, 4000), clip(x.details, 6000), clip(x.notes, 3000), pr, rd || null,
+        JSON.stringify(cleanLinks(x.links)), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
+      await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
+      made.push({ ref, title, rd, pr, over: !!over });
+    }
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
-    await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
-    toStudio(ctx, env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + (over ? "\n⚠️ خارج الحصة الشهرية (" + (used + 1) + " من " + p.quota + ")" : "") + "\n\nافتحها: " + adminLink(ref));
-    return json({ ok: true, ref, over_quota: !!over });
+    const line = m => m.ref + " — " + m.title + (m.rd ? " · " + m.rd : "") + (m.pr !== "normal" ? " · " + ({ high: "عالية", urgent: "عاجلة" })[m.pr] : "") + (m.over ? " · ⚠️ خارج الحصة" : "");
+    if (made.length === 1) toStudio(ctx, env, "مهمة جديدة " + made[0].ref + " — " + u.name, made[0].title + "\nالمشروع: " + p.name + (made[0].rd ? "\nالموعد المطلوب: " + made[0].rd : "") + (made[0].pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[made[0].pr] : "") + (made[0].over ? "\n⚠️ خارج الحصة الشهرية (" + used + " من " + p.quota + ")" : "") + "\n\nافتحها: " + adminLink(made[0].ref));
+    else toStudio(ctx, env, made.length + " مهام جديدة " + made[0].ref + " — " + u.name, "المشروع: " + p.name + "\n\n" + made.map(line).join("\n") + "\n\n" + SITE + "/admin/#tasks");
+    return d.action === "task" ? json({ ok: true, ref: made[0].ref, over_quota: made[0].over }) : json({ ok: true, refs: made.map(m => m.ref), over_quota: made.filter(m => m.over).length });
   }
   if (d.action === "comment" && d.scope === "project") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);

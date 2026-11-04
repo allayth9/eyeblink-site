@@ -20,8 +20,9 @@ for _f in ["assets/js/render.js", "admin/admin.js"]:
     _p = os.path.join(ROOT, _f); _t = open(_p, encoding="utf-8").read()
     _n = re.sub(r"/\*MIG\*/.*?/\*/MIG\*/", lambda m: "/*MIG*/" + _MIG + "/*/MIG*/", _t, flags=re.S)
     if _n != _t: open(_p, "w", encoding="utf-8").write(_n)
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/brands.js","assets/img/favicon.svg"]}
-PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "privacy"]
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/hdr.js","assets/js/brands.js","assets/img/favicon.svg"]}
+PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "workspace", "privacy"]
+PRIVATE = ("account", "workspace")   # signed-in pages: noindex, out of the sitemap
 
 UI = {
  "ar": {"dir": "rtl", "arrow": "←", "nav": [("services", "الخدمات"), ("work", "أعمالنا"), ("pricing", "الباقات"), ("about", "من نحن"), ("contact", "تواصل")],
@@ -32,7 +33,7 @@ UI = {
         "f_name": "الاسم أو اسم الجهة", "f_contact": "واتساب أو إنستغرام (اختياري)", "f_details": "تفاصيل المشروع: نوع الفيديو، المدة، الفكرة",
         "f_link": "رابط المواد (اختياري)", "f_deadline": "الموعد المستهدف (اختياري)", "send": "أرسل الطلب", "copy": "نسخ التفاصيل", "open_ig": "افتح إنستغرام", "again": "طلب جديد",
         "soon": "قريباً", "ig_follow": "تابع الجديد على إنستغرام", "closed_h": "الطلبات متوقفة مؤقتاً", "closed_p": "نستقبل الطلبات حالياً عبر إنستغرام فقط.", "home_l": "الرئيسية",
-        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي", "privacy": "سياسة الخصوصية"},
+        "titles": {"index": "Eyeblink Studio — مونتاج وموشن غرافيك وأفلام", "services": "الخدمات", "work": "أعمالنا", "pricing": "الباقات والأسعار", "about": "من نحن", "contact": "تواصل", "account": "حسابي", "workspace": "مساحة العمل", "privacy": "سياسة الخصوصية"},
         "slots": [("EDITING", "أعمال المونتاج"), ("MOTION", "أعمال الموشن غرافيك"), ("FILMS", "الأفلام والإعلانات")]},
  "en": {"dir": "ltr", "arrow": "→", "nav": [("services", "Services"), ("work", "Work"), ("pricing", "Pricing"), ("about", "About"), ("contact", "Contact")],
         "cta": "Start a project", "menu": "Menu", "lang_label": "العربية", "lang_short": "ع", "home": "Eyeblink Studio — home", "quick": "Quick links",
@@ -42,7 +43,7 @@ UI = {
         "f_name": "Your name or company", "f_contact": "WhatsApp or Instagram (optional)", "f_details": "Project details: type of video, length, idea",
         "f_link": "Link to materials (optional)", "f_deadline": "Target date (optional)", "send": "Send request", "copy": "Copy details", "open_ig": "Open Instagram", "again": "New request",
         "soon": "Coming soon", "ig_follow": "Follow new work on Instagram", "closed_h": "Requests are paused", "closed_p": "For now we take requests on Instagram only.", "home_l": "Home",
-        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account", "privacy": "Privacy policy"},
+        "titles": {"index": "Eyeblink Studio — Editing, Motion & Film", "services": "Services", "work": "Work", "pricing": "Packages & Pricing", "about": "About", "contact": "Contact", "account": "My account", "workspace": "Workspace", "privacy": "Privacy policy"},
         "slots": [("EDITING", "Editing work"), ("MOTION", "Motion graphics work"), ("FILMS", "Films & ads")]},
 }
 IG = "https://instagram.com/" + CONTENT["site"]["instagram"]
@@ -278,6 +279,9 @@ def p_privacy(U, lang):
 def p_account(U, lang):
     return '<section class="page-hero acct-page"><div class="wrap"><div id="acct" class="acct"></div></div></section>'
 
+def p_workspace(U, lang):
+    return '<section class="page-hero ws-page"><div class="wrap"><div id="ws" class="wsx" data-sec="overview"><div class="acct-load glass"><span></span></div></div></div></section>'
+
 def html_attr(s): return str(s).replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
 
 def clip(s, n=158):
@@ -288,7 +292,7 @@ def clip(s, n=158):
 def page_desc(lang, page, svc):
     C = CONTENT
     pick = {"index": C["hero"]["lead"], "services": C["servicesIntro"]["p"], "work": C["work"]["p"], "pricing": C["packages"]["p"],
-            "about": C["about"]["lead"], "contact": C["contact"]["p"], "account": C["hero"]["lead"],
+            "about": C["about"]["lead"], "contact": C["contact"]["p"], "account": C["hero"]["lead"], "workspace": C["hero"]["lead"],
             "privacy": {"ar": "كيف يتعامل Eyeblink Studio مع بياناتك: ما نجمعه، لماذا، ومع من لا نشاركه.", "en": "How Eyeblink Studio handles your data: what we collect, why, and who we never share it with."}}
     v = svc["body"] if svc else pick.get(page, C["hero"]["lead"])
     return clip(L(v, lang))
@@ -348,7 +352,7 @@ def build(lang, page):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{title}</title>
 <meta name="description" content="{html_attr(desc)}">
-<meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page=="account" else ""}
+<meta name="theme-color" content="#04061A">{'<meta name="robots" content="noindex">' if page in PRIVATE else ""}
 <link rel="icon" href="{A}assets/img/favicon.svg?v={ASSET_V["assets/img/favicon.svg"]}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{A}assets/img/apple-touch-icon.png">
 <link rel="canonical" href="{url(lang, page)}">
@@ -390,7 +394,8 @@ def build(lang, page):
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
 <script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
-<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/portal.js?v={ASSET_V["assets/js/portal.js"]}"></script>' if page == "account" else ""}{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
+<script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>
+<script src="{A}assets/js/hdr.js?v={ASSET_V["assets/js/hdr.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/portal.js?v={ASSET_V["assets/js/portal.js"]}"></script>' if page == "workspace" else ""}{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
 </body>
 </html>
 '''
@@ -402,10 +407,10 @@ if __name__ == "__main__":
             out = os.path.join(ROOT, "en" if lang == "en" else "", f"{page}.html")
             open(out, "w", encoding="utf-8").write(build(lang, page)); n += 1
     # search engines: every public page in both languages; account + admin stay out
-    pub = [p for p in PAGES if p != "account"]
+    pub = [p for p in PAGES if p not in PRIVATE]
     sm = "".join(f'<url><loc>{url(l, p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="{url("ar", p)}"/><xhtml:link rel="alternate" hreflang="en" href="{url("en", p)}"/></url>' for p in pub for l in ("ar", "en"))
     open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' + sm + '</urlset>\n')
-    open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account.html\nDisallow: /en/account.html\n\nSitemap: {SITE}/sitemap.xml\n")
+    open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account.html\nDisallow: /en/account.html\nDisallow: /workspace.html\nDisallow: /en/workspace.html\n\nSitemap: {SITE}/sitemap.xml\n")
     # the admin page is hand-written: stamp its css/js with content hashes so a new version is never served from cache
     ap = os.path.join(ROOT, "admin/index.html"); ah = open(ap, encoding="utf-8").read()
     ah = re.sub(r'href="admin\.css(\?v=\w+)?"', f'href="admin.css?v={_v("admin/admin.css")}"', ah)

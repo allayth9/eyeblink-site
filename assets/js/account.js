@@ -152,12 +152,14 @@
   var box=document.getElementById('acct'), CUR=null, poll=0, LIST=[];
   function page(){
     if(!box) return;
+    var nextWs=/^#w(\/|$)/.test(location.hash)||new URLSearchParams(location.search).get('next')==='workspace';
     box.innerHTML='<div class="acct-load glass"><span></span></div>';
     me().then(function(m){
       if(m===false){ box.innerHTML='<div class="acct-card glass"><p class="muted">'+(AR?'الحساب يعمل على الموقع المنشور فقط.':'Accounts work on the published site only.')+'</p></div>'; return; }
       var inv=INVITE();
       if(inv){ return invitePage(inv,m); }
-      if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ page(); }); return; }
+      if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); return; }
+      if(nextWs&&m.user.role==='client'){ location.replace('workspace.html'+(/^#w/.test(location.hash)?location.hash:'')); return; }   // the workspace has its own page now
       dash();
     });
   }
@@ -207,18 +209,11 @@
     var u=ME.user; LIST=ME.orders||[];
     box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing.html">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
-      (u.role==='client'&&window.EBPortal?'<div class="acct-tabs" role="tablist"><button type="button" role="tab" data-tab="w">'+EBPortal.T.ws+'</button><button type="button" role="tab" data-tab="o">'+T.orders+'</button></div><section class="wsp" id="wsp" hidden></section>':'')+
+      (u.role==='client'?'<a class="ws-entry glass rv" href="workspace.html"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
+        '<span class="we-t"><b>'+(AR?'مساحة العمل':'Your workspace')+'</b><small>'+(AR?'مشاريعك ومهامك وتسليماتك وفواتيرك في صفحة مستقلة.':'Your projects, tasks, deliveries and invoices on their own page.')+'</small></span><span class="we-go">'+(AR?'افتح مساحة العمل':'Open workspace')+' <i>←</i></span></a>':'')+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
     bindRole();
-    var wsp=document.getElementById('wsp');
-    if(wsp){ var grid=box.querySelector('.acct-grid'), tabs=box.querySelector('.acct-tabs');
-      var show=function(w){ wsp.hidden=!w; grid.hidden=w; [].forEach.call(tabs.children,function(b){ b.setAttribute('aria-selected',b.dataset.tab===(w?'w':'o')); }); };
-      tabs.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; if(b.dataset.tab==='w'){ show(true); if(!/^#w/.test(location.hash)) history.replaceState(null,'','#w'); EBPortal.mount(wsp); } else { show(false); if(/^#w/.test(location.hash)) history.replaceState(null,'',location.pathname); } };
-      addEventListener('hashchange',function(){ if(/^#w/.test(location.hash)&&wsp.hidden){ show(true); EBPortal.mount(wsp); } });
-      var onOrders=/^#EB-/i.test(location.hash);
-      show(!onOrders); if(!onOrders) EBPortal.mount(wsp);
-    }
-    document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); page(); }); };
+    document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>'+T.seePricing+'</a></div>';
       box.querySelector('.odetail').hidden=true; box.querySelector('.acct-grid').classList.add('solo'); return; }
