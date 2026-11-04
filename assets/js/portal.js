@@ -39,7 +39,14 @@
         needPhone:'اكتب الرقم مع رمز الدولة، مثلاً ‎+9665xxxxxxxx',needConsent:'يجب أن توافق أولاً لكي نراسلك عبر واتساب.',onMsg:'فُعّلت إشعارات واتساب.',offMsg:'أُوقفت إشعارات واتساب.',stopped:'أوقفتَها بتاريخ '},
       bl:{h:'الفواتير',p:'فواتير تعاونك مع الاستوديو وحالة كل منها. يمكنك فتح أي فاتورة وحفظها بصيغة PDF.',none:'لا توجد فواتير بعد.',no:'رقم الفاتورة',issued:'تاريخ الإصدار',due:'الاستحقاق',total:'الإجمالي',bal:'المتبقي',view:'عرض',
         open:'مستحقة',overdue:'متأخرة',paidAll:'المدفوع',strip:'لديك فواتير مستحقة',stripP:'افتح صفحة الفواتير لمراجعتها.',save:'حفظ PDF',close:'إغلاق',
-        st:{pending:'بانتظار الدفع',partial:'مدفوعة جزئياً',paid:'مدفوعة',overdue:'متأخرة',cancelled:'ملغاة',refunded:'مستردة'}}},
+        st:{pending:'بانتظار الدفع',partial:'مدفوعة جزئياً',paid:'مدفوعة',overdue:'متأخرة',cancelled:'ملغاة',refunded:'مستردة'}},
+      x:{quota:'الحصة الشهرية',quotaOf:' من ',thisMonth:' هذا الشهر',over:'خارج الحصة',overNote:'وصلت مهام هذا الشهر إلى الحصة المتفق عليها. يمكنك إرسال المهمة، وسيتواصل معك الاستوديو بشأن احتسابها.',
+        drive:'مجلد المشروع على Google Drive',rec:'الجدول الدوري',recP:'مهام يضيفها الاستوديو تلقائياً وفق الاتفاق.',every:{week:'أسبوعياً',month:'شهرياً'},next:'المرة القادمة',recBadge:'دورية',
+        dows:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],dom:'يوم ',report:'التقرير الشهري',repP:'ملخّص ما أُنجز في المشروع خلال الشهر.',
+        k:{created:'مهام جديدة',completed:'مكتملة',versions:'نسخ مُسلّمة',rounds:'جولات تعديل',ontime:'في الموعد',open:'مفتوحة الآن'},doneList:'المهام المكتملة',none:'لا شيء خلال هذا الشهر.',inv:'الفواتير الصادرة',paid:'المدفوع خلال الشهر',pdf:'حفظ PDF',
+        brief:'الموجز الإبداعي',briefHint:'اختياري، لكنه يختصر وقت المراجعة كثيراً.',
+        b:{goal:'الهدف من الفيديو',audience:'الجمهور المستهدف',format:'المقاس',duration:'المدة التقريبية',tone:'الأسلوب والإحساس',message:'الرسالة الأساسية',cta:'الدعوة إلى اتخاذ إجراء',music:'الموسيقى والصوت'},
+        fmts:['9:16 عمودي (ريلز وستوري)','16:9 أفقي (يوتيوب)','1:1 مربع','4:5 منشور']}},
     en:{ws:'Workspace',wsP:'Your projects, tasks and their dates in one place.',projects:'Projects',recent:'Recent tasks',activity:'Latest activity',upcoming:'Upcoming dates',
       k:{active:'Active projects',progress:'In progress',review:'Awaiting your review',fresh:'New requests',done:'Completed',dates:'Upcoming dates'},
       empty:'The studio has not opened a project for you yet. You will get an e-mail when it does, and you can send tasks to it from here.',noTasks:'No tasks yet.',noAct:'No activity yet.',noDates:'No confirmed dates coming up.',
@@ -75,7 +82,14 @@
         needPhone:'Write the number with its country code, e.g. +44 7xxx xxxxxx',needConsent:'Please agree first so we can message you on WhatsApp.',onMsg:'WhatsApp notifications are on.',offMsg:'WhatsApp notifications are off.',stopped:'Stopped on '},
       bl:{h:'Invoices',p:'Invoices for your work with the studio and where each one stands. Open any invoice and save it as PDF.',none:'No invoices yet.',no:'Invoice no.',issued:'Issued',due:'Due',total:'Total',bal:'Balance',view:'View',
         open:'Due',overdue:'Overdue',paidAll:'Paid',strip:'You have invoices due',stripP:'Open the invoices page to review them.',save:'Save PDF',close:'Close',
-        st:{pending:'Awaiting payment',partial:'Partially paid',paid:'Paid',overdue:'Overdue',cancelled:'Cancelled',refunded:'Refunded'}}}
+        st:{pending:'Awaiting payment',partial:'Partially paid',paid:'Paid',overdue:'Overdue',cancelled:'Cancelled',refunded:'Refunded'}},
+      x:{quota:'Monthly quota',quotaOf:' of ',thisMonth:' this month',over:'Over quota',overNote:'This month’s tasks have reached the agreed quota. You can still send it; the studio will talk to you about how it is counted.',
+        drive:'Project folder on Google Drive',rec:'Recurring schedule',recP:'Tasks the studio adds automatically, as agreed.',every:{week:'Weekly',month:'Monthly'},next:'Next',recBadge:'Recurring',
+        dows:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],dom:'Day ',report:'Monthly report',repP:'A summary of what was done in the project during the month.',
+        k:{created:'New tasks',completed:'Completed',versions:'Versions delivered',rounds:'Revision rounds',ontime:'On time',open:'Open now'},doneList:'Completed tasks',none:'Nothing this month.',inv:'Invoices issued',paid:'Paid this month',pdf:'Save PDF',
+        brief:'Creative brief',briefHint:'Optional, but it saves a lot of review time.',
+        b:{goal:'Goal of the video',audience:'Target audience',format:'Format',duration:'Approximate length',tone:'Style and feel',message:'Key message',cta:'Call to action',music:'Music and sound'},
+        fmts:['9:16 vertical (Reels, Stories)','16:9 horizontal (YouTube)','1:1 square','4:5 feed post']}}
   }[lang];
   var OPEN=['new','review','info','accepted','progress','feedback','revision','final'];
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
@@ -89,6 +103,7 @@
   function prio(p){ var lab=L(((C().workspace||{}).priorities||{})[p])||T.p[p]||p; return p&&p!=='normal'?'<span class="tprio p-'+esc(p)+'">'+esc(lab)+'</span>':''; }
   function linksHTML(ls){ return (ls||[]).map(function(l){ return '<a class="wlink" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer"><span>'+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,48))+'</span></a>'; }).join(''); }
   function para(t){ return esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>'); }
+  function paraTc(t){ return para(t).replace(/(^|[\s(>])((?:\d{1,2}:)?\d{1,2}:\d{2})(?=$|[\s.,،)<])/g,'$1<span class="wtc">$2</span>'); }   // timecodes in comments
   function actText(a){ var d=a.data||{}, who=a.actor==='studio'?T.by.studio:(a.actor_name||a.actor), k=a.kind, w='';
     if(k==='status') w=T.a.status+' «'+(T.st[d.to]||d.to)+'»'+(d.confirmed_date?' · '+T.conf+': '+d8(d.confirmed_date):'');
     else if(k==='date_changed') w=T.a.date_changed+' '+d8(d.to);
@@ -107,12 +122,14 @@
       progress:function(d,t){return 'بدأ تنفيذ '+t;},status:function(d,t){return 'أصبحت حالة '+t+' «'+(T.st[d.status]||d.status)+'»';},date:function(d,t){return 'أصبح موعد تسليم '+t+' '+d8(d.date);},dateNo:function(d,t){return 'بقي موعد تسليم '+t+' '+d8(d.date);},
       completed:function(d,t){return 'اكتملت مهمة '+t;},deliver:function(d,t){return d.final?'التسليم النهائي لـ'+t+' جاهز للمراجعة':'النسخة '+d.label+' من '+t+' جاهزة للمراجعة';},comment:function(d,t){return 'تعليق جديد من الاستوديو على '+t;},
       project:function(d){return 'فتح الاستوديو لك مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» إلى مشروع «'+d.name+'»';},
-      invoice:function(d){return 'فاتورة جديدة '+d.no+' بقيمة '+d.amount;},invoicePaid:function(d){return 'وصلت دفعتك للفاتورة '+d.no;},invoiceDue:function(d){return 'الفاتورة '+d.no+' متأخرة — المتبقي '+d.balance;}},
+      invoice:function(d){return 'فاتورة جديدة '+d.no+' بقيمة '+d.amount;},invoicePaid:function(d){return 'وصلت دفعتك للفاتورة '+d.no;},invoiceDue:function(d){return 'الفاتورة '+d.no+' متأخرة — المتبقي '+d.balance;},
+      recurring:function(d,t){return 'مهمة دورية جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},report:function(d){return 'التقرير الشهري لمشروع «'+d.name+'» جاهز';}},
     en:{accept:function(d,t){return 'Task '+t+' accepted'+(d.date?' · confirmed for '+d8(d.date):'');},info:function(d,t){return 'The studio needs information for '+t;},reject:function(d,t){return 'About '+t+': we can\'t take it as requested';},
       progress:function(d,t){return 'Work started on '+t;},status:function(d,t){return t+' is now “'+(T.st[d.status]||d.status)+'”';},date:function(d,t){return 'Delivery date of '+t+' is now '+d8(d.date);},dateNo:function(d,t){return 'Delivery date of '+t+' stays '+d8(d.date);},
       completed:function(d,t){return t+' is complete';},deliver:function(d,t){return d.final?'Final delivery of '+t+' is ready for review':'Version '+d.label+' of '+t+' is ready for review';},comment:function(d,t){return 'New comment from the studio on '+t;},
       project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';},
-      invoice:function(d){return 'New invoice '+d.no+' for '+d.amount;},invoicePaid:function(d){return 'Payment received for invoice '+d.no;},invoiceDue:function(d){return 'Invoice '+d.no+' is overdue — '+d.balance+' due';}}}[lang];
+      invoice:function(d){return 'New invoice '+d.no+' for '+d.amount;},invoicePaid:function(d){return 'Payment received for invoice '+d.no;},invoiceDue:function(d){return 'Invoice '+d.no+' is overdue — '+d.balance+' due';},
+      recurring:function(d,t){return 'Recurring task '+t+' added'+(d.date?' · due '+d8(d.date):'');},report:function(d){return 'The monthly report for “'+d.name+'” is ready';}}}[lang];
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
@@ -140,7 +157,7 @@
     if(h==='w/settings') return settings();
     if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))) return invoices(m[1]);
     if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))) return task(m[1]);
-    if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files))?$/.exec(h))) return project(m[1],m[2]||'tasks');
+    if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files|report)(?:\/(\d{4}-\d{2}))?)?$/.exec(h))) return project(m[1],m[2]||'tasks',false,m[3]);
     if((m=/^w\/new\/(p_[a-f0-9]+)$/.exec(h))) return newTask(m[1]);
     return dash(); }
   addEventListener('hashchange',function(){ if(/^#w/.test(location.hash)) route(); });
@@ -166,38 +183,42 @@
   }
   function projCard(p){ var open=p.status==='active';
     return '<article class="wproj glass"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+'</span><h4>'+esc(p.name)+'</h4>'+
-      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</p></a>'+
+      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</p>'+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
       (open?'<a class="btn btn-primary wnew" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</article>'; }
+  function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
     if(!list||!list.length) return '<p class="muted small">'+T.noTasks+'</p>';
     return '<div class="wtable"><table><thead><tr><th>'+T.task+'</th>'+(withProject?'<th>'+T.project+'</th>':'')+'<th>'+T.status+'</th><th>'+T.req+'</th><th>'+T.conf+'</th><th>'+T.upd+'</th></tr></thead><tbody>'+
-      list.map(function(t){ return '<tr data-go="#w/t/'+esc(t.ref)+'"><td><a href="#w/t/'+esc(t.ref)+'"><b>'+esc(t.title)+'</b></a><small class="muted ref">'+esc(t.ref)+'</small>'+prio(t.priority)+'</td>'+(withProject?'<td class="tp" data-l="'+esc(T.project)+'">'+esc(t.project_name||'')+'</td>':'')+
+      list.map(function(t){ return '<tr data-go="#w/t/'+esc(t.ref)+'"><td><a href="#w/t/'+esc(t.ref)+'"><b>'+esc(t.title)+'</b></a><small class="muted ref">'+esc(t.ref)+'</small>'+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</td>'+(withProject?'<td class="tp" data-l="'+esc(T.project)+'">'+esc(t.project_name||'')+'</td>':'')+
         '<td class="ts">'+pill(t.status)+'</td><td data-l="'+esc(T.req)+'">'+esc(t.requested_date?d8(t.requested_date):'—')+'</td><td data-l="'+esc(T.conf)+'" class="'+(t.confirmed_date?'cf':'muted')+'">'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</td><td class="muted small tu">'+esc(ago(t.updated_at))+'</td></tr>'; }).join('')+'</tbody></table></div>'; }
   document.addEventListener('click',function(e){ var tr=e.target.closest('tr[data-go]'); if(tr&&!e.target.closest('a')) location.hash=tr.dataset.go; });
 
   /* ---- project: tasks · discussion · files ---- */
   var PC=null;
-  function project(id,tab,force){
-    if(!force&&PC&&PC.id===id&&Date.now()-PC.at<30000) return drawProject(PC.j,tab);
+  function project(id,tab,force,month){
+    if(!force&&PC&&PC.id===id&&Date.now()-PC.at<30000) return drawProject(PC.j,tab,month);
     loading();
-    api('?project='+encodeURIComponent(id)).then(function(j){ if(!j.ok) return fail(j); PC={id:id,j:j,at:Date.now()}; drawProject(j,tab); });
+    api('?project='+encodeURIComponent(id)).then(function(j){ if(!j.ok) return fail(j); PC={id:id,j:j,at:Date.now()}; drawProject(j,tab,month); });
   }
-  function drawProject(j,tab){ var p=j.project, F='all';
+  function drawProject(j,tab,month){ var p=j.project, F='all';
     var nf=(j.files||[]).length+(j.delivered||[]).length, nc=(j.comments||[]).length;
     host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a>'+
       '<div class="wcard glass wphead"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
         '<dl class="wmeta">'+(p.start_date?'<div><dt>'+T.start+'</dt><dd>'+esc(d8(p.start_date))+'</dd></div>':'')+(p.end_date?'<div><dt>'+T.end+'</dt><dd>'+esc(d8(p.end_date))+'</dd></div>':'')+
         ((p.services||[]).length?'<div><dt>'+T.services+'</dt><dd>'+p.services.map(function(s){ var sv=(C().services||[]).filter(function(x){return x.id===s})[0]; return '<span class="tag">'+esc(sv?L(sv.name):s)+'</span>'; }).join(' ')+'</dd></div>':'')+'</dl></div>'+
-        (p.status==='active'?'<a class="btn btn-primary" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</div>'+
-      '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length],['talk',T.tabs.talk,nc],['files',T.tabs.files,nf]].map(function(x){
+        '<div class="wphx">'+(p.quota?quotaBar(j.quota_used||0,p.quota):'')+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
+        (p.status==='active'?'<a class="btn btn-primary" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</div></div>'+
+      '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length],['talk',T.tabs.talk,nc],['files',T.tabs.files,nf],['report',T.x.report,0]].map(function(x){
         return '<a role="tab" href="#w/p/'+esc(p.id)+(x[0]==='tasks'?'':'/'+x[0])+'" aria-selected="'+(tab===x[0])+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</a>'; }).join('')+'</div><div class="wpbody"></div>';
     var body=host.querySelector('.wpbody');
     if(tab==='talk'){ body.innerHTML='<p class="muted small wtalkp">'+T.cm.talkP+'</p>'+thread(j.comments,j.me); bindThread(body,{scope:'project',project:p.id},function(){ project(p.id,'talk',true); }); return; }
     if(tab==='files'){ filesView(body,j); return; }
+    if(tab==='report'){ reportView(body,p,month); return; }
     var draw=function(){ var list=j.tasks.filter(function(t){ return F==='all'||(F==='open'?OPEN.indexOf(t.status)>=0:t.status===F); });
       body.querySelector('.wtasks').innerHTML=taskTable(list,false); };
     body.innerHTML='<div class="wcols"><section class="wsec"><div class="wfilt">'+[['all',T.all],['open',AR?'المفتوحة':'Open'],['completed',T.st.completed]].map(function(x,i){ return '<button type="button" class="chipb'+(i===0?' on':'')+'" data-f="'+x[0]+'">'+x[1]+'</button>'; }).join('')+'</div><div class="wtasks"></div></section>'+
-      '<aside class="wside"><section class="wsec"><h3>'+T.activity+'</h3>'+(j.activity.length?'<ul class="wact">'+j.activity.map(function(a){ var t=j.tasks.filter(function(x){return x.id===a.task_id})[0]; a.task_ref=t&&t.ref; return actText(a); }).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>';
+      '<aside class="wside">'+((j.recurring||[]).length?'<section class="wsec"><h3>'+T.x.rec+'</h3><p class="muted small" style="margin:0">'+T.x.recP+'</p><div class="wrecs">'+j.recurring.map(function(r){ return '<div class="wrec glass"><b>'+esc(r.title)+'</b><small class="muted">'+esc(T.x.every[r.every])+' · '+esc(r.every==='week'?T.x.dows[r.dow||0]:T.x.dom+(r.dom||1))+' · '+T.x.next+': '+esc(d8(r.next_run))+'</small></div>'; }).join('')+'</div></section>':'')+
+        '<section class="wsec"><h3>'+T.activity+'</h3>'+(j.activity.length?'<ul class="wact">'+j.activity.map(function(a){ var t=j.tasks.filter(function(x){return x.id===a.task_id})[0]; a.task_ref=t&&t.ref; return actText(a); }).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>';
     body.querySelector('.wfilt').onclick=function(e){ var b=e.target.closest('button'); if(!b) return; F=b.dataset.f; [].forEach.call(this.children,function(x){ x.classList.toggle('on',x===b); }); draw(); };
     draw();
   }
@@ -209,7 +230,7 @@
       '<div class="wcrow"><input name="lu" type="url" dir="ltr" placeholder="'+T.cm.link+'"><button class="btn btn-primary" type="submit">'+T.cm.send+'</button></div></form></section>'; }
   function cmt(c,me){ var st=c.author==='studio', mine=me&&c.author===me;
     return '<div class="wcmt'+(st?' st':mine?' me':'')+'"><div class="wcmt-h"><b>'+esc(st?'Eyeblink Studio':mine?T.cm.you:c.author_name)+'</b><small>'+esc(ago(c.created_at))+'</small>'+
-      (mine?'<button type="button" class="linkbtn" data-delc="'+esc(c.id)+'">'+T.cm.del+'</button>':'')+'</div><p>'+para(c.body)+'</p>'+((c.links||[]).length?'<div class="wlinkset">'+linksHTML(c.links)+'</div>':'')+'</div>'; }
+      (mine?'<button type="button" class="linkbtn" data-delc="'+esc(c.id)+'">'+T.cm.del+'</button>':'')+'</div><p>'+paraTc(c.body)+'</p>'+((c.links||[]).length?'<div class="wlinkset">'+linksHTML(c.links)+'</div>':'')+'</div>'; }
   function bindThread(box,where,reload){
     var f=box.querySelector('.wcompose'); if(!f) return;
     f.onsubmit=function(e){ e.preventDefault(); var b=f.querySelector('button'), body=f.elements.body.value.trim(), u=f.elements.lu.value.trim();
@@ -265,21 +286,29 @@
         '<label>'+T.f.details+'<textarea name="details" maxlength="6000" dir="auto"></textarea></label>'+
         '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
         '<label>'+T.f.notes+'<textarea name="notes" maxlength="3000" dir="auto"></textarea></label>'+
+        '<details class="wbrief"><summary><b>'+T.x.brief+'</b> <small class="muted">'+T.x.briefHint+'</small></summary><div class="wgrid">'+
+          ['goal','audience','format','duration','tone','message','cta','music'].map(function(k){ return k==='format'?'<label>'+T.x.b.format+'<input name="b_format" list="wFmts" maxlength="120" dir="auto"><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist></label>'
+            :'<label>'+T.x.b[k]+'<input name="b_'+k+'" maxlength="600" dir="auto"></label>'; }).join('')+'</div></details>'+
+        '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p>'+
         '<p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+T.f.preview+'</button></div></form>';
       var f=document.getElementById('wNew'), rows=f.querySelector('.wlinks .rows');
       var addRow=function(){ if(rows.children.length>=10) return; var d=document.createElement('div'); d.className='lrow2'; d.innerHTML='<input name="ll" placeholder="'+T.f.linkLabel+'" maxlength="80" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'">'; rows.appendChild(d); };
       addRow(); f.querySelector('.addl').onclick=addRow;
+      var qn=f.querySelector('.wqn'), qcheck=function(){ var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; qn.hidden=!(pp&&pp.quota&&(pp.month_tasks||0)>=pp.quota); }; f.elements.project.onchange=qcheck; qcheck();
       f.querySelector('.wprio').onchange=function(){ [].forEach.call(this.querySelectorAll('label'),function(l){ l.classList.toggle('on',l.querySelector('input').checked); }); };
       f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, msg=f.querySelector('.msg');
         var data={action:'task',project:E.project.value,title:E.title.value.trim(),type:E.type.value.trim(),requested_date:E.requested_date.value,priority:(f.querySelector('input[name=priority]:checked')||{}).value||'normal',
           description:E.description.value.trim(),details:E.details.value.trim(),notes:E.notes.value.trim(),
-          links:[].map.call(rows.children,function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); })};
+          links:[].map.call(rows.children,function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); }),
+          brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,k){ var v=(E['b_'+k]||{}).value; if(v&&v.trim()) o[k]=v.trim(); return o; },{})};
         if(!data.title){ msg.textContent=T.f.need; E.title.focus(); return; }
         if(data.requested_date&&data.requested_date<minD){ msg.textContent=T.f.bad; return; }
         preview(data,f); };
     };
     if(projects) go(); else { loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); DASH=j; projects=j.projects; go(); }); }
   }
+  function briefHTML(b){ if(!b) return ''; var k=Object.keys(b).filter(function(x){ return b[x]; }); if(!k.length) return '';
+    return '<h4>'+T.x.brief+'</h4><dl class="wbriefl">'+k.map(function(x){ return '<div><dt>'+esc(T.x.b[x]||x)+'</dt><dd>'+esc(b[x])+'</dd></div>'; }).join('')+'</dl>'; }
   function preview(data,form){
     var p=(DASH.projects||[]).filter(function(x){return x.id===data.project})[0]||{};
     var box=document.createElement('div'); box.className='wcard glass wpreview';
@@ -287,7 +316,7 @@
       '<div><dt>'+T.project+'</dt><dd>'+esc(p.name||'')+'</dd></div>'+(data.type?'<div><dt>'+T.f.type+'</dt><dd>'+esc(data.type)+'</dd></div>':'')+
       '<div><dt>'+T.req+'</dt><dd>'+esc(data.requested_date?d8(data.requested_date):T.reqNone)+'</dd></div><div><dt>'+T.f.prio+'</dt><dd>'+esc(T.p[data.priority])+'</dd></div></dl>'+
       (data.description?'<h4>'+T.desc+'</h4><p>'+para(data.description)+'</p>':'')+(data.details?'<h4>'+T.details+'</h4><p>'+para(data.details)+'</p>':'')+
-      (data.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(data.links)+'</div>':'')+(data.notes?'<h4>'+T.notes+'</h4><p>'+para(data.notes)+'</p>':'')+
+      (data.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(data.links)+'</div>':'')+(data.notes?'<h4>'+T.notes+'</h4><p>'+para(data.notes)+'</p>':'')+briefHTML(data.brief)+
       '<p class="muted small">'+T.f.dateHint+'</p><p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="button" data-send>'+T.f.send+'</button><button class="btn btn-glass glass" type="button" data-edit>'+T.f.edit+'</button></div>';
     form.hidden=true; form.parentNode.insertBefore(box,form.nextSibling); scrollTo({top:host.offsetTop-90,behavior:'smooth'});
     box.querySelector('[data-edit]').onclick=function(){ box.remove(); form.hidden=false; };
@@ -304,7 +333,7 @@
       var at=PATH.indexOf(t.status==='info'?'review':t.status==='revision'?'feedback':t.status), off=t.status==='rejected'||t.status==='cancelled';
       var canChange=['accepted','progress','feedback','revision'].indexOf(t.status)>=0&&t.confirmed_date&&!(cr&&cr.status==='pending');
       host.innerHTML='<a class="wback" href="#w/p/'+esc(t.project_id)+'">← '+esc(t.project_name||T.back)+'</a>'+
-        '<div class="wcard glass wtask"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+'</div></div>'+
+        '<div class="wcard glass wtask"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</div></div>'+
         (off?'':'<ol class="track wtrack" style="--p:'+(Math.max(0,at)/(PATH.length-1))+'">'+PATH.map(function(s,i){ return '<li class="'+(i<at||t.status==='completed'?'done':i===at?'now':'')+'"><i></i><b>'+esc(T.st[s])+'</b></li>'; }).join('')+'</ol>')+
         '<div class="wdates2"><div><span>'+T.req+'</span><b>'+esc(t.requested_date?d8(t.requested_date):T.reqNone)+'</b><small class="muted">'+(AR?'من طرفك':'from you')+'</small></div>'+
           '<div class="'+(t.confirmed_date?'ok':'')+'"><span>'+T.conf+'</span><b>'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</b><small class="muted">'+(t.confirmed_date?(AR?'معتمد من Eyeblink':'confirmed by Eyeblink'):T.confNone)+'</small></div></div>'+
@@ -314,7 +343,7 @@
         (t.status==='rejected'&&t.studio_note?'<div class="wnote bad"><b>'+T.rejH+'</b><p>'+para(t.studio_note)+'</p></div>':'')+
         (t.status!=='info'&&t.status!=='rejected'&&t.studio_note?'<div class="wnote"><b>'+T.noteH+'</b><p>'+para(t.studio_note)+'</p></div>':'')+
         '<div class="wbody">'+(t.description?'<h4>'+T.desc+'</h4><p>'+para(t.description)+'</p>':'')+(t.details?'<h4>'+T.details+'</h4><p>'+para(t.details)+'</p>':'')+
-          ((t.links||[]).length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(t.links)+'</div>':'')+(t.notes?'<h4>'+T.notes+'</h4><p>'+para(t.notes)+'</p>':'')+'</div>'+
+          ((t.links||[]).length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(t.links)+'</div>':'')+(t.notes?'<h4>'+T.notes+'</h4><p>'+para(t.notes)+'</p>':'')+briefHTML(t.brief)+'</div>'+
         '<div class="actions wtact">'+(canChange?'<button type="button" class="btn btn-glass glass" data-chg>'+T.change+'</button>':'')+(['new','review','info'].indexOf(t.status)>=0?'<button type="button" class="btn btn-glass glass danger" data-cancel>'+T.cancel+'</button>':'')+'</div>'+
         '<form class="form wchange" hidden><b>'+T.changeH+'</b><label>'+T.newDate+'<input name="date" type="date" min="'+new Date().toISOString().slice(0,10)+'" required></label><label>'+T.why+'<textarea name="reason" dir="auto" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">'+T.changeSend+'</button></form>'+
         '</div>'+deliveries(j)+'<section class="wsec"><h3>'+T.cm.h+((j.comments||[]).length?' ('+j.comments.length+')':'')+'</h3>'+thread(j.comments,j.me)+'</section>'+
@@ -349,9 +378,21 @@
       if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
     });
   }
-  function invDoc(id){
-    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-label',T.bl.h);
-    m.innerHTML='<div class="inv-box"><div class="inv-bar"><b>'+T.bl.h+'</b><span class="sp"></span><button type="button" class="btn btn-primary sv">'+T.bl.save+'</button><button type="button" class="btn btn-glass glass x" aria-label="'+T.bl.close+'">×</button></div><div class="inv-scroll"><iframe title="'+T.bl.h+'" src="'+API+'work?invoiceDoc='+encodeURIComponent(id)+'"></iframe></div></div>';
+  function reportView(body,p,month){ var ms=[], d=new Date(); d.setUTCDate(1); for(var i=0;i<6;i++){ ms.push(d.toISOString().slice(0,7)); d.setUTCMonth(d.getUTCMonth()-1); } month=month||ms[0];
+    var mn=function(m){ try{ return new Date(m+'-15T12:00:00Z').toLocaleDateString(AR?'ar-u-nu-latn':'en-GB',{month:'long',year:'numeric'}); }catch(_){ return m; } };
+    body.innerHTML='<p class="muted small wtalkp">'+T.x.repP+'</p><div class="wfhead"><div class="wfilt">'+ms.map(function(m){ return '<a class="chipb'+(m===month?' on':'')+'" href="#w/p/'+esc(p.id)+'/report/'+m+'">'+esc(mn(m))+'</a>'; }).join('')+'</div><button type="button" class="btn btn-glass glass" data-rpdf>'+T.x.pdf+'</button></div><div class="wrep"><div class="acct-load"><span></span></div></div>';
+    body.querySelector('[data-rpdf]').onclick=function(){ docModal(API+'work?reportDoc='+encodeURIComponent(p.id)+'&month='+month,T.x.report); };
+    api('?report='+encodeURIComponent(p.id)+'&month='+month).then(function(j){ var box=body.querySelector('.wrep'); if(!j.ok){ box.innerHTML='<p class="muted">'+T.err+'</p>'; return; } var R=j.report;
+      var cards=[[T.x.k.created,p.quota?R.created+T.x.quotaOf+p.quota:R.created],[T.x.k.completed,R.completed.length],[T.x.k.versions,R.versions],[T.x.k.rounds,R.rounds],[T.x.k.ontime,R.on_time===null?'—':R.on_time+'%'],[T.x.k.open,R.open]];
+      var paid=Object.keys(R.paid||{}).map(function(c){ return money(R.paid[c],c); }).join(' · ');
+      box.innerHTML='<div class="wkpis">'+cards.map(function(c){ return '<div class="wkpi glass"><b>'+esc(c[1])+'</b><span>'+esc(c[0])+'</span></div>'; }).join('')+'</div>'+
+        '<section class="wsec"><h3>'+T.x.doneList+'</h3>'+(R.completed.length?'<ul class="wdates">'+R.completed.map(function(t){ return '<li><a href="#w/t/'+esc(t.ref)+'"><b class="'+(t.on_time?'':'late')+'">'+esc(d8(t.completed_at))+(t.confirmed_date?' / '+esc(d8(t.confirmed_date)):'')+'</b><span>'+esc(t.title)+'</span><small class="muted"><bdi dir="ltr">'+esc(t.ref)+'</bdi></small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.x.none+'</p>')+'</section>'+
+        ((R.invoices||[]).length||paid?'<section class="wsec"><h3>'+T.x.inv+'</h3><div class="wrecs">'+(R.invoices||[]).map(function(x){ return '<div class="wrec glass"><b><bdi dir="ltr">'+esc(x.no)+'</bdi> · '+esc(x.title||'')+'</b><small class="muted"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi> · '+esc(T.bl.st[x.state]||x.state)+'</small></div>'; }).join('')+'</div>'+(paid?'<p class="small">'+T.x.paid+': <b><bdi dir="ltr">'+esc(paid)+'</bdi></b></p>':'')+'</section>':''); });
+  }
+  function invDoc(id){ docModal(API+'work?invoiceDoc='+encodeURIComponent(id),T.bl.h); }
+  function docModal(src,title){
+    var m=document.createElement('div'); m.className='acct-modal inv-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-label',title);
+    m.innerHTML='<div class="inv-box"><div class="inv-bar"><b>'+esc(title)+'</b><span class="sp"></span><button type="button" class="btn btn-primary sv">'+T.bl.save+'</button><button type="button" class="btn btn-glass glass x" aria-label="'+T.bl.close+'">×</button></div><div class="inv-scroll"><iframe title="'+esc(title)+'" src="'+esc(src)+'"></iframe></div></div>';
     document.body.appendChild(m); document.body.style.overflow='hidden'; requestAnimationFrame(function(){ m.classList.add('show'); });
     var f=m.querySelector('iframe'); f.onload=function(){ try{ var d=f.contentDocument; f.style.height=(d.body.scrollHeight+2)+'px'; [].forEach.call(d.images,function(im){ im.onload=function(){ f.style.height=(d.body.scrollHeight+2)+'px'; }; }); }catch(_){} };
     var close=function(){ m.classList.remove('show'); document.body.style.overflow=''; setTimeout(function(){ m.remove(); },350); };

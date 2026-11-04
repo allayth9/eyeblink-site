@@ -32,6 +32,12 @@
 //           POST { action:"invoice", id?, client_email, project_id, title, period, items:[{desc,qty,unit}], currency, discount, issue_date, due_date, note, send }
 //                { action:"invoicePay", id, amount, method, date, note }  { action:"invoiceUnpay", id, index }
 //                { action:"invoiceStatus", id, status:"cancelled"|"refunded"|"reopen", amount, note }  { action:"invoiceSend", id }  { action:"invoiceDelete", id }
+// Extensions (Phase 7): monthly quota per project (tasks beyond it are flagged, not blocked), a creative brief on each task,
+// recurring tasks made by the studio (weekly / monthly), a monthly report per project (page + PDF, sent by hand or on the 1st),
+// the project's Google Drive folder, and timecodes in comments.
+//   client: GET ?report=PROJECT&month=YYYY-MM | ?reportDoc=PROJECT&month=YYYY-MM
+//   studio: GET ?admin=1&report=… | ?admin=1&reportDoc=…   POST { action:"recurring", id?, project_id, title, type, description, every:"week"|"month", dow, dom, due_days, start, active }
+//           { action:"recurringDelete", id }  { action:"recurringRun", id }  { action:"sendReport", project, month }
 // Notifications (Phase 5): every studio decision becomes one event → in-app (always) + e-mail + WhatsApp, each by the client's own
 // preferences. WhatsApp goes only to a number the client confirmed with explicit consent, through Meta's official Cloud API, and a
 // failed send never blocks the work: it is logged and retried (5 min, 30 min, 2 h).
@@ -86,13 +92,30 @@ const SCHEMA = [
      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS invoices_client ON invoices(client_email, issue_date)`,
   `CREATE INDEX IF NOT EXISTS invoices_status ON invoices(status, due_date)`,
+  `CREATE TABLE IF NOT EXISTS recurring (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, client_email TEXT NOT NULL, title TEXT NOT NULL, type TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '',
+     every TEXT NOT NULL DEFAULT 'month', dow INTEGER, dom INTEGER, due_days INTEGER NOT NULL DEFAULT 5, next_run TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, runs INTEGER NOT NULL DEFAULT 0, last_ref TEXT,
+     created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS recurring_next ON recurring(active, next_run)`,
+];
+// columns added to tables that already exist on the live database (run once, in order; meta "schema" keeps the count)
+const MIGRATIONS = [
+  "ALTER TABLE tasks ADD COLUMN brief TEXT",
+  "ALTER TABLE tasks ADD COLUMN over_quota INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE projects ADD COLUMN drive_url TEXT",
+  "ALTER TABLE projects ADD COLUMN auto_report INTEGER NOT NULL DEFAULT 0",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
 let READY = false;
 async function db(env){
   if (!env.DB) return null;
-  if (!READY) { await env.DB.batch(SCHEMA.map(s => env.DB.prepare(s))); READY = true; }
+  if (!READY) {
+    await env.DB.batch(SCHEMA.map(s => env.DB.prepare(s)));
+    const v = +(((await env.DB.prepare("SELECT v FROM meta WHERE k='schema'").first()) || {}).v || 0);
+    for (let i = v; i < MIGRATIONS.length; i++) { try { await env.DB.prepare(MIGRATIONS[i]).run(); } catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; } }
+    if (v < MIGRATIONS.length) await env.DB.prepare("INSERT INTO meta (k, v) VALUES ('schema', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(MIGRATIONS.length)).run();
+    READY = true;
+  }
   return env.DB;
 }
 const now = () => new Date().toISOString();
@@ -100,7 +123,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !isNaN(Date.parse(s + "T00:00:00Z"));
 const clip = (v, m) => String(v ?? "").trim().slice(0, m);
 function cleanLinks(list){ return (Array.isArray(list) ? list : []).slice(0, 12).map(x => ({ label: clip(x && x.label, 80), url: clip(x && x.url, 600) })).filter(x => /^https?:\/\/[^\s]+$/i.test(x.url)); }
-function parse(t){ if (!t) return t; try { t.links = JSON.parse(t.links || "[]"); } catch { t.links = []; } try { t.change_request = t.change_request ? JSON.parse(t.change_request) : null; } catch { t.change_request = null; } return t; }
+function parse(t){ if (!t) return t; try { t.links = JSON.parse(t.links || "[]"); } catch { t.links = []; } try { t.brief = t.brief ? JSON.parse(t.brief) : null; } catch { t.brief = null; } try { t.change_request = t.change_request ? JSON.parse(t.change_request) : null; } catch { t.change_request = null; } return t; }
 function parseP(p){ if (!p) return p; try { p.services = JSON.parse(p.services || "[]"); } catch { p.services = []; } return p; }
 function parseA(a){ try { a.data = JSON.parse(a.data || "{}"); } catch { a.data = {}; } return a; }
 function parseD(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } try { x.points = JSON.parse(x.points || "[]"); } catch { x.points = []; } x.is_final = !!x.is_final; return x; }
@@ -130,6 +153,91 @@ const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
 const fmtDate = (d, lang) => { try { return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : "ar-u-nu-latn", { weekday:"long", year:"numeric", month:"long", day:"numeric" }); } catch { return d; } };
+// ==== extensions (phase 7) ====
+const BRIEF_KEYS = ["goal","audience","format","duration","tone","message","cta","music"];
+function cleanBrief(b){ if (!b || typeof b !== "object") return null; const o = {}; for (const k of BRIEF_KEYS) { const v = clip(b[k], 600); if (v) o[k] = v; } return Object.keys(o).length ? o : null; }
+const monthOf = d => String(d || "").slice(0, 7);
+const isMonth = m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m || "");
+async function quotaUse(D, pid, month){ return (await D.prepare("SELECT COUNT(*) AS n FROM tasks WHERE project_id=? AND substr(created_at,1,7)=? AND status NOT IN ('cancelled','rejected')").bind(pid, month || monthOf(now())).first()).n; }
+function addDays(d, n){ const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+function nextRun(after, every, dow, dom){
+  const x = new Date(after + "T12:00:00Z");
+  if (every === "week") { do { x.setUTCDate(x.getUTCDate() + 1); } while (x.getUTCDay() !== (+dow || 0)); return x.toISOString().slice(0, 10); }
+  const day = Math.min(28, Math.max(1, +dom || 1)); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() + 1); x.setUTCDate(day); return x.toISOString().slice(0, 10);
+}
+function firstRun(start, every, dow, dom){ const t = isDate(start) ? start : today();
+  if (every === "week") { const x = new Date(t + "T12:00:00Z"); while (x.getUTCDay() !== (+dow || 0)) x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); }
+  const day = Math.min(28, Math.max(1, +dom || 1)), x = new Date(t + "T12:00:00Z"); if (x.getUTCDate() > day) { x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() + 1); } x.setUTCDate(day); return x.toISOString().slice(0, 10); }
+// make the task of one recurring template (status "accepted": it is part of the agreement), then move the template to its next date
+async function runRecurring(ctx, env, D, r, on){
+  const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(r.project_id).first(); if (!p || p.status !== "active") return null;
+  const at = now(), id = "t_" + randHex(8), ref = await newRef(D), due = addDays(on, Math.max(0, Math.min(90, +r.due_days || 0))), title = clip(r.title + " · " + on, 140);
+  await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, requested_date, confirmed_date, status, links, recurring, created_by, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,'normal',?,?,'accepted','[]',?,'studio',?,?)`).bind(id, ref, p.id, p.client_email, title, r.type || "", r.description || "", due, due, r.id, at, at).run();
+  await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
+  await act(D, { actor: "studio", actor_name: "Eyeblink Studio", client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, recurring: true, confirmed_date: due } });
+  let nx = nextRun(on, r.every, r.dow, r.dom); while (nx <= today()) nx = nextRun(nx, r.every, r.dow, r.dom);   // missed runs are not replayed
+  await D.prepare("UPDATE recurring SET next_run=?, runs=runs+1, last_ref=?, updated_at=? WHERE id=?").bind(nx, ref, at, r.id).run();
+  const pr = later(ctx, tellClient(env, { client_email: p.client_email, ref, title, confirmed_date: due, status: "accepted" }, "recurring", {})); if (pr) await pr;   // the sweep has no waitUntil of its own
+  return ref;
+}
+async function monthReport(D, p, month){
+  const tasks = (await D.prepare("SELECT id, ref, title, status, created_at, completed_at, confirmed_date, over_quota, recurring FROM tasks WHERE project_id=?").bind(p.id).all()).results;
+  const created = tasks.filter(t => monthOf(t.created_at) === month && !["cancelled","rejected"].includes(t.status));
+  const done = tasks.filter(t => t.status === "completed" && monthOf(t.completed_at) === month);
+  const dl = (await D.prepare("SELECT d.task_id, d.label, d.status, d.is_final, d.created_at FROM deliverables d WHERE d.project_id=?").bind(p.id).all()).results;
+  const versions = dl.filter(x => monthOf(x.created_at) === month), rounds = versions.filter(x => x.status === "changes").length;
+  const withDate = done.filter(t => t.confirmed_date), onTime = withDate.filter(t => String(t.completed_at).slice(0, 10) <= t.confirmed_date).length;
+  const inv = (await D.prepare("SELECT no, title, currency, total, paid, status, due_date, issue_date, payments, sent_at FROM invoices WHERE project_id=? AND sent_at IS NOT NULL").bind(p.id).all()).results.map(x => parseI(x));
+  const issued = inv.filter(x => monthOf(x.issue_date) === month), paidIn = {};
+  inv.forEach(x => x.payments.forEach(y => { if (monthOf(y.date || y.at) === month) paidIn[x.currency] = money((paidIn[x.currency] || 0) + y.amount); }));
+  const open = tasks.filter(t => OPEN.includes(t.status)).length;
+  return { month, project: { id: p.id, name: p.name, quota: p.quota || null }, created: created.length, completed: done.map(t => ({ ref: t.ref, title: t.title, completed_at: t.completed_at, confirmed_date: t.confirmed_date, on_time: !t.confirmed_date || String(t.completed_at).slice(0, 10) <= t.confirmed_date })),
+    versions: versions.length, finals: versions.filter(x => x.is_final).length, rounds, on_time: withDate.length ? Math.round(onTime * 100 / withDate.length) : null, open, over_quota: created.filter(t => t.over_quota).length,
+    invoices: issued.map(x => ({ no: x.no, title: x.title, total: x.total, currency: x.currency, state: x.state })), paid: paidIn };
+}
+const REP_T = { ar: { title:"التقرير الشهري", project:"المشروع", month:"الشهر", created:"مهام جديدة", completed:"مهام مكتملة", versions:"نسخ مُسلّمة", rounds:"جولات تعديل", ontime:"في الموعد", open:"مهام مفتوحة الآن", quota:"الحصة الشهرية",
+    list:"المهام المكتملة", task:"المهمة", doneOn:"اكتملت", due:"الموعد المؤكد", inv:"الفواتير الصادرة", paid:"المدفوع خلال الشهر", none:"لا شيء خلال هذا الشهر.", over:"خارج الحصة", foot:"تقرير آلي من مساحة عمل Eyeblink Studio." },
+  en: { title:"Monthly report", project:"Project", month:"Month", created:"New tasks", completed:"Completed tasks", versions:"Versions delivered", rounds:"Revision rounds", ontime:"On time", open:"Open tasks now", quota:"Monthly quota",
+    list:"Completed tasks", task:"Task", doneOn:"Completed", due:"Confirmed date", inv:"Invoices issued", paid:"Paid this month", none:"Nothing this month.", over:"over quota", foot:"Generated from the Eyeblink Studio workspace." } };
+function reportHTML(R, cl, lang){
+  const en = lang === "en", L = REP_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], dir = en ? "ltr" : "rtl", s = en ? "left" : "right", e = en ? "right" : "left";
+  const F = "font-family:Arial,Helvetica,sans-serif;", ink = "#14172b", grey = "#6b7286", rule = "#e7e9f0", nb = "direction:ltr;unicode-bidi:isolate;white-space:nowrap;";
+  const lab = `${F}font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${grey};`;
+  const mname = new Date(R.month + "-15T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { month:"long", year:"numeric" });
+  const dt = v => v ? new Date(String(v).length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day:"numeric", month:"short" }) : "—";
+  const quota = R.project.quota ? `${R.created} / ${R.project.quota}` : String(R.created);
+  const cells = [[L.created, R.project.quota ? quota : R.created], [L.completed, R.completed.length], [L.versions, R.versions], [L.rounds, R.rounds], [L.ontime, R.on_time === null ? "—" : R.on_time + "%"], [L.open, R.open]];
+  const paid = Object.keys(R.paid).map(c => fmt(R.paid[c], c)).join(" · ");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:600px;margin:0 auto;background:#fff;border:1px solid ${rule};border-radius:10px;text-align:${s};-webkit-print-color-adjust:exact;print-color-adjust:exact">
+<tr><td style="height:3px;line-height:3px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:10px 10px 0 0">&nbsp;</td></tr>
+<tr><td style="padding:26px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ <td style="vertical-align:middle;text-align:${s}"><img src="${SITE}/assets/img/invoice-logo.png" width="184" height="20" alt="Eyeblink Studio" style="display:inline-block;width:184px;height:20px;border:0"></td>
+ <td style="vertical-align:middle;text-align:${e};${F}font-size:19px;font-weight:bold;color:${ink}">${L.title}</td></tr></table></td></tr>
+<tr><td style="padding:20px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ <td style="text-align:${s}"><div style="${lab}">${L.project}</div><div style="${F}font-size:14px;font-weight:bold;color:${ink};margin-top:4px">${h(R.project.name)}</div><div style="${F}font-size:11.5px;color:${grey}">${h(cl.name || "")}</div></td>
+ <td style="text-align:${e}"><div style="${lab}">${L.month}</div><div style="${F}font-size:14px;font-weight:bold;color:${ink};margin-top:4px">${mname}</div></td></tr></table></td></tr>
+<tr><td style="padding:18px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="6" style="border-collapse:separate">
+ <tr>${cells.slice(0, 3).map(c => `<td style="width:33%;padding:12px;background:#f6f7fa;border-radius:8px;text-align:${s}"><div style="${F}font-size:20px;font-weight:bold;color:${ink};${nb}">${c[1]}</div><div style="${F}font-size:11px;color:${grey};margin-top:2px">${c[0]}</div></td>`).join("")}</tr>
+ <tr>${cells.slice(3).map(c => `<td style="width:33%;padding:12px;background:#f6f7fa;border-radius:8px;text-align:${s}"><div style="${F}font-size:20px;font-weight:bold;color:${ink};${nb}">${c[1]}</div><div style="${F}font-size:11px;color:${grey};margin-top:2px">${c[0]}</div></td>`).join("")}</tr>
+</table>${R.project.quota ? `<div style="${F}font-size:11px;color:${grey};padding:4px 6px 0">${L.quota}: ${R.project.quota}${R.over_quota ? " · " + R.over_quota + " " + L.over : ""}</div>` : ""}</td></tr>
+<tr><td style="padding:20px 30px 0"><div style="${lab};padding-bottom:6px;border-bottom:1px solid ${ink}">${L.list}</div>
+ ${R.completed.length ? R.completed.map(t => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid ${rule}"><tr><td style="padding:9px 0;${F}font-size:12.5px;color:${ink};text-align:${s}"><span style="${nb};color:${grey};font-size:11px">${h(t.ref)}</span> ${h(t.title)}</td><td style="padding:9px 0;${F}font-size:11.5px;color:${t.on_time ? "#127a3a" : "#b42318"};text-align:${e};white-space:nowrap">${dt(t.completed_at)}${t.confirmed_date ? " / " + dt(t.confirmed_date) : ""}</td></tr></table>`).join("") : `<div style="${F}font-size:12px;color:${grey};padding:10px 0">${L.none}</div>`}</td></tr>
+${R.invoices.length || paid ? `<tr><td style="padding:20px 30px 0"><div style="${lab};padding-bottom:6px;border-bottom:1px solid ${ink}">${L.inv}</div>
+ ${R.invoices.map(x => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid ${rule}"><tr><td style="padding:8px 0;${F}font-size:12px;color:${ink};text-align:${s}"><span style="${nb}">${h(x.no)}</span> ${h(x.title || "")}</td><td style="padding:8px 0;${F}font-size:12px;color:${ink};text-align:${e};${nb}">${fmt(x.total, x.currency)} · ${S[x.state] || x.state}</td></tr></table>`).join("")}
+ ${paid ? `<div style="${F}font-size:12px;color:${ink};padding:8px 0">${L.paid}: <b style="${nb}">${paid}</b></div>` : ""}</td></tr>` : ""}
+<tr><td style="padding:18px 30px 24px;${F}font-size:10.5px;color:${grey};text-align:${s}">${L.foot}</td></tr></table>`;
+}
+function reportPage(R, cl, lang){ return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(R.project.name)} · ${R.month}</title>
+<style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}@media print{html,body{background:#fff}table{max-width:none!important;border:0!important}}</style></head><body>${reportHTML(R, cl, lang).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`; }
+const prevMonth = () => { const x = new Date(); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 7); };
+async function sendReport(ctx, env, D, p, month){
+  const R = await monthReport(D, p, month);
+  await tellClient(env, { client_email: p.client_email, ref: "", title: p.name }, "report", { hash: "#w/p/" + p.id + "/report/" + month, report: R, name: p.name, month });
+  await D.prepare("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("rep:" + p.id + ":" + month, now()).run();
+  return R;
+}
+
 // ==== billing (phase 6) ====
 const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
@@ -199,7 +307,7 @@ function invoiceMail(env, x, kind){ const s = { client_email: x.client_email, re
 
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
-  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing" };
+  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
 const CONSENT_V = "wa-v1";
@@ -248,21 +356,23 @@ const WA_TXT = {
         completed: d => `اكتملت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
         comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
         invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
-        invoiceDue: d => `تذكير: الفاتورة ${d.no} تجاوزت تاريخ استحقاقها، والمبلغ المتبقي ${d.balance}.` },
+        invoiceDue: d => `تذكير: الفاتورة ${d.no} تجاوزت تاريخ استحقاقها، والمبلغ المتبقي ${d.balance}.`,
+        recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
         status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
         completed: d => `"${d.title}" (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}" (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}" (${d.ref}) is ready for review.`,
         comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
         invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
-        invoiceDue: d => `Reminder: invoice ${d.no} is past its due date; ${d.balance} is still due.` } };
+        invoiceDue: d => `Reminder: invoice ${d.no} is past its due date; ${d.balance} is still due.`,
+        recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
 async function tellClient(env, t, kind, extra){
   extra = extra || {};
   const u = await userOf(env, t.client_email); if (!u) return;
   const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
   const data = { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
-    no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined };
+    no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined, month: extra.month };
   // 1) in-app — always on
   if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
   const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
@@ -289,13 +399,16 @@ async function tellClient(env, t, kind, extra){
                     : ["وصلت دفعتك · " + extra.no, `وصلتنا دفعتك <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> للفاتورة <b style="color:#fff">${h(extra.no)}</b>. شكراً لك! تجد الفاتورة المحدّثة أدناه.`],
     invoiceDue: en ? ["Reminder: invoice " + extra.no, `Invoice <b style="color:#fff">${h(extra.no)}</b> is past its due date. The balance due is <b style="color:#3FE0E8">${h(extra.balance)}</b>.`]
                    : ["تذكير بالفاتورة " + extra.no, `تجاوزت الفاتورة <b style="color:#fff">${h(extra.no)}</b> تاريخ استحقاقها، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>.`],
+    recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
+                  : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    report:  en ? ["Monthly report · " + (extra.name || ""), `Here is the monthly report for <b style="color:#fff">${h(extra.name || "")}</b>.`] : ["التقرير الشهري · " + (extra.name || ""), `تجد أدناه التقرير الشهري لمشروع <b style="color:#fff">${h(extra.name || "")}</b>.`],
     file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
                  : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
                 : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : "";
+    const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
     const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
@@ -335,6 +448,13 @@ async function sweepNotify(env){ try {
   // one reminder per invoice once it passes its due date
   const due = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.status IN ('pending','partial') AND i.due_date<? AND i.reminded_at IS NULL AND i.sent_at IS NOT NULL LIMIT 10").bind(today()).all()).results;
   for (const x of due) { await D.prepare("UPDATE invoices SET reminded_at=? WHERE id=?").bind(now(), x.id).run(); await invoiceMail(env, parseI(x), "invoiceDue"); }
+  // recurring tasks whose date has come
+  const rec = (await D.prepare("SELECT * FROM recurring WHERE active=1 AND next_run<=? LIMIT 10").bind(today()).all()).results;
+  for (const r of rec) await runRecurring({}, env, D, r, r.next_run);
+  // monthly reports switched to automatic: during the first days of the month, once per project
+  if (new Date().getUTCDate() <= 5) { const pm = prevMonth();
+    const auto = (await D.prepare("SELECT p.* FROM projects p WHERE p.auto_report=1 AND p.status='active' AND NOT EXISTS (SELECT 1 FROM meta m WHERE m.k='rep:'||p.id||':'||?) LIMIT 5").bind(pm).all()).results;
+    for (const p of auto) await sendReport({}, env, D, p, pm); }
 } catch {} }
 
 export async function onRequestGet(ctx) {
@@ -348,6 +468,11 @@ export async function onRequestGet(ctx) {
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
+  if (q.get("report") || q.get("reportDoc")) {
+    const p = await myProject(D, e, clip(q.get("report") || q.get("reportDoc"), 40)); if (!p) return q.get("reportDoc") ? htmlRes("not found", 404) : json({ ok: false }, 404);
+    const month = isMonth(q.get("month")) ? q.get("month") : monthOf(now()), R = await monthReport(D, p, month);
+    return q.get("reportDoc") ? htmlRes(reportPage(R, u, u.lang === "en" ? "en" : "ar")) : json({ ok: true, report: R });
+  }
   if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)) });
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
     return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
@@ -356,7 +481,8 @@ export async function onRequestGet(ctx) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(parse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
-    return json({ ok: true, me: e, project: p, tasks, activity, ...(await spaceOf(D, p.id)) });
+    const recurring = (await D.prepare("SELECT id, title, every, dow, dom, due_days, next_run, active FROM recurring WHERE project_id=? AND active=1 ORDER BY next_run").bind(p.id).all()).results;
+    return json({ ok: true, me: e, project: p, tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
   }
   if (q.get("task")) {
     const t = parse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
@@ -364,7 +490,8 @@ export async function onRequestGet(ctx) {
     return json({ ok: true, me: e, task: t, activity, deliverables: await deliverablesOf(D, t.id), comments: await commentsOf(D, "task", t.id) });
   }
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open})) AS open_tasks,
-      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e).all()).results.map(parseP);
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=?2 AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e, monthOf(now())).all()).results.map(parseP);
   const counts = {}; for (const r of (await D.prepare(`SELECT status, COUNT(*) AS n FROM tasks WHERE project_id IN ${MINE} GROUP BY status`).bind(e).all()).results) counts[r.status] = r.n;
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 12`).bind(e).all()).results.map(parse);
   const upcoming = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
@@ -379,7 +506,7 @@ export async function onRequestGet(ctx) {
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -416,14 +543,15 @@ export async function onRequestPost(ctx) {
     const rd = clip(d.requested_date, 10); if (rd && (!isDate(rd) || rd < today())) return json({ ok: false, error: "date" }, 400);
     const n = (await D.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_email=? AND created_at>=?").bind(u.email, today()).first()).n;
     if (n >= 40) return json({ ok: false, error: "too many attempts" }, 429);
-    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal";
-    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, created_by, created_at, updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), clip(d.details, 6000), clip(d.notes, 3000), pr, rd || null,
-      JSON.stringify(cleanLinks(d.links)), u.email, at, at).run();
+    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", brief = cleanBrief(d.brief);
+    const used = p.quota ? await quotaUse(D, p.id) : 0, over = p.quota && used >= p.quota ? 1 : 0;   // flagged for the studio, never blocked
+    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), clip(d.details, 6000), clip(d.notes, 3000), pr, rd || null,
+      JSON.stringify(cleanLinks(d.links)), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
     await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
-    toStudio(ctx, env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + "\n\nافتحها: " + adminLink(ref));
-    return json({ ok: true, ref });
+    toStudio(ctx, env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + (over ? "\n⚠️ خارج الحصة الشهرية (" + (used + 1) + " من " + p.quota + ")" : "") + "\n\nافتحها: " + adminLink(ref));
+    return json({ ok: true, ref, over_quota: !!over });
   }
   if (d.action === "comment" && d.scope === "project") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
@@ -541,7 +669,8 @@ async function adminGet(request, env, q){
   if (q.get("project")) { where.push("t.project_id=?"); args.push(q.get("project")); }
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY t.updated_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(s => `'${s}'`).join(",")})) AS open_tasks,
-      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks FROM projects p ORDER BY p.updated_at DESC`).all()).results.map(parseP);
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=? AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p ORDER BY p.updated_at DESC`).bind(monthOf(now())).all()).results.map(parseP);
   if (q.get("view") === "billing") {
     const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
     const projects = (await D.prepare("SELECT id, name, client_email, status FROM projects ORDER BY updated_at DESC").all()).results;
@@ -583,7 +712,12 @@ async function adminGet(request, env, q){
       email: { ready: !!env.RESEND_API_KEY }, webhook: SITE + "/api/whatsapp", goBase: SITE + "/go/" });
   }
   if (q.get("space")) { const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(q.get("space")).first()); if (!p) return json({ ok: false }, 404);
-    return json({ ok: true, project: p, ...(await spaceOf(D, p.id)) }); }
+    const recurring = (await D.prepare("SELECT * FROM recurring WHERE project_id=? ORDER BY active DESC, next_run").bind(p.id).all()).results;
+    const sentReports = (await D.prepare("SELECT k, v FROM meta WHERE k LIKE ?").bind("rep:" + p.id + ":%").all()).results.map(r => ({ month: r.k.split(":").pop(), at: r.v }));
+    return json({ ok: true, project: p, quota_used: await quotaUse(D, p.id), recurring, sentReports, ...(await spaceOf(D, p.id)) }); }
+  if (q.get("report") || q.get("reportDoc")) { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(q.get("report") || q.get("reportDoc"), 40)).first(); if (!p) return json({ ok: false }, 404);
+    const month = isMonth(q.get("month")) ? q.get("month") : monthOf(now()), R = await monthReport(D, p, month), u = (await userOf(env, p.client_email)) || { name: "" };
+    return q.get("reportDoc") ? htmlRes(reportPage(R, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"))) : json({ ok: true, report: R }); }
   let activity = [], deliverables = [], comments = [];
   if (q.get("task")) { const t = await D.prepare("SELECT id FROM tasks WHERE ref=?").bind(q.get("task")).first();
     if (t) { activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); deliverables = await deliverablesOf(D, t.id); comments = await commentsOf(D, "task", t.id); } }
@@ -596,6 +730,27 @@ async function adminPost(ctx, d){
   const { env } = ctx;
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), studio = { actor: "studio", actor_name: "Eyeblink Studio" };
+  if (d.action === "recurring") {
+    const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project_id, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
+    const title = clip(d.title, 120); if (!title) return json({ ok: false, error: "title" }, 400);
+    const every = d.every === "week" ? "week" : "month", dow = Math.max(0, Math.min(6, parseInt(d.dow) || 0)), dom = Math.max(1, Math.min(28, parseInt(d.dom) || 1)), dueDays = Math.max(0, Math.min(90, parseInt(d.due_days) || 5));
+    const f = [title, clip(d.type, 60), clip(d.description, 3000), every, every === "week" ? dow : null, every === "month" ? dom : null, dueDays, d.active === false ? 0 : 1];
+    if (d.id) {
+      const r = await D.prepare("SELECT * FROM recurring WHERE id=?").bind(clip(d.id, 40)).first(); if (!r) return json({ ok: false }, 404);
+      const nx = (r.every !== every || r.dow !== f[4] || r.dom !== f[5] || isDate(d.start)) ? firstRun(isDate(d.start) ? d.start : today(), every, dow, dom) : r.next_run;
+      await D.prepare("UPDATE recurring SET title=?, type=?, description=?, every=?, dow=?, dom=?, due_days=?, active=?, next_run=?, updated_at=? WHERE id=?").bind(...f, nx, at, r.id).run();
+      return json({ ok: true, id: r.id, next_run: nx });
+    }
+    const id = "r_" + randHex(6), nx = firstRun(d.start, every, dow, dom);
+    await D.prepare("INSERT INTO recurring (id, project_id, client_email, title, type, description, every, dow, dom, due_days, active, next_run, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id, p.id, p.client_email, ...f, nx, at, at).run();
+    await act(D, { ...studio, client_email: p.client_email, project_id: p.id, kind: "recurring_added", data: { title, every } });
+    return json({ ok: true, id, next_run: nx });
+  }
+  if (d.action === "recurringDelete") { await D.prepare("DELETE FROM recurring WHERE id=?").bind(clip(d.id, 40)).run(); return json({ ok: true }); }
+  if (d.action === "recurringRun") { const r = await D.prepare("SELECT * FROM recurring WHERE id=?").bind(clip(d.id, 40)).first(); if (!r) return json({ ok: false }, 404);
+    const ref = await runRecurring(ctx, env, D, r, today()); if (!ref) return json({ ok: false, error: "project closed" }, 409); return json({ ok: true, ref }); }
+  if (d.action === "sendReport") { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
+    const month = isMonth(d.month) ? d.month : prevMonth(); await sendReport(ctx, env, D, p, month); return json({ ok: true, month }); }
   if (d.action === "invoice") {
     const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email); if (!u) return json({ ok: false, error: "no account" }, 404);
     const items = cleanItems(d.items); if (!items.length) return json({ ok: false, error: "items" }, 400);
@@ -684,17 +839,18 @@ async function adminPost(ctx, d){
     const name = clip(d.name, 140); if (!name) return json({ ok: false, error: "name" }, 400);
     const f = { name, description: clip(d.description, 4000), type: PTYPES.includes(d.type) ? d.type : "custom", status: ["active","paused","completed","archived"].includes(d.status) ? d.status : "active",
       services: JSON.stringify((Array.isArray(d.services) ? d.services : []).slice(0, 12).map(s => clip(s, 60)).filter(Boolean)),
-      start_date: isDate(d.start_date) ? d.start_date : null, end_date: isDate(d.end_date) ? d.end_date : null, quota: Number.isFinite(+d.quota) && +d.quota > 0 ? Math.min(999, Math.round(+d.quota)) : null };
+      start_date: isDate(d.start_date) ? d.start_date : null, end_date: isDate(d.end_date) ? d.end_date : null, quota: Number.isFinite(+d.quota) && +d.quota > 0 ? Math.min(999, Math.round(+d.quota)) : null,
+      drive_url: isUrl(clip(d.drive_url, 600)) ? clip(d.drive_url, 600) : null, auto_report: d.auto_report ? 1 : 0 };
     if (d.id) {
       const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.id, 40)).first(); if (!p) return json({ ok: false }, 404);
-      await D.prepare("UPDATE projects SET client_email=?, name=?, description=?, type=?, status=?, services=?, start_date=?, end_date=?, quota=?, updated_at=? WHERE id=?")
-        .bind(email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, at, p.id).run();
+      await D.prepare("UPDATE projects SET client_email=?, name=?, description=?, type=?, status=?, services=?, start_date=?, end_date=?, quota=?, drive_url=?, auto_report=?, updated_at=? WHERE id=?")
+        .bind(email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, p.id).run();
       await act(D, { ...studio, client_email: email, project_id: p.id, kind: "project_updated", data: { name: f.name, status: f.status } });
       return json({ ok: true, id: p.id });
     }
     const id = "p_" + randHex(6);
-    await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
-      .bind(id, email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, at, at).run();
+    await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(id, email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, at).run();
     await act(D, { ...studio, client_email: email, project_id: id, kind: "project_created", data: { name: f.name } });
     later(ctx, tellClient(env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
