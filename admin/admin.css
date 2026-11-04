@@ -30,7 +30,11 @@ a{color:inherit}
 .side .brand{display:flex;align-items:center;gap:10px;padding:0 6px}
 .side .brand b{font-family:Oswald,sans-serif;letter-spacing:.24em;font-size:13px}
 .side .brand span{color:var(--dim);font-size:12px;margin-inline-start:auto}
-#tabs{display:grid;gap:4px}
+#tabs{display:grid;gap:4px;align-content:start;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin-inline:-6px;padding-inline:6px;
+  scrollbar-width:thin;scrollbar-color:rgba(174,187,210,.28) transparent;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 14px),transparent 100%)}
+#tabs::-webkit-scrollbar{width:6px}#tabs::-webkit-scrollbar-thumb{background:rgba(174,187,210,.28);border-radius:99px}#tabs::-webkit-scrollbar-track{background:transparent}
+.side>*:not(#tabs){flex:none}
 #tabs button{font:inherit;text-align:start;padding:10px 14px;border-radius:12px;border:0;background:none;color:var(--mist);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
 #tabs button:hover{background:rgba(255,255,255,.05);color:var(--light)}
 #tabs button[aria-current="true"]{background:rgba(63,224,232,.1);color:var(--light);box-shadow:inset 0 0 0 1px rgba(63,224,232,.35)}
@@ -88,7 +92,7 @@ textarea{min-height:76px;resize:vertical;line-height:1.6}
 @media (max-width:860px){
   .app{grid-template-columns:1fr}
   .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
-  #tabs{display:flex;flex-wrap:wrap}
+  #tabs{display:flex;flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;flex:1 1 100%}
   .mode{margin-top:0;width:100%}
   .bi{grid-template-columns:1fr}
   .top{flex-wrap:wrap;padding:12px 16px}

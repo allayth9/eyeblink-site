@@ -141,6 +141,7 @@
   function renderTabs(){
     var newCount=ORDERS.filter(function(o){return o.status==='new'||o.unread}).length;
     $('#tabs').innerHTML=TABS.map(function(t){ return (t.grp?'<div class="tabgrp">'+esc(t.grp)+'</div>':'')+'<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+(t.id==='tasks'&&WORK&&WORK.tasks?(function(){ var n=WORK.tasks.filter(function(x){return x.status==='new'||(x.change_request&&x.change_request.status==='pending')}).length; return n?'<span class="count">'+n+'</span>':''; })():'')+(t.id==='billing'&&BILL&&BILL.invoices?(function(){ var n=BILL.invoices.filter(function(x){return x.state==='overdue'}).length; return n?'<span class="count">'+n+'</span>':''; })():'')+(t.id==='notify'?(function(){ var n=NOTI&&!NOTI.err?NOTI.unread:(WORK&&WORK.inboxUnread)||0; return n?'<span class="count">'+n+'</span>':''; })():'')+(t.id==='clients'&&ACC&&ACC.requests.filter(function(r){return r.status==='pending'}).length?'<span class="count">'+ACC.requests.filter(function(r){return r.status==='pending'}).length+'</span>':'')+'</button>'; }).join('');
+    var cur=$('#tabs [aria-current="true"]'); if(cur&&cur.scrollIntoView){ var nav=$('#tabs'), r=cur.getBoundingClientRect(), n=nav.getBoundingClientRect(); if(r.top<n.top||r.bottom>n.bottom) cur.scrollIntoView({block:'nearest'}); }
   }
   function render(){
     renderTabs();
