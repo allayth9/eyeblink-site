@@ -9,6 +9,7 @@
         doLogin:'دخول',doRegister:'إنشاء الحساب',or:'أو',wait:'لحظة…',close:'إغلاق',
         e:{exists:'هذا البريد مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك.',wrong:'البريد أو كلمة السر غير صحيحة.',google:'هذا الحساب مسجّل عبر Google، استخدم زر Google.',
            email:'اكتب بريداً إلكترونياً صحيحاً.',code:'الرمز غير صحيح أو انتهت صلاحيته.',password:'كلمة السر 8 أحرف على الأقل.',name:'اكتب اسمك.','too many attempts':'محاولات كثيرة، جرّب بعد قليل.',net:'تعذّر الاتصال، حاول مرة أخرى.'},
+        W:{chip:'عميل متعاقد',since:'منذ ',on:'حسابك مفعّل كعميل متعاقد. مشاريعك ومهامك بتظهر هون أول ما يفتحلك الاستوديو مشروع.',askH:'عندك تعاون مستمر مع Eyeblink؟',askP:'إذا كنت عميلاً حالياً لدى الاستوديو، اطلب الوصول إلى مساحة العمل لترسل مهامك وتتابع التنفيذ والتسليمات من مكان واحد.',ask:'أنا عميل حالي وأريد الوصول إلى مساحة العمل',company:'اسم الجهة أو المشروع (اختياري)',note:'شو الاتفاق بينك وبين الاستوديو؟ (اختياري)',send:'أرسل الطلب',cancel:'إلغاء',pending:'وصل طلبك للاستوديو، ورح نرد عليك بعد المراجعة. ما بتتفعّل المساحة قبل موافقتنا.',rejected:'ما تفعّلت مساحة العمل بطلبك السابق.',again:'أرسل طلباً جديداً',invH:'دعوة إلى مساحة عمل Eyeblink',invP:'سجّل دخولك أو أنشئ حسابك بنفس البريد اللي وصلته الدعوة:',invOk:'تمّ! صار حسابك حساب عميل متعاقد.',invUsed:'هذه الدعوة استُخدمت من قبل.',invBad:'رابط الدعوة غير صالح أو انتهت صلاحيته. اطلب من الاستوديو دعوة جديدة.',invOther:'هذه الدعوة مرسلة إلى بريد آخر: ',invSwitch:'سجّل الخروج وادخل بذلك البريد'},
         hi:'أهلاً، ',logout:'خروج',newOrder:'طلب جديد',orders:'طلباتك',none:'لا توجد طلبات بعد.',noneP:'اختر خدمة من صفحة الأسعار وأرسل طلبك، وستتابعه من هنا.',seePricing:'تصفّح الخدمات',
         st:{'new':'استلمنا الطلب','confirmed':'تأكيد التفاصيل','awaiting-payment':'بانتظار الدفع','paid':'تم الدفع','in-progress':'قيد التنفيذ','review':'بانتظار مراجعتك','delivered':'تم التسليم','cancelled':'ملغى'},
         steps:['استلام الطلب','تأكيد التفاصيل','الدفع','التنفيذ','مراجعتك','التسليم'],
@@ -28,6 +29,7 @@
         doLogin:'Sign in',doRegister:'Create account',or:'or',wait:'One moment…',close:'Close',
         e:{exists:'This email already has an account. Sign in instead.',wrong:'Wrong email or password.',google:'This account uses Google. Use the Google button.',
            email:'Enter a valid email.',code:'Wrong or expired code.',password:'Password needs at least 8 characters.',name:'Enter your name.','too many attempts':'Too many attempts. Try again shortly.',net:'Could not connect. Try again.'},
+        W:{chip:'Active Client',since:'since ',on:'Your account is an Active Client account. Your projects and tasks appear here as soon as the studio opens one for you.',askH:'Working with Eyeblink on an ongoing basis?',askP:'If you are already a client of the studio, ask for the workspace to send your tasks and follow the work and deliveries in one place.',ask:'I am a current client and want workspace access',company:'Company or project name (optional)',note:'What is your arrangement with the studio? (optional)',send:'Send request',cancel:'Cancel',pending:'Your request reached the studio and will be reviewed. The workspace opens only after we approve it.',rejected:'Your previous request did not open the workspace.',again:'Send a new request',invH:'Invitation to the Eyeblink workspace',invP:'Sign in or create your account with the email the invitation was sent to:',invOk:'Done! Your account is now an Active Client account.',invUsed:'This invitation has already been used.',invBad:'This invitation link is not valid or has expired. Ask the studio for a new one.',invOther:'This invitation was sent to another email: ',invSwitch:'Sign out and use that email'},
         hi:'Hi, ',logout:'Sign out',newOrder:'New request',orders:'Your requests',none:'No requests yet.',noneP:'Pick a service on the pricing page and send your request. You will follow it here.',seePricing:'Browse services',
         st:{'new':'Request received','confirmed':'Details confirmed','awaiting-payment':'Awaiting payment','paid':'Paid','in-progress':'In production','review':'Awaiting your review','delivered':'Delivered','cancelled':'Cancelled'},
         steps:['Received','Confirmed','Payment','Production','Your review','Delivered'],
@@ -92,7 +94,7 @@
       msg.textContent=T.e[j.error]||T.e[j._net?'net':'wrong'];
     }
     f.onsubmit=function(e){ e.preventDefault();
-      var E=f.elements, d={action:mode,name:E.name.value.trim(),email:E.email.value.trim(),password:E.password.value};
+      var E=f.elements, d={action:mode,name:E.name.value.trim(),email:E.email.value.trim(),password:E.password.value,lang:lang};
       if(mode==='register'&&!d.name){ msg.textContent=T.e.name; return; }
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ msg.textContent=T.e.email; return; }
       if(d.password.length<8){ msg.textContent=T.e.password; return; }
@@ -101,7 +103,7 @@
     };
     if(gid){ loadGoogle().then(function(){
       var el=host.querySelector('.gbtn'); if(!el||!window.google) return;
-      google.accounts.id.initialize({client_id:gid, callback:function(r){ msg.textContent=T.wait; api('account',{action:'google',credential:r.credential}).then(function(j){ finish(j); }); }});
+      google.accounts.id.initialize({client_id:gid, callback:function(r){ msg.textContent=T.wait; api('account',{action:'google',credential:r.credential,lang:lang}).then(function(j){ finish(j); }); }});
       google.accounts.id.renderButton(el,{theme:'filled_black',size:'large',shape:'pill',text:'continue_with',locale:lang,width:Math.min(380,el.clientWidth||320)});
     }).catch(function(){ var el=host.querySelector('.gbtn'); if(el){ (el.closest('.gwrap')||el).remove(); var o=host.querySelector('.or'); if(o) o.remove(); } }); }
   }
@@ -153,15 +155,60 @@
     box.innerHTML='<div class="acct-load glass"><span></span></div>';
     me().then(function(m){
       if(m===false){ box.innerHTML='<div class="acct-card glass"><p class="muted">'+(AR?'الحساب يعمل على الموقع المنشور فقط.':'Accounts work on the published site only.')+'</p></div>'; return; }
+      var inv=INVITE();
+      if(inv){ return invitePage(inv,m); }
       if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ page(); }); return; }
       dash();
     });
   }
+  // invitation links: account.html?invite=TOKEN
+  function INVITE(){ var t=new URLSearchParams(location.search).get('invite'); return /^[a-f0-9]{48}$/.test(t||'')? t : ''; }
+  function dropInvite(){ try{ history.replaceState(null,'',location.pathname+location.hash); }catch(_){} }
+  function invitePage(tok,m){
+    api('access?invite='+tok).then(function(j){
+      var W=T.W;
+      if(!j.ok||!j.valid){ dropInvite(); box.innerHTML='<div class="acct-card glass"><span class="eyebrow">INVITATION</span><h2>'+W.invH+'</h2><p class="muted">'+(j.used?W.invUsed:W.invBad)+'</p></div>'; if(m) setTimeout(dash,2600); return; }
+      if(m){ return accept(tok,j); }
+      box.innerHTML='<div class="acct-card glass inv-card"><div class="inv-intro"><span class="eyebrow">INVITATION</span><h2>'+W.invH+'</h2><p class="muted">'+W.invP+' <b dir="ltr">'+esc(j.email)+'</b></p></div><div class="slot3"></div></div>';
+      authBox(box.querySelector('.slot3'),function(u){ if(u) accept(tok,j); },true);
+      var em=box.querySelector('input[name=email]'); if(em) em.value=j.email;
+    });
+  }
+  function accept(tok,info){
+    var W=T.W;
+    api('access',{action:'accept',token:tok}).then(function(j){
+      if(j.ok){ dropInvite(); me().then(function(){ dash(); flash(W.invOk); }); return; }
+      if(j.error==='other email'){ box.innerHTML='<div class="acct-card glass"><span class="eyebrow">INVITATION</span><h2>'+W.invH+'</h2><p class="muted">'+W.invOther+'<b dir="ltr">'+esc(j.email||info.email)+'</b></p><button class="btn btn-primary" type="button" id="invSw">'+W.invSwitch+'</button></div>';
+        document.getElementById('invSw').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); page(); }); }; return; }
+      dropInvite(); box.innerHTML='<div class="acct-card glass"><span class="eyebrow">INVITATION</span><h2>'+W.invH+'</h2><p class="muted">'+(j.error==='used'?W.invUsed:W.invBad)+'</p></div>'; setTimeout(dash,2600);
+    });
+  }
+  function flash(t){ var h=box.querySelector('.acct-head'); if(!h) return; var d=document.createElement('p'); d.className='ok-flash'; d.textContent='✓ '+t; h.querySelector('div').appendChild(d); }
+  // the workspace line under the name: Active Client status, or the way to ask for it
+  function roleBlock(){
+    var W=T.W, u=ME.user, a=ME.access;
+    if(u.role==='client') return '<p class="role-on"><span class="role-chip">'+W.chip+'</span>'+(u.clientSince?'<small class="muted">'+W.since+esc(day(u.clientSince))+'</small>':'')+'</p><p class="muted small">'+W.on+'</p>';
+    if(a&&a.status==='pending') return '<p class="role-wait">⏳ '+W.pending+'</p>';
+    return '<div class="role-ask">'+(a&&a.status==='rejected'?'<p class="muted small">'+W.rejected+(a.reason?' — '+esc(a.reason):'')+'</p>':'')+
+      '<button type="button" class="linkbtn" id="askOpen">'+(a&&a.status==='rejected'?W.again:W.ask)+'</button>'+
+      '<form class="form role-form" id="askForm" hidden><b>'+W.askH+'</b><p class="muted small">'+W.askP+'</p><label>'+W.company+'<input name="company" maxlength="120" dir="auto"></label><label>'+W.note+'<textarea name="note" maxlength="1500" dir="auto"></textarea></label>'+
+      '<div class="actions"><button class="btn btn-primary" type="submit">'+W.send+'</button><button class="btn btn-glass glass" type="button" id="askX">'+W.cancel+'</button></div><p class="msg" role="alert"></p></form></div>';
+  }
+  function bindRole(){
+    var o=document.getElementById('askOpen'), f=document.getElementById('askForm'); if(!o||!f) return;
+    o.onclick=function(){ f.hidden=false; o.hidden=true; f.elements.company.focus(); };
+    document.getElementById('askX').onclick=function(){ f.hidden=true; o.hidden=false; };
+    f.onsubmit=function(e){ e.preventDefault(); var b=f.querySelector('button[type=submit]'); b.disabled=true;
+      api('access',{action:'request',company:f.elements.company.value,note:f.elements.note.value,lang:lang}).then(function(j){ b.disabled=false;
+        if(j.ok){ ME.access=j.request; var rb=box.querySelector('.role'); if(rb){ rb.innerHTML=roleBlock(); bindRole(); } return; }
+        f.querySelector('.msg').textContent=T.e[j.error]||T.e[j._net?'net':'wrong']; }); };
+  }
   function dash(){
     var u=ME.user; LIST=ME.orders||[];
-    box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p></div>'+
+    box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing.html">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
+    bindRole();
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>'+T.seePricing+'</a></div>';

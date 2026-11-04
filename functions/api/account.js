@@ -12,7 +12,8 @@ export async function onRequestGet({ request, env }) {
     orders.push({ code: o.code, status: o.status, createdAt: o.createdAt, packageName: o.packageName, unread: unreadFor(o, "client"),
       lastAt: ((o.messages || []).slice(-1)[0] || {}).at || o.updatedAt || o.createdAt });
   }
-  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider }, orders });
+  const ar = await env.EB.get("accreq:" + u.email);
+  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null }, access: ar ? JSON.parse(ar) : null, orders });
 }
 export async function onRequestPost({ request, env }) {
   const d = await request.json().catch(() => ({}));
@@ -80,7 +81,7 @@ export async function onRequestPost({ request, env }) {
     user = existing ? JSON.parse(existing) : { email, name: String(g.name || email.split("@")[0]).slice(0, 80), provider: "google", createdAt: new Date().toISOString(), orders: [] };
     user.google = true;
   } else return json({ ok: false }, 400);
-  user.lastLogin = new Date().toISOString();
+  user.lastLogin = new Date().toISOString(); if (d.lang === "en" || d.lang === "ar") user.lang = d.lang;
   await env.EB.put("user:" + user.email, JSON.stringify(user));
   return json({ ok: true, user: { email: user.email, name: user.name } }, 200, { "set-cookie": await startSession(env, user.email) });
 }

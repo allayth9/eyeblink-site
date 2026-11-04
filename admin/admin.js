@@ -136,7 +136,7 @@
   /* ---------------- render ---------------- */
   function renderTabs(){
     var newCount=ORDERS.filter(function(o){return o.status==='new'||o.unread}).length;
-    $('#tabs').innerHTML=TABS.map(function(t){ return '<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+'</button>'; }).join('');
+    $('#tabs').innerHTML=TABS.map(function(t){ return '<button type="button" data-tab="'+t.id+'"'+(t.id===TAB?' aria-current="true"':'')+'>'+esc(t.title)+(t.id==='orders'&&newCount?'<span class="count">'+newCount+'</span>':'')+(t.id==='clients'&&ACC&&ACC.requests.filter(function(r){return r.status==='pending'}).length?'<span class="count">'+ACC.requests.filter(function(r){return r.status==='pending'}).length+'</span>':'')+'</button>'; }).join('');
   }
   function render(){
     renderTabs();
@@ -488,19 +488,69 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-sdays],[data-sreload]'); if(!b) return; if(b.dataset.sdays) SDAYS=+b.dataset.sdays; STATS=null; renderStats(); });
 
   /* ---------------- clients ---------------- */
+  var ACC=null, UFILTER='all';     // workspace access: pending requests + open invitations
   function loadUsers(){
-    if(!LIVE){ USERS=[{email:'client@example.com',name:'عميل تجريبي',provider:'password',hasPassword:true,createdAt:new Date().toISOString(),orders:1}]; renderClients(); return; }
-    fetch(API+'/users',{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ USERS=j.users||[]; if(TAB==='clients') renderClients(); }).catch(function(){});
+    if(!LIVE){ USERS=[{email:'client@example.com',name:'عميل تجريبي',provider:'password',hasPassword:true,createdAt:new Date().toISOString(),orders:1,role:'customer'}]; ACC={requests:[],invites:[]}; renderClients(); return; }
+    Promise.all([fetch(API+'/users',{headers:headers({})}).then(function(r){return r.json()}),fetch(API+'/access?admin=1',{headers:headers({}),cache:'no-store'}).then(function(r){return r.json()})])
+      .then(function(j){ USERS=j[0].users||[]; ACC={requests:j[1].requests||[],invites:j[1].invites||[]}; renderTabs(); if(TAB==='clients') renderClients(); }).catch(function(){});
   }
+  function accReq(body,btn,ok){
+    if(!LIVE){ toast('يعمل على الموقع المنشور',true); return Promise.reject(); }
+    if(btn) btn.disabled=true;
+    return fetch(API+'/access',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
+      .then(function(j){ if(ok) toast(ok); loadUsers(); return j; })
+      .catch(function(e){ if(btn) btn.disabled=false; toast(({already:'هذا العميل متعاقد أصلاً',email:'اكتب بريداً صحيحاً','no account':'ما في حساب بهالبريد','no request':'الطلب ما عاد موجود'})[e.message]||'تعذّر التنفيذ',true); throw e; });
+  }
+  var ROLE={client:'عميل متعاقد',customer:'عميل عادي'}, VIA={invite:'بدعوة',request:'بطلب وصول',upgrade:'ترقية من الإدارة'};
   function renderClients(){
-    var U=USERS;
+    var U=USERS, A=ACC||{requests:[],invites:[]};
     if(!U){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; return; }
-    $('#panel').innerHTML='<section class="sec"><h3>حسابات العملاء ('+U.length+')</h3><p class="hint">كل من يرسل طلباً يسجّل بالإيميل أو Google. إن نسي أحدهم كلمة السر: اضغط «كلمة سر جديدة» وأرسلها له عبر التواصل الخارجي، ويقدر يدخل فيها فوراً.</p>'+
-      (U.length? '<div class="clients">'+U.map(function(u){ return '<div class="client"><div><b>'+esc(u.name)+'</b> <span dir="ltr" class="muted small" style="user-select:all">'+esc(u.email)+'</span></div>'+
-        '<span class="muted small">'+(u.google?'Google':'')+(u.google&&u.hasPassword?' + ':'')+(u.hasPassword?'كلمة سر':'')+' · '+u.orders+' طلب · '+esc(new Date(u.createdAt).toLocaleDateString('ar'))+'</span>'+
-        '<div class="actions"><button class="btn sm" type="button" data-upw="'+esc(u.email)+'">كلمة سر جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(u.email)+'">حذف الحساب</button></div><div class="newpw" hidden></div></div>'; }).join('')+'</div>'
-        : '<div class="empty">لا يوجد عملاء بعد.</div>')+'</section>';
+    var pend=A.requests.filter(function(r){return r.status==='pending'});
+    var nC=U.filter(function(u){return u.role==='client'}).length;
+    var list=U.filter(function(u){ return UFILTER==='all'||(UFILTER==='client'?u.role==='client':u.role!=='client'); });
+    $('#panel').innerHTML=
+      (pend.length?'<section class="sec acc-req"><h3>طلبات الوصول لمساحة العمل ('+pend.length+')</h3><p class="hint">عملاء موجودين طلبوا مساحة العمل. ما بياخدوا أي صلاحية قبل ما تقبل.</p>'+
+        pend.map(function(r){ return '<div class="client"><div><b>'+esc(r.name)+'</b> <span dir="ltr" class="muted small">'+esc(r.email)+'</span>'+(r.company?' · '+esc(r.company):'')+'</div>'+
+          (r.note?'<div class="small">'+esc(r.note).replace(/\n/g,'<br>')+'</div>':'')+'<span class="muted small">'+esc(new Date(r.at).toLocaleString('ar'))+'</span>'+
+          '<div class="actions"><button class="btn sm primary" type="button" data-aapprove="'+esc(r.email)+'">قبول — تفعيل مساحة العمل</button><button class="btn sm" type="button" data-areject="'+esc(r.email)+'">رفض</button></div>'+
+          '<div class="arej" hidden><textarea placeholder="سبب مختصر يوصل للعميل (اختياري)" dir="auto"></textarea><div class="actions"><button class="btn sm danger" type="button" data-arejgo="'+esc(r.email)+'">أرسل الرفض</button></div></div></div>'; }).join('')+'</section>':'')+
+      '<section class="sec"><h3>دعوة عميل متعاقد</h3><p class="hint">بيوصله إيميل فيه رابط آمن (مرة وحدة، 14 يوم). بيسجّل دخوله أو بينشئ حساب بنفس البريد، وبيتفعّل حسابه كعميل متعاقد. إذا الإيميل مو مفعّل، انسخ الرابط وابعته على واتساب.</p>'+
+        '<form class="inv-form" id="invForm"><div class="row"><div class="field"><label>البريد</label><input name="email" type="email" dir="ltr" required></div><div class="field"><label>الاسم</label><input name="name"></div>'+
+        '<div class="field"><label>لغة الدعوة</label><select name="lang"><option value="ar">العربية</option><option value="en">English</option></select></div></div>'+
+        '<div class="field"><label>رسالة قصيرة (اختياري)</label><textarea name="note" dir="auto" placeholder="مثلاً: حسب اتفاقنا الشهري، من هون رح تبعتلنا المهام."></textarea></div>'+
+        '<div class="actions"><button class="btn primary sm" type="submit">أرسل الدعوة</button></div><div class="inv-out" hidden></div></form>'+
+        (A.invites.length?'<div class="small muted" style="margin-top:12px">دعوات مفتوحة</div><div class="clients">'+A.invites.map(function(i){ return '<div class="client inv"><div><b dir="ltr">'+esc(i.email)+'</b>'+(i.name?' · '+esc(i.name):'')+' <span class="muted small">تنتهي '+esc(new Date(i.expires).toLocaleDateString('ar'))+'</span></div><div class="actions"><button class="btn sm" type="button" data-icopy="'+esc(i.token)+'" data-ilang="'+esc(i.lang||'ar')+'">نسخ الرابط</button><button class="btn sm danger" type="button" data-irevoke="'+esc(i.token)+'">إلغاء الدعوة</button></div></div>'; }).join('')+'</div>':'')+'</section>'+
+      '<section class="sec"><h3>حسابات العملاء ('+U.length+')</h3><p class="hint">العميل العادي يشتري ويتابع طلباته. العميل المتعاقد ياخد كمان مساحة العمل. الترقية بتحتفظ بكل طلباته وفواتيره.</p>'+
+        '<div class="chips">'+[['all','الكل ('+U.length+')'],['client','متعاقدون ('+nC+')'],['customer','عاديون ('+(U.length-nC)+')']].map(function(x){ return '<button type="button" class="btn sm'+(UFILTER===x[0]?' primary':'')+'" data-ufilter="'+x[0]+'">'+x[1]+'</button>'; }).join('')+'</div>'+
+      (list.length? '<div class="clients">'+list.map(function(u){ var cl=u.role==='client';
+        return '<div class="client'+(cl?' is-client':'')+'"><div><b>'+esc(u.name)+'</b> <span class="rpill'+(cl?' on':'')+'">'+ROLE[cl?'client':'customer']+'</span> <span dir="ltr" class="muted small" style="user-select:all">'+esc(u.email)+'</span></div>'+
+        '<span class="muted small">'+(u.google?'Google':'')+(u.google&&u.hasPassword?' + ':'')+(u.hasPassword?'كلمة سر':'')+' · '+u.orders+' طلب · '+esc(new Date(u.createdAt).toLocaleDateString('ar'))+(cl&&u.clientSince?' · متعاقد منذ '+esc(new Date(u.clientSince).toLocaleDateString('ar'))+(u.clientVia?' ('+VIA[u.clientVia]+')':''):'')+'</span>'+
+        '<div class="actions">'+(cl?'<button class="btn sm" type="button" data-urole="'+esc(u.email)+'" data-to="customer">إلغاء مساحة العمل</button>':'<button class="btn sm primary" type="button" data-urole="'+esc(u.email)+'" data-to="client">ترقية إلى عميل متعاقد</button>')+
+        '<button class="btn sm" type="button" data-upw="'+esc(u.email)+'">كلمة سر جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(u.email)+'">حذف الحساب</button>'+((u.log||[]).length?'<button class="btn sm" type="button" data-ulog>السجل</button>':'')+'</div>'+
+        ((u.log||[]).length?'<div class="ulog small muted" hidden>'+u.log.map(function(l){ return '<div>'+esc(new Date(l.at).toLocaleString('ar'))+' · '+esc({admin:'الإدارة',client:'العميل',system:'النظام'}[l.by]||l.by)+' · '+esc(LOGN[l.what]||l.what)+'</div>'; }).join('')+'</div>':'')+
+        '<div class="newpw small" hidden></div></div>'; }).join('')+'</div>'
+        : '<div class="empty">لا يوجد عملاء هنا.</div>')+'</section>';
   }
+  var LOGN={'requested workspace access':'طلب الوصول لمساحة العمل','accepted the invitation':'قبل الدعوة','invited to the workspace':'انبعتتله دعوة','access request approved':'انقبل طلب الوصول','access request declined':'انرفض طلب الوصول','upgraded to Active Client':'ترقية إلى عميل متعاقد','workspace access removed':'انلغت مساحة العمل'};
+  document.addEventListener('submit',function(e){ var f=e.target; if(f.id!=='invForm') return; e.preventDefault();
+    var E=f.elements, b=f.querySelector('button[type=submit]');
+    accReq({action:'invite',email:E.email.value.trim(),name:E.name.value.trim(),lang:E.lang.value,note:E.note.value.trim()},b).then(function(j){
+      var out=f.querySelector('.inv-out'); out.hidden=false;
+      out.innerHTML=(j.sent?'✓ وصلت الدعوة على بريده.':'⚠️ ما انبعت إيميل (الإيميل مو مفعّل). انسخ الرابط وابعته للعميل:')+'<div class="lnk" dir="ltr">'+esc(j.link)+'</div><button class="btn sm" type="button" data-copylink="'+esc(j.link)+'">نسخ الرابط</button>';
+    }).catch(function(){});
+  });
+  document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='clients') return;
+    if(b.dataset.ufilter){ UFILTER=b.dataset.ufilter; renderClients(); return; }
+    if(b.dataset.aapprove){ accReq({action:'approve',email:b.dataset.aapprove},b,'تفعّلت مساحة العمل ووصل للعميل إيميل').catch(function(){}); return; }
+    if(b.dataset.areject){ var bx=b.closest('.client').querySelector('.arej'); bx.hidden=!bx.hidden; return; }
+    if(b.dataset.arejgo){ var r=b.closest('.arej').querySelector('textarea').value.trim(); accReq({action:'reject',email:b.dataset.arejgo,reason:r},b,'انرفض الطلب ووصل للعميل إيميل').catch(function(){}); return; }
+    if(b.dataset.urole){ if(b.dataset.to==='customer'&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ اكبس مرة ثانية'; return; }
+      accReq({action:'setRole',email:b.dataset.urole,role:b.dataset.to},b,b.dataset.to==='client'?'صار عميل متعاقد، ووصله إيميل':'انلغت مساحة العمل').catch(function(){}); return; }
+    if(b.dataset.irevoke){ accReq({action:'revoke',token:b.dataset.irevoke},b,'انلغت الدعوة').catch(function(){}); return; }
+    if(b.dataset.icopy||b.dataset.copylink){ var l=b.dataset.copylink||('https://eyeblinkstudio.com'+(b.dataset.ilang==='en'?'/en':'')+'/account.html?invite='+b.dataset.icopy);
+      try{ navigator.clipboard.writeText(l).then(function(){ toast('انتسخ الرابط'); }); }catch(_){ toast(l); } return; }
+    if(b.hasAttribute('data-ulog')){ var lg=b.closest('.client').querySelector('.ulog'); if(lg) lg.hidden=!lg.hidden; return; }
+  });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;
     if(b.dataset.upw){ var email=b.dataset.upw, pw=Math.random().toString(36).slice(2,7)+'-'+Math.random().toString(36).slice(2,7), box=b.closest('.client').querySelector('.newpw');
@@ -584,7 +634,7 @@
       var loadPriv= LIVE? fetch(API+'/private',{headers:headers({})}).then(function(r){return r.ok?r.json():{data:null}}).then(function(j){ return j.data; }).catch(function(){return null;})
                          : Promise.resolve((function(){ try{ return JSON.parse(localStorage.getItem('eb-private')||'null'); }catch(_){ return null; } })());
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
-        render(); dirty(); loadOrders(); });
+        render(); dirty(); loadOrders(); loadUsers(); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });
   }
   $('#loginForm').addEventListener('submit',function(e){

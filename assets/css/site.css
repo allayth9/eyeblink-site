@@ -1361,3 +1361,17 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
   /* phones: cards keep their glass colours but skip the live blur behind them (the heaviest thing to scroll) */
   .glass:not(.bar):not(.dock){-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(160deg,rgba(40,50,110,.42),rgba(16,22,60,.5) 42%,rgba(60,40,120,.32))}
 }
+
+/* ===== account: client role (Active Client / request access / invitation) ===== */
+.acct-head .role{margin-top:12px;display:grid;gap:6px;max-width:62ch}
+.role-on{display:flex;align-items:center;gap:10px;margin:0}
+.role-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:500;color:var(--night);background:linear-gradient(135deg,var(--horizon),color-mix(in srgb,var(--horizon) 50%,var(--hour)))}
+.role-chip::before{content:"✓";font-weight:700}
+.role-wait{margin:0;font-size:13.5px;color:var(--mist)}
+.role-ask .linkbtn{font-size:13.5px}
+.role-form{margin-top:10px;padding:16px;border-radius:16px;background:rgba(4,6,26,.45);box-shadow:inset 0 0 0 1px var(--line);gap:10px}
+.role-form b{font-weight:500}
+.ok-flash{margin:10px 0 0;color:#7ff0c0;font-size:14px}
+.inv-intro{margin-bottom:6px}
+.small{font-size:13px}
+.inv-card .auth>h2,.inv-card .auth>p.muted{display:none}

@@ -2,7 +2,10 @@
 // POST /api/auth  — change the password: { newPassword }  (send the current one as Authorization)
 export async function onRequestGet({ request, env }) {
   if (!env.ADMIN_PASSWORD && !(await env.EB.get("auth:hash"))) return json({ ok: false, error: "no password set" }, 500);
-  return (await isAdmin(request, env)) ? json({ ok: true }) : json({ ok: false }, 401);
+  if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+  const t = [...crypto.getRandomValues(new Uint8Array(24))].map(x => x.toString(16).padStart(2, "0")).join("");
+  await env.EB.put("asess:" + t, "1", { expirationTtl: 12 * 3600 });
+  return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": "eb_a=" + t + "; Path=/api/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200" } });
 }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);

@@ -6,7 +6,8 @@ export async function onRequestGet({ request, env }) {
   const out = []; let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor });
     for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v);
-      out.push({ email: u.email, name: u.name, provider: u.provider, google: !!u.google, hasPassword: !!u.hash, createdAt: u.createdAt, lastLogin: u.lastLogin, orders: (u.orders || []).length }); }
+      out.push({ email: u.email, name: u.name, provider: u.provider, google: !!u.google, hasPassword: !!u.hash, createdAt: u.createdAt, lastLogin: u.lastLogin, orders: (u.orders || []).length,
+      role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "", log: (u.log || []).slice(0, 12) }); }
     cursor = r.list_complete ? null : r.cursor; } while (cursor && out.length < 2000);
   out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   return json({ ok: true, users: out });
@@ -23,7 +24,7 @@ export async function onRequestPatch({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const email = (new URL(request.url).searchParams.get("email") || "").toLowerCase();
-  await env.EB.delete("user:" + email);
+  await env.EB.delete("user:" + email); await env.EB.delete("accreq:" + email);
   return json({ ok: true });
 }
 
