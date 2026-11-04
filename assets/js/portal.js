@@ -29,7 +29,14 @@
       cm:{h:'التعليقات',talk:'نقاش المشروع',talkP:'لأي سؤال أو فكرة عن المشروع ككل. التعليقات الخاصة بمهمة معيّنة حطها بصفحة المهمة.',none:'ما في تعليقات بعد.',ph:'اكتب تعليقك…',send:'إرسال',del:'حذف',link:'رابط (اختياري)',you:'أنت'},
       fl:{cats:{all:'الكل',brand:'الهوية البصرية',raw:'مواد خام',reference:'مراجع',document:'مستندات',delivered:'التسليمات',other:'أخرى'},add:'+ أضف ملف',title:'اسم الملف',url:'الرابط (Google Drive، Dropbox، WeTransfer…)',
         note:'ملاحظة (اختياري)',cat:'التصنيف',save:'أضف الملف',none:'ما في ملفات هون بعد.',hint:'الملفات بتنحفظ كروابط: ارفعها على Google Drive (أو غيره) وحط رابط المشاركة.',badUrl:'الرابط لازم يبلّش بـ https://',del:'حذف',studio:'الاستوديو'},
-      tabs:{tasks:'المهام',talk:'النقاشات',files:'الملفات'},waiting:'بانتظار ردّك',waitingP:'هالمهام محتاجة منك موافقة أو ملاحظات أو معلومات.'},
+      tabs:{tasks:'المهام',talk:'النقاشات',files:'الملفات'},waiting:'بانتظار ردّك',waitingP:'هالمهام محتاجة منك موافقة أو ملاحظات أو معلومات.',
+      nt:{h:'الإشعارات',all:'تعليم الكل كمقروء',none:'ما في إشعارات بعد.',set:'إعدادات الإشعارات',bell:'الإشعارات'},
+      pf:{h:'إعدادات الإشعارات',p:'إشعارات الموقع (الجرس) دايماً شغّالة. اختار شو بدك يوصلك كمان على الإيميل وواتساب.',inapp:'بالموقع',email:'الإيميل',wa:'واتساب',save:'حفظ الإعدادات',saved:'انحفظت الإعدادات.',
+        cats:{tasks:['تحديثات المهام','القبول، المواعيد، بدء التنفيذ، الإنجاز'],requests:['طلبات المعلومات','لما الاستوديو يحتاج منك شي لتكمل المهمة'],deliveries:['التسليمات','نسخة جديدة أو تسليم نهائي جاهز للمراجعة'],comments:['التعليقات','ردود الاستوديو على المهام والنقاشات'],projects:['المشاريع والملفات','مشروع جديد أو ملف أضافه الاستوديو']},
+        waH:'إشعارات واتساب',waOff:'واتساب لسا ما تفعّل من طرف الاستوديو. فيك تجهّز رقمك وموافقتك من هلق، وأول ما يتفعّل بتبلّش توصلك الإشعارات اللي اخترتها.',
+        phone:'رقم واتساب مع رمز الدولة',consent:'أوافق إنو توصلني إشعارات عن مشاريعي ومهامي من Eyeblink Studio على واتساب على هالرقم، وبقدر أوقفها بأي وقت.',
+        on:'فعّل إشعارات واتساب',stop:'أوقف إشعارات واتساب',active:'مفعّلة على الرقم ',since:' منذ ',stopHint:'فيك توقفها من هون بأي وقت، أو بالرد على أي رسالة منّا بكلمة «إيقاف».',
+        needPhone:'اكتب الرقم مع رمز الدولة، مثلاً ‎+9665xxxxxxxx',needConsent:'لازم توافق أولاً لنبعتلك على واتساب.',onMsg:'تفعّلت إشعارات واتساب.',offMsg:'وقفت إشعارات واتساب.',stopped:'أوقفتها بتاريخ '}},
     en:{ws:'Workspace',wsP:'Your projects, tasks and their dates in one place.',projects:'Projects',recent:'Recent tasks',activity:'Latest activity',upcoming:'Upcoming dates',
       k:{active:'Active projects',progress:'In progress',review:'Awaiting your review',fresh:'New requests',done:'Completed',dates:'Upcoming dates'},
       empty:'The studio has not opened a project for you yet. You will get an e-mail when it does, and you can send tasks to it from here.',noTasks:'No tasks yet.',noAct:'No activity yet.',noDates:'No confirmed dates coming up.',
@@ -55,7 +62,14 @@
       cm:{h:'Comments',talk:'Project discussion',talkP:'For questions and ideas about the project as a whole. Comments about one task go on that task.',none:'No comments yet.',ph:'Write a comment…',send:'Send',del:'Delete',link:'Link (optional)',you:'You'},
       fl:{cats:{all:'All',brand:'Brand identity',raw:'Raw footage',reference:'References',document:'Documents',delivered:'Deliveries',other:'Other'},add:'+ Add a file',title:'File name',url:'Link (Google Drive, Dropbox, WeTransfer…)',
         note:'Note (optional)',cat:'Category',save:'Add file',none:'No files here yet.',hint:'Files are kept as links: upload to Google Drive (or similar) and paste the share link.',badUrl:'The link must start with https://',del:'Delete',studio:'Studio'},
-      tabs:{tasks:'Tasks',talk:'Discussion',files:'Files'},waiting:'Waiting for you',waitingP:'These tasks need your approval, notes or information.'}
+      tabs:{tasks:'Tasks',talk:'Discussion',files:'Files'},waiting:'Waiting for you',waitingP:'These tasks need your approval, notes or information.',
+      nt:{h:'Notifications',all:'Mark all as read',none:'No notifications yet.',set:'Notification settings',bell:'Notifications'},
+      pf:{h:'Notification settings',p:'Site notifications (the bell) are always on. Choose what should also reach you by e-mail and WhatsApp.',inapp:'On site',email:'E-mail',wa:'WhatsApp',save:'Save settings',saved:'Settings saved.',
+        cats:{tasks:['Task updates','Acceptance, dates, work started, completion'],requests:['Information requests','When the studio needs something from you'],deliveries:['Deliveries','A new version or the final delivery is ready'],comments:['Comments','Studio replies on tasks and discussions'],projects:['Projects & files','A new project or a file the studio added']},
+        waH:'WhatsApp notifications',waOff:'The studio has not switched WhatsApp on yet. You can set up your number and consent now; notifications you choose start as soon as it is on.',
+        phone:'WhatsApp number with country code',consent:'I agree to receive notifications about my projects and tasks from Eyeblink Studio on WhatsApp at this number. I can stop them at any time.',
+        on:'Turn on WhatsApp notifications',stop:'Stop WhatsApp notifications',active:'On for ',since:' since ',stopHint:'Stop them here at any time, or reply STOP to any of our messages.',
+        needPhone:'Write the number with its country code, e.g. +44 7xxx xxxxxx',needConsent:'Please agree first so we can message you on WhatsApp.',onMsg:'WhatsApp notifications are on.',offMsg:'WhatsApp notifications are off.',stopped:'Stopped on '}}
   }[lang];
   var OPEN=['new','review','info','accepted','progress','feedback','revision','final'];
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
@@ -83,11 +97,39 @@
     else w=T.a[k]||k;
     return '<li><i class="'+(a.actor==='studio'?'s':'c')+'"></i><div><b>'+esc(who)+'</b> '+esc(w)+(a.task_ref?' · <a href="#w/t/'+esc(a.task_ref)+'"><bdi dir="ltr">'+esc(a.task_ref)+'</bdi></a>':'')+
       (d.note?'<p class="muted small">'+para(d.note)+'</p>':'')+(k==='info_provided'&&d.text?'<p class="muted small">'+para(d.text)+'</p>':'')+'<small>'+esc(ago(a.at))+'</small></div></li>'; }
+  var NT={ar:{accept:function(d,t){return 'قبلنا مهمة '+t+(d.date?' · التسليم المؤكد '+d8(d.date):'');},info:function(d,t){return 'الاستوديو محتاج منك معلومات لمهمة '+t;},reject:function(d,t){return 'بخصوص مهمة '+t+': ما منقدر ننفّذها متل ما انطلبت';},
+      progress:function(d,t){return 'بلّشنا التنفيذ على '+t;},status:function(d,t){return 'حالة '+t+' صارت «'+(T.st[d.status]||d.status)+'»';},date:function(d,t){return 'موعد تسليم '+t+' صار '+d8(d.date);},dateNo:function(d,t){return 'ضلّ موعد تسليم '+t+' على '+d8(d.date);},
+      completed:function(d,t){return 'خلصت مهمة '+t;},deliver:function(d,t){return d.final?'التسليم النهائي لـ'+t+' جاهز للمراجعة':'النسخة '+d.label+' من '+t+' جاهزة للمراجعة';},comment:function(d,t){return 'تعليق جديد من الاستوديو على '+t;},
+      project:function(d){return 'فتحلك الاستوديو مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» لمشروع «'+d.name+'»';}},
+    en:{accept:function(d,t){return 'Task '+t+' accepted'+(d.date?' · confirmed for '+d8(d.date):'');},info:function(d,t){return 'The studio needs information for '+t;},reject:function(d,t){return 'About '+t+': we can\'t take it as requested';},
+      progress:function(d,t){return 'Work started on '+t;},status:function(d,t){return t+' is now “'+(T.st[d.status]||d.status)+'”';},date:function(d,t){return 'Delivery date of '+t+' is now '+d8(d.date);},dateNo:function(d,t){return 'Delivery date of '+t+' stays '+d8(d.date);},
+      completed:function(d,t){return t+' is complete';},deliver:function(d,t){return d.final?'Final delivery of '+t+' is ready for review':'Version '+d.label+' of '+t+' is ready for review';},comment:function(d,t){return 'New comment from the studio on '+t;},
+      project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';}}}[lang];
+  function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
-  var host=null, DASH=null;
-  function mount(el){ host=el; route(); }
-  function route(){ if(!host||host.hidden) return; var h=(location.hash||'').slice(1), m;
+  var host=null, shell=null, DASH=null, UNREAD=0;
+  var BELL='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>';
+  function mount(el){ shell=el;
+    if(!el.querySelector('.wview')){ el.innerHTML='<div class="wtop"><a class="wtop-set" href="#w/settings">'+T.nt.set+'</a><div class="wbellw"><button type="button" class="wbell glass" aria-label="'+T.nt.bell+'" aria-expanded="false">'+BELL+'<span class="wbadge" hidden></span></button>'+
+        '<div class="wnp glass" hidden><div class="wnp-h"><b>'+T.nt.h+'</b><button type="button" class="linkbtn" data-nall>'+T.nt.all+'</button></div><div class="wnp-l"></div><a class="wnp-f" href="#w/settings">'+T.nt.set+'</a></div></div></div><div class="wview"></div>';
+      bindBell(el); }
+    host=el.querySelector('.wview'); route(); pollUnread(); }
+  function setUnread(n){ UNREAD=+n||0; var b=shell&&shell.querySelector('.wbadge'); if(b){ b.hidden=!UNREAD; b.textContent=UNREAD>9?'9+':UNREAD; }
+    var tb=document.querySelector('.acct-tabs [data-tab="w"]'); if(tb){ var x=tb.querySelector('.wtb-n'); if(!x&&UNREAD){ x=document.createElement('span'); x.className='wtb-n'; tb.appendChild(x); } if(x){ x.hidden=!UNREAD; x.textContent=UNREAD>9?'9+':UNREAD; } } }
+  var POLL=null; function pollUnread(){ if(POLL) return; var tick=function(){ if(document.hidden||!shell||shell.hidden) return; api('?view=unread').then(function(j){ if(j.ok) setUnread(j.unread); }); }; tick(); POLL=setInterval(tick,90000); }
+  function bindBell(el){ var btn=el.querySelector('.wbell'), pnl=el.querySelector('.wnp'), list=el.querySelector('.wnp-l');
+    var close=function(){ pnl.hidden=true; btn.setAttribute('aria-expanded','false'); };
+    btn.onclick=function(e){ e.stopPropagation(); if(!pnl.hidden) return close(); pnl.hidden=false; btn.setAttribute('aria-expanded','true'); list.innerHTML='<div class="acct-load"><span></span></div>';
+      api('?view=notifications').then(function(j){ if(!j.ok){ list.innerHTML='<p class="muted small">'+T.err+'</p>'; return; } setUnread(j.unread);
+        list.innerHTML=j.items.length?j.items.map(function(n){ return '<a class="wn'+(n.read_at?'':' new')+'" href="'+esc(n.link||'#w')+'" data-nid="'+n.id+'"><i class="c-'+esc(n.cat)+'"></i><span><span class="wn-t">'+esc(nText(n))+'</span>'+(n.data&&n.data.note?'<span class="wn-n">'+esc(n.data.note)+'</span>':'')+'<small>'+esc(ago(n.created_at))+'</small></span></a>'; }).join(''):'<p class="muted small wnp-e">'+T.nt.none+'</p>'; }); };
+    list.onclick=function(e){ var a=e.target.closest('a[data-nid]'); if(!a) return; if(a.classList.contains('new')){ a.classList.remove('new'); setUnread(UNREAD-1); api('',{action:'read',ids:[+a.dataset.nid]}); } close(); };
+    el.querySelector('[data-nall]').onclick=function(){ api('',{action:'read',all:true}).then(function(r){ if(r.ok){ setUnread(0); [].forEach.call(list.querySelectorAll('.wn.new'),function(x){ x.classList.remove('new'); }); } }); };
+    el.querySelector('.wnp-f').onclick=close;
+    document.addEventListener('click',function(e){ if(!pnl.hidden&&!e.target.closest('.wbellw')) close(); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!pnl.hidden){ close(); btn.focus(); } }); }
+  function route(){ if(!shell||shell.hidden) return; var h=(location.hash||'').slice(1), m;
+    if(h==='w/settings') return settings();
     if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))) return task(m[1]);
     if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files))?$/.exec(h))) return project(m[1],m[2]||'tasks');
     if((m=/^w\/new\/(p_[a-f0-9]+)$/.exec(h))) return newTask(m[1]);
@@ -99,7 +141,7 @@
   /* ---- dashboard ---- */
   function dash(){
     loading();
-    api('?view=dash').then(function(j){ if(!j.ok) return fail(j); DASH=j;
+    api('?view=dash').then(function(j){ if(!j.ok) return fail(j); DASH=j; if('unread' in j) setUnread(j.unread);
       var c=j.counts||{}, n=function(a){ return a.reduce(function(s,k){ return s+(c[k]||0); },0); };
       var act=j.projects.filter(function(p){return p.status==='active'});
       var tiles=[[T.k.active,act.length],[T.k.fresh,n(['new','review','info'])],[T.k.progress,n(['accepted','progress','revision'])],[T.k.review,n(['feedback','final'])],[T.k.done,c.completed||0],[T.k.dates,(j.upcoming||[]).length]];
@@ -278,6 +320,33 @@
         api('',{action:'dateChange',task:t.ref,date:cf.elements.date.value,reason:cf.elements.reason.value.trim()}).then(function(r){ if(r.ok){ toast(T.saved); task(ref); } else { b.disabled=false; toast(r.error==='date'?T.f.bad:T.err); } }); };
     });
   }
+  /* ---- notification settings: e-mail and WhatsApp per category; WhatsApp only with explicit consent ---- */
+  function settings(){
+    loading();
+    api('?view=prefs').then(function(j){ if(!j.ok) return fail(j); var P=j.prefs, wa=j.wa||{}, cats=j.cats||['tasks','requests','deliveries','comments','projects'];
+      var sw=function(name,on,dis){ return '<label class="wsw"><input type="checkbox" name="'+name+'"'+(on?' checked':'')+(dis?' disabled':'')+'><i></i></label>'; };
+      var masked=P.wa_phone?('+'+P.wa_phone).replace(/\d(?=\d{4})/g,'•'):'';
+      host.innerHTML='<a class="wback" href="#w">← '+T.back+'</a><form class="wcard glass wset form" novalidate><span class="eyebrow">NOTIFICATIONS</span><h2>'+T.pf.h+'</h2><p class="muted">'+T.pf.p+'</p>'+
+        '<div class="wprefs"><div class="wpr wpr-h"><span></span><span>'+T.pf.inapp+'</span><span>'+T.pf.email+'</span><span>'+T.pf.wa+'</span></div>'+cats.map(function(c){ var L2=T.pf.cats[c]||[c,''];
+          return '<div class="wpr"><span class="wpr-l"><b>'+esc(L2[0])+'</b><small class="muted">'+esc(L2[1])+'</small></span><span data-l="'+T.pf.inapp+'">'+sw('in_'+c,true,true)+'</span><span data-l="'+T.pf.email+'">'+sw('em_'+c,P.email_cats[c])+'</span><span data-l="'+T.pf.wa+'">'+sw('wa_'+c,P.wa_cats[c],!P.consent)+'</span></div>'; }).join('')+'</div>'+
+        '<div class="actions"><button class="btn btn-primary" type="submit">'+T.pf.save+'</button></div>'+
+        '<section class="wwa"><h3>'+T.pf.waH+'</h3>'+(wa.available?'':'<p class="wnote">'+T.pf.waOff+'</p>')+
+          (P.consent?'<p class="wwa-on"><b>✓ '+T.pf.active+'<bdi dir="ltr">'+esc(masked)+'</bdi></b><small class="muted">'+T.pf.since+esc(d8(P.wa_consent_at))+'</small></p><p class="muted small">'+T.pf.stopHint+'</p><div class="actions"><button type="button" class="btn btn-glass glass danger" data-wastop>'+T.pf.stop+'</button></div>'
+            :(P.wa_withdrawn_at?'<p class="muted small">'+T.pf.stopped+esc(d8(P.wa_withdrawn_at))+'</p>':'')+'<label>'+T.pf.phone+'<input name="phone" type="tel" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="+966 5x xxx xxxx" value="'+esc(P.wa_phone?'+'+P.wa_phone:'')+'"></label>'+
+            '<label class="wconsent"><input type="checkbox" name="consent"><span>'+T.pf.consent+'</span></label><p class="msg" role="alert"></p><div class="actions"><button type="button" class="btn btn-primary" data-waon>'+T.pf.on+'</button></div>')+'</section></form>';
+      var f=host.querySelector('.wset'), E=f.elements, collect=function(){ var ec={}, wc={}; cats.forEach(function(c){ ec[c]=E['em_'+c].checked; wc[c]=E['wa_'+c].checked; }); return {email_cats:ec,wa_cats:wc}; };
+      f.onsubmit=function(e){ e.preventDefault(); var b=f.querySelector('button[type=submit]'); b.disabled=true; var d=collect(); d.action='prefs';
+        api('',d).then(function(r){ b.disabled=false; toast(r.ok?T.pf.saved:T.err); }); };
+      var on=f.querySelector('[data-waon]'); if(on) on.onclick=function(){ var msg=f.querySelector('.msg'), ph=E.phone.value.trim();
+        if(!/^\+?[0-9\s\-().]{8,20}$/.test(ph)){ msg.textContent=T.pf.needPhone; E.phone.focus(); return; }
+        if(!E.consent.checked){ msg.textContent=T.pf.needConsent; E.consent.focus(); return; }
+        on.disabled=true; var d=collect(); d.action='prefs'; d.wa_consent=true; d.wa_phone=ph;
+        api('',d).then(function(r){ if(r.ok){ toast(T.pf.onMsg); settings(); } else { on.disabled=false; msg.textContent=r.error==='phone'?T.pf.needPhone:T.err; } }); };
+      var st=f.querySelector('[data-wastop]'); if(st) st.onclick=function(){ if(st.dataset.armed!=='1'){ st.dataset.armed='1'; st.textContent=T.dl.sure; return; } st.disabled=true;
+        api('',{action:'prefs',wa_consent:false}).then(function(r){ if(r.ok){ toast(T.pf.offMsg); settings(); } else { st.disabled=false; toast(T.err); } }); };
+    });
+  }
+
   /* ---- deliveries: V1, V2… Final, with approval or timestamped change requests ---- */
   function embedOf(u){ var m;
     if((m=/drive\.google\.com\/file\/d\/([\w-]{10,})/.exec(u))||(m=/drive\.google\.com\/open\?id=([\w-]{10,})/.exec(u))) return 'https://drive.google.com/file/d/'+m[1]+'/preview';

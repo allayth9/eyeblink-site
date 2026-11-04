@@ -23,6 +23,12 @@
 //                  { action:"studioComment", scope, task|project, body, links }  { action:"removeComment", id }
 //                  { action:"studioFile", project, category, title, url, note }  { action:"removeFile", id }
 //   GET  /api/work?admin=1&space=PROJECT_ID   that project's discussion, files and deliveries
+//   GET  /api/work?admin=1&view=notify       studio inbox, delivery log (e-mail / WhatsApp), WhatsApp setup status
+//   POST /api/work { action:"studioRead", ids|all }  { action:"retryNotif", id }  { action:"waConfig", … }  { action:"waTest", phone, lang }
+// Notifications (Phase 5): every studio decision becomes one event → in-app (always) + e-mail + WhatsApp, each by the client's own
+// preferences. WhatsApp goes only to a number the client confirmed with explicit consent, through Meta's official Cloud API, and a
+// failed send never blocks the work: it is logged and retried (5 min, 30 min, 2 h).
+//   client: GET ?view=notifications | ?view=unread | ?view=prefs   POST { action:"read", ids|all }  { action:"prefs", email_cats, wa_cats, wa_phone, wa_consent }
 const STATUSES = ["new","review","info","accepted","progress","feedback","revision","final","completed","rejected","cancelled"];
 const OPEN = ["new","review","info","accepted","progress","feedback","revision","final"];
 const PRIORITIES = ["normal","high","urgent"];
@@ -57,6 +63,16 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, client_email TEXT NOT NULL, task_id TEXT, category TEXT NOT NULL DEFAULT 'other', title TEXT NOT NULL, url TEXT NOT NULL,
      note TEXT NOT NULL DEFAULT '', added_by TEXT NOT NULL, added_name TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, deleted_at TEXT)`,
   `CREATE INDEX IF NOT EXISTS files_project ON files(project_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, recipient TEXT NOT NULL, kind TEXT NOT NULL, cat TEXT NOT NULL, link TEXT NOT NULL DEFAULT '',
+     data TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, read_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS notifications_rcpt ON notifications(recipient, id)`,
+  `CREATE TABLE IF NOT EXISTS notify_prefs (email TEXT PRIMARY KEY, email_cats TEXT NOT NULL DEFAULT '{}', wa_cats TEXT NOT NULL DEFAULT '{}', wa_phone TEXT,
+     wa_consent_at TEXT, wa_consent_v TEXT, wa_withdrawn_at TEXT, updated_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS notify_prefs_phone ON notify_prefs(wa_phone)`,
+  `CREATE TABLE IF NOT EXISTS notify_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, channel TEXT NOT NULL, recipient TEXT NOT NULL, target TEXT, kind TEXT NOT NULL,
+     status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 1, error TEXT, next_try_at TEXT, provider_id TEXT, delivery TEXT, payload TEXT)`,
+  `CREATE INDEX IF NOT EXISTS notify_log_retry ON notify_log(status, next_try_at)`,
+  `CREATE INDEX IF NOT EXISTS notify_log_provider ON notify_log(provider_id)`,
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -101,10 +117,71 @@ const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
 const fmtDate = (d, lang) => { try { return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : "ar-u-nu-latn", { weekday:"long", year:"numeric", month:"long", day:"numeric" }); } catch { return d; } };
-// one e-mail to the client for each studio decision on their task
+// ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
+const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects" };
+const CATS = ["tasks","requests","deliveries","comments","projects"];
+const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false };
+const CONSENT_V = "wa-v1";
+const BACKOFF = [5, 30, 120];   // minutes between retries
+const nextTry = n => n > BACKOFF.length ? null : new Date(Date.now() + BACKOFF[n - 1] * 60000).toISOString();
+const oneLine = (t, n) => String(t || "").replace(/[\r\n\t]+/g, " · ").replace(/ {2,}/g, " ").trim().slice(0, n);
+const normPhone = p => { const x = String(p || "").replace(/[\s\-().]/g, "").replace(/^00/, "+"); return /^\+?[1-9]\d{7,14}$/.test(x) ? x.replace(/^\+/, "") : null; };
+async function prefsOf(D, email){
+  const r = await D.prepare("SELECT * FROM notify_prefs WHERE email=?").bind(email).first(); let ec = {}, wc = {};
+  try { ec = JSON.parse((r && r.email_cats) || "{}"); } catch {} try { wc = JSON.parse((r && r.wa_cats) || "{}"); } catch {}
+  return { email_cats: Object.fromEntries(CATS.map(c => [c, ec[c] !== false])), wa_cats: Object.fromEntries(CATS.map(c => [c, c in wc ? !!wc[c] : WA_DEFAULT[c]])),
+    wa_phone: (r && r.wa_phone) || "", wa_consent_at: (r && r.wa_consent_at) || null, wa_withdrawn_at: (r && r.wa_withdrawn_at) || null,
+    consent: !!(r && r.wa_phone && r.wa_consent_at && !r.wa_withdrawn_at) };
+}
+async function waConfig(env){ let c = {}; try { c = JSON.parse(await env.EB.get("wa:config") || "{}"); } catch {}
+  return { enabled: !!c.enabled, template: c.template || "eyeblink_update", langAr: c.langAr || "ar", langEn: c.langEn || "en", button: c.button !== false, version: /^v\d{2}\.0$/.test(c.version || "") ? c.version : "v25.0" }; }
+const waReady = (env, cfg) => !!(cfg.enabled && env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_ID);
+async function logSend(D, r){ if (!D) return; try {
+  await D.prepare("INSERT INTO notify_log (at, channel, recipient, target, kind, status, attempts, error, next_try_at, provider_id, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(now(), r.channel, r.recipient, r.target || null, r.kind, r.status, r.attempts || 1, r.error || null, r.next || null, r.provider_id || null, r.payload ? JSON.stringify(r.payload) : null).run(); } catch {} }
+// Resend, with a result we can log (sendMail above only says yes/no)
+async function mailSend(env, to, subject, html){
+  if (!env.RESEND_API_KEY) return { ok: false, skip: "e-mail not configured" };
+  try { const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
+      body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <hello@eyeblinkstudio.com>", to: [to], subject, html }) });
+    const j = await r.json().catch(() => ({})); if (r.ok) return { ok: true, id: j.id };
+    return { ok: false, error: "HTTP " + r.status + (j.message ? ": " + String(j.message).slice(0, 160) : ""), retry: r.status === 429 || r.status >= 500 };
+  } catch { return { ok: false, error: "network", retry: true }; }
+}
+// WhatsApp Cloud API (Meta, official): one approved utility template — body {{1}} name, {{2}} the update; URL button eyeblinkstudio.com/go/{{1}}
+async function waSend(env, cfg, to, lang, p){
+  if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_ID) return { ok: false, skip: "WhatsApp not configured" };
+  const comps = [{ type: "body", parameters: [{ type: "text", text: p.name || "-" }, { type: "text", text: p.text || "-" }] }];
+  if (cfg.button) comps.push({ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: p.path || "w" }] });
+  try { const r = await fetch("https://graph.facebook.com/" + cfg.version + "/" + env.WHATSAPP_PHONE_ID + "/messages", { method: "POST",
+      headers: { authorization: "Bearer " + env.WHATSAPP_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "template", template: { name: cfg.template, language: { code: lang === "en" ? cfg.langEn : cfg.langAr }, components: comps } }) });
+    const j = await r.json().catch(() => ({})); if (r.ok && j.messages && j.messages[0]) return { ok: true, id: j.messages[0].id };
+    const e = j.error || {}; return { ok: false, error: (e.code ? e.code + ": " : "HTTP " + r.status + ": ") + String(e.message || "").slice(0, 200), retry: r.status === 429 || r.status >= 500 || [130429, 131056, 131000, 2].includes(e.code) };
+  } catch { return { ok: false, error: "network", retry: true }; }
+}
+const WA_TXT = {
+  ar: { accept: d => `قبلنا مهمة «${d.title}» (${d.ref})، وموعد التسليم المؤكد ${d.dateText}.`, info: d => `محتاجين منك معلومات لنبلّش بمهمة «${d.title}» (${d.ref}).`,
+        reject: d => `بخصوص مهمة «${d.title}» (${d.ref}): ما منقدر ننفّذها متل ما انطلبت، والسبب بمساحة العمل.`, progress: d => `بلّشنا التنفيذ على «${d.title}» (${d.ref}).`,
+        status: d => `حالة «${d.title}» (${d.ref}) صارت: ${d.statusText}.`, date: d => `موعد تسليم «${d.title}» (${d.ref}) صار ${d.dateText}.`, dateNo: d => `ضلّ موعد تسليم «${d.title}» (${d.ref}) على ${d.dateText}.`,
+        completed: d => `خلصت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
+        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنالك مشروع «${d.name}» بمساحة العمل.`, file: d => `أضفنا ملف «${d.file}» لمشروع «${d.name}».` },
+  en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
+        reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
+        status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
+        completed: d => `"${d.title}" (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}" (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}" (${d.ref}) is ready for review.`,
+        comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".` } };
 async function tellClient(env, t, kind, extra){
+  extra = extra || {};
   const u = await userOf(env, t.client_email); if (!u) return;
-  const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
+  const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
+  const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
+  const data = { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined };
+  // 1) in-app — always on
+  if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
+  const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
+  // 2) e-mail — unless the client switched this category off
+  if (!P || P.email_cats[cat]) jobs.push((async () => {
   const T = {
     accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                 : ["قبلنا مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
@@ -120,21 +197,62 @@ async function tellClient(env, t, kind, extra){
     deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
                  : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. شوفها وابعتلنا موافقتك أو ملاحظاتك.`],
     comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>:`],
+    file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
+                 : ["ملف جديد بمشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> لملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
                 : ["مشروع جديد بمساحة العمل", `فتحلك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>. فيك تبعت مهامك عليه من مساحة العمل.`],
   }[kind]; if (!T) return;
-  const note = extra && extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-  const link = extra && extra.link ? extra.link : kind === "project" ? SITE + (en ? "/en" : "") + "/account.html#w/p/" + (extra && extra.id) : taskLink(lang, t.ref);
-  await sendMail(env, u.email, T[0], mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح بمساحة العمل", link, greet({ name: u.name, lang })));
+    const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
+    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح بمساحة العمل", SITE + (en ? "/en" : "") + "/account.html" + hash, greet({ name: u.name, lang }));
+    const r = await mailSend(env, u.email, subject, html);
+    await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
+  })());
+  // 3) WhatsApp — only with explicit consent, a confirmed number, the category on, and the studio's WhatsApp switched on
+  if (P && P.consent && P.wa_cats[cat]) jobs.push((async () => {
+    const cfg = await waConfig(env); if (!waReady(env, cfg)) return;
+    const f = WA_TXT[lang][kind]; if (!f) return;
+    const text = oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", statusText: L[data.status] || data.status || "" }), 700);
+    const pl = { name: oneLine(u.name, 60), text, path: (en ? "en/" : "") + hash.replace(/^#w\/?/, "") };
+    const r = await waSend(env, cfg, P.wa_phone, lang, pl);
+    await logSend(D, { channel: "whatsapp", recipient: u.email, target: P.wa_phone, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok ? null : { phone: P.wa_phone, lang, p: pl } });
+  })());
+  await Promise.allSettled(jobs);
 }
+// to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
+function toStudio(ctx, env, subject, text){
+  const m = /T-[A-Z0-9]{4,}/.exec(subject);
+  later(ctx, (async () => { try { const D = await db(env); if (D) await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES ('studio','event','studio',?,?,?)")
+    .bind(m ? "#tasks/" + m[0] : "#tasks", JSON.stringify({ subject, text: excerpt(text, 260) }), now()).run(); } catch {} await notifyStudio(env, subject, text); })());
+}
+// failed sends come back here: a few at a time, at most every 5 minutes, on ordinary traffic
+async function retryRow(env, D, r){
+  let p = null; try { p = JSON.parse(r.payload || "null"); } catch {} if (!p) return { ok: false, error: "nothing to resend" };
+  const res = r.channel === "email" ? await mailSend(env, p.to, p.subject, p.html) : await waSend(env, await waConfig(env), p.phone, p.lang, p.p);
+  const n = r.attempts + 1, st = res.ok ? "sent" : res.skip ? "skipped" : (res.retry && n <= BACKOFF.length) ? "retry" : "failed";
+  await D.prepare("UPDATE notify_log SET status=?, attempts=?, error=?, next_try_at=?, provider_id=COALESCE(?, provider_id), payload=? WHERE id=?")
+    .bind(st, n, res.ok ? null : (res.error || res.skip || null), st === "retry" ? nextTry(n) : null, res.id || null, res.ok ? null : r.payload, r.id).run();
+  return res;
+}
+async function sweepNotify(env){ try {
+  const D = await db(env); if (!D) return;
+  const last = await D.prepare("SELECT v FROM meta WHERE k='nsweep'").first(); if (last && Date.now() - +last.v < 300000) return;
+  await D.prepare("INSERT INTO meta (k, v) VALUES ('nsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
+  const rows = (await D.prepare("SELECT * FROM notify_log WHERE status='retry' AND next_try_at<=? ORDER BY id LIMIT 10").bind(now()).all()).results;
+  for (const r of rows) await retryRow(env, D, r);
+} catch {} }
 
-export async function onRequestGet({ request, env }) {
-  const q = new URL(request.url).searchParams;
+export async function onRequestGet(ctx) {
+  const { request, env } = ctx, q = new URL(request.url).searchParams;
+  later(ctx, sweepNotify(env));
   if (q.get("admin")) return adminGet(request, env, q);
   const u = await currentUser(request, env); if (!u) return json({ ok: false, error: "login" }, 401);
   if (u.role !== "client") return json({ ok: false, error: "not client" }, 403);
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const e = u.email, open = OPEN.map(s => `'${s}'`).join(",");
+  const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
+  if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
+  if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
+  if (q.get("view") === "prefs") { const cfg = await waConfig(env); return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) } }); }
   if (q.get("project")) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(parse);
@@ -155,13 +273,13 @@ export async function onRequestGet({ request, env }) {
   const activity = (await D.prepare(`SELECT a.*, t.ref AS task_ref, t.title AS task_title FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.project_id IN ${MINE} ORDER BY a.id DESC LIMIT 20`).bind(e).all()).results.map(parseA);
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
-  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting });
+  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting, unread: await unreadN() });
 }
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -169,6 +287,27 @@ export async function onRequestPost(ctx) {
   if (u.role !== "client") return json({ ok: false, error: "not client" }, 403);
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), who = { actor: u.email, actor_name: u.name, client_email: u.email };
+  if (d.action === "read") {
+    if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient=? AND read_at IS NULL").bind(at, u.email).run();
+    else for (const id of (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map(Number).filter(Number.isInteger))
+      await D.prepare("UPDATE notifications SET read_at=? WHERE id=? AND recipient=? AND read_at IS NULL").bind(at, id, u.email).run();
+    return json({ ok: true });
+  }
+  if (d.action === "prefs") {
+    const cur = await prefsOf(D, u.email), pick = (src, c, dflt) => src && typeof src === "object" && c in src ? !!src[c] : dflt;
+    const ec = Object.fromEntries(CATS.map(c => [c, pick(d.email_cats, c, cur.email_cats[c])])), wc = Object.fromEntries(CATS.map(c => [c, pick(d.wa_cats, c, cur.wa_cats[c])]));
+    let phone = cur.wa_phone || null, cAt = cur.wa_consent_at, wAt = cur.wa_withdrawn_at, logKind = null;
+    if (d.wa_consent === true) {
+      const np = normPhone(d.wa_phone); if (!np) return json({ ok: false, error: "phone" }, 400);
+      if (!cur.consent || np !== cur.wa_phone) { phone = np; cAt = at; wAt = null; logKind = "wa_consent"; }   // a new number needs a fresh consent
+    } else if (d.wa_consent === false && cur.consent) { wAt = at; logKind = "wa_withdrawn"; }
+    await D.prepare(`INSERT INTO notify_prefs (email, email_cats, wa_cats, wa_phone, wa_consent_at, wa_consent_v, wa_withdrawn_at, updated_at) VALUES (?,?,?,?,?,?,?,?)
+      ON CONFLICT(email) DO UPDATE SET email_cats=excluded.email_cats, wa_cats=excluded.wa_cats, wa_phone=excluded.wa_phone, wa_consent_at=excluded.wa_consent_at,
+      wa_consent_v=excluded.wa_consent_v, wa_withdrawn_at=excluded.wa_withdrawn_at, updated_at=excluded.updated_at`)
+      .bind(u.email, JSON.stringify(ec), JSON.stringify(wc), phone, cAt, cAt ? CONSENT_V : null, wAt, at).run();
+    if (logKind) await act(D, { ...who, kind: logKind, data: { phone: phone ? phone.replace(/\d(?=\d{4})/g, "•") : undefined, v: CONSENT_V } });
+    return json({ ok: true, prefs: await prefsOf(D, u.email) });
+  }
 
   if (d.action === "task") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
@@ -183,7 +322,7 @@ export async function onRequestPost(ctx) {
       JSON.stringify(cleanLinks(d.links)), u.email, at, at).run();
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
     await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
-    later(ctx, notifyStudio(env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + "\n\nافتحها: " + adminLink(ref)));
+    toStudio(ctx, env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + "\n\nافتحها: " + adminLink(ref));
     return json({ ok: true, ref });
   }
   if (d.action === "comment" && d.scope === "project") {
@@ -197,7 +336,7 @@ export async function onRequestPost(ctx) {
   }
   if (d.action === "file") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
-    return addFile(D, { project: p, by: u.email, by_name: u.name, d });
+    return addFile(ctx, D, { project: p, by: u.email, by_name: u.name, d });
   }
   if (d.action === "deleteFile") {
     const f = await D.prepare(`SELECT * FROM files WHERE id=?2 AND deleted_at IS NULL AND added_by=?1 AND project_id IN ${MINE}`).bind(u.email, clip(d.id, 40)).first();
@@ -219,7 +358,7 @@ export async function onRequestPost(ctx) {
       await D.prepare("UPDATE tasks SET status=?, updated_at=?" + (to === "completed" ? ", completed_at=?" : "") + " WHERE id=?").bind(...[to, at].concat(to === "completed" ? [at] : []), t.id).run();
       await act(D, { ...tw, kind: "approved", data: { label: dl.label, final: dl.is_final, note: note || undefined } });
       await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
-      later(ctx, notifyStudio(env, (dl.is_final ? "العميل وافق على التسليم النهائي " : "العميل وافق على النسخة " + dl.label + " ") + t.ref, u.name + " · " + t.title + (note ? "\n" + note : "") + (dl.is_final ? "\n\nالمهمة صارت مكتملة." : "\n\nجهّز التسليم النهائي.") + "\n\n" + adminLink(t.ref)));
+      toStudio(ctx, env, (dl.is_final ? "العميل وافق على التسليم النهائي " : "العميل وافق على النسخة " + dl.label + " ") + t.ref, u.name + " · " + t.title + (note ? "\n" + note : "") + (dl.is_final ? "\n\nالمهمة صارت مكتملة." : "\n\nجهّز التسليم النهائي.") + "\n\n" + adminLink(t.ref));
       return json({ ok: true, status: to });
     }
     if (d.decision === "changes") {
@@ -229,7 +368,7 @@ export async function onRequestPost(ctx) {
       const round = (await D.prepare("SELECT COUNT(*) AS n FROM deliverables WHERE task_id=? AND status='changes'").bind(t.id).first()).n;
       await act(D, { ...tw, kind: "changes_requested", data: { label: dl.label, points: points.length, round, note: note || undefined } });
       await act(D, { ...tw, kind: "status", data: { from: t.status, to: "revision" } });
-      later(ctx, notifyStudio(env, "تعديلات مطلوبة على " + dl.label + " · " + t.ref + " (جولة " + round + ")", u.name + " · " + t.title + "\n\n" + points.map((x, i) => (i + 1) + ". " + (x.t ? "[" + x.t + "] " : "") + x.text).join("\n") + (note ? "\n\n" + note : "") + "\n\n" + adminLink(t.ref)));
+      toStudio(ctx, env, "تعديلات مطلوبة على " + dl.label + " · " + t.ref + " (جولة " + round + ")", u.name + " · " + t.title + "\n\n" + points.map((x, i) => (i + 1) + ". " + (x.t ? "[" + x.t + "] " : "") + x.text).join("\n") + (note ? "\n\n" + note : "") + "\n\n" + adminLink(t.ref));
       return json({ ok: true, status: "revision", round });
     }
     return json({ ok: false }, 400);
@@ -240,7 +379,7 @@ export async function onRequestPost(ctx) {
     await D.prepare("UPDATE tasks SET status='review', links=?, updated_at=? WHERE id=?").bind(JSON.stringify(t.links.concat(links).slice(0, 24)), at, t.id).run();
     await act(D, { ...tw, kind: "info_provided", data: { text, links } });
     await act(D, { ...tw, kind: "status", data: { from: "info", to: "review" } });
-    later(ctx, notifyStudio(env, "ردّ العميل على طلب المعلومات " + t.ref, u.name + ": " + (text || "—") + "\n\n" + adminLink(t.ref)));
+    toStudio(ctx, env, "ردّ العميل على طلب المعلومات " + t.ref, u.name + ": " + (text || "—") + "\n\n" + adminLink(t.ref));
     return json({ ok: true });
   }
   if (d.action === "dateChange") {
@@ -250,14 +389,14 @@ export async function onRequestPost(ctx) {
     const cr = { date, reason: clip(d.reason, 1500), at, status: "pending" };
     await D.prepare("UPDATE tasks SET change_request=?, updated_at=? WHERE id=?").bind(JSON.stringify(cr), at, t.id).run();
     await act(D, { ...tw, kind: "date_change_requested", data: { date, reason: cr.reason, current: t.confirmed_date } });
-    later(ctx, notifyStudio(env, "طلب تغيير موعد " + t.ref, u.name + " بدّه الموعد يصير " + date + " بدل " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref)));
+    toStudio(ctx, env, "طلب تغيير موعد " + t.ref, u.name + " بدّه الموعد يصير " + date + " بدل " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref));
     return json({ ok: true });
   }
   if (d.action === "cancel") {
     if (!["new","review","info"].includes(t.status)) return json({ ok: false, error: "state" }, 409);
     await D.prepare("UPDATE tasks SET status='cancelled', updated_at=? WHERE id=?").bind(at, t.id).run();
     await act(D, { ...tw, kind: "status", data: { from: t.status, to: "cancelled" } });
-    later(ctx, notifyStudio(env, "العميل ألغى المهمة " + t.ref, u.name + " ألغى «" + t.title + "» قبل القبول."));
+    toStudio(ctx, env, "العميل ألغى المهمة " + t.ref, u.name + " ألغى «" + t.title + "» قبل القبول.");
     return json({ ok: true });
   }
   return json({ ok: false }, 400);
@@ -272,12 +411,12 @@ async function addComment(ctx, D, o){
     .bind(id, o.scope, p.id, taskId, p.client_email, o.author, o.author_name || "", body, JSON.stringify(links), at).run();
   await act(D, { actor: o.author, actor_name: o.author_name, client_email: p.client_email, project_id: p.id, task_id: taskId, kind: "comment", data: { scope: o.scope, text: excerpt(body, 140) } });
   const env = ctx.env, where = o.task ? "«" + o.task.title + "» " + o.task.ref : "نقاش مشروع «" + p.name + "»";
-  if (o.client) later(ctx, notifyStudio(env, "تعليق جديد من " + o.author_name + " · " + (o.task ? o.task.ref : p.name), where + "\n\n" + body + "\n\n" + (o.task ? adminLink(o.task.ref) : SITE + "/admin/#tasks")));
-  else { const u = await userOf(env, p.client_email), en = u && u.lang === "en";
-    later(ctx, tellClient(env, o.task ? o.task : { client_email: p.client_email, ref: "", title: p.name }, "comment", { note: body, link: o.task ? undefined : SITE + (en ? "/en" : "") + "/account.html#w/p/" + p.id + "/talk" })); }
+  if (o.client) toStudio(ctx, env, "تعليق جديد من " + o.author_name + " · " + (o.task ? o.task.ref : p.name), where + "\n\n" + body + "\n\n" + (o.task ? adminLink(o.task.ref) : SITE + "/admin/#tasks"));
+  else {
+    later(ctx, tellClient(env, o.task ? o.task : { client_email: p.client_email, ref: "", title: p.name }, "comment", { note: body, hash: o.task ? undefined : "#w/p/" + p.id + "/talk" })); }
   return json({ ok: true, id });
 }
-async function addFile(D, o){
+async function addFile(ctx, D, o){
   const d = o.d, url = clip(d.url, 600), title = clip(d.title, 140) || url.replace(/^https?:\/\//, "").slice(0, 60);
   if (!isUrl(url)) return json({ ok: false, error: "url" }, 400);
   if ((await D.prepare("SELECT COUNT(*) AS n FROM files WHERE project_id=? AND deleted_at IS NULL").bind(o.project.id).first()).n >= 300) return json({ ok: false, error: "too many" }, 429);
@@ -285,6 +424,8 @@ async function addFile(D, o){
   await D.prepare("INSERT INTO files (id, project_id, client_email, category, title, url, note, added_by, added_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
     .bind(id, o.project.id, o.project.client_email, cat, title, url, clip(d.note, 1000), o.by, o.by_name || "", now()).run();
   await act(D, { actor: o.by, actor_name: o.by_name, client_email: o.project.client_email, project_id: o.project.id, kind: "file_added", data: { title, category: cat } });
+  if (o.by === "studio") later(ctx, tellClient(ctx.env, { client_email: o.project.client_email, ref: "", title: o.project.name }, "file", { file: title, name: o.project.name, hash: "#w/p/" + o.project.id + "/files" }));
+  else toStudio(ctx, ctx.env, "ملف جديد من " + o.by_name + " · " + o.project.name, title + "\n" + url);
   return json({ ok: true, id });
 }
 
@@ -298,6 +439,19 @@ async function adminGet(request, env, q){
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY t.updated_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(s => `'${s}'`).join(",")})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks FROM projects p ORDER BY p.updated_at DESC`).all()).results.map(parseP);
+  if (q.get("view") === "notify") {
+    const inbox = (await D.prepare("SELECT * FROM notifications WHERE recipient='studio' ORDER BY id DESC LIMIT 60").all()).results.map(parseA);
+    const where = [], args = [];
+    if (["email","whatsapp"].includes(q.get("channel"))) { where.push("channel=?"); args.push(q.get("channel")); }
+    if (["sent","failed","retry","skipped"].includes(q.get("status"))) { where.push("status=?"); args.push(q.get("status")); }
+    const log = (await D.prepare(`SELECT id, at, channel, recipient, target, kind, status, attempts, error, next_try_at, delivery FROM notify_log ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
+    const stats = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE at>=? GROUP BY channel, status").bind(new Date(Date.now() - 30 * 864e5).toISOString()).all()).results;
+    const cfg = await waConfig(env);
+    return json({ ok: true, inbox, unread: (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n, log, stats,
+      consents: (await D.prepare("SELECT COUNT(*) AS n FROM notify_prefs WHERE wa_consent_at IS NOT NULL AND wa_withdrawn_at IS NULL").first()).n,
+      wa: { config: cfg, ready: waReady(env, cfg), secrets: { token: !!env.WHATSAPP_TOKEN, phoneId: !!env.WHATSAPP_PHONE_ID, appSecret: !!env.WHATSAPP_APP_SECRET, verifyToken: !!env.WHATSAPP_VERIFY_TOKEN } },
+      email: { ready: !!env.RESEND_API_KEY }, webhook: SITE + "/api/whatsapp", goBase: SITE + "/go/" });
+  }
   if (q.get("space")) { const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(q.get("space")).first()); if (!p) return json({ ok: false }, 404);
     return json({ ok: true, project: p, ...(await spaceOf(D, p.id)) }); }
   let activity = [], deliverables = [], comments = [];
@@ -305,13 +459,36 @@ async function adminGet(request, env, q){
     if (t) { activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); deliverables = await deliverablesOf(D, t.id); comments = await commentsOf(D, "task", t.id); } }
   const clients = []; let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") clients.push({ email: u.email, name: u.name }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
-  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, today: today() });
+  const inboxUnread = (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n;
+  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, inboxUnread, today: today() });
 }
 
 async function adminPost(ctx, d){
   const { env } = ctx;
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), studio = { actor: "studio", actor_name: "Eyeblink Studio" };
+  if (d.action === "studioRead") {
+    if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient='studio' AND read_at IS NULL").bind(at).run();
+    else for (const id of (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map(Number).filter(Number.isInteger)) await D.prepare("UPDATE notifications SET read_at=? WHERE id=? AND recipient='studio'").bind(at, id).run();
+    return json({ ok: true });
+  }
+  if (d.action === "retryNotif") {
+    const r = await D.prepare("SELECT * FROM notify_log WHERE id=?").bind(+d.id || 0).first(); if (!r) return json({ ok: false }, 404);
+    if (r.status === "sent") return json({ ok: true, already: true });
+    const res = await retryRow(env, D, r); return json({ ok: !!res.ok, error: res.error || res.skip || null });
+  }
+  if (d.action === "waConfig") {
+    const c = { enabled: !!d.enabled, template: clip(d.template, 120).toLowerCase().replace(/[^a-z0-9_]/g, "") || "eyeblink_update", langAr: clip(d.langAr, 10).replace(/[^A-Za-z_]/g, "") || "ar",
+      langEn: clip(d.langEn, 10).replace(/[^A-Za-z_]/g, "") || "en", button: d.button !== false, version: /^v\d{2}\.0$/.test(d.version || "") ? d.version : "v25.0" };
+    await env.EB.put("wa:config", JSON.stringify(c)); return json({ ok: true, config: c });
+  }
+  if (d.action === "waTest") {
+    const ph = normPhone(d.phone); if (!ph) return json({ ok: false, error: "phone" }, 400);
+    const cfg = await waConfig(env), lang = d.lang === "en" ? "en" : "ar";
+    const r = await waSend(env, cfg, ph, lang, { name: "Eyeblink", text: lang === "en" ? "This is a test message from your Eyeblink Studio setup." : "هي رسالة تجريبية من إعدادات Eyeblink Studio.", path: lang === "en" ? "en/w" : "w" });
+    await logSend(D, { channel: "whatsapp", recipient: "studio", target: ph, kind: "test", status: r.ok ? "sent" : r.skip ? "skipped" : "failed", error: r.error || r.skip, provider_id: r.id });
+    return json({ ok: !!r.ok, error: r.error || r.skip || null, id: r.id || null });
+  }
   if (d.action === "project") {
     const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email);
     if (!u) return json({ ok: false, error: "no account" }, 404);
@@ -346,7 +523,7 @@ async function adminPost(ctx, d){
   }
   if (d.action === "studioFile" || (d.action === "studioComment" && d.scope === "project")) {
     const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
-    if (d.action === "studioFile") return addFile(D, { project: p, by: "studio", by_name: "Eyeblink Studio", d });
+    if (d.action === "studioFile") return addFile(ctx, D, { project: p, by: "studio", by_name: "Eyeblink Studio", d });
     return addComment(ctx, D, { scope: "project", project: p, author: "studio", author_name: "Eyeblink Studio", body: d.body, links: d.links });
   }
   const t = parse(await D.prepare("SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?").bind(clip(d.task, 12)).first());
