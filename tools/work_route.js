@@ -9,12 +9,20 @@
 //                  { action:"reply", task, text, links }            answer the studio's request for information
 //                  { action:"dateChange", task, date, reason }       ask to move the confirmed date (the studio decides)
 //                  { action:"cancel", task }                         only before the studio accepts it
+//                  { action:"decide", task, deliverable, decision:"approve"|"changes", note, points:[{t:"00:12", text}] }   on the latest version
+//                  { action:"comment", scope:"task"|"project", task|project, body, links }   { action:"deleteComment", id }   (own only)
+//                  { action:"file", project, category, title, url, note }   { action:"deleteFile", id }   (own only)
 // Studio (admin password as Bearer):
 //   GET  /api/work?admin=1[&status=&client=&project=]
 //   POST /api/work { action:"project", id?, client_email, name, description, type, services, start_date, end_date, status, quota }
 //                  { action:"review", task, decision:"review"|"accept"|"info"|"reject", confirmed_date, note }
 //                  { action:"status", task, status, note }  { action:"date", task, confirmed_date, note }
 //                  { action:"dateDecision", task, approve, date }
+//                  { action:"deliver", task, url, title, note, final, links }   V1, V2… or Final (a Google Drive link, etc.)
+//                  { action:"point", deliverable, index, done }   tick off a revision point
+//                  { action:"studioComment", scope, task|project, body, links }  { action:"removeComment", id }
+//                  { action:"studioFile", project, category, title, url, note }  { action:"removeFile", id }
+//   GET  /api/work?admin=1&space=PROJECT_ID   that project's discussion, files and deliveries
 const STATUSES = ["new","review","info","accepted","progress","feedback","revision","final","completed","rejected","cancelled"];
 const OPEN = ["new","review","info","accepted","progress","feedback","revision","final"];
 const PRIORITIES = ["normal","high","urgent"];
@@ -37,7 +45,21 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS activity_client ON activity(client_email, id)`,
   `CREATE INDEX IF NOT EXISTS activity_project ON activity(project_id, id)`,
   `CREATE INDEX IF NOT EXISTS activity_task ON activity(task_id, id)`,
+  `CREATE TABLE IF NOT EXISTS deliverables (id TEXT PRIMARY KEY, task_id TEXT NOT NULL, project_id TEXT NOT NULL, client_email TEXT NOT NULL, version INTEGER NOT NULL, label TEXT NOT NULL,
+     is_final INTEGER NOT NULL DEFAULT 0, title TEXT NOT NULL DEFAULT '', url TEXT NOT NULL, links TEXT NOT NULL DEFAULT '[]', note TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'sent',
+     decision_note TEXT NOT NULL DEFAULT '', points TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, decided_at TEXT, decided_by TEXT)`,
+  `CREATE INDEX IF NOT EXISTS deliverables_task ON deliverables(task_id, version)`,
+  `CREATE INDEX IF NOT EXISTS deliverables_project ON deliverables(project_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, scope TEXT NOT NULL, project_id TEXT NOT NULL, task_id TEXT, client_email TEXT NOT NULL, author TEXT NOT NULL, author_name TEXT NOT NULL DEFAULT '',
+     body TEXT NOT NULL, links TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, deleted_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS comments_task ON comments(task_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS comments_project ON comments(project_id, scope, created_at)`,
+  `CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, client_email TEXT NOT NULL, task_id TEXT, category TEXT NOT NULL DEFAULT 'other', title TEXT NOT NULL, url TEXT NOT NULL,
+     note TEXT NOT NULL DEFAULT '', added_by TEXT NOT NULL, added_name TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, deleted_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS files_project ON files(project_id, created_at)`,
 ];
+const FILE_CATS = ["brand","raw","reference","document","other"];
+const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
 let READY = false;
 async function db(env){
   if (!env.DB) return null;
@@ -52,6 +74,20 @@ function cleanLinks(list){ return (Array.isArray(list) ? list : []).slice(0, 12)
 function parse(t){ if (!t) return t; try { t.links = JSON.parse(t.links || "[]"); } catch { t.links = []; } try { t.change_request = t.change_request ? JSON.parse(t.change_request) : null; } catch { t.change_request = null; } return t; }
 function parseP(p){ if (!p) return p; try { p.services = JSON.parse(p.services || "[]"); } catch { p.services = []; } return p; }
 function parseA(a){ try { a.data = JSON.parse(a.data || "{}"); } catch { a.data = {}; } return a; }
+function parseD(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } try { x.points = JSON.parse(x.points || "[]"); } catch { x.points = []; } x.is_final = !!x.is_final; return x; }
+function parseC(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } return x; }
+function cleanPoints(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(x => ({ t: TC.test(clip(x && x.t, 8)) ? clip(x.t, 8) : "", text: clip(x && x.text, 600), done: false })).filter(x => x.text); }
+const isUrl = u => /^https?:\/\/[^\s]+$/i.test(u || "");
+const excerpt = (t, n) => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+async function deliverablesOf(D, taskId){ return (await D.prepare("SELECT * FROM deliverables WHERE task_id=? ORDER BY version DESC").bind(taskId).all()).results.map(parseD); }
+async function commentsOf(D, scope, id){ return (await D.prepare(scope === "task" ? "SELECT * FROM comments WHERE task_id=? AND scope='task' AND deleted_at IS NULL ORDER BY created_at LIMIT 300"
+  : "SELECT * FROM comments WHERE project_id=? AND scope='project' AND deleted_at IS NULL ORDER BY created_at LIMIT 300").bind(id).all()).results.map(parseC); }
+async function spaceOf(D, pid){
+  const files = (await D.prepare("SELECT * FROM files WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 300").bind(pid).all()).results;
+  const delivered = (await D.prepare(`SELECT d.id, d.label, d.title, d.url, d.is_final, d.status, d.created_at, t.ref, t.title AS task_title FROM deliverables d JOIN tasks t ON t.id=d.task_id
+    WHERE d.project_id=? ORDER BY d.created_at DESC LIMIT 300`).bind(pid).all()).results.map(x => (x.is_final = !!x.is_final, x));
+  return { comments: await commentsOf(D, "project", pid), files, delivered };
+}
 async function newRef(D){ for (let i = 0; i < 6; i++) { const r = "T-" + randHex(3).toUpperCase().slice(0, 5); if (!(await D.prepare("SELECT 1 FROM tasks WHERE ref=?").bind(r).first())) return r; } return "T-" + randHex(4).toUpperCase(); }
 async function act(D, a){ await D.prepare("INSERT INTO activity (at, actor, actor_name, client_email, project_id, task_id, kind, data) VALUES (?,?,?,?,?,?,?,?)")
   .bind(now(), a.actor, a.actor_name || "", a.client_email || null, a.project_id || null, a.task_id || null, a.kind, JSON.stringify(a.data || {})).run(); }
@@ -81,11 +117,14 @@ async function tellClient(env, t, kind, extra){
                 : ["بخصوص تغيير الموعد · " + t.ref, `ضلّ موعد تسليم <b style="color:#fff">${h(t.title)}</b> على <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
     completed: en ? ["Task completed · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is complete. Thank you!`] : ["خلصت المهمة · " + t.ref, `خلصت مهمة <b style="color:#fff">${h(t.title)}</b>. شكراً لك!`],
     status:  en ? ["Task update · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is now: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`] : ["تحديث على مهمتك · " + t.ref, `حالة مهمة <b style="color:#fff">${h(t.title)}</b> صارت: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`],
+    deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
+                 : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. شوفها وابعتلنا موافقتك أو ملاحظاتك.`],
+    comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>:`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
                 : ["مشروع جديد بمساحة العمل", `فتحلك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>. فيك تبعت مهامك عليه من مساحة العمل.`],
   }[kind]; if (!T) return;
   const note = extra && extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-  const link = kind === "project" ? SITE + (en ? "/en" : "") + "/account.html#w/p/" + (extra && extra.id) : taskLink(lang, t.ref);
+  const link = extra && extra.link ? extra.link : kind === "project" ? SITE + (en ? "/en" : "") + "/account.html#w/p/" + (extra && extra.id) : taskLink(lang, t.ref);
   await sendMail(env, u.email, T[0], mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح بمساحة العمل", link, greet({ name: u.name, lang })));
 }
 
@@ -100,12 +139,12 @@ export async function onRequestGet({ request, env }) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(parse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
-    return json({ ok: true, project: p, tasks, activity });
+    return json({ ok: true, me: e, project: p, tasks, activity, ...(await spaceOf(D, p.id)) });
   }
   if (q.get("task")) {
     const t = parse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
     const activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA);
-    return json({ ok: true, task: t, activity });
+    return json({ ok: true, me: e, task: t, activity, deliverables: await deliverablesOf(D, t.id), comments: await commentsOf(D, "task", t.id) });
   }
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e).all()).results.map(parseP);
@@ -114,13 +153,15 @@ export async function onRequestGet({ request, env }) {
   const upcoming = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.confirmed_date >= ?2 AND t.status IN (${open}) ORDER BY t.confirmed_date LIMIT 6`).bind(e, today()).all()).results;
   const activity = (await D.prepare(`SELECT a.*, t.ref AS task_ref, t.title AS task_title FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.project_id IN ${MINE} ORDER BY a.id DESC LIMIT 20`).bind(e).all()).results.map(parseA);
-  return json({ ok: true, projects, counts, tasks, upcoming, activity });
+  const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
+      AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
+  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting });
 }
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -145,8 +186,54 @@ export async function onRequestPost(ctx) {
     later(ctx, notifyStudio(env, "مهمة جديدة " + ref + " — " + u.name, title + "\nالمشروع: " + p.name + (rd ? "\nالموعد المطلوب: " + rd : "") + (pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[pr] : "") + "\n\nافتحها: " + adminLink(ref)));
     return json({ ok: true, ref });
   }
+  if (d.action === "comment" && d.scope === "project") {
+    const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
+    return addComment(ctx, D, { scope: "project", project: p, author: u.email, author_name: u.name, body: d.body, links: d.links, client: true });
+  }
+  if (d.action === "deleteComment") {
+    const c = await D.prepare(`SELECT * FROM comments WHERE id=?2 AND deleted_at IS NULL AND author=?1 AND project_id IN ${MINE}`).bind(u.email, clip(d.id, 40)).first();
+    if (!c) return json({ ok: false }, 404);
+    await D.prepare("UPDATE comments SET deleted_at=? WHERE id=?").bind(at, c.id).run(); return json({ ok: true });
+  }
+  if (d.action === "file") {
+    const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
+    return addFile(D, { project: p, by: u.email, by_name: u.name, d });
+  }
+  if (d.action === "deleteFile") {
+    const f = await D.prepare(`SELECT * FROM files WHERE id=?2 AND deleted_at IS NULL AND added_by=?1 AND project_id IN ${MINE}`).bind(u.email, clip(d.id, 40)).first();
+    if (!f) return json({ ok: false }, 404);
+    await D.prepare("UPDATE files SET deleted_at=? WHERE id=?").bind(at, f.id).run();
+    await act(D, { ...who, client_email: f.client_email, project_id: f.project_id, kind: "file_removed", data: { title: f.title } });
+    return json({ ok: true });
+  }
   const t = parse(await myTask(D, u.email, clip(d.task, 12))); if (!t) return json({ ok: false, error: "task" }, 404);
   const tw = { ...who, client_email: t.client_email, project_id: t.project_id, task_id: t.id };
+  if (d.action === "comment") return addComment(ctx, D, { scope: "task", task: t, author: u.email, author_name: u.name, body: d.body, links: d.links, client: true });
+  if (d.action === "decide") {
+    const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE task_id=? ORDER BY version DESC LIMIT 1").bind(t.id).first() || {});
+    if (!dl.id || dl.id !== clip(d.deliverable, 40) || dl.status !== "sent" || !["feedback","final"].includes(t.status)) return json({ ok: false, error: "state" }, 409);
+    const note = clip(d.note, 3000);
+    if (d.decision === "approve") {
+      const to = dl.is_final ? "completed" : "progress";
+      await D.prepare("UPDATE deliverables SET status='approved', decision_note=?, decided_at=?, decided_by=? WHERE id=?").bind(note, at, u.email, dl.id).run();
+      await D.prepare("UPDATE tasks SET status=?, updated_at=?" + (to === "completed" ? ", completed_at=?" : "") + " WHERE id=?").bind(...[to, at].concat(to === "completed" ? [at] : []), t.id).run();
+      await act(D, { ...tw, kind: "approved", data: { label: dl.label, final: dl.is_final, note: note || undefined } });
+      await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
+      later(ctx, notifyStudio(env, (dl.is_final ? "العميل وافق على التسليم النهائي " : "العميل وافق على النسخة " + dl.label + " ") + t.ref, u.name + " · " + t.title + (note ? "\n" + note : "") + (dl.is_final ? "\n\nالمهمة صارت مكتملة." : "\n\nجهّز التسليم النهائي.") + "\n\n" + adminLink(t.ref)));
+      return json({ ok: true, status: to });
+    }
+    if (d.decision === "changes") {
+      const points = cleanPoints(d.points); if (!points.length && !note) return json({ ok: false, error: "text" }, 400);
+      await D.prepare("UPDATE deliverables SET status='changes', points=?, decision_note=?, decided_at=?, decided_by=? WHERE id=?").bind(JSON.stringify(points), note, at, u.email, dl.id).run();
+      await D.prepare("UPDATE tasks SET status='revision', updated_at=? WHERE id=?").bind(at, t.id).run();
+      const round = (await D.prepare("SELECT COUNT(*) AS n FROM deliverables WHERE task_id=? AND status='changes'").bind(t.id).first()).n;
+      await act(D, { ...tw, kind: "changes_requested", data: { label: dl.label, points: points.length, round, note: note || undefined } });
+      await act(D, { ...tw, kind: "status", data: { from: t.status, to: "revision" } });
+      later(ctx, notifyStudio(env, "تعديلات مطلوبة على " + dl.label + " · " + t.ref + " (جولة " + round + ")", u.name + " · " + t.title + "\n\n" + points.map((x, i) => (i + 1) + ". " + (x.t ? "[" + x.t + "] " : "") + x.text).join("\n") + (note ? "\n\n" + note : "") + "\n\n" + adminLink(t.ref)));
+      return json({ ok: true, status: "revision", round });
+    }
+    return json({ ok: false }, 400);
+  }
   if (d.action === "reply") {
     if (t.status !== "info") return json({ ok: false, error: "state" }, 409);
     const text = clip(d.text, 4000), links = cleanLinks(d.links); if (!text && !links.length) return json({ ok: false, error: "text" }, 400);
@@ -176,6 +263,31 @@ export async function onRequestPost(ctx) {
   return json({ ok: false }, 400);
 }
 
+async function addComment(ctx, D, o){
+  const body = clip(o.body, 4000), links = cleanLinks(o.links); if (!body && !links.length) return json({ ok: false, error: "text" }, 400);
+  const p = o.project || { id: o.task.project_id, client_email: o.task.client_email, name: o.task.project_name }, at = now();
+  if (o.client) { const n = (await D.prepare("SELECT COUNT(*) AS n FROM comments WHERE author=? AND created_at>=?").bind(o.author, today()).first()).n; if (n >= 80) return json({ ok: false, error: "too many attempts" }, 429); }
+  const id = "c_" + randHex(6), taskId = o.task ? o.task.id : null;
+  await D.prepare("INSERT INTO comments (id, scope, project_id, task_id, client_email, author, author_name, body, links, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(id, o.scope, p.id, taskId, p.client_email, o.author, o.author_name || "", body, JSON.stringify(links), at).run();
+  await act(D, { actor: o.author, actor_name: o.author_name, client_email: p.client_email, project_id: p.id, task_id: taskId, kind: "comment", data: { scope: o.scope, text: excerpt(body, 140) } });
+  const env = ctx.env, where = o.task ? "«" + o.task.title + "» " + o.task.ref : "نقاش مشروع «" + p.name + "»";
+  if (o.client) later(ctx, notifyStudio(env, "تعليق جديد من " + o.author_name + " · " + (o.task ? o.task.ref : p.name), where + "\n\n" + body + "\n\n" + (o.task ? adminLink(o.task.ref) : SITE + "/admin/#tasks")));
+  else { const u = await userOf(env, p.client_email), en = u && u.lang === "en";
+    later(ctx, tellClient(env, o.task ? o.task : { client_email: p.client_email, ref: "", title: p.name }, "comment", { note: body, link: o.task ? undefined : SITE + (en ? "/en" : "") + "/account.html#w/p/" + p.id + "/talk" })); }
+  return json({ ok: true, id });
+}
+async function addFile(D, o){
+  const d = o.d, url = clip(d.url, 600), title = clip(d.title, 140) || url.replace(/^https?:\/\//, "").slice(0, 60);
+  if (!isUrl(url)) return json({ ok: false, error: "url" }, 400);
+  if ((await D.prepare("SELECT COUNT(*) AS n FROM files WHERE project_id=? AND deleted_at IS NULL").bind(o.project.id).first()).n >= 300) return json({ ok: false, error: "too many" }, 429);
+  const id = "f_" + randHex(6), cat = FILE_CATS.includes(d.category) ? d.category : "other";
+  await D.prepare("INSERT INTO files (id, project_id, client_email, category, title, url, note, added_by, added_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(id, o.project.id, o.project.client_email, cat, title, url, clip(d.note, 1000), o.by, o.by_name || "", now()).run();
+  await act(D, { actor: o.by, actor_name: o.by_name, client_email: o.project.client_email, project_id: o.project.id, kind: "file_added", data: { title, category: cat } });
+  return json({ ok: true, id });
+}
+
 async function adminGet(request, env, q){
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
@@ -186,11 +298,14 @@ async function adminGet(request, env, q){
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY t.updated_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(s => `'${s}'`).join(",")})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks FROM projects p ORDER BY p.updated_at DESC`).all()).results.map(parseP);
-  let activity = [];
-  if (q.get("task")) { const t = await D.prepare("SELECT id FROM tasks WHERE ref=?").bind(q.get("task")).first(); if (t) activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); }
+  if (q.get("space")) { const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(q.get("space")).first()); if (!p) return json({ ok: false }, 404);
+    return json({ ok: true, project: p, ...(await spaceOf(D, p.id)) }); }
+  let activity = [], deliverables = [], comments = [];
+  if (q.get("task")) { const t = await D.prepare("SELECT id FROM tasks WHERE ref=?").bind(q.get("task")).first();
+    if (t) { activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); deliverables = await deliverablesOf(D, t.id); comments = await commentsOf(D, "task", t.id); } }
   const clients = []; let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") clients.push({ email: u.email, name: u.name }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
-  return json({ ok: true, tasks, projects, clients, activity, today: today() });
+  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, today: today() });
 }
 
 async function adminPost(ctx, d){
@@ -219,9 +334,39 @@ async function adminPost(ctx, d){
     later(ctx, tellClient(env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
   }
+  if (d.action === "point") {
+    const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE id=?").bind(clip(d.deliverable, 40)).first() || {}); const i = +d.index;
+    if (!dl.id || !dl.points[i]) return json({ ok: false }, 404);
+    dl.points[i].done = !!d.done; await D.prepare("UPDATE deliverables SET points=? WHERE id=?").bind(JSON.stringify(dl.points), dl.id).run(); return json({ ok: true });
+  }
+  if (d.action === "removeComment" || d.action === "removeFile") {
+    const tb = d.action === "removeComment" ? "comments" : "files", r = await D.prepare(`SELECT * FROM ${tb} WHERE id=? AND deleted_at IS NULL`).bind(clip(d.id, 40)).first();
+    if (!r) return json({ ok: false }, 404);
+    await D.prepare(`UPDATE ${tb} SET deleted_at=? WHERE id=?`).bind(at, r.id).run(); return json({ ok: true });
+  }
+  if (d.action === "studioFile" || (d.action === "studioComment" && d.scope === "project")) {
+    const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
+    if (d.action === "studioFile") return addFile(D, { project: p, by: "studio", by_name: "Eyeblink Studio", d });
+    return addComment(ctx, D, { scope: "project", project: p, author: "studio", author_name: "Eyeblink Studio", body: d.body, links: d.links });
+  }
   const t = parse(await D.prepare("SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?").bind(clip(d.task, 12)).first());
   if (!t) return json({ ok: false, error: "task" }, 404);
   const tw = { ...studio, client_email: t.client_email, project_id: t.project_id, task_id: t.id }, note = clip(d.note, 3000);
+  if (d.action === "studioComment") return addComment(ctx, D, { scope: "task", task: t, author: "studio", author_name: "Eyeblink Studio", body: d.body, links: d.links });
+  if (d.action === "deliver") {
+    if (!["accepted","progress","revision","feedback","final"].includes(t.status)) return json({ ok: false, error: "state" }, 409);
+    const url = clip(d.url, 600); if (!isUrl(url)) return json({ ok: false, error: "url" }, 400);
+    const v = ((await D.prepare("SELECT MAX(version) AS v FROM deliverables WHERE task_id=?").bind(t.id).first()).v || 0) + 1, fin = !!d.final, label = fin ? "Final" : "V" + v, to = fin ? "final" : "feedback";
+    const id = "d_" + randHex(6);
+    await D.prepare("UPDATE deliverables SET status='superseded' WHERE task_id=? AND status='sent'").bind(t.id).run();
+    await D.prepare("INSERT INTO deliverables (id, task_id, project_id, client_email, version, label, is_final, title, url, links, note, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'sent',?)")
+      .bind(id, t.id, t.project_id, t.client_email, v, label, fin ? 1 : 0, clip(d.title, 140), url, JSON.stringify(cleanLinks(d.links)), note, at).run();
+    await D.prepare("UPDATE tasks SET status=?, updated_at=? WHERE id=?").bind(to, at, t.id).run();
+    await act(D, { ...tw, kind: "delivered", data: { label, version: v, final: fin, note: note || undefined } });
+    if (t.status !== to) await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
+    t.status = to; later(ctx, tellClient(env, t, "deliver", { label, final: fin, note }));
+    return json({ ok: true, id, label });
+  }
   const setStatus = async (to, extra) => {
     await D.prepare("UPDATE tasks SET status=?, studio_note=?, updated_at=?" + (to === "completed" ? ", completed_at=?" : "") + " WHERE id=?").bind(...[to, note || "", at].concat(to === "completed" ? [at] : []), t.id).run();
     await act(D, { ...tw, kind: "status", data: { from: t.status, to, note: note || undefined, ...(extra || {}) } });

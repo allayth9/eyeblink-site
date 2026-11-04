@@ -457,6 +457,35 @@
   var WPT={once:'مشروع لمرة واحدة',monthly:'تعاون شهري',campaign:'حملة إعلانية',content:'إدارة محتوى',editing:'مونتاج فيديوهات',motion:'موشن غرافيك',commercial:'إنتاج تجاري',custom:'مشروع مخصص'};
   var WPS={active:'نشط',paused:'متوقف مؤقتاً',completed:'منتهي',archived:'مؤرشف'};
   var WPR={normal:'عادية',high:'عالية',urgent:'عاجلة'};
+  var WDS={sent:'بانتظار رد العميل',approved:'وافق العميل',changes:'طلب تعديلات',superseded:'نسخة أقدم'};
+  var WFC={brand:'الهوية البصرية',raw:'مواد خام',reference:'مراجع',document:'مستندات',other:'أخرى'};
+  var WSPACE=null;
+  function loadSpace(id){ id=id||(WSPACE&&WSPACE.id); if(!id) return; WSPACE={id:id,loading:1}; renderWork();
+    fetch(API+'/work?admin=1&space='+encodeURIComponent(id),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ WSPACE=j.ok?{id:id,d:j}:{id:id,err:1}; renderWork(); var el=document.getElementById('wspace'); if(el) el.scrollIntoView({block:'start',behavior:'smooth'}); }).catch(function(){ WSPACE={id:id,err:1}; renderWork(); }); }
+  function wcomments(list,composer){ return '<div class="wcl">'+((list||[]).length?list.map(function(c){ var st=c.author==='studio';
+      return '<div class="wcm'+(st?' st':'')+'"><div class="small"><b>'+esc(st?'أنت (الاستوديو)':c.author_name||c.author)+'</b> <span class="muted">· '+esc(new Date(c.created_at).toLocaleString('ar'))+'</span> <button class="linkbtn small" type="button" data-wcmd="'+esc(c.id)+'">حذف</button></div>'+
+        '<pre>'+esc(c.body)+'</pre>'+((c.links||[]).length?'<div>'+wlinks(c.links)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في تعليقات بعد.</div>')+'</div>'+composer; }
+  function wcomposer(attr){ return '<div class="wcmp"><textarea data-wcm dir="auto" placeholder="اكتب رد أو تعليق — بيوصل العميل بإيميل"></textarea><div class="row"><div class="field"><input data-wcml dir="ltr" placeholder="رابط (اختياري)"></div><div class="field"><button class="btn sm primary" type="button" '+attr+'>إرسال التعليق</button></div></div></div>'; }
+  function wdelivs(t){ var L=WORK.deliverables||[], can=['accepted','progress','revision','feedback','final'].indexOf(t.status)>=0, next=(L.length?L[0].version:0)+1;
+    var rounds=L.filter(function(d){return d.status==='changes'}).length;
+    return '<div class="wdv"><div class="ph"><b>التسليمات'+(rounds?' · جولة التعديل '+rounds:'')+'</b></div>'+
+      (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b> · <span class="wpill s-'+(d.status==='sent'?'feedback':d.status==='approved'?'completed':d.status==='changes'?'revision':'cancelled')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
+        '<div>'+wlinks([{url:d.url,label:'افتح الملف'}].concat(d.links||[]))+'</div>'+(d.note?'<div class="small muted">ملاحظتك مع التسليم: '+esc(d.note)+'</div>':'')+
+        ((d.points||[]).length?'<div class="small muted" style="margin-top:6px">تعديلات العميل — علّم اللي خلصته:</div><ol class="wpts-a">'+d.points.map(function(p,k){ return '<li><label class="check"><input type="checkbox" data-wpd="'+esc(d.id)+'" data-wpi="'+k+'"'+(p.done?' checked':'')+'> '+(p.t?'<span class="tc">'+esc(p.t)+'</span> ':'')+esc(p.text)+'</label></li>'; }).join('')+'</ol>':'')+
+        (d.decision_note?'<div class="small">ملاحظة العميل: '+esc(d.decision_note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في تسليمات بعد.</div>')+
+      (can?'<div class="wsend"><div class="small muted">تسليم جديد — رح ينحفظ كـ <b>V'+next+'</b> (أو Final إذا علّمته نهائي)</div>'+
+        '<div class="row"><div class="field"><label>رابط الملف (Google Drive / YouTube / Vimeo…)</label><input data-wdu dir="ltr" placeholder="https://drive.google.com/file/d/…"></div><div class="field"><label>عنوان (اختياري)</label><input data-wdt2 dir="auto" placeholder="'+esc(t.title)+'"></div></div>'+
+        '<div class="field"><label>ملاحظة للعميل (اختياري)</label><textarea data-wdn dir="auto" placeholder="مثلاً: هي النسخة الأولى، الموسيقى مؤقتة."></textarea></div>'+
+        '<div class="actions"><label class="check"><input type="checkbox" data-wdf> هاد التسليم النهائي (Final)</label><button class="btn sm primary" type="button" data-wdl="'+esc(t.ref)+'">أرسل التسليم للعميل</button></div></div>':'')+'</div>'; }
+  function wspacePanel(){ var S=WSPACE; if(!S) return '';
+    if(S.loading) return '<section class="sec" id="wspace"><div class="empty">…</div></section>'; if(S.err) return '<section class="sec" id="wspace"><div class="empty">تعذّر التحميل.</div></section>';
+    var D=S.d, p=D.project;
+    return '<section class="sec" id="wspace"><div class="ph"><h3>'+esc(p.name)+' — النقاش والملفات</h3><button class="btn sm" type="button" data-wspx>إغلاق</button></div>'+
+      '<div class="wsp2"><div><div class="small muted">نقاش المشروع</div>'+wcomments(D.comments,wcomposer('data-wpcm="'+esc(p.id)+'"'))+'</div>'+
+      '<div><div class="small muted">مركز الملفات</div><div class="wfl2">'+((D.files||[]).length?D.files.map(function(f){ return '<div class="wfi"><span class="tag">'+esc(WFC[f.category]||f.category)+'</span> '+wlinks([{url:f.url,label:f.title}])+' <span class="small muted">'+esc(f.added_by==='studio'?'أنت':f.added_name)+' · '+esc(new Date(f.created_at).toLocaleDateString('ar'))+'</span> <button class="linkbtn small" type="button" data-wfd="'+esc(f.id)+'">حذف</button>'+(f.note?'<div class="small muted">'+esc(f.note)+'</div>':'')+'</div>'; }).join(''):'<div class="small muted">ما في ملفات مضافة.</div>')+
+        ((D.delivered||[]).length?'<div class="small muted" style="margin-top:8px">التسليمات ('+D.delivered.length+')</div>'+D.delivered.map(function(d){ return '<div class="wfi"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> '+wlinks([{url:d.url,label:(d.title||d.task_title)}])+' <span class="small muted">'+esc(d.ref)+'</span></div>'; }).join(''):'')+'</div>'+
+        '<div class="row"><div class="field"><label>التصنيف</label><select data-wfc>'+Object.keys(WFC).map(function(k){ return '<option value="'+k+'">'+WFC[k]+'</option>'; }).join('')+'</select></div><div class="field"><label>الاسم</label><input data-wft dir="auto"></div></div>'+
+        '<div class="field"><label>الرابط</label><input data-wfu dir="ltr" placeholder="https://"></div><div class="actions"><button class="btn sm primary" type="button" data-wfa="'+esc(p.id)+'">أضف الملف للعميل</button></div></div></div></section>'; }
   function loadWork(){
     if(!LIVE){ WORK={err:'live'}; if(TAB==='tasks') renderWork(); return; }
     var q='?admin=1'+(WOPEN?'&task='+encodeURIComponent(WOPEN):'');
@@ -491,8 +520,12 @@
         '<div class="row"><div class="field"><label>الحالة</label><select data-wst>'+['accepted','progress','feedback','revision','final','completed','cancelled'].map(function(s){ return '<option value="'+s+'"'+(s===t.status?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select></div>'+
         '<div class="field"><label>ملاحظة للعميل مع التحديث (اختياري)</label><input data-wnote2 dir="auto"></div></div><div class="actions"><button class="btn sm primary" type="button" data-wsts="'+esc(t.ref)+'">حفظ الحالة</button></div>'+
         '<div class="row"><div class="field"><label>تغيير الموعد المؤكد</label><input type="date" data-wcd2 value="'+esc(t.confirmed_date||'')+'"></div><div class="field"><label>&nbsp;</label><button class="btn sm" type="button" data-wdt="'+esc(t.ref)+'">حفظ الموعد وإبلاغ العميل</button></div></div>' : ''))+
+      (WOPEN===t.ref&&['new','review','info','rejected','cancelled'].indexOf(t.status)<0?wdelivs(t):'')+
+      (WOPEN===t.ref?'<div class="small muted" style="margin-top:8px">التعليقات ('+(WORK.comments||[]).length+')</div>'+wcomments(WORK.comments,wcomposer('data-wtcm="'+esc(t.ref)+'"')):'')+
       (WOPEN===t.ref&&(WORK.activity||[]).length?'<div class="small muted" style="margin-top:8px">سجل المهمة</div><div class="wlog small">'+WORK.activity.map(function(a){ var d=a.data||{};
-        var w=a.kind==='status'?'الحالة ← '+(WST[d.to]||d.to)+(d.confirmed_date?' · الموعد '+wd(d.confirmed_date):''):a.kind==='task_created'?'أرسل المهمة':a.kind==='date_changed'?'الموعد ← '+wd(d.to):a.kind==='info_provided'?'أرسل المعلومات: '+(d.text||''):a.kind==='date_change_requested'?'طلب تغيير الموعد إلى '+wd(d.date):a.kind==='date_change_decided'?(d.approved?'وافقت على الموعد '+wd(d.to):'أبقيت الموعد'):a.kind;
+        var w=a.kind==='status'?'الحالة ← '+(WST[d.to]||d.to)+(d.confirmed_date?' · الموعد '+wd(d.confirmed_date):''):a.kind==='task_created'?'أرسل المهمة':a.kind==='date_changed'?'الموعد ← '+wd(d.to):a.kind==='info_provided'?'أرسل المعلومات: '+(d.text||''):a.kind==='date_change_requested'?'طلب تغيير الموعد إلى '+wd(d.date):a.kind==='date_change_decided'?(d.approved?'وافقت على الموعد '+wd(d.to):'أبقيت الموعد'):
+          a.kind==='delivered'?'سلّم '+(d.final?'Final':d.label):a.kind==='approved'?'وافق على '+(d.final?'التسليم النهائي':d.label):a.kind==='changes_requested'?'طلب تعديلات على '+d.label+' ('+(d.points||0)+' نقاط)':
+          a.kind==='comment'?'علّق: '+(d.text||''):a.kind==='file_added'?'أضاف ملف «'+(d.title||'')+'»':a.kind;
         return '<div>'+esc(new Date(a.at).toLocaleString('ar'))+' · <b>'+esc(a.actor==='studio'?'أنت':a.actor_name)+'</b> · '+esc(w)+(d.note?' — '+esc(d.note):'')+'</div>'; }).join('')+'</div>':'')+'</div>';
   }
   function wtaskCard(t){ return '<details class="order item wt" data-wref="'+esc(t.ref)+'"'+(WOPEN===t.ref?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(t.ref)+'</span>'+wpill(t.status)+'<b>'+esc(t.title)+'</b><span class="muted small">'+esc(t.project_name)+' · المطلوب '+esc(wd(t.requested_date))+(t.confirmed_date?' · المؤكد '+esc(wd(t.confirmed_date)):'')+'</span></summary><div class="body">'+wtaskBody(t)+'</div></details>'; }
@@ -525,14 +558,16 @@
       '<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">المشروع بيربط عميل متعاقد بمساحة عمله. العميل بيشوف مشاريعه بس، وبيبعت المهام من جواتها.</p>'+
         ((W.projects||[]).length?'<div class="clients">'+W.projects.map(function(p){ var cn=(W.clients||[]).filter(function(c){return c.email===p.client_email})[0];
           return '<div class="client"'+(WPEDIT===p.id?' data-editing':'')+'>'+(WPEDIT===p.id?projForm(p):'<div><b>'+esc(p.name)+'</b> <span class="rpill'+(p.status==='active'?' on':'')+'">'+esc(WPS[p.status]||p.status)+'</span> <span class="muted small">'+esc(WPT[p.type]||p.type)+' · '+esc(cn?cn.name:p.client_email)+'</span></div>'+
-            '<span class="muted small">'+p.open_tasks+' مفتوحة من '+p.all_tasks+(p.start_date?' · من '+esc(wd(p.start_date)):'')+(p.end_date?' إلى '+esc(wd(p.end_date)):'')+'</span><div class="actions"><button class="btn sm" type="button" data-wpe="'+esc(p.id)+'">تعديل</button><button class="btn sm" type="button" data-wpt="'+esc(p.id)+'">مهامه</button></div>')+'</div>'; }).join('')+'</div>':'')+
-        '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+
+            '<span class="muted small">'+p.open_tasks+' مفتوحة من '+p.all_tasks+(p.start_date?' · من '+esc(wd(p.start_date)):'')+(p.end_date?' إلى '+esc(wd(p.end_date)):'')+'</span><div class="actions"><button class="btn sm" type="button" data-wpe="'+esc(p.id)+'">تعديل</button><button class="btn sm" type="button" data-wpt="'+esc(p.id)+'">مهامه</button><button class="btn sm" type="button" data-wsp="'+esc(p.id)+'">النقاش والملفات</button></div>')+'</div>'; }).join('')+'</div>':'')+
+        '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+wspacePanel()+
       '<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">أنواع المهام بتظهر للعميل كاقتراحات، وأسماء الأولويات قابلة للتعديل. بتنحفظ مع «نشر التعديلات».</p>'+
         field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>';
     if(WOPEN){ var op=document.querySelector('[data-wref="'+WOPEN+'"]'); if(op){ op.open=true; setTimeout(function(){ op.scrollIntoView({block:'start',behavior:'smooth'}); },80); } }
   }
   document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.wref||!d.open) return; if(WOPEN!==d.dataset.wref){ WOPEN=d.dataset.wref; try{ history.replaceState(null,'','#tasks/'+WOPEN); }catch(_){} loadWork(); } },true);
-  document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks'||!s.dataset.wf) return; WF[s.dataset.wf]=s.value; renderWork(); });
+  document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks') return;
+    if(s.dataset.wpd){ fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({action:'point',deliverable:s.dataset.wpd,index:+s.dataset.wpi,done:s.checked})}).then(function(r){ if(!r.ok) throw 0; toast(s.checked?'تم ✓':'رجعت مفتوحة'); }).catch(function(){ s.checked=!s.checked; toast('تعذّر الحفظ',true); }); return; }
+    if(!s.dataset.wf) return; WF[s.dataset.wf]=s.value; renderWork(); });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList.contains('wpf')) return; e.preventDefault(); var E=f.elements;
     var body={action:'project',id:f.dataset.wpid||undefined,client_email:E.client_email.value,name:E.name.value.trim(),type:E.type.value,status:E.status.value,start_date:E.start_date.value,end_date:E.end_date.value,
       description:E.description.value.trim(),quota:E.quota.value,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
@@ -541,6 +576,19 @@
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
     if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
     if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; renderWork(); return; }
+    if(b.dataset.wsp){ loadSpace(b.dataset.wsp); return; }
+    if(b.hasAttribute('data-wspx')){ WSPACE=null; renderWork(); return; }
+    if(b.dataset.wdl){ var u=box.querySelector('[data-wdu]').value.trim(); if(!/^https?:\/\//i.test(u)){ toast('حط رابط الملف (يبلّش بـ https://)',true); return; }
+      var fin=box.querySelector('[data-wdf]').checked;
+      wreq({action:'deliver',task:b.dataset.wdl,url:u,title:box.querySelector('[data-wdt2]').value.trim(),note:box.querySelector('[data-wdn]').value.trim(),final:fin},b,fin?'انبعت التسليم النهائي للعميل':'انبعتت النسخة للعميل').catch(function(){}); return; }
+    if(b.dataset.wtcm||b.dataset.wpcm){ var cb=b.closest('.wcmp'), txt=cb.querySelector('[data-wcm]').value.trim(), lu=cb.querySelector('[data-wcml]').value.trim();
+      if(!txt&&!/^https?:\/\//i.test(lu)){ toast('اكتب التعليق',true); return; }
+      var body={action:'studioComment',scope:b.dataset.wtcm?'task':'project',body:txt,links:/^https?:\/\//i.test(lu)?[{url:lu}]:[]}; if(b.dataset.wtcm) body.task=b.dataset.wtcm; else body.project=b.dataset.wpcm;
+      wreq(body,b,'انبعت التعليق').then(function(){ if(b.dataset.wpcm) loadSpace(); }).catch(function(){}); return; }
+    if(b.dataset.wcmd||b.dataset.wfd){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟'; return; }
+      wreq({action:b.dataset.wcmd?'removeComment':'removeFile',id:b.dataset.wcmd||b.dataset.wfd},b,'انحذف').then(function(){ if(WSPACE) loadSpace(); }).catch(function(){}); return; }
+    if(b.dataset.wfa){ var sp=b.closest('#wspace'), fu=sp.querySelector('[data-wfu]').value.trim(); if(!/^https?:\/\//i.test(fu)){ toast('حط رابط يبلّش بـ https://',true); return; }
+      wreq({action:'studioFile',project:b.dataset.wfa,category:sp.querySelector('[data-wfc]').value,title:sp.querySelector('[data-wft]').value.trim(),url:fu},b,'انضاف الملف').then(function(){ loadSpace(); }).catch(function(){}); return; }
     if(b.dataset.wrv){ wreq({action:'review',task:b.dataset.wrv,decision:'review'},b,'صارت «قيد المراجعة»').catch(function(){}); return; }
     if(b.dataset.wacc){ var cd=box.querySelector('[data-wcd]').value; if(!cd){ toast('حدّد الموعد المؤكد',true); return; }
       wreq({action:'review',task:b.dataset.wacc,decision:'accept',confirmed_date:cd,note:box.querySelector('[data-wnote]').value.trim()},b,'انقبلت المهمة ووصل للعميل الموعد المؤكد').catch(function(){}); return; }

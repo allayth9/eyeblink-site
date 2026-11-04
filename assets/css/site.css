@@ -7,6 +7,7 @@
 @font-face{font-family:"Oswald";src:url(../fonts/oswald-500.woff2) format("woff2");font-weight:500;font-display:swap}
 @font-face{font-family:"Oswald";src:url(../fonts/oswald-600.woff2) format("woff2");font-weight:600;font-display:swap}
 @font-face{font-family:"Oswald";src:url(../fonts/oswald-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"EB Digits";src:url(../fonts/oswald-500.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0030-0039}
 @font-face{font-family:"EYEN Ammon";src:url(../fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:"Hayyakum";src:url(../fonts/hayyakum-light.woff2) format("woff2");font-weight:300;font-display:swap}
 @font-face{font-family:"Hayyakum";src:url(../fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
@@ -1466,6 +1467,65 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
 .wreply{margin-top:12px;gap:10px}
 .wchange{gap:10px;padding:16px;border-radius:16px;background:rgba(4,6,26,.45);box-shadow:inset 0 0 0 1px var(--line)}
 .wtact .danger{color:#ff9eae}
+/* titles typed by clients: Latin digits stay Latin inside the Arabic display font */
+.wtask h2,.wphead h2,.wproj h4{font-family:"EB Digits",var(--display)}
+/* workspace · phase 4: waiting strip, project tabs, deliveries, comments, files */
+.wwait{display:grid;gap:8px;box-shadow:inset 0 0 0 1px rgba(224,123,224,.35)}
+.wwait h3{margin:0;font-size:16px;font-weight:500}.wwait p{margin:0}
+.wwait ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:6px}
+.wwait a{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.04);color:inherit;text-decoration:none;transition:background .2s}
+.wwait a:hover{background:rgba(224,123,224,.08)}.wwait a b{font-weight:500}.wwait .go{margin-inline-start:auto;color:var(--venus)}
+[dir=ltr] .wwait .go{transform:scaleX(-1)}
+.wptabs{margin:0}.wptabs a{font-size:14.5px;color:var(--mist);text-decoration:none;padding:9px 20px;border-radius:999px}
+.wptabs a[aria-selected="true"]{color:var(--night);background:var(--light);font-weight:500}.wptabs small{opacity:.65;font-size:12px}
+.wpbody{display:grid;gap:14px}.wtalkp{margin:0}
+.wdls{gap:12px}
+.wdl{padding:18px 20px;display:grid;gap:12px}
+.wdl.latest{box-shadow:inset 0 0 0 1px rgba(63,224,232,.35),0 20px 50px -30px rgba(63,224,232,.45)}
+.wdl-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wver{font-family:var(--latin);font-weight:600;font-size:13px;letter-spacing:.08em;padding:6px 11px;border-radius:10px;background:rgba(63,224,232,.14);color:var(--horizon)}
+.wver.fin{background:linear-gradient(135deg,rgba(63,224,232,.25),rgba(224,123,224,.25));color:#fff}
+.wdl-t{display:grid;gap:1px;flex:1;min-width:160px}.wdl-t b{font-weight:500}.wdl-t small{font-size:12px}
+.dst{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--mist);white-space:nowrap}
+.dst.s-sent{background:rgba(224,123,224,.16);color:var(--venus)}.dst.s-approved{background:rgba(127,240,192,.14);color:#7ff0c0}.dst.s-changes{background:rgba(255,210,122,.16);color:#ffd27a}
+.wdl-note,.wdl-fb{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04)}
+.wdl-note p,.wdl-fb p{margin:4px 0 0;line-height:1.7;font-size:14px}
+.wdl-a{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.wdl-a .btn{padding:10px 18px;font-size:14px}
+.wembed{position:relative;aspect-ratio:16/9;max-height:72vh;border-radius:14px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px var(--line)}
+.wembed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.wdec{display:grid;gap:10px;padding-top:4px;border-top:1px solid var(--line)}.wdec .actions{margin:8px 0 0}.wdec p{margin:0}
+.wpts{display:grid;gap:10px;padding:16px;border-radius:16px;background:rgba(4,6,26,.45);box-shadow:inset 0 0 0 1px var(--line)}.wpts p{margin:0}
+.wpts .rows{display:grid;gap:8px}
+.wpt{display:grid;grid-template-columns:92px 1fr;gap:8px}
+.wpt input,.wcompose textarea,.wcompose input,.wfadd input,.wfadd select,.wpts textarea{font:inherit;color:var(--light);background:rgba(4,6,26,.55);border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:12px;padding:11px 13px;width:100%}
+.wpt input[name=t]{font-family:var(--latin);letter-spacing:.06em;text-align:center}
+.wpl{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:6px;counter-reset:p}
+.wpl li{display:flex;gap:10px;align-items:baseline;font-size:14px;line-height:1.6;counter-increment:p}
+.wpl li::before{content:counter(p);font-family:var(--latin);font-size:11px;color:var(--dim);min-width:14px}
+.wpl .wtc{font-family:var(--latin);font-size:12px;letter-spacing:.05em;padding:2px 8px;border-radius:8px;background:rgba(63,224,232,.12);color:var(--horizon);direction:ltr;flex:none}
+.wpl li.done>span:not(.wtc){text-decoration:line-through;opacity:.55}.wpl em{font-style:normal;font-size:12px;color:#7ff0c0;margin-inline-start:auto;white-space:nowrap}
+.wvh summary{cursor:pointer;color:var(--mist);font-size:14px;padding:8px 2px;list-style:none}.wvh summary::-webkit-details-marker{display:none}
+.wvh summary::before{content:"▸ ";color:var(--dim)}[dir=rtl] .wvh summary::before{content:"◂ "}.wvh[open] summary::before{content:"▾ "}
+.wvh-l{display:grid;gap:10px}.wvh .wdl{opacity:.88}
+.wthread{gap:12px}.wcmts{display:grid;gap:10px}
+.wcmt{padding:12px 16px;border-radius:16px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);max-width:min(680px,100%)}
+.wcmt.st{background:rgba(63,224,232,.06);box-shadow:inset 0 0 0 1px rgba(63,224,232,.22)}
+.wcmt.me{justify-self:end;background:rgba(46,98,255,.1);box-shadow:inset 0 0 0 1px rgba(110,140,255,.25)}
+.wcmt-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.wcmt-h b{font-weight:500;font-size:14px}.wcmt-h small{color:var(--dim);font-size:11.5px}
+.wcmt-h .linkbtn{margin-inline-start:auto;font-size:12px;color:var(--dim)}
+.wcmt p{margin:6px 0 0;line-height:1.75;font-size:14.5px;overflow-wrap:anywhere}
+.wcompose{display:grid;gap:8px}.wcompose textarea{resize:vertical;min-height:84px}
+.wcrow{display:grid;grid-template-columns:1fr auto;gap:8px}.wcrow .btn{padding:10px 22px}
+.wfhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.wfhead .btn{padding:9px 18px;font-size:14px}
+.wfilt small{opacity:.7;font-size:11.5px}
+.wfadd{display:grid;gap:12px}.wfadd p{margin:0}
+.wfiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.wfile{padding:14px 16px;display:grid;gap:6px;align-content:start;position:relative}
+.wf-main{display:grid;gap:4px;color:inherit;text-decoration:none}.wf-main b{font-weight:500;overflow-wrap:anywhere}
+.wf-host{justify-self:start;font-family:var(--latin);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--horizon)}
+.wfile small a{color:var(--horizon)}.wfile p{margin:0}
+.wf-del{justify-self:start;font-size:12px;color:var(--dim)}
+.wsp bdi[dir=ltr]{white-space:nowrap;font-family:var(--latin);letter-spacing:.04em}
 @media (max-width:980px){ .wkpis{grid-template-columns:repeat(3,1fr)} .wcols{grid-template-columns:1fr} }
 @media (max-width:620px){ .wkpis{grid-template-columns:repeat(2,1fr)} .wgrid,.wdates2,.lrow2{grid-template-columns:1fr} .wtrack b{font-size:10px} .wtable{overflow:visible;background:none;box-shadow:none;border-radius:0}
   .wtable table,.wtable tbody{display:block} .wtable thead{display:none}
@@ -1474,4 +1534,6 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
   .wtable td:first-child{grid-column:1} .wtable td.ts{grid-column:2;grid-row:1;justify-self:end}
   .wtable td[data-l]{grid-column:1 / -1;display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
   .wtable td[data-l]::before{content:attr(data-l);color:var(--dim);font-size:12.5px}
-  .wtable td.tu{grid-column:1 / -1;font-size:12px} }
+  .wtable td.tu{grid-column:1 / -1;font-size:12px}
+  .wptabs{display:flex;overflow-x:auto;scrollbar-width:none}.wptabs a{padding:9px 14px;white-space:nowrap;flex:1;text-align:center}
+  .wpt{grid-template-columns:78px 1fr} .wcrow{grid-template-columns:1fr} .wdl{padding:16px} .wcmt{max-width:100%} }
