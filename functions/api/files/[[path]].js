@@ -26,7 +26,7 @@ async function mayRead(request, env, meta){
   if (await isAdmin(request, env)) return true;
   const u = await currentUser(request, env); if (!u || !meta || !meta.code) return false;
   const okey = await env.EB.get("code:" + meta.code); const ov = okey && await env.EB.get(okey);
-  return !!ov && JSON.parse(ov).email === u.email;
+  const o = ov && JSON.parse(ov); return !!o && o.email === u.email && !(o.manual && !o.clientVisible);
 }
 export async function onRequestPost({ request, env }) {
   const admin = await isAdmin(request, env);
@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
   const o = JSON.parse(ov);
   if (!admin) {
     const u = await currentUser(request, env);
-    if (!u || u.email !== o.email) return json({ ok: false }, 401);
+    if (!u || u.email !== o.email || (o.manual && !o.clientVisible)) return json({ ok: false }, 401);
     if (o.status === "delivered" || o.status === "cancelled") return json({ ok: false, error: "closed" }, 403);
     if (await limited(env, "frl:" + u.email, 30, 3600)) return json({ ok: false, error: "too many files" }, 429);
   }

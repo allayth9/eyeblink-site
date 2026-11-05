@@ -10,7 +10,7 @@ export async function onRequestGet({ request, env }) {
   if (new URL(request.url).searchParams.get("lite")) return json({ ok: true, user: { email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", mustChange: !!u.mustChange } });
   const orders = [];
   for (const k of (u.orders || []).slice(-60).reverse()) {
-    const v = await env.EB.get(k); if (!v) continue; const o = JSON.parse(v);
+    const v = await env.EB.get(k); if (!v) continue; const o = JSON.parse(v); if (o.manual && !o.clientVisible) continue;
     orders.push({ code: o.code, status: o.status, createdAt: o.createdAt, packageName: o.packageName, unread: unreadFor(o, "client"),
       lastAt: ((o.messages || []).slice(-1)[0] || {}).at || o.updatedAt || o.createdAt });
   }

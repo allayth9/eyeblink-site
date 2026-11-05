@@ -5,7 +5,7 @@ async function load(request, env, code){
   const u = await currentUser(request, env); if (!u) return [null, json({ ok: false }, 401)];
   const key = await env.EB.get("code:" + String(code || "").toUpperCase());
   const v = key && await env.EB.get(key); if (!v) return [null, json({ ok: false }, 404)];
-  const o = JSON.parse(v); if (o.email !== u.email) return [null, json({ ok: false }, 404)];
+  const o = JSON.parse(v); if (o.email !== u.email || (o.manual && !o.clientVisible)) return [null, json({ ok: false }, 404)];
   return [o, null];
 }
 export async function onRequestGet({ request, env }) {

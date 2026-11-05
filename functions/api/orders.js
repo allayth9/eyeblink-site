@@ -7,6 +7,10 @@
 // "discussing" = the back-and-forth before an agreement (between "new" and "confirmed"); the client sees it as "received".
 const STATUSES = ["new", "discussing", "confirmed", "awaiting-payment", "paid", "in-progress", "review", "delivered", "cancelled"];
 const SOURCES = ["website", "instagram", "whatsapp", "referral", "email", "meeting", "other"];
+// an opportunity added by hand stays out of the client account (no listing, no e-mails) until the studio confirms it
+const hiddenFromClient = o => !!o.manual && !o.clientVisible;
+async function linkUser(env, o){ if (!o.email || hiddenFromClient(o)) return; const uv = await env.EB.get("user:" + o.email); if (!uv) return;
+  const u = JSON.parse(uv); if ((u.orders || []).includes(o.key)) return; (u.orders ||= []).push(o.key); await env.EB.put("user:" + o.email, JSON.stringify(u)); }
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 export async function onRequestPost(ctx) {
@@ -58,7 +62,6 @@ async function manualOrder(ctx, d){
     price: "", method: "", paid: false, paidAmount: "", notes: clip(d.notes, 4000), history: [{ at: now, status: "new", by: "admin", note: "manual" }] };
   await env.EB.put(key, JSON.stringify(order));
   await env.EB.put("code:" + code, key);
-  if (email) { const uv = await env.EB.get("user:" + email); if (uv) { const u = JSON.parse(uv); (u.orders ||= []).push(key); await env.EB.put("user:" + email, JSON.stringify(u)); } }
   return json({ ok: true, code, order });
 }
 export async function onRequestGet(ctx) {
@@ -120,8 +123,7 @@ export async function onRequestPatch(ctx) {
   if (d.lostReason !== undefined) o.lostReason = clip(d.lostReason, 120);
   if (d.source !== undefined && SOURCES.includes(d.source)) o.source = d.source;
   if (d.email !== undefined && !o.email) { const em = clip(d.email, 254).trim().toLowerCase();
-    if (em) { if (!EMAIL_RE.test(em)) return json({ ok: false, error: "email" }, 400); o.email = em;
-      const uv = await env.EB.get("user:" + em); if (uv) { const u = JSON.parse(uv); if (!(u.orders || []).includes(o.key)) { (u.orders ||= []).push(o.key); await env.EB.put("user:" + em, JSON.stringify(u)); } } } }
+    if (em) { if (!EMAIL_RE.test(em)) return json({ ok: false, error: "email" }, 400); o.email = em; await linkUser(env, o); } }
   if (d.touch && (d.touch.note || d.touch.channel)) { (o.touches ||= []).unshift({ at: new Date().toISOString(), channel: SOURCES.includes(d.touch.channel) ? d.touch.channel : "other", note: clip(d.touch.note, 500) }); o.touches = o.touches.slice(0, 50); }
   const now = new Date().toISOString();
   const files = cleanFiles(d.files);
@@ -143,11 +145,15 @@ export async function onRequestPatch(ctx) {
     (o.messages ||= []).push({ from: "studio", text: payMsg, at: now, kind: "payment" }); o.seenAdmin = now;
     if (!["paid", "in-progress", "review", "delivered"].includes(o.status) && o.status !== "awaiting-payment") { (o.history ||= []).push({ at: now, status: "awaiting-payment" }); o.status = "awaiting-payment"; }
   }
+  if (hiddenFromClient(o) && !["new", "discussing", "cancelled"].includes(o.status)) { o.clientVisible = true; await linkUser(env, o); }
+  if (d.link) await linkUser(env, o);   // the account was made after the order (e.g. «convert to client»)
+  const quiet = hiddenFromClient(o);
   o.updatedAt = new Date().toISOString();
   await env.EB.put(d.key, JSON.stringify(o));
   for (const k of inv) later(ctx, mailInvoice(env, o, k));
   if (d.resendInvoice) later(ctx, mailInvoice(env, o, d.resendInvoice === "deposit" ? "deposit" : "final"));
-  if (payMsg) later(ctx, notifyClient(env, o, "message", payMsg));
+  if (quiet) { /* still hidden from the client: nothing is sent */ }
+  else if (payMsg) later(ctx, notifyClient(env, o, "message", payMsg));
   else if (d.message || files.length) later(ctx, notifyClient(env, o, "message", (d.message || "") + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
   else if (changed && !inv.length && o.status !== "discussing") later(ctx, notifyClient(env, o, "status", o.status));
   return json({ ok: true, order: o });

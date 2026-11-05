@@ -507,6 +507,7 @@
   var OPEN_ST=['new','discussing','confirmed','awaiting-payment'], WON_ST=['paid','in-progress','review','delivered'], NEWOPP=false;
   function lostReasons(){ var l=P&&P.crm&&P.crm.lostReasons; return l&&l.length?l:LOST_DEF; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function hiddenOpp(o){ return !!o.manual && !o.clientVisible && ['new','discussing','cancelled'].indexOf(o.status)>=0; }
   function srcOf(o){ return o.source||'website'; }
   function dueFollow(o){ return !!o.followUp && o.followUp<=todayISO() && o.status!=='cancelled' && o.status!=='delivered'; }
   function srcSel(attr,val){ return '<select '+attr+'>'+Object.keys(SRC).map(function(s){ return '<option value="'+s+'"'+(s===val?' selected':'')+'>'+SRC[s]+'</option>'; }).join('')+'</select>'; }
@@ -534,7 +535,7 @@
   }
   function crmFields(o,k){
     var cancelled=o.status==='cancelled', canConv=o.email && WON_ST.concat(['confirmed','awaiting-payment']).indexOf(o.status)>=0;
-    return '<div class="crm">'+
+    return '<div class="crm">'+(hiddenOpp(o)?'<p class="small hid">🔒 مخفية عن العميل: ما بتطلع بحسابه وما بيوصله أي إيميل، لحد ما تصير «مؤكَّد»</p>':'')+
       '<div class="row"><div class="field"><label>المصدر</label>'+srcSel('data-of="source"',srcOf(o))+'</div><div class="field"><label>موعد المتابعة</label><input type="date" data-of="followUp" value="'+esc(o.followUp||'')+'"></div></div>'+
       '<div class="field"><label>الخطوة الجاية</label><input data-of="nextStep" dir="auto" value="'+esc(o.nextStep||'')+'" placeholder="شو لازم يصير بعدين؟"></div>'+
       '<div class="field lostf"'+(cancelled?'':' hidden')+'><label>ليش ما مشي؟</label><select data-of="lostReason"><option value="">اختر السبب…</option>'+lostReasons().map(function(r){ return '<option'+(r===o.lostReason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+(o.lostReason&&lostReasons().indexOf(o.lostReason)<0?'<option selected>'+esc(o.lostReason)+'</option>':'')+'</select></div>'+
@@ -556,6 +557,7 @@
         if(r.ok){ PKG={email:em,name:o.name,password:r.password,link:r.link,lang:r.lang,phone:phone,sent:r.sent}; return 'جاهز: هاي بيانات دخول العميل، ابعتله ياها'; }
         if(r.error==='exists') return api('/access','POST',{action:'setRole',email:em,role:'client'}).then(function(){ return 'عنده حساب أصلاً، فتفعّلت له مساحة العمل'; });
         throw new Error(r.error||'fail'); })
+      .then(function(msg){ return api('/orders','PATCH',{key:o.key,link:true}).then(function(){ return msg; },function(){ return msg; }); })
       .then(function(msg){ toast(msg); TAB='clients'; CL=null; render(); loadUsers(); loadClients(); loadProfile(em,'overview'); scrollTo(0,0); })
       .catch(function(){ b.disabled=false; toast('ما زبط التحويل، جرّب مرة تانية',true); });
   }
@@ -604,7 +606,7 @@
           (o.visit&&!o.visit.manual?'<div class="small muted" style="margin-top:8px">مصدر الزيارة</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
-          (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
+          (o.email&&!hiddenOpp(o)?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
             (o.review?'<div class="areview"><b>تقييم العميل: '+'★★★★★'.slice(0,o.review.stars)+'<span style="opacity:.3">'+'★★★★★'.slice(o.review.stars)+'</span></b>'+(o.review.text?'<p>'+esc(o.review.text)+'</p>':'')+
               (o.review.publish?'<label class="check"><input type="checkbox" data-rapprove="'+k+'"'+(o.review.approved?' checked':'')+'> اعرضه على الموقع</label>':'<span class="muted small">العميل لم يوافق على النشر.</span>')+'</div>':'')+
             '<div class="apend" hidden></div><div class="asend"><label class="btn sm" title="إرفاق ملف (حتى 20MB)">📎<input type="file" multiple hidden data-oup="'+k+'"></label><textarea data-msg dir="auto" placeholder="'+(o.status==='delivered'||o.status==='cancelled'?'المحادثة مغلقة عند العميل بعد التسليم، لكن رسالتك ستظهر له':'اكتب رداً للعميل…')+'"></textarea><button class="btn primary sm" type="button" data-osend="'+k+'">إرسال</button></div>':'')+
