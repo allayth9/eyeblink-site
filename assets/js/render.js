@@ -10,12 +10,12 @@
         svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب المتطلبات',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
-        pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',challenge:'التحدي',idea:'الفكرة',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'ماذا يحدث بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
+        pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',brief:'البريف',challenge:'التحدي',idea:'الفكرة',execution:'التنفيذ',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'ماذا يحدث بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
     en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
         offline:'Your request is ready',offlineP:'We copied your request details. Send them to us on Instagram and we will reply with a clear plan.',copy:'Copy details',copied:'Copied',openIG:'Open Instagram',
-        pickFirst:'Choose a service first',reel:'Showreel',watchReel:'Watch the showreel',challenge:'Challenge',idea:'Idea',result:'Result',wa:'Message us on WhatsApp',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None',qty:'Number of videos',platform:'Platform',payPref:'Preferred payment',any:'Decide later',next:'What happens after you send?',email:'Email',ig:'Instagram',orderT:'Your request'}
+        pickFirst:'Choose a service first',reel:'Showreel',watchReel:'Watch the showreel',brief:'Brief',challenge:'Challenge',idea:'Idea',execution:'Execution',result:'Result',wa:'Message us on WhatsApp',draft:'You are viewing a draft from the admin panel.',exit:'Exit preview',pkg:'Package',addons:'Add-ons',none:'None',qty:'Number of videos',platform:'Platform',payPref:'Preferred payment',any:'Decide later',next:'What happens after you send?',email:'Email',ig:'Instagram',orderT:'Your request'}
   }[lang];
   var ICON={
     editing:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="7.5" height="4.5" rx="1.2"/><rect x="12.5" y="6" width="8.5" height="4.5" rx="1.2"/><rect x="3" y="13.5" width="11" height="4.5" rx="1.2"/><rect x="16" y="13.5" width="5" height="4.5" rx="1.2"/><path d="M11.5 4.2v16.3"/><path class="fill" d="M9.9 2.8h3.2l-1.6 1.9z"/></svg>',
@@ -169,8 +169,35 @@
     var hasReel=!!(vid(reel)||(reel.type==='mp4'&&reel.src));
     if(rb){ rb.hidden=!hasReel; rb.onclick=function(){ bindLB(); openLB({title:{ar:UI.reel,en:UI.reel},full:reel,ratio:'16:9',poster:H.reelPoster||''}); }; }
     if(rc){ rc.hidden=!(hasReel&&H.reelPreview); if(!rc.hidden){ var rv=rc.querySelector('video'); if(rv.getAttribute('src')!==url(H.reelPreview)) rv.src=url(H.reelPreview); rc.onclick=function(){ rb&&rb.onclick(); }; } }
-    renderWork(); setupOrder();
+    renderWork(); setupOrder(); renderLaunch();
     if(window.EB&&EB.refresh) EB.refresh();
+  }
+
+  /* ---------------- launch strip (Early Access) ----------------
+     A thin line under the top menu on every page, fully set from the panel (content "launch").
+     Hidden when switched off, empty, past its end date, or when every place is taken; a visitor who
+     closes it does not see it again until its text or numbers change. Folds away while scrolling down. */
+  function renderLaunch(){
+    // right after the sticky menu, in the page flow: it scrolls away with the content (the menu's height never changes)
+    var nav=document.querySelector('header.nav'); if(!nav) return;
+    var old=document.querySelector('.launch-wrap'); if(old) old.remove();
+    var Lc=C.launch||{}, text=L(Lc.text), total=+Lc.total||0, taken=Math.max(0,+Lc.taken||0), left=Math.max(0,total-taken);
+    if(!Lc.show||!text) return;
+    if(total>0&&left<=0) return;
+    if(Lc.until && /^\d{4}-\d{2}-\d{2}$/.test(Lc.until) && new Date()>new Date(Lc.until+'T23:59:59')) return;
+    var key='eb-launch-x:'+fp(text+'|'+total+'|'+taken+'|'+(Lc.until||'')), closed='';
+    try{ closed=localStorage.getItem(key); }catch(_){}
+    if(closed) return;
+    var cta=L(Lc.cta), link=String(Lc.link||'').trim();
+    var count= Lc.counter&&total>0 ? (AR? 'تبقّى '+left+' من '+total : left+' of '+total+' left') : '';
+    var el=document.createElement('div'); el.className='launch glass'; el.setAttribute('role','note');
+    el.innerHTML='<span class="ldot" aria-hidden="true"></span><span class="ltext">'+esc(text)+'</span>'+
+      (count?'<span class="lcount">'+esc(count)+'</span>':'')+
+      (cta&&link?'<a class="lcta" href="'+esc(link)+'">'+esc(cta)+' <span class="arr">'+ARW+'</span></a>':'')+
+      '<button type="button" class="lx" aria-label="'+(AR?'إغلاق':'Close')+'">×</button>';
+    var wrap=document.createElement('div'); wrap.className='launch-wrap wrap'; wrap.appendChild(el);
+    el.querySelector('.lx').addEventListener('click',function(){ try{ localStorage.setItem(key,'1'); }catch(_){} wrap.classList.add('gone'); setTimeout(function(){ wrap.remove(); },450); });
+    nav.insertAdjacentElement('afterend',wrap);
   }
 
   // numbers count up from zero the first time they come into view
@@ -437,12 +464,34 @@
     var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
     if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16);
     if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
-    var cs=document.getElementById('lbCase'), parts=[['challenge',UI.challenge],['idea',UI.idea],['result',UI.result]].filter(function(k){ return L(p[k[0]]); });
-    if(cs){ cs.hidden=!parts.length; cs.innerHTML=parts.map(function(k){ return '<div><span class="k">'+k[1]+'</span><p>'+esc(L(p[k[0]]))+'</p></div>'; }).join(''); lb.classList.toggle('has-case',!!parts.length); }
+    // the work's story under the film: up to five short cards, then Behind the Frame images (hidden per work, or all from the panel)
+    var cs=document.getElementById('lbCase'), caseOn=!(C.settings&&C.settings.casesOff)&&!p.caseHidden;
+    var parts=caseOn?[['brief',UI.brief],['challenge',UI.challenge],['idea',UI.idea],['execution',UI.execution],['result',UI.result]].filter(function(k){ return L(p[k[0]]); }):[];
+    var frames=caseOn?(Array.isArray(p.frames)?p.frames:[]).filter(function(f){ return f&&f.src; }).slice(0,8):[];
+    if(cs){ var has=!!(parts.length||frames.length); cs.hidden=!has;
+      cs.innerHTML=(parts.length?'<div class="lb-cards" style="--n:'+parts.length+'">'+parts.map(function(k){ return '<div><span class="k">'+k[1]+'</span><p>'+esc(L(p[k[0]]))+'</p></div>'; }).join('')+'</div>':'')+
+        (frames.length?'<div class="lb-frames"><span class="k">BEHIND THE FRAME</span><div class="lb-strip">'+frames.map(function(f,i){ var c=L(f.cap);
+          return '<button type="button" class="lb-shot" data-i="'+i+'" aria-label="'+esc(c||('Frame '+(i+1)))+'"><img alt="" loading="lazy" src="'+esc(url(f.src))+'">'+(c?'<span>'+esc(c)+'</span>':'')+'</button>'; }).join('')+'</div></div>':'');
+      lb.classList.toggle('has-case',has);
+      [].forEach.call(cs.querySelectorAll('.lb-shot'),function(b){ b.addEventListener('click',function(){ shotView(frames,+b.dataset.i); }); });
+      var more=function(){ cs.classList.toggle('more',cs.scrollTop+cs.clientHeight<cs.scrollHeight-4); }; cs.onscroll=more; setTimeout(more,60); setTimeout(more,900);
+      var st=cs.querySelector('.lb-strip'); if(st) st.addEventListener('wheel',function(e){ if(st.scrollWidth>st.clientWidth && Math.abs(e.deltaY)>Math.abs(e.deltaX)){ st.scrollLeft+=(AR?-1:1)*e.deltaY; e.preventDefault(); } },{passive:false}); }
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
     var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
     vimeoAsk(lbFrame.querySelector('iframe')); waves(true); fadeAudio(0,1,1400,0);
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden'; root.classList.add('modal-open');
+  }
+  // a Behind the Frame image opened large over the player: arrows / swipe to move, click or Esc to close
+  function shotView(list,i){
+    var ov=document.createElement('div'); ov.className='lb-view'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true');
+    function show(){ var f=list[i], c=L(f.cap); ov.innerHTML='<figure><img alt="'+esc(c)+'" src="'+esc(url(f.src))+'">'+(c?'<figcaption>'+esc(c)+'</figcaption>':'')+'</figure>'+
+      (list.length>1?'<span class="lb-count">'+(i+1)+' / '+list.length+'</span>':'')+'<button type="button" class="close glass" aria-label="'+(AR?'إغلاق':'Close')+'">×</button>'; }
+    function go(d){ if(list.length<2) return; i=(i+d+list.length)%list.length; show(); }
+    function close(){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },300); }
+    function key(e){ if(e.key==='Escape'){ e.stopPropagation(); e.preventDefault(); close(); } else if(e.key==='ArrowLeft') go(AR?1:-1); else if(e.key==='ArrowRight') go(AR?-1:1); }
+    var x0=null; ov.addEventListener('pointerdown',function(e){ x0=e.clientX; });
+    ov.addEventListener('pointerup',function(e){ if(x0==null) return; var dx=e.clientX-x0; x0=null; if(Math.abs(dx)>40) go((dx<0)!==AR?1:-1); else close(); });
+    show(); lb.appendChild(ov); addEventListener('keydown',key,true); requestAnimationFrame(function(){ ov.classList.add('on'); });
   }
   // ask the Vimeo player itself for the video size (works for private/unlisted videos too)
   var vw=0, vh=0;
@@ -506,7 +555,7 @@
     }
   }
   function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
-  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; fadeAudio(null,0,650,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
+  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; [].forEach.call(lb.querySelectorAll('.lb-view'),function(v){ v.remove(); }); fadeAudio(null,0,650,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
     setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },760); }
 
   /* ---------------- order: a popup like the player, same waves ---------------- */

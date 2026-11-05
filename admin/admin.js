@@ -78,6 +78,12 @@
   var SVC=function(){ return (C.services||[]).map(function(s){return [s.id, (s.name&&s.name.ar)||s.id]}); };
   var TABS=[
     {id:'home', title:'الرئيسية', grp:'محتوى الموقع', secs:[
+      {h:'شريط الإطلاق (Early Access)', hint:'سطر رفيع تحت القائمة العلوية بكل صفحات الموقع. الزائر يقدر يسكّره. يختفي وحده بعد تاريخ الانتهاء أو لما يكتمل العدد. اكتب أرقاماً حقيقية فقط.', fields:[
+        {p:'launch.show', t:'check', l:'إظهار شريط الإطلاق'},
+        {p:'launch.text', t:'bi', l:'النص', hint:'مثال: إطلاق Eyeblink Studio · نستقبل عدداً محدوداً من المشاريع بشروط الإطلاق'},
+        {row:[{p:'launch.cta', t:'bi', l:'نص الرابط'},{p:'launch.link', t:'text', l:'الرابط', ltr:1, hint:'مثال: pricing.html أو contact.html'}]},
+        {row:[{p:'launch.total', t:'num', l:'عدد المشاريع الكلي'},{p:'launch.taken', t:'num', l:'المحجوز منها'},{p:'launch.until', t:'date', l:'ينتهي بتاريخ (اختياري)'}]},
+        {p:'launch.counter', t:'check', l:'إظهار العدّاد («تبقّى 3 من 5»)'} ]},
       {h:'العنوان الرئيسي', fields:[
         {p:'hero.eyebrow', t:'text', l:'السطر الصغير فوق العنوان', ltr:1},
         {p:'hero.h1', t:'bi', l:'العنوان', hint:'لتلوين جزء بالتدرّج ضعه بين <span class="grad"> و </span>'},
@@ -127,13 +133,20 @@
       {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'}, add:function(){return {q:bi(),a:bi()}},
         fields:[{p:'q', t:'bi', l:'السؤال'},{p:'a', t:'bita', l:'الجواب'}]}} ]},
     {id:'work', title:'الأعمال', secs:[
+      {h:'دراسات الحالة', hint:'قصة كل عمل (البريف، التحدي، الفكرة، التنفيذ، النتيجة) وصور الكواليس، تظهر تحت الفيديو عند فتحه. تُكتب داخل كل مشروع بالأسفل.', fields:[
+        {p:'settings.casesOff', t:'check', l:'إخفاء كل دراسات الحالة وصور الكواليس من الموقع'} ]},
       {h:'نصوص القسم', fields:[{p:'work.h', t:'bi', l:'العنوان قبل إضافة أعمال'},{p:'work.p', t:'bita', l:'الوصف قبل إضافة أعمال'},{p:'work.filledH', t:'bi', l:'العنوان بعد إضافة أعمال'},{p:'work.filledP', t:'bita', l:'الوصف بعد إضافة أعمال'}]},
       {h:'المشاريع', hint:'أول 3 مشاريع تظهر في الرئيسية. المعاينة: 6–8 ثوانٍ بدون صوت، حتى 5MB. الفيديو الكامل الأفضل على Vimeo أو YouTube.', rep:{p:'projects',
         name:function(x){return (x.title&&x.title.ar)||'مشروع'}, add:function(){return {title:bi('مشروع جديد',''),service:'editing',summary:bi(),client:'',year:String(new Date().getFullYear()),ratio:'16:9',preview:'',poster:'',full:{type:'vimeo',id:''}}},
         fields:[{p:'title', t:'bi', l:'اسم المشروع'},
           {row:[{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'ratio', t:'select', l:'المقاس', opts:function(){return [['16:9','أفقي 16:9'],['9:16','عمودي 9:16'],['1:1','مربع 1:1'],['4:5','4:5']]}},{p:'year', t:'text', l:'السنة', ltr:1}]},
           {p:'summary', t:'bi', l:'سطر عن المشروع'},{p:'client', t:'text', l:'العميل (اختياري)'},
-          {p:'challenge', t:'bita', l:'دراسة الحالة — التحدي (اختياري)'},{p:'idea', t:'bita', l:'الفكرة (اختياري)'},{p:'result', t:'bita', l:'النتيجة، بالأرقام إن أمكن (اختياري)', hint:'تظهر الثلاثة تحت الفيديو عند فتحه. اتركها فارغة لعرض الفيديو فقط.'},
+          {p:'caseHidden', t:'check', l:'إخفاء دراسة الحالة وصور الكواليس لهذا العمل'},
+          {p:'brief', t:'bita', l:'دراسة الحالة — البريف: ماذا طلب العميل (اختياري)'},
+          {p:'challenge', t:'bita', l:'التحدي (اختياري)'},{p:'idea', t:'bita', l:'الفكرة (اختياري)'},
+          {p:'execution', t:'bita', l:'التنفيذ: كيف صنعناه (اختياري)'},
+          {p:'result', t:'bita', l:'النتيجة، بأرقام حقيقية فقط (اختياري)', hint:'تظهر الخانات المعبّأة فقط، كبطاقات تحت الفيديو عند فتحه. اتركها كلها فارغة لعرض الفيديو وحده.'},
+          {p:'frames', t:'frames', l:'Behind the Frame — صور من الكواليس (حتى 8)', hint:'ستوريبورد، لقطة من التايملاين، قبل وبعد التلوين، لقطة من التصوير… لكل صورة وصف قصير. تظهر كصف تحت دراسة الحالة.'},
           {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm', make:1, hint:'«صنع من الفيديو»: اختر الفيديو الكامل من جهازك، فتُقتطع منه 4 لقطات قصيرة من أجزاء مختلفة وتُدمج في معاينة صامتة (~7 ثوانٍ) تُرفع وحدها. أبقِ هذه الصفحة مفتوحة أثناء الصنع.'},
           {p:'poster', t:'media', l:'صورة الغلاف', accept:'image/*'},
           {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
@@ -183,8 +196,18 @@
     var lab='<label for="'+id+'">'+esc(f.l)+'</label>';
     switch(f.t){
       case 'text': return '<div class="field">'+lab+'<input id="'+id+'"'+d+(f.ltr?' dir="ltr"':'')+' value="'+esc(v)+'">'+hint+'</div>';
+      case 'date': return '<div class="field">'+lab+'<input id="'+id+'" data-p="'+esc(f.p)+'" data-t="text" type="date" dir="ltr" value="'+esc(v||'')+'">'+hint+'</div>';
       case 'num': return '<div class="field">'+lab+'<input id="'+id+'"'+d+' type="number" min="0" step="1" dir="ltr" value="'+esc(v==null?'':v)+'">'+hint+'</div>';
       case 'check': return '<div class="field"><label class="check" style="margin-top:26px"><input type="checkbox"'+d+(v?' checked':'')+'> '+esc(f.l)+'</label></div>';
+      // a list of images, each with a bilingual caption: add, remove, reorder (Behind the Frame)
+      case 'frames':
+        var fl=Array.isArray(v)?v:[], fp=esc(f.p);
+        return '<div class="field">'+lab+'<div class="frames">'+fl.map(function(fr,i){ fr=fr||{}; var pp=fp+'.'+i, cap=fr.cap||{};
+          return '<div class="frame-row">'+(fr.src?'<img class="thumb" alt="" src="'+esc(abs(fr.src))+'">':'<span class="thumb"></span>')+
+            '<div class="frame-body"><div class="media"><input data-p="'+pp+'.src" data-t="text" dir="ltr" placeholder="رابط الصورة أو ارفعها" value="'+esc(fr.src||'')+'"><label class="btn sm">رفع<input type="file" accept="image/*" data-upload="'+pp+'.src" hidden></label></div>'+
+            '<div class="bi"><div><small>عربي</small><input data-p="'+pp+'.cap.ar" data-t="text" placeholder="وصف قصير: ستوريبورد، قبل التلوين…" value="'+esc(cap.ar||'')+'"></div><div><small>ENGLISH</small><input data-p="'+pp+'.cap.en" data-t="text" dir="ltr" value="'+esc(cap.en||'')+'"></div></div></div>'+
+            '<div class="frame-act"><button class="btn sm" type="button" data-fr="'+fp+'" data-fr-act="up" data-fr-i="'+i+'" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-fr="'+fp+'" data-fr-act="down" data-fr-i="'+i+'" aria-label="أسفل">↓</button><button class="btn sm danger" type="button" data-fr="'+fp+'" data-fr-act="del" data-fr-i="'+i+'">حذف</button></div></div>'; }).join('')+
+          '</div>'+(fl.length<8?'<div><button class="btn sm" type="button" data-fr="'+fp+'" data-fr-act="add">+ صورة</button></div>':'')+hint+'</div>';
       case 'select': var o=(typeof f.opts==='function'?f.opts():f.opts); return '<div class="field">'+lab+'<select id="'+id+'"'+d+'>'+o.map(function(x){return '<option value="'+esc(x[0])+'"'+(String(v)===String(x[0])?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')+'</select>'+hint+'</div>';
       case 'list': return '<div class="field">'+lab+'<textarea id="'+id+'"'+d+(f.ltr?' dir="ltr"':'')+'>'+esc((v||[]).join('\n'))+'</textarea>'+hint+'</div>';
       case 'bi': case 'bita': case 'bilist':
@@ -232,7 +255,7 @@
         html+='<div class="rep" data-rep="'+esc(s.rep.p)+'">'+arr.map(function(it,i){
           return '<details class="item"'+(arr.length<=1?' open':'')+'><summary><span class="chev">‹</span><b>'+esc(s.rep.name(it,i))+'</b>'+
             (s.rep.fixed?'':'<button class="btn sm" type="button" data-move="'+si+':'+i+':-1" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-move="'+si+':'+i+':1" aria-label="أسفل">↓</button><button class="btn sm danger" type="button" data-del="'+si+':'+i+'">حذف</button>')+
-            '</summary><div class="body">'+s.rep.fields.map(function(f){ return field(it, f).replace(/data-p="/g,'data-p="'+s.rep.p+'.'+i+'.').replace(/data-upload="/g,'data-upload="'+s.rep.p+'.'+i+'.').replace(/data-(make|mkstate)="/g,'data-$1="'+s.rep.p+'.'+i+'.'); }).join('')+'</div></details>';
+            '</summary><div class="body">'+s.rep.fields.map(function(f){ return field(it, f).replace(/data-p="/g,'data-p="'+s.rep.p+'.'+i+'.').replace(/data-upload="/g,'data-upload="'+s.rep.p+'.'+i+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+s.rep.p+'.'+i+'.'); }).join('')+'</div></details>';
         }).join('')+'</div>'+(s.rep.fixed?'':'<div><button class="btn" type="button" data-add="'+si+'">+ إضافة</button></div>');
       }
       return html+'</section>';
@@ -265,6 +288,11 @@
     var b=e.target.closest('button'); if(!b) return;
     if(b.dataset.tab){ TAB=b.dataset.tab; render(); if(TAB==='orders') loadOrders(); if(TAB==='clients') loadUsers(); if(TAB==='tasks') loadWork(); if(TAB==='notify') loadNotify(); if(TAB==='billing') loadBilling(); if(TAB==='reports') loadReports(); scrollTo(0,0); return; }
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
+    if(b.dataset.fr){ e.preventDefault(); var fp2=b.dataset.fr, act=b.dataset.frAct, fi=+b.dataset.frI, fa=(get(C,fp2)||[]).slice();
+      if(act==='add'){ if(fa.length>=8) return; fa.push({src:'',cap:bi()}); }
+      else if(act==='del'){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد؟'; setTimeout(function(){ if(b.isConnected){ b.dataset.armed=''; b.textContent='حذف'; } },3000); return; } fa.splice(fi,1); }
+      else { var fj=fi+(act==='up'?-1:1); if(fj<0||fj>=fa.length) return; var ft=fa[fi]; fa[fi]=fa[fj]; fa[fj]=ft; }
+      set(C,fp2,fa); render(); keepOpen(fp2); dirty(); saveDraft(); return; }
     if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr); render(); dirty(); saveDraft();
       var items=document.querySelectorAll('[data-rep="'+s.rep.p+'"] .item'); var last=items[items.length-1]; if(last){ last.open=true; last.scrollIntoView({block:'center'}); } return; }
     if(b.dataset.del){ e.preventDefault(); var q=b.dataset.del.split(':'), s2=tab.secs[+q[0]], a2=get(C,s2.rep.p);
@@ -370,7 +398,7 @@
       return fetch(API+'/media',{method:'POST',headers:headers({'content-type':blob.type,'x-filename':name}),body:blob})
         .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'upload'); return j; }); });
     }).then(function(j){
-      set(C,path,j.url); dirty(); saveDraft(); render();
+      set(C,path,j.url); dirty(); saveDraft(); render(); keepOpen(path);
       toast('جاهزة: المعاينة صُنعت ورُفعت. اضغط «نشر التعديلات» لتظهر على الموقع.');
     }).catch(function(e){
       stopDraw=true; try{ if(rec&&rec.state!=='inactive') rec.stop(); }catch(_){}
@@ -378,6 +406,9 @@
       say(msg,true); toast(msg,true);
     }).then(function(){ MK.busy=false; MK.hid=false; if(MK.offVis) MK.offVis(); v.remove(); URL.revokeObjectURL(url); });
   }
+  // after a re-render, reopen the list item a path belongs to (e.g. "projects.3.frames" → the 4th project)
+  function keepOpen(path){ var m=/^([a-zA-Z.]+?)\.(\d+)\./.exec(String(path||'')+'.'); if(!m) return;
+    var it=document.querySelectorAll('[data-rep="'+m[1]+'"] .item')[+m[2]]; if(it) it.open=true; }
   // a header may only carry Latin-1, and the server keeps a-z0-9.-_ anyway: Arabic or other names become a plain slug
   function mediaName(n,fallback){ var s=String(n||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'-').slice(0,40); return s||fallback; }
   function upload(input){
@@ -388,7 +419,7 @@
     var m=/\.[a-z0-9]{2,5}$/i.exec(file.name), safe=mediaName(file.name.replace(/\.[^.]+$/,''),'file')+(m?m[0].toLowerCase():'');
     fetch(API+'/media',{method:'POST',headers:headers({'content-type':file.type||'application/octet-stream','x-filename':safe}),body:file})
       .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
-      .then(function(j){ set(C,path,j.url); dirty(); saveDraft(); render(); toast('تم الرفع. اضغط «نشر التعديلات» ليظهر على الموقع.'); })
+      .then(function(j){ set(C,path,j.url); dirty(); saveDraft(); render(); keepOpen(path); toast('تم الرفع. اضغط «نشر التعديلات» ليظهر على الموقع.'); })
       .catch(function(e){ toast('تعذّر الرفع: '+e.message,true); });
   }
 

@@ -393,3 +393,11 @@ section.sec .ph{display:flex;justify-content:space-between;align-items:center;ga
 .nch-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .nch-c{display:grid;gap:8px;align-content:start;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1px var(--line)}.nch-c p{margin:0}
 .kpis.sm{grid-template-columns:repeat(2,1fr)}
+
+/* Behind the Frame: images with captions, reorderable */
+.frames{display:grid;gap:10px}
+.frame-row{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:start;padding:10px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+.frame-row .thumb{width:72px;height:54px;border-radius:8px;object-fit:cover;background:#000;display:block}
+.frame-body{display:grid;gap:8px;min-width:0}
+.frame-act{display:flex;flex-direction:column;gap:4px}
+@media (max-width:860px){ .frame-row{grid-template-columns:56px 1fr} .frame-act{grid-column:1/-1;flex-direction:row} .frame-row .thumb{width:56px;height:42px} }
