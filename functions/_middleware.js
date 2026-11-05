@@ -8,7 +8,22 @@ async function titles(env) {
   memo = { at: Date.now(), titles: t }; return t;
 }
 const attr = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Security headers on every response (pages, API, files): no other site may show these pages inside a frame
+// (clickjacking: a hidden admin panel or client account laid under a fake page), and browsers stay on HTTPS.
+const SECURITY = {
+  "X-Frame-Options": "SAMEORIGIN",
+  "Content-Security-Policy": "frame-ancestors 'self'",
+  "Strict-Transport-Security": "max-age=31536000",
+};
+function secure(res) {
+  const r = new Response(res.body, res);
+  for (const k in SECURITY) if (!r.headers.has(k)) r.headers.set(k, SECURITY[k]);
+  return r;
+}
 export async function onRequest(ctx) {
+  return secure(await withTitles(ctx));
+}
+async function withTitles(ctx) {
   const { request, env, next } = ctx;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/assets/")) return next();
