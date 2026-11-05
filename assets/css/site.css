@@ -528,6 +528,9 @@ select{cursor:pointer}
 .proj.slot .rec b{color:var(--venus)}
 .proj.slot h3{font-size:21px;margin:0}
 .proj.slot .soon{display:block;margin-top:4px}
+/* work cards: the cover stays; the preview video fades in over it only while hovered */
+.desk .ph video.hov{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease,transform 1.2s cubic-bezier(.16,.84,.24,1);pointer-events:none}
+.desk .ph video.hov.on{opacity:1}
 .proj .views{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--mist);letter-spacing:.02em}
 .proj .views[hidden]{display:none}
 .proj .views svg{width:15px;height:15px;fill:none;stroke:var(--horizon);stroke-width:1.8;stroke-linejoin:round;opacity:.9}

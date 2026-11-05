@@ -275,8 +275,9 @@
     grid.classList.add('has-projects');
     grid.innerHTML=list.map(function(p,i){
       var lab=((C.services||[]).filter(function(x){return x.id===p.service})[0]||{}).label||'WORK';
-      var media=p.preview?'<video muted loop playsinline preload="none" '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(p.preview))+'"></video>'
-                         :'<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>';
+      // the cover is always what shows; the short preview sits on top, invisible, and plays only while the pointer is over the work
+      var media='<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>'+
+        (p.preview?'<video class="hov" muted loop playsinline preload="none" data-src="'+esc(url(p.preview))+'" aria-hidden="true"></video>':'');
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
       return '<button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
@@ -288,9 +289,19 @@
     }).join('');
     loadViews();
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
-    if('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches){
-      var vio=new IntersectionObserver(function(es){es.forEach(function(en){var v=en.target; if(en.isIntersecting){v.preload='auto'; var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){});} else v.pause();});},{threshold:.35});
-      [].forEach.call(grid.querySelectorAll('video'),function(v){vio.observe(v)});
+    // preview on hover (mouse) or keyboard focus; it fades in once it is really playing, and back to the cover on leave
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      [].forEach.call(grid.querySelectorAll('.proj'),function(card){
+        var v=card.querySelector('video.hov'); if(!v) return;
+        var want=false;
+        function start(){ want=true; if(!v.src) v.src=v.dataset.src; var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); }
+        function stop(){ want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
+        v.addEventListener('playing',function(){ if(want) v.classList.add('on'); else v.pause(); });
+        card.addEventListener('pointerenter',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') start(); });
+        card.addEventListener('pointerleave',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') stop(); });
+        card.addEventListener('focus',function(){ if(card.matches(':focus-visible')) start(); });
+        card.addEventListener('blur',stop);
+      });
     }
     var used=(C.services||[]).map(function(s){return s.id}).filter(function(k){return list.some(function(p){return p.service===k})});
     if(filters && !limit && list.length>=4 && used.length>1){
