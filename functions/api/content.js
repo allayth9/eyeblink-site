@@ -13,10 +13,21 @@ export async function onRequestPut({ request, env }) {
   if (!data || !Array.isArray(data.services) || !data.hero) return json({ ok: false, error: "missing sections" }, 400);
   const prev = await env.EB.get("content");
   if (prev) await env.EB.put("backup:" + Date.now(), prev, { expirationTtl: 60 * 60 * 24 * 30 });
+  // every work keeps a permanent id (its view count is stored under it); same key the site uses before one exists
+  const seen = new Set();
+  for (const p of Array.isArray(data.projects) ? data.projects : []) {
+    if (!p || typeof p !== "object") continue;
+    let id = p.id || workKey(p), k = id, i = 2;
+    while (seen.has(k)) k = id + "-" + i++;
+    p.id = k; seen.add(k);
+  }
   data.updatedAt = new Date().toISOString();
   await env.EB.put("content", JSON.stringify(data));
   return json({ ok: true, updatedAt: data.updatedAt });
 }
+// a work's key before it has an id (same as functions/api/views.js and assets/js/render.js)
+function fp(s){ let h = 5381; s = String(s); for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function workKey(p){ return "w" + fp(p.poster || p.preview || (p.full && (p.full.id || p.full.src)) || (p.title && p.title.ar) || ""); }
 
 // ---- shared auth (same block in every route) ----
 // Password: a hash saved from the admin panel (KV "auth:hash"), or else the ADMIN_PASSWORD secret.

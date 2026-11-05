@@ -283,8 +283,10 @@
         '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
           '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
           '<span class="cap">'+esc(lab+(p.year?' · '+p.year:''))+'</span></div>'+PROPS[PROPS[p.service]?p.service:'films']+'</div>'+
-        '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+'</div></button>';
+        '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+
+        '<span class="views" data-views="'+esc(workKey(p))+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span></div></button>';
     }).join('');
+    loadViews();
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     if('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches){
       var vio=new IntersectionObserver(function(es){es.forEach(function(en){var v=en.target; if(en.isIntersecting){v.preload='auto'; var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){});} else v.pause();});},{threshold:.35});
@@ -304,6 +306,34 @@
     }
     bindLB();
   }
+  /* ---------------- view counts ---------------- */
+  // the key the server uses for a work (functions/api/views.js): its id, or a fingerprint of its media before it has one
+  function fp(s){ var h=5381; s=String(s); for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+  function workKey(p){ return p.id || ('w'+fp(p.poster||p.preview||(p.full&&(p.full.id||p.full.src))||(p.title&&p.title.ar)||'')); }
+  var VIEWS=null, viewsReq=null;
+  function viewsLabel(n){
+    if(!AR) return n+(n===1?' view':' views');
+    return n+' '+(n===1?'مشاهدة':n===2?'مشاهدتان':n<=10?'مشاهدات':'مشاهدة');
+  }
+  function paintViews(){
+    if(!VIEWS) return;
+    [].forEach.call(document.querySelectorAll('[data-views]'),function(el){ var n=VIEWS[el.dataset.views];
+      if(typeof n!=='number'){ el.hidden=true; return; }
+      el.querySelector('b').textContent=viewsLabel(n); el.setAttribute('aria-label',viewsLabel(n)); el.hidden=false; });
+  }
+  function loadViews(){
+    if(VIEWS){ paintViews(); return; }
+    if(viewsReq||!/^https?:/.test(location.protocol)) return;
+    viewsReq=fetch(BASE+'api/views').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.views){ VIEWS=j.views; paintViews(); } }).catch(function(){});
+  }
+  // a real view: the visitor opened the work to watch it (the server counts one per visitor per work per day)
+  function countView(p){
+    var k=workKey(p), seen=''; try{ seen=sessionStorage.getItem('eb-v:'+k); }catch(_){}
+    if(seen||!/^https?:/.test(location.protocol)) return;
+    try{ sessionStorage.setItem('eb-v:'+k,'1'); }catch(_){}
+    fetch(BASE+'api/views',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:k}),keepalive:true})
+      .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&typeof j.n==='number'){ VIEWS=VIEWS||{}; VIEWS[k]=j.n; paintViews(); } }).catch(function(){});
+  }
   var lb,lbFrame,lbTitle,lastFocus;
   function bindLB(){
     if(lbBound) return; lb=document.getElementById('lb'); if(!lb) return; lbBound=true;
@@ -313,6 +343,7 @@
     addEventListener('keydown',function(e){ if(e.key==='Escape'&&!lb.hidden) closeLB(); });
   }
   function openLB(p){
+    countView(p);
     var f=p.full||{}, src='', html='', title=L(p.title);
     var v=vid(f);
     if(v&&v.type==='vimeo') src='https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1';

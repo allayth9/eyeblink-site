@@ -10,6 +10,70 @@
   function headers(extra){ var h={'authorization':'Bearer '+PW}; for(var k in extra) h[k]=extra[k]; return h; }
   var onHttp=/^https?:/.test(location.protocol);
 
+  /* ---------------- automatic English ----------------
+     Arabic is the source. Every {ar,en} text gets its English from /api/translate when an Arabic field is left
+     (blur) and again before publishing, whenever the English is empty or does not belong to the current Arabic.
+     Whether an English belongs to its Arabic is remembered per text pair (fingerprint "arabic:english"), not per
+     position, so reordering works or packages changes nothing:
+       C._auto  pairs written by the translator (shown with «تلقائي»)
+       C._ok    pairs where the English was typed by hand: kept until that Arabic changes
+       the pairs already published count as matching. */
+  function fp(s){ var h=5381; s=String(s); for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+  function isText(v){ return typeof v==='string' || (Array.isArray(v) && v.every(function(x){return typeof x==='string'})); }
+  function biPairs(o,base,out){
+    out=out||[]; if(!o||typeof o!=='object') return out;
+    if(!Array.isArray(o)){ var ks=Object.keys(o);
+      if(ks.length && 'ar' in o && ks.every(function(k){return k==='ar'||k==='en'}) && isText(o.ar) && (o.en==null||isText(o.en))){ out.push({p:base,o:o}); return out; } }
+    Object.keys(o).forEach(function(k){ if(!base && (k==='_auto'||k==='_ok')) return; biPairs(o[k], base?base+'.'+k:k, out); });
+    return out;
+  }
+  function arText(o){ return Array.isArray(o.ar)? o.ar.join('\n') : String(o.ar||''); }
+  function enText(o){ return Array.isArray(o.en)? o.en.join('\n') : String(o.en||''); }
+  function enEmpty(o){ return !enText(o).trim(); }
+  function pk(o){ return fp(arText(o))+':'+fp(enText(o)); }
+  var PUB={src:null,set:{}};
+  function pubOk(k){
+    if(PUB.src!==SAVED){ PUB.src=SAVED; PUB.set={}; try{ biPairs(JSON.parse(SAVED||'{}'),'').forEach(function(x){ if(!enEmpty(x.o)) PUB.set[pk(x.o)]=1; }); }catch(_){} }
+    return !!PUB.set[k];
+  }
+  function inSync(o){ var k=pk(o); return !!((C._auto&&C._auto[k]) || (C._ok&&C._ok[k]) || pubOk(k)); }
+  function needsEn(x){ return !!arText(x.o).trim() && (enEmpty(x.o) || !inSync(x.o)); }
+  function enInputs(p){ return document.querySelectorAll('[data-p="'+p.replace(/"/g,'')+'.en"]'); }
+  function pairAt(p){ return biPairs(C,'').filter(function(y){return y.p===p})[0]; }
+  function showEn(x){ [].forEach.call(enInputs(x.p),function(el){ el.value=enText(x.o); }); decorate(); }
+  function decorate(){ if(!C) return; var auto=C._auto||{};
+    [].forEach.call(document.querySelectorAll('[data-p$=".en"]'),function(el){ var x=pairAt(el.dataset.p.slice(0,-3)); el.parentNode.classList.toggle('is-auto',!!(x&&!enEmpty(x.o)&&auto[pk(x.o)])); }); }
+  // keep only the marks of texts that still exist
+  function pruneMarks(){ var live={}; biPairs(C,'').forEach(function(x){ live[pk(x.o)]=1; });
+    ['_auto','_ok'].forEach(function(m){ if(C[m]) Object.keys(C[m]).forEach(function(k){ if(!live[k]) delete C[m][k]; }); }); }
+  var TR_OFF=false, TR_BUSY=null;
+  function autoEnglish(only){
+    if(TR_OFF||!LIVE||!C) return Promise.resolve(0);
+    var todo=biPairs(C,'').filter(function(x){ return (!only||x.p===only) && needsEn(x); }).slice(0,80);
+    if(!todo.length) return Promise.resolve(0);
+    var items={}; todo.forEach(function(x){ items[x.p]=arText(x.o); });
+    todo.forEach(function(x){ [].forEach.call(enInputs(x.p),function(el){ el.classList.add('translating'); }); });
+    return fetch(API+'/translate',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({items:items})})
+      .then(function(r){ if(r.status===501){ TR_OFF=true; throw new Error('off'); } if(!r.ok) throw new Error('fail'); return r.json(); })
+      .then(function(j){ var n=0; C._auto=C._auto||{};
+        todo.forEach(function(x){ var en=j.items&&j.items[x.p]; if(!en||arText(x.o)!==items[x.p]) return;   // skipped, or the Arabic changed meanwhile
+          x.o.en=Array.isArray(x.o.ar)? en.split('\n').map(function(s){return s.trim()}).filter(Boolean) : en;
+          C._auto[pk(x.o)]=1; n++; showEn(x); });
+        if(n){ dirty(); saveDraft(); } return n; })
+      .catch(function(e){ if(e.message==='off') toast('الترجمة التلقائية تحتاج تفعيل Workers AI على Cloudflare (مرة واحدة).',true); return 0; })
+      .then(function(n){ todo.forEach(function(x){ [].forEach.call(enInputs(x.p),function(el){ el.classList.remove('translating'); }); }); return n; });
+  }
+  // everything still missing, in rounds of 80 (the first publish after this feature may have many empty English fields)
+  function autoEnglishAll(){ var round=0; return (function next(){ return autoEnglish().then(function(n){ return n && ++round<6 ? next() : null; }); })(); }
+  // English typed by hand belongs to the Arabic as it is now (runs after the field's value reaches C)
+  document.addEventListener('input',function(e){ var p=e.target.dataset&&e.target.dataset.p; if(!p || !/\.en$/.test(p) || !C) return;
+    setTimeout(function(){ var x=pairAt(p.slice(0,-3)); if(!x||enEmpty(x.o)) return; C._ok=C._ok||{}; C._ok[pk(x.o)]=1; decorate(); dirty(); saveDraft(); },0); });
+  // leaving an Arabic field: translate it now; emptied → its English is cleared too
+  document.addEventListener('change',function(e){ var p=e.target.dataset&&e.target.dataset.p; if(!p || !/\.ar$/.test(p) || !C) return;
+    var b=p.slice(0,-3), x=pairAt(b);
+    if(x && !arText(x.o).trim() && !enEmpty(x.o)){ x.o.en=Array.isArray(x.o.ar)?[]:''; showEn(x); dirty(); saveDraft(); return; }
+    TR_BUSY=autoEnglish(b); });
+
   /* ---------------- schema: what can be edited, and how ---------------- */
   var SVC=function(){ return (C.services||[]).map(function(s){return [s.id, (s.name&&s.name.ar)||s.id]}); };
   var TABS=[
@@ -70,7 +134,7 @@
           {row:[{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'ratio', t:'select', l:'المقاس', opts:function(){return [['16:9','أفقي 16:9'],['9:16','عمودي 9:16'],['1:1','مربع 1:1'],['4:5','4:5']]}},{p:'year', t:'text', l:'السنة', ltr:1}]},
           {p:'summary', t:'bi', l:'سطر عن المشروع'},{p:'client', t:'text', l:'العميل (اختياري)'},
           {p:'challenge', t:'bita', l:'دراسة الحالة — التحدي (اختياري)'},{p:'idea', t:'bita', l:'الفكرة (اختياري)'},{p:'result', t:'bita', l:'النتيجة، بالأرقام إن أمكن (اختياري)', hint:'تظهر الثلاثة تحت الفيديو عند فتحه. اتركها فارغة لعرض الفيديو فقط.'},
-          {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm'},
+          {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm', make:1, hint:'«صنع من الفيديو»: اختر الفيديو الكامل من جهازك، فتُقتطع منه 4 لقطات قصيرة من أجزاء مختلفة وتُدمج في معاينة صامتة (~7 ثوانٍ) تُرفع وحدها. أبقِ هذه الصفحة مفتوحة أثناء الصنع.'},
           {p:'poster', t:'media', l:'صورة الغلاف', accept:'image/*'},
           {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
           {p:'full.src', t:'media', l:'ملف MP4 كامل (فقط إذا اخترت MP4)', accept:'video/mp4'} ]}} ]},
@@ -131,7 +195,8 @@
         return '<div class="field"><label>'+esc(f.l)+'</label><div class="bi"><div><small>عربي</small>'+inp('ar',a)+'</div><div><small>ENGLISH</small>'+inp('en',e)+'</div></div>'+hint+'</div>';
       case 'media':
         var isV=/video/.test(f.accept||''), prev=v? (isV?'<video class="thumb" src="'+esc(abs(v))+'" muted></video>':'<img class="thumb" alt="" src="'+esc(abs(v))+'">') : '';
-        return '<div class="field">'+lab+'<div class="media">'+prev+'<input id="'+id+'"'+d+' dir="ltr" placeholder="رابط أو ارفع ملفاً" value="'+esc(v)+'"><label class="btn sm">رفع<input type="file" accept="'+esc(f.accept||'*/*')+'" data-upload="'+esc(f.p)+'" hidden></label></div>'+hint+'</div>';
+        return '<div class="field">'+lab+'<div class="media">'+prev+'<input id="'+id+'"'+d+' dir="ltr" placeholder="رابط أو ارفع ملفاً" value="'+esc(v)+'"><label class="btn sm">رفع<input type="file" accept="'+esc(f.accept||'*/*')+'" data-upload="'+esc(f.p)+'" hidden></label>'+
+          (f.make?'<label class="btn sm primary">صنع من الفيديو<input type="file" accept="video/*" data-make="'+esc(f.p)+'" hidden></label>':'')+'</div><p class="mkstate small" data-mkstate="'+esc(f.p)+'" hidden></p>'+hint+'</div>';
     }
     return '';
   }
@@ -167,11 +232,12 @@
         html+='<div class="rep" data-rep="'+esc(s.rep.p)+'">'+arr.map(function(it,i){
           return '<details class="item"'+(arr.length<=1?' open':'')+'><summary><span class="chev">‹</span><b>'+esc(s.rep.name(it,i))+'</b>'+
             (s.rep.fixed?'':'<button class="btn sm" type="button" data-move="'+si+':'+i+':-1" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-move="'+si+':'+i+':1" aria-label="أسفل">↓</button><button class="btn sm danger" type="button" data-del="'+si+':'+i+'">حذف</button>')+
-            '</summary><div class="body">'+s.rep.fields.map(function(f){ return field(it, f).replace(/data-p="/g,'data-p="'+s.rep.p+'.'+i+'.').replace(/data-upload="/g,'data-upload="'+s.rep.p+'.'+i+'.'); }).join('')+'</div></details>';
+            '</summary><div class="body">'+s.rep.fields.map(function(f){ return field(it, f).replace(/data-p="/g,'data-p="'+s.rep.p+'.'+i+'.').replace(/data-upload="/g,'data-upload="'+s.rep.p+'.'+i+'.').replace(/data-(make|mkstate)="/g,'data-$1="'+s.rep.p+'.'+i+'.'); }).join('')+'</div></details>';
         }).join('')+'</div>'+(s.rep.fixed?'':'<div><button class="btn" type="button" data-add="'+si+'">+ إضافة</button></div>');
       }
       return html+'</section>';
     }).join('');
+    decorate();
   }
   function dirty(){ var d=JSON.stringify(C)!==SAVED || JSON.stringify(P)!==PSAVED; $('#state').textContent=d?'تعديلات غير منشورة':'محفوظ'; $('#state').classList.toggle('dirty',d); }
 
@@ -193,6 +259,7 @@
     var el=e.target;
     if(el.dataset.t==='check'||el.tagName==='SELECT'){ el.dispatchEvent(new Event('input',{bubbles:true})); }
     if(el.dataset.upload) upload(el);
+    if(el.dataset.make) makePreview(el);
   });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;
@@ -225,14 +292,90 @@
     var btn=$('#publishBtn');
     if(!LIVE){ saveDraft(); try{ localStorage.setItem('eb-preview','1'); }catch(_){}
       SAVED=JSON.stringify(C); PSAVED=JSON.stringify(P); savePrivDraft(); dirty(); toast('حُفظت المسودة في هذا المتصفح. للنشر الفعلي ارفع الموقع على Cloudflare.'); return; }
-    btn.disabled=true; btn.textContent='جارٍ النشر…';
-    fetch(API+'/content',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(C)})
+    btn.disabled=true; btn.textContent='جارٍ الترجمة…';
+    Promise.resolve(TR_BUSY).then(autoEnglishAll).then(function(){ pruneMarks(); btn.textContent='جارٍ النشر…'; return fetch(API+'/content',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(C)}); })
       .then(function(r){ if(r.status===401) throw new Error('auth'); if(!r.ok) throw new Error('fail'); return r.json(); })
       .then(function(){ SAVED=JSON.stringify(C);
         if(JSON.stringify(P)!==PSAVED) return fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw new Error('fail'); PSAVED=JSON.stringify(P); }); })
       .then(function(){ dirty(); try{ localStorage.removeItem('eb-preview'); }catch(_){} toast('نُشرت التعديلات على الموقع'); })
       .catch(function(err){ toast(err.message==='auth'?'انتهت الجلسة، سجّل الدخول من جديد':'تعذّر النشر، حاول مرة أخرى',true); })
       .then(function(){ btn.disabled=false; btn.textContent='نشر التعديلات'; });
+  }
+  /* ---------------- short preview made from the full video ----------------
+     Done in this browser: the video plays hidden, 4 short moments spread across it are drawn onto a canvas and
+     recorded (silent, ≤1280px, ~2.5 Mbps), with a quick fade between moments. Only the result is uploaded. */
+  var MK={clips:4, len:1.7, fade:0.18, max:1280, bitrate:2500000, busy:false};
+  function recType(){ var c=['video/mp4;codecs=avc1.42E01F','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+    for(var i=0;i<c.length;i++){ try{ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(c[i])) return c[i]; }catch(_){} } return ''; }
+  function once(el,ev){ return new Promise(function(res,rej){ function ok(){ el.removeEventListener(ev,ok); el.removeEventListener('error',bad); res(); } function bad(){ el.removeEventListener(ev,ok); el.removeEventListener('error',bad); rej(new Error('read')); } el.addEventListener(ev,ok); el.addEventListener('error',bad); }); }
+  function previewMoments(dur){
+    var n=Math.max(1,Math.min(MK.clips,Math.floor(dur/2.5))), len=Math.min(MK.len,dur/(n+1)), out=[];
+    for(var i=0;i<n;i++){ var c=dur*(n===1?0.5:0.12+0.76*i/(n-1)); out.push(Math.max(0,Math.min(dur-len-0.05,c-len/2))); }
+    return {starts:out,len:len};
+  }
+  function makePreview(input){
+    var file=input.files[0], path=input.dataset.make; input.value=''; if(!file) return;
+    var st=document.querySelector('[data-mkstate="'+path+'"]');
+    function say(t,bad){ if(st){ st.hidden=false; st.textContent=t; st.classList.toggle('bad',!!bad); } }
+    if(!LIVE){ toast('صنع المعاينة يعمل بعد نشر الموقع على Cloudflare (يرفع الملف الناتج).',true); return; }
+    if(MK.busy){ toast('هناك معاينة قيد الصنع، انتظر قليلاً.',true); return; }
+    var mime=recType(); if(!mime||!HTMLCanvasElement.prototype.captureStream){ say('متصفحك لا يدعم صنع المعاينة. استعمل Chrome أو Edge على الكمبيوتر.',true); return; }
+    MK.busy=true; say('جارٍ تحميل الفيديو…');
+    var url=URL.createObjectURL(file), v=document.createElement('video'), stopDraw=false, rec=null;
+    v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url;
+    v.style.cssText='position:fixed;left:-9999px;width:2px;height:2px'; document.body.appendChild(v);
+    var cv=document.createElement('canvas'), ctx=cv.getContext('2d'), fadeA=0, rvfc=!!v.requestVideoFrameCallback;
+    // one canvas frame per decoded video frame (requestVideoFrameCallback), or per screen frame on older browsers
+    function paint(){ if(stopDraw||v.readyState<2) return; ctx.drawImage(v,0,0,cv.width,cv.height); if(fadeA>0){ ctx.fillStyle='rgba(0,0,0,'+fadeA.toFixed(3)+')'; ctx.fillRect(0,0,cv.width,cv.height); } }
+    function draw(){ paint(); }
+    once(v,'loadedmetadata').then(function(){
+      var dur=v.duration; if(!isFinite(dur)||dur<2||!v.videoWidth) throw new Error('short');
+      var sc=Math.min(1,MK.max/Math.max(v.videoWidth,v.videoHeight));
+      cv.width=Math.round(v.videoWidth*sc/2)*2; cv.height=Math.round(v.videoHeight*sc/2)*2;
+      var m=previewMoments(dur), chunks=[];
+      rec=new MediaRecorder(cv.captureStream(30),{mimeType:mime,videoBitsPerSecond:MK.bitrate});
+      rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
+      var done=new Promise(function(res){ rec.onstop=function(){ res(new Blob(chunks,{type:mime.split(';')[0]})); }; });
+      draw(); rec.start(250); rec.pause();
+      // page hidden (another tab): the browser pauses the video, so recording pauses too and resumes on return
+      var onVis=function(){ if(!rec||rec.state==='inactive'||stopDraw) return;
+        if(document.hidden){ if(rec.state==='recording'){ rec.pause(); v.pause(); MK.hid=true; say('متوقف مؤقتاً: ارجع إلى هذه الصفحة ليكمل الصنع.'); } }
+        else if(MK.hid){ MK.hid=false; say('جارٍ صنع المعاينة…'); var pr=v.play(); if(pr&&pr.then) pr.then(function(){ rec.resume(); }); else rec.resume(); } };
+      document.addEventListener('visibilitychange',onVis); MK.offVis=function(){ document.removeEventListener('visibilitychange',onVis); };
+      // one moment: seek, record while it plays, fade in and out at its edges
+      function clip(i){
+        if(i>=m.starts.length) return Promise.resolve();
+        say('جارٍ صنع المعاينة… اللقطة '+(i+1)+' من '+m.starts.length+' (أبقِ الصفحة مفتوحة)');
+        var t0=m.starts[i]; v.currentTime=t0;
+        return once(v,'seeked').then(function(){ fadeA=1; paint(); rec.resume(); return v.play(); }).then(function(){
+          return new Promise(function(res,rej){ var fin=false, last=performance.now();
+            function end(err){ if(fin) return; fin=true; clearInterval(guard); v.pause(); fadeA=1; paint(); setTimeout(function(){ try{ rec.pause(); }catch(_){} err? rej(err) : res(); },60); }
+            function step(now,meta){ if(fin) return; last=performance.now(); var t=(meta&&meta.mediaTime!=null? meta.mediaTime : v.currentTime)-t0;
+              fadeA=t<MK.fade? 1-t/MK.fade : t>m.len-MK.fade? Math.min(1,(t-(m.len-MK.fade))/MK.fade) : 0;
+              if(t>=m.len||v.ended) return end();
+              paint(); rvfc? v.requestVideoFrameCallback(step) : requestAnimationFrame(step); }
+            // safety net: the moment's end is reached even if the browser stops delivering frames; no frames at all for 4s → stop with a clear message
+            var guard=setInterval(function(){ if(fin) return; if(v.currentTime-t0>=m.len||v.ended) return end(); if(performance.now()-last>4000 && !document.hidden) end(new Error('empty')); },250);
+            rvfc? v.requestVideoFrameCallback(step) : requestAnimationFrame(step); });
+        }).then(function(){ return clip(i+1); });
+      }
+      return clip(0).then(function(){ rec.stop(); return done; });
+    }).then(function(blob){
+      stopDraw=true;
+      if(!blob||blob.size<10000) throw new Error('empty');
+      if(blob.size>24*1024*1024) throw new Error('big');
+      say('جارٍ رفع المعاينة ('+(blob.size/1048576).toFixed(1)+' MB)…');
+      var ext=/mp4/.test(blob.type)?'mp4':'webm', name=(file.name.replace(/\.[^.]+$/,'')||'video')+'-preview.'+ext;
+      return fetch(API+'/media',{method:'POST',headers:headers({'content-type':blob.type,'x-filename':name}),body:blob})
+        .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'upload'); return j; }); });
+    }).then(function(j){
+      set(C,path,j.url); dirty(); saveDraft(); render();
+      toast('جاهزة: المعاينة صُنعت ورُفعت. اضغط «نشر التعديلات» لتظهر على الموقع.');
+    }).catch(function(e){
+      stopDraw=true; try{ if(rec&&rec.state!=='inactive') rec.stop(); }catch(_){}
+      var msg={read:'تعذّرت قراءة الفيديو في المتصفح. صدّره MP4 (H.264) ثم جرّب مرة أخرى.',short:'الفيديو قصير جداً لصنع معاينة منه.',empty:'لم يُسجَّل شيء. أبقِ الصفحة مفتوحة وفي المقدمة أثناء الصنع ثم جرّب مرة أخرى.',big:'المعاينة الناتجة أكبر من 24MB.'}[e.message]||('تعذّر صنع المعاينة: '+e.message);
+      say(msg,true); toast(msg,true);
+    }).then(function(){ MK.busy=false; MK.hid=false; if(MK.offVis) MK.offVis(); v.remove(); URL.revokeObjectURL(url); });
   }
   function upload(input){
     var file=input.files[0], path=input.dataset.upload; if(!file) return;

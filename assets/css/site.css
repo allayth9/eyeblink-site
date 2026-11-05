@@ -528,6 +528,10 @@ select{cursor:pointer}
 .proj.slot .rec b{color:var(--venus)}
 .proj.slot h3{font-size:21px;margin:0}
 .proj.slot .soon{display:block;margin-top:4px}
+.proj .views{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--mist);letter-spacing:.02em}
+.proj .views[hidden]{display:none}
+.proj .views svg{width:15px;height:15px;fill:none;stroke:var(--horizon);stroke-width:1.8;stroke-linejoin:round;opacity:.9}
+.proj .views b{font-weight:400;font-variant-numeric:tabular-nums}
 .proj.slot .play{z-index:3}
 @media (max-width:620px){ .proj.slot{aspect-ratio:auto;min-height:340px} }
 

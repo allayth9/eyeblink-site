@@ -57,6 +57,14 @@ a{color:inherit}
 .bi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bi>div{display:grid;gap:4px}
 .bi small{font-size:11px;color:var(--dim);letter-spacing:.08em}
+/* English written automatically from the Arabic (typing in it makes it yours) */
+.bi .is-auto small::after{content:" · تلقائي";letter-spacing:0;color:var(--horizon)}
+.bi .is-auto input,.bi .is-auto textarea{box-shadow:inset 0 0 0 1px rgba(63,224,232,.28)}
+.bi .translating{opacity:.55;animation:trpulse 1s ease-in-out infinite alternate}
+@keyframes trpulse{to{opacity:.25}}
+.mkstate{margin:2px 0 0;color:var(--horizon)}
+.mkstate.bad{color:var(--bad)}
+.media .btn.primary{padding:5px 11px;font-size:13px}
 input,textarea,select{font:inherit;width:100%;color:var(--light);background:rgba(4,6,26,.7);border:0;border-radius:10px;padding:9px 12px;box-shadow:inset 0 0 0 1px var(--line);outline:none}
 input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1.5px var(--horizon)}
 textarea{min-height:76px;resize:vertical;line-height:1.6}
