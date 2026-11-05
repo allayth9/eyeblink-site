@@ -365,7 +365,8 @@
       if(!blob||blob.size<10000) throw new Error('empty');
       if(blob.size>24*1024*1024) throw new Error('big');
       say('جارٍ رفع المعاينة ('+(blob.size/1048576).toFixed(1)+' MB)…');
-      var ext=/mp4/.test(blob.type)?'mp4':'webm', name=(file.name.replace(/\.[^.]+$/,'')||'video')+'-preview.'+ext;
+      var ext=/mp4/.test(blob.type)?'mp4':'webm', work=get(C,path.replace(/\.preview$/,''))||{};
+      var name=mediaName(file.name.replace(/\.[^.]+$/,''), work.id||'work')+'-preview.'+ext;
       return fetch(API+'/media',{method:'POST',headers:headers({'content-type':blob.type,'x-filename':name}),body:blob})
         .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'upload'); return j; }); });
     }).then(function(j){
@@ -377,12 +378,15 @@
       say(msg,true); toast(msg,true);
     }).then(function(){ MK.busy=false; MK.hid=false; if(MK.offVis) MK.offVis(); v.remove(); URL.revokeObjectURL(url); });
   }
+  // a header may only carry Latin-1, and the server keeps a-z0-9.-_ anyway: Arabic or other names become a plain slug
+  function mediaName(n,fallback){ var s=String(n||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'-').slice(0,40); return s||fallback; }
   function upload(input){
     var file=input.files[0], path=input.dataset.upload; if(!file) return;
     if(!LIVE){ toast('رفع الملفات يعمل بعد نشر الموقع على Cloudflare. ضع رابطاً مباشراً الآن.',true); input.value=''; return; }
     if(file.size>24*1024*1024){ toast('الحد الأقصى 24MB. اضغط الفيديو أولاً.',true); input.value=''; return; }
     toast('جارٍ رفع '+file.name+'…');
-    fetch(API+'/media',{method:'POST',headers:headers({'content-type':file.type||'application/octet-stream','x-filename':file.name}),body:file})
+    var m=/\.[a-z0-9]{2,5}$/i.exec(file.name), safe=mediaName(file.name.replace(/\.[^.]+$/,''),'file')+(m?m[0].toLowerCase():'');
+    fetch(API+'/media',{method:'POST',headers:headers({'content-type':file.type||'application/octet-stream','x-filename':safe}),body:file})
       .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ set(C,path,j.url); dirty(); saveDraft(); render(); toast('تم الرفع. اضغط «نشر التعديلات» ليظهر على الموقع.'); })
       .catch(function(e){ toast('تعذّر الرفع: '+e.message,true); });
