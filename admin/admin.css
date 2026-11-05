@@ -427,3 +427,47 @@ section.sec .ph{display:flex;justify-content:space-between;align-items:center;ga
 .order .pill.discussing{background:rgba(139,92,255,.22);color:#c9b6ff}
 @media (max-width:640px){.crm .trow{grid-template-columns:1fr auto}.crm .trow select{grid-column:1/-1}}
 .crm .hid{margin:0;color:var(--mist)}
+
+/* documents: quote + agreement editor (full-screen sheet) */
+.docs{display:grid;gap:10px;padding:12px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+.docs .dh{display:grid;gap:2px}
+.dlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.dlist li{display:grid;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03)}
+.dl1{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.dl1 .pill{font-size:12px;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--mist)}
+.dl1 .pill.seen{background:rgba(46,98,255,.2);color:#b9c9ff}
+.dl1 .pill.ok{background:rgba(63,224,232,.16);color:var(--horizon)}
+.dl2{display:flex;flex-wrap:wrap;gap:6px}
+html.dlock,html.dlock body{overflow:hidden}
+#dsheet{position:fixed;inset:0;z-index:80;background:rgba(2,3,14,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:auto;padding:28px 16px 60px}
+#dsheet .dbox{max-width:880px;margin:0 auto;background:var(--panel);border-radius:18px;box-shadow:inset 0 0 0 1px var(--line),0 30px 80px -30px #000;padding:0 22px 22px}
+#dsheet .dtop{position:sticky;top:-28px;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 14px;margin-bottom:6px;background:var(--panel);border-bottom:1px solid var(--line)}
+#dsheet .dtop b{font-size:17px}
+#dsheet .dsec{display:grid;gap:12px;padding:18px 0;border-bottom:1px solid var(--line)}
+#dsheet .dsec h4{margin:0;font-size:15px;color:var(--light)}
+#dsheet .dsec>p{margin:-6px 0 0}
+#dsheet details.dsec summary{cursor:pointer;color:var(--mist);font-size:14px}
+#dsheet details.dsec[open] summary{margin-bottom:6px}
+.ditems{display:grid;gap:8px}
+.dih,.dirow{display:grid;grid-template-columns:1.2fr 1.6fr 64px 96px 34px;gap:8px;align-items:start}
+.dih span{font-size:12px;color:var(--mist)}
+.dirow textarea{min-height:66px;resize:vertical}
+.ditems .actions{align-items:center}
+.ditems select{width:auto;max-width:260px}
+.dtotal b{font-family:Oswald,sans-serif;font-weight:300;font-size:26px;line-height:42px;color:var(--light)}
+.dclauses{display:grid;gap:10px}
+.dcl{display:grid;grid-template-columns:28px 1fr 34px;gap:8px;align-items:start}
+.dcl>div{display:grid;gap:6px}
+.dcl .dn{font-family:Oswald,sans-serif;color:var(--hour);padding-top:10px;font-size:13px}
+.dcl input{font-weight:600}
+.dfoot{position:sticky;bottom:-60px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 0 4px;background:var(--panel)}
+.dfoot .sp{flex:1}
+.dres{display:grid;gap:14px;padding:18px 0 4px}
+.dok{font-size:16px;color:var(--horizon)}
+.dlink{padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);font-family:Oswald,monospace;font-size:13px;word-break:break-all;user-select:all}
+@media (max-width:700px){
+ #dsheet{padding:0}#dsheet .dbox{border-radius:0;min-height:100%;padding:0 14px 18px}#dsheet .dtop{top:0}
+ .dih{display:none}.dirow{grid-template-columns:1fr 1fr 34px;padding:10px;border-radius:10px;background:rgba(255,255,255,.03)}
+ .dirow input[data-dp$=".name"],.dirow textarea{grid-column:1/-1}
+ .dfoot{bottom:0}
+}

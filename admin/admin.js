@@ -586,6 +586,192 @@
     b.disabled=true; api('/orders','PATCH',{key:o.key,touch:{channel:ch,note:note}}).then(function(j){ if(!j.ok) throw 0; addT(j.order.touches); }).catch(function(){ b.disabled=false; toast('ما انسجّل',true); });
   });
 
+  /* ---------- documents: a quote and an agreement per order, each a private link the client opens, saves as PDF and accepts / signs ---------- */
+  var DTYPE={quote:'عرض سعر',agreement:'اتفاقية'}, DOCS={}, DED=null;
+  var DDEF={
+    ar:{includes:['الموسيقى والمؤثرات الصوتية المرخّصة لاستخدامها ضمن المشروع','نسخ بالمقاسات المتفق عليها لكل منصة','الملف النهائي بجودة عالية (MP4)'],
+        excludes:['التصوير الميداني ومعداته، ما لم يُذكر في البنود','الملفات المفتوحة للمشروع (Premiere Pro / After Effects)','تكاليف الإعلانات الممولة','تراخيص لقطات أو موسيقى يطلبها العميل من خارج مكتباتنا']},
+    en:{includes:['Licensed music and sound effects for use within this project','Versions in the agreed sizes for each platform','Final high-quality file (MP4)'],
+        excludes:['On-location filming and equipment, unless listed above','Open project files (Premiere Pro / After Effects)','Paid advertising costs','Licences for footage or music the client requests from outside our libraries']}};
+  function dset(){ var d=(P&&P.docs)||{}, s=(C.settings||{});
+    return {studioName:d.studioName||'Eyeblink Studio', studioPlace:d.studioPlace||'', studioContact:d.studioContact||[s.whatsapp,s.email].filter(Boolean).join('\n'),
+      payMethods:d.payMethods||'Binance Pay (USDT) · Western Union', days:d.days||10, revisions:d.revisions!=null?d.revisions:2, valid:d.valid||14, plan:d.plan||'split', pct:d.pct||50,
+      approvalDays:d.approvalDays||7, silenceDays:d.silenceDays||14, archiveDays:d.archiveDays||60, jurisdiction:d.jurisdiction||'', lists:d.lists||{}}; }
+  function dlists(lang){ var L=dset().lists[lang]||{}; return {includes:L.includes||DDEF[lang].includes, excludes:L.excludes||DDEF[lang].excludes}; }
+  function revAr(n){ return n==0?'لا يشمل جولات تعديل':'يشمل '+(n==1?'جولة واحدة':n==2?'جولتين':n+' جولات')+' من التعديلات'; }
+  // the agreement's terms, written from the deal's numbers; the studio can still rewrite any of them for one client
+  function clausesFor(lang,v){
+    var en=lang==='en', total=v.total, pay;
+    if(!en){
+      pay= v.plan==='full' ? 'قيمة المشروع الإجمالية '+total+'، يدفعها الطرف الثاني كاملة قبل بدء التنفيذ. ويبدأ العمل بعد وصول المبلغ، وتصدر فاتورة بالدفعة'
+        : 'قيمة المشروع الإجمالية '+total+'. يدفع الطرف الثاني '+v.pct+'% منها عربوناً قبل بدء التنفيذ، ويدفع الباقي قبل استلام النسخ النهائية. ويبدأ العمل بعد وصول العربون، وتصدر فاتورة بكل دفعة';
+      return [
+        {h:'موضوع الاتفاقية', p:'يتفق الطرف الأول ('+v.studio+') مع الطرف الثاني ('+v.client+') على تنفيذ مشروع «'+v.title+'» وفق نطاق العمل والمخرجات المبيّنة أعلاه، ووفق البريف المعتمد من الطرفين'},
+        {h:'القيمة وطريقة الدفع', p:pay+(v.payMethods?'. طرق الدفع المعتمدة: '+v.payMethods+'، وأي رسوم تحويل يتحملها الطرف الثاني':'')},
+        {h:'مدة التنفيذ', p:'مدة التنفيذ المتوقعة '+(v.days?v.days+' يوم عمل':'يُتفق عليها عند البدء')+'، تبدأ من تاريخ استلام العربون والمواد اللازمة كاملة. ولا تُحتسب ضمنها أي فترة تأخير سببها تأخر الطرف الثاني في إرسال المواد أو المحتوى، أو في الرد والملاحظات، أو طلب تعديلات خارج نطاق العمل'},
+        {h:'المواد والمحتوى', p:'يلتزم الطرف الثاني بتزويد الطرف الأول بكل ما يلزم للتنفيذ قبل البدء، مثل اللقطات والصور والشعارات والنصوص والهوية البصرية والموافقات اللازمة. ويقرّ بأنه يملك حق استخدام كل ما يرسله، ويتحمل وحده أي مطالبة تتعلق به'},
+        {h:'التعديلات', p:'المشروع '+revAr(v.revisions)+'. جولة التعديل هي قائمة ملاحظات واحدة مجمّعة على نسخة واحدة. ولا يُعد تعديلاً تغيير الفكرة أو السكريبت بعد اعتماده، أو إضافة مطالب جديدة، أو إعادة تنفيذ عمل معتمد، وتُحتسب هذه أعمالاً إضافية'},
+        {h:'الأعمال الإضافية', p:'أي طلب خارج نطاق العمل أو زيادة في حجمه يُسعَّر ويُتفق عليه كتابياً قبل تنفيذه، وقد يغيّر موعد التسليم'},
+        {h:'اعتماد المخرجات', p:'تُعدّ النسخة معتمدة عند موافقة الطرف الثاني عليها كتابياً بأي وسيلة تواصل معتمدة بين الطرفين، أو إذا مضى '+v.silenceDays+' يوماً على تسليمها دون ملاحظات. وإذا تأخر الرد أكثر من '+v.approvalDays+' أيام، يُعدَّل موعد التسليم بقدر التأخير'},
+        {h:'الموسيقى والعناصر المرخّصة', p:'تُستخدم الموسيقى والمؤثرات واللقطات والخطوط المرخّصة وفق شروط مزوّديها، ولاستخدامها ضمن هذا المشروع فقط. ولا تشمل القيمة شراء تراخيص إضافية أو عناصر مدفوعة يطلبها الطرف الثاني، وتُحتسب تكلفتها منفصلة'},
+        {h:'الملفات المفتوحة', p: v.sourceFiles ? 'تشمل قيمة المشروع تسليم الملفات المفتوحة للمشروع بعد سداد كامل القيمة، دون العناصر المرخّصة التي لا تسمح شروطها بنقلها'
+          : 'لا تشمل قيمة المشروع تسليم الملفات المفتوحة أو المصدرية (مثل ملفات Premiere Pro وAfter Effects)، وتُسلَّم المخرجات النهائية بالصيغ المتفق عليها فقط، ما لم يُتفق كتابياً على غير ذلك'},
+        {h:'الملكية وحقوق الاستخدام', p:'تنتقل حقوق استخدام المخرجات النهائية إلى الطرف الثاني بعد سداد كامل قيمة المشروع، ولا يحق له نشرها أو استخدامها قبل ذلك. وتُرسل نسخ المراجعة بجودة مخفّضة أو بعلامة مائية'},
+        {h:'حق عرض الأعمال', p: v.portfolio ? 'يحتفظ الطرف الأول بحقه في عرض المشروع أو مقاطع منه ضمن أعماله وملف أعماله ومنصاته بعد نشره من الطرف الثاني، ما لم يُتفق كتابياً على خلاف ذلك'
+          : 'لا يعرض الطرف الأول المشروع ضمن أعماله أو على منصاته إلا بموافقة كتابية من الطرف الثاني'},
+        {h:'إلغاء المشروع', p:'إذا ألغى الطرف الثاني المشروع بعد بدء التنفيذ فلا يُسترد العربون، ويلتزم بسداد قيمة ما أُنجز حتى تاريخ الإلغاء إن تجاوزت العربون'},
+        {h:'التأخر في الدفع', p:'إذا تأخر الطرف الثاني عن سداد أي دفعة مستحقة، يحق للطرف الأول إيقاف العمل أو تأجيل التسليم حتى استلامها، دون أن يُعد ذلك إخلالاً بالتزاماته'},
+        {h:'السرية', p:'يلتزم الطرفان بعدم مشاركة أي ملفات أو معلومات خاصة بالمشروع مع أي طرف ثالث دون موافقة الطرف الآخر'},
+        {h:'حفظ الملفات', p:'يحتفظ الطرف الأول بنسخة من ملفات المشروع مدة '+v.archiveDays+' يوماً من تاريخ التسليم النهائي، ولا يلتزم بعدها بحفظها أو توفير نسخ منها'},
+        {h:'أحكام عامة', p:'تُعدّ المراسلات والموافقات عبر البريد الإلكتروني وتطبيقات المراسلة المعتمدة بين الطرفين جزءاً مكمّلاً لهذه الاتفاقية. ولا يُعتدّ بأي تعديل عليها ما لم يكن موثّقاً وموافَقاً عليه من الطرفين، وعند التعارض مع أي اتفاق سابق تُعدّ هذه الاتفاقية المرجع المعتمد. ويسعى الطرفان لحل أي خلاف ودياً، وإن تعذّر ذلك '+(v.jurisdiction?'فالمرجع: '+v.jurisdiction:'فالاختصاص للمحاكم المختصة في بلد الطرف الأول')} ];
+    }
+    pay= v.plan==='full' ? 'The total project value is '+total+', paid in full by the Client before work begins. Work starts once payment is received, and an invoice is issued for it'
+      : 'The total project value is '+total+'. The Client pays '+v.pct+'% as a deposit before work begins and the balance before receiving the final versions. Work starts once the deposit is received, and an invoice is issued for each payment';
+    var rev= v.revisions==0?'includes no revision rounds':'includes '+(v.revisions==1?'one revision round':v.revisions==2?'two revision rounds':v.revisions+' revision rounds');
+    return [
+      {h:'Purpose', p:'The First Party ('+v.studio+') agrees with the Second Party ('+v.client+') to produce the project “'+v.title+'” according to the scope and deliverables set out above and the brief approved by both parties'},
+      {h:'Value and payment', p:pay+(v.payMethods?'. Accepted payment methods: '+v.payMethods+'; any transfer fees are borne by the Client':'')},
+      {h:'Timeline', p:'The expected timeline is '+(v.days?v.days+' working days':'agreed at kick-off')+', starting from receipt of the deposit and all required materials. It excludes any delay caused by the Client sending materials late, replying or giving feedback late, or requesting changes outside the scope'},
+      {h:'Materials and content', p:'The Client provides everything needed before work begins — footage, images, logos, copy, brand assets and approvals — and confirms it holds the right to use everything it sends, bearing sole responsibility for any related claim'},
+      {h:'Revisions', p:'The project '+rev+'. A revision round is one consolidated list of feedback on one version. Changing the idea or script after approval, adding new requirements, or redoing approved work are not revisions and are charged as additional work'},
+      {h:'Additional work', p:'Any request outside the scope, or an increase in its volume, is priced and agreed in writing before it is done, and may change the delivery date'},
+      {h:'Approval of deliverables', p:'A version is approved once the Client confirms it in writing through any agreed channel, or if '+v.silenceDays+' days pass after delivery without feedback. If a reply takes longer than '+v.approvalDays+' days, the delivery date moves by the length of the delay'},
+      {h:'Music and licensed elements', p:'Licensed music, sound effects, footage and fonts are used under their providers’ terms and for this project only. The value does not include buying extra licences or paid elements the Client requests; those are charged separately'},
+      {h:'Project files', p: v.sourceFiles ? 'The value includes the open project files, handed over after full payment, excluding licensed elements whose terms do not allow transfer'
+        : 'The value does not include open or source files (such as Premiere Pro and After Effects projects); final deliverables are provided in the agreed formats only, unless agreed otherwise in writing'},
+      {h:'Ownership and usage rights', p:'Usage rights to the final deliverables pass to the Client once the project is paid in full; before that the Client may not publish or use them. Review versions are sent at reduced quality or watermarked'},
+      {h:'Portfolio', p: v.portfolio ? 'The First Party may show the project, or parts of it, in its portfolio and on its platforms after the Client has published it, unless agreed otherwise in writing'
+        : 'The First Party will not show the project in its portfolio or on its platforms without the Client’s written consent'},
+      {h:'Cancellation', p:'If the Client cancels after work has begun, the deposit is non-refundable, and the Client pays for the work completed up to the cancellation date where it exceeds the deposit'},
+      {h:'Late payment', p:'If any payment is late, the First Party may pause work or postpone delivery until it is received, without this being a breach of its obligations'},
+      {h:'Confidentiality', p:'Neither party shares files or private information about the project with any third party without the other’s consent'},
+      {h:'File retention', p:'The First Party keeps a copy of the project files for '+v.archiveDays+' days after final delivery, after which it is not obliged to keep them or provide copies'},
+      {h:'General', p:'Emails and messages exchanged through the parties’ agreed channels form part of this agreement. No amendment is valid unless documented and accepted by both parties, and this agreement prevails over any earlier arrangement. The parties will try to settle any dispute amicably; failing that, it falls under '+(v.jurisdiction||'the competent courts in the First Party’s country')} ];
+  }
+  function docUrl(t){ return location.origin+'/d/'+t; }
+  function docShareText(o,s,lang,url){ var en=lang==='en', n=(o.name||'').trim();
+    return en ? 'Hello '+n+', here is the '+(s.type==='quote'?'quote':'service agreement')+' for “'+(s.title||'')+'”:\n'+url+'\nYou can download it as a PDF and '+(s.type==='quote'?'accept it':'sign it')+' from the same link'
+      : 'مرحباً '+n+'، هذا '+(s.type==='quote'?'عرض السعر':'اتفاق العمل')+' لمشروع «'+(s.title||'')+'»:\n'+url+'\nيمكنك تحميله PDF و'+(s.type==='quote'?'الموافقة عليه':'توقيعه')+' من الرابط نفسه'; }
+  function waLink(contact,text){ var dg=String(contact||'').replace(/[^0-9]/g,''); return 'https://wa.me/'+(/^\+?[0-9 ()-]{8,}$/.test(String(contact||'').trim())?dg:'')+'?text='+encodeURIComponent(text); }
+  function docState(s){ return s.status==='accepted'? (s.type==='quote'?'✓ وافق':'✓ وقّع')+(s.acceptedBy?' · '+s.acceptedBy:'') : s.viewedAt? 'شافه العميل' : 'مُرسل، ما انفتح لسا'; }
+  function docsBox(o,k){
+    var list=o.docs||[];
+    return '<div class="docs"><div class="dh"><b>عرض السعر والاتفاقية</b><span class="small muted">برابط خاص: العميل بيفتحه، بيحمّله PDF، وبيوافق أو بيوقّع</span></div>'+
+      (list.length?'<ul class="dlist">'+list.map(function(s){ return '<li><div class="dl1"><b>'+esc(DTYPE[s.type])+'</b> <span dir="ltr" class="muted">'+esc(s.no)+(s.ver>1?' · v'+s.ver:'')+'</span><span class="pill '+(s.status==='accepted'?'ok':s.viewedAt?'seen':'')+'">'+esc(docState(s))+'</span></div>'+
+        '<div class="dl2"><a class="btn sm" href="'+esc(docUrl(s.token))+'" target="_blank" rel="noopener">فتح</a><a class="btn sm" href="'+esc(docUrl(s.token))+'?print=1" target="_blank" rel="noopener">PDF</a>'+
+        '<button class="btn sm" type="button" data-dshare="'+k+'" data-t="'+esc(s.token)+'">إرسال</button>'+(s.status!=='accepted'?'<button class="btn sm" type="button" data-dedit="'+k+'" data-t="'+esc(s.token)+'" data-type="'+s.type+'">تعديل</button>':'')+
+        (s.type==='quote'&&s.status==='accepted'&&!list.some(function(x){return x.type==='agreement'})?'<button class="btn sm primary" type="button" data-dnew="'+k+'" data-type="agreement" data-from="'+esc(s.token)+'">اتفاقية من هالعرض</button>':'')+'</div></li>'; }).join('')+'</ul>':'')+
+      '<div class="actions"><button class="btn sm" type="button" data-dnew="'+k+'" data-type="quote">+ عرض سعر</button><button class="btn sm" type="button" data-dnew="'+k+'" data-type="agreement">+ اتفاقية</button></div></div>';
+  }
+  function loadDocs(o){ if(!LIVE||o.demo) return Promise.resolve([]);
+    return fetch(API+'/docs?key='+encodeURIComponent(o.key),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ DOCS[o.key]=j.docs||[]; return DOCS[o.key]; }); }
+  // a fresh document starts from the order (and, for an agreement, from its quote when there is one)
+  function docSeed(o,type,from){
+    var S=dset(), lang=o.lang==='en'?'en':'ar', items;
+    if(from) { var b=JSON.parse(JSON.stringify(from.body)); b.quoteNo=from.no; return b; }
+    if((o.items||[]).length) items=o.items.filter(function(x){return x&&x.name}).map(function(x){ return {name:x.name,desc:'',qty:+x.qty||1,unit:pnum(x.unit)}; });
+    else { var q=+o.qty||1, t=pnum(o.price||o.total); items=[{name:o.packageName||o.package||'',desc:[o.addons&&o.addons.length?(lang==='en'?'Add-ons: ':'الإضافات: ')+o.addons.join(lang==='en'?', ':'، '):'',(o.platforms||[]).length?(lang==='en'?'Platforms: ':'المنصات: ')+o.platforms.join(', '):''].filter(Boolean).join('\n'),qty:q,unit:t?Math.round(t/q*100)/100:0}]; }
+    var L=dlists(lang), digits=String(o.contact||'');
+    return {lang:lang,title:o.packageName&&o.packageName!=='فرصة'?o.packageName:'',summary:'',client:{name:o.name||'',company:'',place:'',contact:o.contact||'',email:o.email||''},
+      studio:{name:S.studioName,place:S.studioPlace,contact:S.studioContact},items:items,cur:pcur(o),discount:0,days:S.days,revisions:S.revisions,valid:S.valid,
+      plan:o.plan||S.plan,pct:+(o.depositPct||S.pct),includes:L.includes.slice(),excludes:L.excludes.slice(),payMethods:S.payMethods,notes:'',quoteNo:'',
+      clauses:null,v:{approvalDays:S.approvalDays,silenceDays:S.silenceDays,archiveDays:S.archiveDays,sourceFiles:false,portfolio:true,jurisdiction:S.jurisdiction}};
+  }
+  function openDoc(o,type,token,fromToken){
+    var go=function(list){
+      var ex=token&&list.filter(function(d){return d.token===token})[0], from=fromToken&&list.filter(function(d){return d.token===fromToken})[0];
+      if(!from&&type==='agreement'&&!ex){ from=list.filter(function(d){return d.type==='quote'&&d.status==='accepted'})[0]||null; }
+      var b= ex? JSON.parse(JSON.stringify(ex.body)) : docSeed(o,type,from);
+      var S=dset(); b.v=b.v||{approvalDays:S.approvalDays,silenceDays:S.silenceDays,archiveDays:S.archiveDays,sourceFiles:false,portfolio:true,jurisdiction:S.jurisdiction};
+      if(type==='agreement'&&!b.clauses) b.clauses=clausesFor(b.lang,docVars(b));
+      DED={o:o,type:type,token:ex?ex.token:null,no:ex?ex.no:'',b:b,quotes:list.filter(function(d){return d.type==='quote'}),result:null};
+      drawDoc(); };
+    if(!LIVE||o.demo){ go([]); return; }
+    loadDocs(o).then(go).catch(function(){ toast('تعذّر تحميل المستندات',true); });
+  }
+  function docVars(b){ var v=b.v||{}, t=0; (b.items||[]).forEach(function(x){ t+=(+x.qty||1)*pnum(x.unit); }); t=Math.max(0,t-pnum(b.discount));
+    return {studio:(b.studio&&b.studio.name)||'Eyeblink Studio',client:(b.client&&(b.client.company||b.client.name))||'—',title:b.title||'—',total:pfmt(t,b.cur||'$'),plan:b.plan,pct:b.pct,days:+b.days||0,revisions:+b.revisions,
+      payMethods:b.payMethods,approvalDays:v.approvalDays||7,silenceDays:v.silenceDays||14,archiveDays:v.archiveDays||60,sourceFiles:!!v.sourceFiles,portfolio:v.portfolio!==false,jurisdiction:v.jurisdiction||''}; }
+  function dField(lbl,html,cls){ return '<div class="field'+(cls?' '+cls:'')+'"><label>'+lbl+'</label>'+html+'</div>'; }
+  function dIn(path,val,attrs){ return '<input data-dp="'+path+'" value="'+esc(val==null?'':val)+'" '+(attrs||'dir="auto"')+'>'; }
+  function drawDoc(){
+    var D=DED, b=D.b, q=D.type==='quote', en=b.lang==='en', pk=((C.packages&&C.packages.items)||[]);
+    var sub=0; b.items.forEach(function(x){ sub+=(+x.qty||1)*pnum(x.unit); }); var total=Math.max(0,sub-pnum(b.discount));
+    var el=$('#dsheet'); if(!el){ el=document.createElement('div'); el.id='dsheet'; document.body.appendChild(el); }
+    document.documentElement.classList.add('dlock');
+    var head='<div class="dtop"><div><b>'+(D.token?'تعديل ':'')+DTYPE[D.type]+'</b><span class="muted small"> · '+esc(D.o.name)+' · <span dir="ltr">'+esc(D.o.code)+'</span>'+(D.no?' · <span dir="ltr">'+esc(D.no)+'</span>':'')+'</span></div><button class="btn sm" type="button" data-dclose>إغلاق</button></div>';
+    if(D.result){ var r=D.result, txt=docShareText(D.o,r.s,b.lang,r.url);
+      el.innerHTML='<div class="dbox">'+head+'<div class="dres"><div class="dok">✓ '+(r.updated?'تحدّث المستند على نفس الرابط':'جاهز. هاد رابط '+(q?'عرض السعر':'الاتفاقية')+' الخاص بالعميل')+'</div><div class="dlink" dir="ltr">'+esc(r.url)+'</div>'+
+        '<div class="field"><label>الرسالة</label><textarea id="dmsg" dir="auto" rows="4">'+esc(txt)+'</textarea></div>'+
+        '<div class="actions"><a class="btn primary" id="dwa" href="'+esc(waLink(D.o.contact,txt))+'" target="_blank" rel="noopener">إرسال على واتساب</a><button class="btn" type="button" data-dcopy>نسخ الرسالة</button>'+
+        (D.o.email&&!hiddenOpp(D.o)?'<button class="btn" type="button" data-dchat>إرسال بمحادثة الموقع</button>':'')+'<a class="btn" href="'+esc(r.url)+'" target="_blank" rel="noopener">فتح</a><a class="btn" href="'+esc(r.url)+'?print=1" target="_blank" rel="noopener">تحميل PDF</a></div>'+
+        '<p class="small muted">لإنستغرام أو أي مكان تاني: انسخ الرسالة وابعتها. أول ما يفتح العميل الرابط أو يوافق، بيوصلك إشعار على تيليغرام وبيتسجّل بالطلب</p></div></div>';
+      return; }
+    var items='<div class="ditems"><div class="dih"><span>البند</span><span>الوصف</span><span>الكمية</span><span>سعر الوحدة</span><span></span></div>'+b.items.map(function(x,i){
+      return '<div class="dirow"><input data-dp="items.'+i+'.name" value="'+esc(x.name)+'" dir="auto" placeholder="مثال: فيلم إطلاق 60 ثانية"><textarea data-dp="items.'+i+'.desc" dir="auto" rows="2" placeholder="شو بيشمل بالضبط">'+esc(x.desc)+'</textarea><input data-dp="items.'+i+'.qty" type="number" min="1" value="'+esc(x.qty)+'"><input data-dp="items.'+i+'.unit" dir="ltr" value="'+esc(x.unit)+'"><button class="btn sm" type="button" data-ditemx="'+i+'" title="حذف">×</button></div>'; }).join('')+
+      '<div class="actions"><button class="btn sm" type="button" data-ditemadd>+ بند</button>'+(pk.length?'<select data-dpkg><option value="">أضف من الباقات…</option>'+pk.map(function(p,i){ return '<option value="'+i+'">'+esc((p.name&&(p.name[b.lang]||p.name.ar))||p.id)+' · '+esc(p.price)+'</option>'; }).join('')+'</select>':'')+'</div></div>';
+    var money='<div class="row">'+dField('العملة',dIn('cur',b.cur,'dir="ltr"'))+dField('خصم (مبلغ)',dIn('discount',b.discount||'','dir="ltr" placeholder="0"'))+'<div class="field dtotal"><label>الإجمالي</label><b dir="ltr">'+esc(pfmt(total,b.cur||'$'))+'</b></div></div>';
+    var terms='<div class="row">'+dField('مدة التنفيذ (أيام عمل)',dIn('days',b.days,'type="number" min="0"'))+dField('جولات التعديل',dIn('revisions',b.revisions,'type="number" min="0" max="10"'))+(q?dField('العرض صالح لمدة (يوم)',dIn('valid',b.valid,'type="number" min="1"')):'')+'</div>'+
+      '<div class="row">'+dField('خطة الدفع','<select data-dp="plan"><option value="split"'+(b.plan!=='full'?' selected':'')+'>عربون والباقي قبل التسليم</option><option value="full"'+(b.plan==='full'?' selected':'')+'>كامل المبلغ قبل البدء</option></select>')+(b.plan!=='full'?dField('نسبة العربون %',dIn('pct',b.pct,'type="number" min="10" max="90"')):'')+dField('طرق الدفع',dIn('payMethods',b.payMethods))+'</div>';
+    var lists='<div class="row">'+dField('يشمل (كل سطر بند)','<textarea data-dp="includes" data-lines dir="auto" rows="4">'+esc((b.includes||[]).join('\n'))+'</textarea>')+dField('لا يشمل','<textarea data-dp="excludes" data-lines dir="auto" rows="4">'+esc((b.excludes||[]).join('\n'))+'</textarea>')+'</div>';
+    var v=b.v||{};
+    var agr= q?'':'<section class="dsec"><h4>البنود</h4><p class="small muted">بتتولّد من الأرقام فوق. عدّل أي بند لهالعميل بس، أو اضغط «توليد من جديد» بعد ما تغيّر الأرقام</p>'+
+      '<div class="row">'+dField('مهلة الرد قبل تأجيل الموعد (أيام)',dIn('v.approvalDays',v.approvalDays,'type="number" min="1"'))+dField('تُعتمد النسخة تلقائياً بعد (أيام بلا رد)',dIn('v.silenceDays',v.silenceDays,'type="number" min="3"'))+dField('حفظ الملفات بعد التسليم (أيام)',dIn('v.archiveDays',v.archiveDays,'type="number" min="7"'))+'</div>'+
+      '<div class="row"><label class="check"><input type="checkbox" data-dp="v.sourceFiles"'+(v.sourceFiles?' checked':'')+'> تشمل الملفات المفتوحة</label><label class="check"><input type="checkbox" data-dp="v.portfolio"'+(v.portfolio!==false?' checked':'')+'> حقّنا نعرضه بأعمالنا</label></div>'+
+      dField('جهة الاختصاص عند الخلاف',dIn('v.jurisdiction',v.jurisdiction,'dir="auto" placeholder="المحاكم المختصة في بلد الطرف الأول"'))+
+      '<div class="actions"><button class="btn sm" type="button" data-dregen>توليد البنود من جديد</button></div>'+
+      '<div class="dclauses">'+b.clauses.map(function(c,i){ return '<div class="dcl"><span class="dn" dir="ltr">'+('0'+(i+1)).slice(-2)+'</span><div><input data-dp="clauses.'+i+'.h" value="'+esc(c.h)+'" dir="auto"><textarea data-dp="clauses.'+i+'.p" dir="auto" rows="3">'+esc(c.p)+'</textarea></div><button class="btn sm" type="button" data-dclx="'+i+'" title="حذف البند">×</button></div>'; }).join('')+'</div>'+
+      '<div class="actions"><button class="btn sm" type="button" data-dcladd>+ بند</button></div></section>';
+    var fromQ= !q&&D.quotes.length? dField('مبني على عرض سعر','<select data-dfromq><option value="">—</option>'+D.quotes.map(function(x){ return '<option value="'+esc(x.token)+'"'+(b.quoteNo===x.no?' selected':'')+'>'+esc(x.no)+' · '+esc(x.body.title)+(x.status==='accepted'?' ✓':'')+'</option>'; }).join('')+'</select>') : '';
+    el.innerHTML='<div class="dbox">'+head+
+      '<section class="dsec"><h4>الأساس</h4><div class="row">'+dField('لغة المستند','<select data-dp="lang"><option value="ar"'+(!en?' selected':'')+'>عربي</option><option value="en"'+(en?' selected':'')+'>English</option></select>')+fromQ+'</div>'+
+        dField('عنوان المشروع *',dIn('title',b.title,'dir="auto" placeholder="مثال: حملة إطلاق مطعم بيت الشام"'))+dField('ملخص قصير (يظهر تحت العنوان)','<textarea data-dp="summary" dir="auto" rows="2" placeholder="سطرين عن الفكرة والهدف">'+esc(b.summary)+'</textarea>')+'</section>'+
+      '<section class="dsec"><h4>العميل</h4><div class="row">'+dField('الاسم',dIn('client.name',b.client.name))+dField('الشركة / النشاط',dIn('client.company',b.client.company))+dField('المدينة والدولة',dIn('client.place',b.client.place))+'</div><div class="row">'+dField('التواصل',dIn('client.contact',b.client.contact,'dir="ltr"'))+dField('الإيميل',dIn('client.email',b.client.email,'dir="ltr" type="email"'))+'</div></section>'+
+      '<section class="dsec"><h4>'+(q?'البنود والسعر':'نطاق العمل والقيمة')+'</h4>'+items+money+'</section>'+
+      '<section class="dsec"><h4>الشروط</h4>'+terms+lists+dField('ملاحظات (اختياري)','<textarea data-dp="notes" dir="auto" rows="2">'+esc(b.notes)+'</textarea>')+'</section>'+agr+
+      '<details class="dsec dstudio"><summary>بياناتنا بالمستند (الطرف الأول)</summary><div class="row">'+dField('الاسم',dIn('studio.name',b.studio.name))+dField('المدينة والدولة',dIn('studio.place',b.studio.place))+'</div>'+dField('التواصل (كل سطر لحاله)','<textarea data-dp="studio.contact" dir="ltr" rows="2">'+esc(b.studio.contact)+'</textarea>')+'</details>'+
+      '<div class="dfoot"><button class="btn" type="button" data-ddefault title="يصير هيك كل مستند جديد">احفظ الشروط كافتراضية</button><span class="sp"></span><button class="btn" type="button" data-dclose>إلغاء</button><button class="btn primary" type="button" data-dissue>'+(D.token?'تحديث المستند':'إصدار الرابط')+'</button></div></div>';
+  }
+  function dpath(obj,path,val){ var p=path.split('.'), o=obj; for(var i=0;i<p.length-1;i++){ o=o[p[i]]=o[p[i]]||{}; } o[p[p.length-1]]=val; }
+  function closeDoc(){ var el=$('#dsheet'); if(el) el.remove(); document.documentElement.classList.remove('dlock'); var o=DED&&DED.o; DED=null; if(o&&TAB==='orders'){ renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; } }
+  document.addEventListener('input',function(e){ var el=e.target; if(!DED||!el.closest('#dsheet')||!el.dataset.dp) return;
+    var v= el.type==='checkbox'? el.checked : el.hasAttribute('data-lines')? el.value.split('\n') : el.value; dpath(DED.b,el.dataset.dp,v);
+    if(/^items\.|^discount|^cur/.test(el.dataset.dp)){ var b=DED.b, s=0; b.items.forEach(function(x){ s+=(+x.qty||1)*pnum(x.unit); }); var t=$('#dsheet .dtotal b'); if(t) t.textContent=pfmt(Math.max(0,s-pnum(b.discount)),b.cur||'$'); } });
+  document.addEventListener('change',function(e){ var el=e.target; if(!DED||!el.closest('#dsheet')) return;
+    if(el.dataset.dp==='plan'||el.dataset.dp==='lang'||el.type==='checkbox'){ if(el.dataset.dp==='lang'){ var L=dlists(el.value), b=DED.b; b.includes=L.includes.slice(); b.excludes=L.excludes.slice(); if(DED.type==='agreement') b.clauses=clausesFor(el.value,docVars(b)); } drawDoc(); return; }
+    if(el.hasAttribute('data-dpkg')&&el.value!==''){ var p=C.packages.items[+el.value], lg=DED.b.lang, f=(p.features&&(p.features[lg]||p.features.ar))||[];
+      DED.b.items.push({name:(p.name&&(p.name[lg]||p.name.ar))||'',desc:f.join(lg==='en'?' · ':' · '),qty:1,unit:+p.price||0}); drawDoc(); return; }
+    if(el.hasAttribute('data-dfromq')){ var qd=DED.quotes.filter(function(x){return x.token===el.value})[0]; if(!qd) return; var keep=DED.b.v, nb=JSON.parse(JSON.stringify(qd.body)); nb.quoteNo=qd.no; nb.v=keep; nb.clauses=clausesFor(nb.lang,docVars(nb)); DED.b=nb; drawDoc(); toast('انعبّت الاتفاقية من العرض '+qd.no); } });
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-dnew],[data-dedit],[data-dshare],[data-dclose],[data-ditemadd],[data-ditemx],[data-dcladd],[data-dclx],[data-dregen],[data-dissue],[data-ddefault],[data-dcopy],[data-dchat]'); if(!b) return;
+    if(b.dataset.dnew||b.dataset.dedit){ var o=orderOf(b.dataset.dnew||b.dataset.dedit); if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; } openDoc(o,b.dataset.type,b.dataset.t||null,b.dataset.from||null); return; }
+    if(b.dataset.dshare){ var o2=orderOf(b.dataset.dshare), s=(o2.docs||[]).filter(function(x){return x.token===b.dataset.t})[0]; if(!s) return;
+      DED={o:o2,type:s.type,token:s.token,no:s.no,b:{lang:o2.lang==='en'?'en':'ar'},quotes:[],result:{url:docUrl(s.token),s:s,updated:false,share:true}}; drawDoc(); $('#dsheet .dok').textContent='رابط '+(s.type==='quote'?'عرض السعر':'الاتفاقية')+' '+s.no; return; }
+    if(!DED) return; var B=DED.b;
+    if(b.hasAttribute('data-dclose')){ closeDoc(); return; }
+    if(b.hasAttribute('data-ditemadd')){ B.items.push({name:'',desc:'',qty:1,unit:0}); drawDoc(); return; }
+    if(b.dataset.ditemx){ B.items.splice(+b.dataset.ditemx,1); drawDoc(); return; }
+    if(b.hasAttribute('data-dcladd')){ B.clauses.push({h:'',p:''}); drawDoc(); return; }
+    if(b.dataset.dclx){ B.clauses.splice(+b.dataset.dclx,1); drawDoc(); return; }
+    if(b.hasAttribute('data-dregen')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='أكيد؟ رح تنمسح تعديلاتك على البنود'; return; } B.clauses=clausesFor(B.lang,docVars(B)); drawDoc(); toast('اتولّدت البنود من الأرقام الحالية'); return; }
+    if(b.hasAttribute('data-dcopy')){ var t=$('#dmsg'); try{ navigator.clipboard.writeText(t.value).then(function(){ toast('انتسخت الرسالة'); },function(){ t.select(); }); }catch(_){ t.select(); } return; }
+    if(b.hasAttribute('data-dchat')){ sendMsg(DED.o.key,$('#dmsg').value,b); return; }
+    if(b.hasAttribute('data-ddefault')){ P=P||{}; var d=P.docs=Object.assign({},P.docs);
+      Object.assign(d,{studioName:B.studio.name,studioPlace:B.studio.place,studioContact:B.studio.contact,payMethods:B.payMethods,days:+B.days,revisions:+B.revisions,valid:+B.valid||14,plan:B.plan,pct:+B.pct});
+      if(B.v) Object.assign(d,{approvalDays:+B.v.approvalDays,silenceDays:+B.v.silenceDays,archiveDays:+B.v.archiveDays,jurisdiction:B.v.jurisdiction||''});
+      d.lists=Object.assign({},d.lists); d.lists[B.lang]={includes:(B.includes||[]).filter(Boolean),excludes:(B.excludes||[]).filter(Boolean)};
+      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظت كإعدادات افتراضية لكل مستند جديد'); }).catch(function(){ toast('ما انحفظت',true); }).then(function(){ b.disabled=false; }); return; }
+    if(b.hasAttribute('data-dissue')){
+      if(!String(B.title||'').trim()){ toast('اكتب عنوان المشروع',true); var ti=$('#dsheet [data-dp="title"]'); if(ti) ti.focus(); return; }
+      B.items=B.items.filter(function(x){ return String(x.name||'').trim(); }); if(!B.items.length){ toast('ضيف بند واحد عالأقل',true); drawDoc(); return; }
+      if(DED.type==='agreement') B.clauses=(B.clauses||[]).filter(function(c){ return String(c.h||'').trim()||String(c.p||'').trim(); });
+      b.disabled=true; var wasToken=DED.token;
+      api('/docs','POST',{action:'issue',key:DED.o.key,type:DED.type,token:DED.token,doc:B}).then(function(j){
+        if(!j.ok) throw new Error(j.error||'fail');
+        DED.o.docs=j.docs; DED.token=j.doc.token; DED.no=j.doc.no; DED.result={url:docUrl(j.doc.token),s:j.docs.filter(function(x){return x.token===j.doc.token})[0],updated:!!wasToken}; drawDoc();
+      }).catch(function(err){ b.disabled=false; toast(({title:'اكتب عنوان المشروع',items:'ضيف بند واحد عالأقل',clauses:'ضيف بند واحد عالأقل',locked:'العميل وافق عليه، ما بينعدّل. اعمل نسخة جديدة'})[err.message]||'ما انحفظ، جرّب مرة تانية',true); }); return; }
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&DED) closeDoc(); });
+
   function renderOrders(){
     renderTabs();
     var list=ORDERS.filter(function(o){ return OFILTER==='all'||(OFILTER==='follow'?dueFollow(o):o.status===OFILTER); });
@@ -615,6 +801,7 @@
           '<div class="row"><div class="field"><label>الحالة</label><select data-of="status">'+Object.keys(ST).map(function(s2){return '<option value="'+s2+'"'+(s2===o.status?' selected':'')+'>'+ST[s2]+'</option>'}).join('')+'</select></div>'+
           '</div>'+
           crmFields(o,k)+
+          docsBox(o,k)+
           payFlow(o,k,methods)+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
