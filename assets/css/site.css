@@ -908,9 +908,18 @@ footer .c a{color:inherit}
 @media (max-width:860px){ .wa-float{bottom:calc(92px + env(safe-area-inset-bottom,0px));width:48px;height:48px} }
 
 /* ===== case study under the film ===== */
-.lightbox{overflow-y:auto}
-.lightbox.has-case .box{width:min(1100px,100%,calc(60vh * var(--arn)))}
-.lightbox.has-case .frame{max-height:60vh}
+/* the player never scrolls: the film is sized to the screen's height minus the title bar (and the case study, when
+   there is one), so a tall 9:16 film fits whole; the moving pattern behind it may overflow without making a scrollbar */
+.lightbox{overflow:hidden;--lbh:calc(100vh - 32px - 54px - 12px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+@supports (height:100dvh){ .lightbox{--lbh:calc(100dvh - 32px - 54px - 12px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))} }
+.lightbox .box{width:min(1100px,100%,calc(var(--lbh) * var(--arn)));max-height:100%}
+.lightbox .frame,.lightbox.tall .frame{max-height:var(--lbh)}
+.lightbox.tall .box{width:min(100%,calc(var(--lbh) * var(--arn)),560px)}
+.lightbox.has-case{--case:min(26vh,240px)}
+.lightbox.has-case .box{width:min(1100px,100%,calc((var(--lbh) - var(--case) - 14px) * var(--arn)))}
+.lightbox.has-case .frame{max-height:calc(var(--lbh) - var(--case) - 14px)}
+.lightbox.has-case.tall .box{width:min(100%,calc((var(--lbh) - var(--case) - 14px) * var(--arn)),560px)}
+.lb-case{max-height:var(--case,26vh);overflow-y:auto;overscroll-behavior:contain}
 .lb-case{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .lb-case[hidden]{display:none}
 .lb-case div{padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line)}
