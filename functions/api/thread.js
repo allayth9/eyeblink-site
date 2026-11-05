@@ -140,8 +140,8 @@ function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filte
 // ---- notifications: Resend e-mail + Telegram (each one is skipped quietly until its secrets are set) ----
 // (this block is copied into every route by tools/sync_api.py — edit it here, then run the script)
 const SITE = "https://eyeblinkstudio.com";
-const ST_AR = {"new":"استلمنا الطلب","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
-const ST_EN = {"new":"Request received","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
+const ST_AR = {"new":"استلمنا الطلب","discussing":"نناقش التفاصيل","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
+const ST_EN = {"new":"Request received","discussing":"Discussing details","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
 function h(t){ return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 async function siteContent(env){ try { return JSON.parse(await env.EB.get("content")||"{}"); } catch { return {}; } }
 async function siteSettings(env){ return (await siteContent(env)).settings || {}; }
@@ -320,12 +320,17 @@ async function newInvoice(env, kind, amount){
 async function sweepReminders(env){
   try {
     const last = +(await env.EB.get("sweep:at") || 0); if (Date.now() - last < 3600e3) return; await env.EB.put("sweep:at", String(Date.now()));
-    const c = await siteContent(env), hrs = num(((c.payments || {}).reminderHours)) || 48; if ((c.payments || {}).reminders === false) return;
+    const c = await siteContent(env), hrs = num(((c.payments || {}).reminderHours)) || 48, payOn = (c.payments || {}).reminders !== false;
     let cursor; do {
       const r = await env.EB.list({ prefix: "order:", cursor });
       for (const k of r.keys) {
         const v = await env.EB.get(k.name); if (!v) continue; const o = JSON.parse(v), p = o.payInfo;
-        if (!p || p.reminded || o.status === "cancelled" || !o.email) continue;
+        // CRM: on its follow-up day (from 10:00 Damascus time) the studio gets one Telegram reminder
+        if (o.followUp && o.followSent !== o.followUp && !["cancelled", "delivered"].includes(o.status) && Date.now() >= Date.parse(o.followUp + "T10:00:00+03:00")) {
+          o.followSent = o.followUp; await env.EB.put(k.name, JSON.stringify(o));
+          await telegram(env, "🔔 متابعة اليوم — " + o.code + " · " + o.name + (o.nextStep ? "\nالخطوة الجاية: " + o.nextStep : "") + (o.contact ? "\nالتواصل: " + o.contact : "") + "\n" + SITE + "/admin/");
+        }
+        if (!payOn || !p || p.reminded || o.status === "cancelled" || !o.email) continue;
         if ((p.stage === "deposit" && o.deposit && o.deposit.paid) || ((p.stage || "full") !== "deposit" && o.paid)) continue;
         if (Date.now() - Date.parse(p.at) < hrs * 3600e3) continue;
         if ((o.messages || []).some(m => m.from === "client" && m.kind === "receipt" && m.at > p.at)) continue;

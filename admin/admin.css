@@ -401,3 +401,28 @@ section.sec .ph{display:flex;justify-content:space-between;align-items:center;ga
 .frame-body{display:grid;gap:8px;min-width:0}
 .frame-act{display:flex;flex-direction:column;gap:4px}
 @media (max-width:860px){ .frame-row{grid-template-columns:56px 1fr} .frame-act{grid-column:1/-1;flex-direction:row} .frame-row .thumb{width:56px;height:42px} }
+
+/* CRM: opportunities, follow-ups, contact log */
+.crm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.crm-top h3{margin:0}
+.crm-line{margin:10px 2px 0;line-height:1.9}
+.crm-line b{color:var(--light);font-family:Oswald,sans-serif;font-weight:400;margin-inline-start:2px}
+.crm-line .sep{opacity:.35;margin:0 10px}
+.chips .btn.due:not(.primary){box-shadow:inset 0 0 0 1px var(--horizon);color:var(--horizon)}
+.opp{display:grid;gap:10px;padding:16px;margin-bottom:14px;border-radius:14px;background:rgba(63,224,232,.05);box-shadow:inset 0 0 0 1px rgba(63,224,232,.25)}
+.opp .ph{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.crmset{margin-top:10px}
+.crmset summary{cursor:pointer;width:max-content}
+.crmset textarea{width:100%;margin-top:8px}
+.crmset .actions{justify-content:space-between;align-items:center}
+.crm{display:grid;gap:10px;padding:12px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+.crm .touch{display:grid;gap:6px}
+.crm .trow{display:grid;grid-template-columns:auto 1fr auto;gap:6px}
+.crm .tlist{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
+.crm .tlist li{padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.03)}
+.crm .tlist b{color:var(--horizon);font-weight:500;margin-inline-end:4px}
+.crm .conv{justify-self:start;box-shadow:inset 0 0 0 1px var(--horizon);color:var(--horizon)}
+.order .pill.due{background:var(--horizon);color:var(--night)}
+.order .pill.src{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--mist)}
+.order .pill.discussing{background:rgba(139,92,255,.22);color:#c9b6ff}
+@media (max-width:640px){.crm .trow{grid-template-columns:1fr auto}.crm .trow select{grid-column:1/-1}}

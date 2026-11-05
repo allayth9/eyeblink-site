@@ -1,11 +1,18 @@
 // POST   /api/orders — signed-in client: sends a request (it then lives in their account with a chat thread)
 // GET    /api/orders — admin: list requests (newest first)
-// PATCH  /api/orders — admin: { key, status?, price?, method?, paid?, paidAmount?, notes?, message?, files?, seen?, reviewApproved? }
+// POST   /api/orders { action:"manual", name, contact, email?, details, source, value?, nextStep?, followUp? } — admin: an opportunity that came from outside the site (CRM)
+// PATCH  /api/orders — admin: { key, status?, price?, method?, paid?, paidAmount?, notes?, message?, files?, seen?, reviewApproved?,
+//                               nextStep?, followUp?, lostReason?, source?, email?, touch:{ channel, note }? }
 // DELETE /api/orders?key=... — admin
-const STATUSES = ["new", "confirmed", "awaiting-payment", "paid", "in-progress", "review", "delivered", "cancelled"];
+// "discussing" = the back-and-forth before an agreement (between "new" and "confirmed"); the client sees it as "received".
+const STATUSES = ["new", "discussing", "confirmed", "awaiting-payment", "paid", "in-progress", "review", "delivered", "cancelled"];
+const SOURCES = ["website", "instagram", "whatsapp", "referral", "email", "meeting", "other"];
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   let d; try { d = await request.json(); } catch { return json({ ok: false }, 400); }
+  if (d && d.action === "manual") return manualOrder(ctx, d);
   if (d.website) return json({ ok: true, code: "EB-00000" });
   const user = await currentUser(request, env);
   if (!user) return json({ ok: false, error: "login" }, 401);
@@ -32,6 +39,27 @@ export async function onRequestPost(ctx) {
   later(ctx, Promise.all([ notifyStudio(env, "طلب جديد "+code+" — "+order.packageName, order.name+" · "+order.email+(order.contact?" · "+order.contact:"")+"\n"+order.total+(order.qty>1?" · ×"+order.qty:"")+(order.platforms.length?"\n📱 "+order.platforms.join(", "):"")+(order.payPref?"\n💳 "+order.payPref:"")+"\n\n"+order.details),
     mailReceived(env, order) ]));
   return json({ ok: true, code });
+}
+// the studio adds someone who wrote on Instagram, WhatsApp, by e-mail or in person: same inbox, same statuses, same payment path
+async function manualOrder(ctx, d){
+  const { request, env } = ctx;
+  if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+  const clip = (v, m) => String(v ?? "").trim().slice(0, m);
+  const name = clip(d.name, 120); if (!name) return json({ ok: false, error: "name" }, 400);
+  const email = clip(d.email, 254).toLowerCase(); if (email && !EMAIL_RE.test(email)) return json({ ok: false, error: "email" }, 400);
+  const source = SOURCES.includes(d.source) ? d.source : "other", now = new Date().toISOString();
+  let code; do { code = "EB-" + randHex(3).toUpperCase().slice(0, 5); } while (await env.EB.get("code:" + code));
+  const key = "order:" + now + ":" + code;
+  const order = { key, code, status: "new", createdAt: now, name, contact: clip(d.contact, 200), details: clip(d.details, 4000) || "—",
+    link: "", deadline: "", package: "", packageName: clip(d.title, 120) || (d.lang === "en" ? "Opportunity" : "فرصة"), addons: [], total: clip(d.value, 40), lang: d.lang === "en" ? "en" : "ar",
+    items: [], cur: "", visit: { source, manual: true }, qty: 1, platforms: [], payPref: "",
+    email, messages: [], seenClient: "", seenAdmin: now, manual: true, source,
+    nextStep: clip(d.nextStep, 300), followUp: isDate(d.followUp) ? d.followUp : "", touches: [],
+    price: "", method: "", paid: false, paidAmount: "", notes: clip(d.notes, 4000), history: [{ at: now, status: "new", by: "admin", note: "manual" }] };
+  await env.EB.put(key, JSON.stringify(order));
+  await env.EB.put("code:" + code, key);
+  if (email) { const uv = await env.EB.get("user:" + email); if (uv) { const u = JSON.parse(uv); (u.orders ||= []).push(key); await env.EB.put("user:" + email, JSON.stringify(u)); } }
+  return json({ ok: true, code, order });
 }
 export async function onRequestGet(ctx) {
   const { request, env } = ctx;
@@ -86,6 +114,15 @@ export async function onRequestPatch(ctx) {
       if (["new", "confirmed", "awaiting-payment"].includes(o.status)) { (o.history ||= []).push({ at: new Date().toISOString(), status: "paid" }); o.status = "paid"; changed = true; } } }
   if (d.paidAmount !== undefined) o.paidAmount = clip(d.paidAmount, 40);
   if (d.notes !== undefined) o.notes = clip(d.notes, 4000);
+  // CRM: what happens next and when, why a deal was lost, where it came from, and a short log of each contact
+  if (d.nextStep !== undefined) o.nextStep = clip(d.nextStep, 300);
+  if (d.followUp !== undefined) { const f = isDate(d.followUp) ? d.followUp : ""; if (f !== o.followUp) { o.followUp = f; delete o.followSent; } }
+  if (d.lostReason !== undefined) o.lostReason = clip(d.lostReason, 120);
+  if (d.source !== undefined && SOURCES.includes(d.source)) o.source = d.source;
+  if (d.email !== undefined && !o.email) { const em = clip(d.email, 254).trim().toLowerCase();
+    if (em) { if (!EMAIL_RE.test(em)) return json({ ok: false, error: "email" }, 400); o.email = em;
+      const uv = await env.EB.get("user:" + em); if (uv) { const u = JSON.parse(uv); if (!(u.orders || []).includes(o.key)) { (u.orders ||= []).push(o.key); await env.EB.put("user:" + em, JSON.stringify(u)); } } } }
+  if (d.touch && (d.touch.note || d.touch.channel)) { (o.touches ||= []).unshift({ at: new Date().toISOString(), channel: SOURCES.includes(d.touch.channel) ? d.touch.channel : "other", note: clip(d.touch.note, 500) }); o.touches = o.touches.slice(0, 50); }
   const now = new Date().toISOString();
   const files = cleanFiles(d.files);
   if (d.message || files.length) { (o.messages ||= []).push({ from: "studio", text: clip(d.message, 4000), at: now, ...(files.length ? { files } : {}) }); o.seenAdmin = now; }
@@ -112,7 +149,7 @@ export async function onRequestPatch(ctx) {
   if (d.resendInvoice) later(ctx, mailInvoice(env, o, d.resendInvoice === "deposit" ? "deposit" : "final"));
   if (payMsg) later(ctx, notifyClient(env, o, "message", payMsg));
   else if (d.message || files.length) later(ctx, notifyClient(env, o, "message", (d.message || "") + (files.length ? "\n📎 " + files.map(f => f.name).join("، ") : "")));
-  else if (changed && !inv.length) later(ctx, notifyClient(env, o, "status", o.status));
+  else if (changed && !inv.length && o.status !== "discussing") later(ctx, notifyClient(env, o, "status", o.status));
   return json({ ok: true, order: o });
 }
 export async function onRequestDelete({ request, env }) {
@@ -202,8 +239,8 @@ function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filte
 // ---- notifications: Resend e-mail + Telegram (each one is skipped quietly until its secrets are set) ----
 // (this block is copied into every route by tools/sync_api.py — edit it here, then run the script)
 const SITE = "https://eyeblinkstudio.com";
-const ST_AR = {"new":"استلمنا الطلب","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
-const ST_EN = {"new":"Request received","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
+const ST_AR = {"new":"استلمنا الطلب","discussing":"نناقش التفاصيل","confirmed":"تأكيد التفاصيل","awaiting-payment":"بانتظار الدفع","paid":"تم الدفع","in-progress":"قيد التنفيذ","review":"بانتظار مراجعتك","delivered":"تم التسليم","cancelled":"ملغى"};
+const ST_EN = {"new":"Request received","discussing":"Discussing details","confirmed":"Details confirmed","awaiting-payment":"Awaiting payment","paid":"Paid","in-progress":"In production","review":"Awaiting your review","delivered":"Delivered","cancelled":"Cancelled"};
 function h(t){ return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 async function siteContent(env){ try { return JSON.parse(await env.EB.get("content")||"{}"); } catch { return {}; } }
 async function siteSettings(env){ return (await siteContent(env)).settings || {}; }
@@ -382,12 +419,17 @@ async function newInvoice(env, kind, amount){
 async function sweepReminders(env){
   try {
     const last = +(await env.EB.get("sweep:at") || 0); if (Date.now() - last < 3600e3) return; await env.EB.put("sweep:at", String(Date.now()));
-    const c = await siteContent(env), hrs = num(((c.payments || {}).reminderHours)) || 48; if ((c.payments || {}).reminders === false) return;
+    const c = await siteContent(env), hrs = num(((c.payments || {}).reminderHours)) || 48, payOn = (c.payments || {}).reminders !== false;
     let cursor; do {
       const r = await env.EB.list({ prefix: "order:", cursor });
       for (const k of r.keys) {
         const v = await env.EB.get(k.name); if (!v) continue; const o = JSON.parse(v), p = o.payInfo;
-        if (!p || p.reminded || o.status === "cancelled" || !o.email) continue;
+        // CRM: on its follow-up day (from 10:00 Damascus time) the studio gets one Telegram reminder
+        if (o.followUp && o.followSent !== o.followUp && !["cancelled", "delivered"].includes(o.status) && Date.now() >= Date.parse(o.followUp + "T10:00:00+03:00")) {
+          o.followSent = o.followUp; await env.EB.put(k.name, JSON.stringify(o));
+          await telegram(env, "🔔 متابعة اليوم — " + o.code + " · " + o.name + (o.nextStep ? "\nالخطوة الجاية: " + o.nextStep : "") + (o.contact ? "\nالتواصل: " + o.contact : "") + "\n" + SITE + "/admin/");
+        }
+        if (!payOn || !p || p.reminded || o.status === "cancelled" || !o.email) continue;
         if ((p.stage === "deposit" && o.deposit && o.deposit.paid) || ((p.stage || "full") !== "deposit" && o.paid)) continue;
         if (Date.now() - Date.parse(p.at) < hrs * 3600e3) continue;
         if ((o.messages || []).some(m => m.from === "client" && m.kind === "receipt" && m.at > p.at)) continue;

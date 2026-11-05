@@ -424,7 +424,7 @@
   }
 
   /* ---------------- orders ---------------- */
-  var ST={'new':'جديد','confirmed':'مؤكَّد','awaiting-payment':'بانتظار الدفع','paid':'مدفوع','in-progress':'قيد التنفيذ','review':'بانتظار المراجعة','delivered':'مُسلَّم','cancelled':'ملغى'};
+  var ST={'new':'جديد','discussing':'قيد النقاش','confirmed':'مؤكَّد','awaiting-payment':'بانتظار الدفع','paid':'مدفوع','in-progress':'قيد التنفيذ','review':'بانتظار المراجعة','delivered':'مُسلَّم','cancelled':'ملغى'};
   function sampleOrders(){ return [{key:'order:demo',code:'EB-DEMO1',status:'new',createdAt:new Date().toISOString(),name:'طلب تجريبي',contact:'@client.account',details:'فيديو موشن 45 ثانية لإطلاق منتج. (هذا طلب تجريبي ليظهر لك شكل الصندوق)',package:'motion',packageName:'فيديو موشن غرافيك',addons:['كتابة السكريبت'],total:'85 $',lang:'ar',price:'',method:'',paid:false,paidAmount:'',notes:'',history:[{at:new Date().toISOString(),status:'new'}],email:'client@example.com',unread:1,messages:[{from:'client',text:'مرحباً، هل يمكن التسليم قبل نهاية الأسبوع؟',at:new Date().toISOString()}],demo:true}]; }
   function loadOrders(){
     if(!LIVE){ if(!ORDERS.length) ORDERS=sampleOrders(); if(TAB==='orders') renderOrders(); else renderTabs(); return; }
@@ -501,24 +501,107 @@
     var o=orderOf(el.dataset.pmethod||el.dataset.pplan), box=el.closest('.order'), d=readOrderForm(box); Object.assign(o,{method:d.method,plan:d.plan,price:d.price,depositPct:d.depositPct});
     var fl=box.querySelector('.pflow'); if(fl){ var tmp=document.createElement('div'); tmp.innerHTML=payFlow(o,esc(o.key),((C.payments&&C.payments.methods)||[])); fl.replaceWith(tmp.firstChild); } });
 
+  /* ---------- CRM: opportunities from outside the site, follow-ups, contact log, loss reasons, the funnel ---------- */
+  var SRC={website:'الموقع',instagram:'إنستغرام',whatsapp:'واتساب',referral:'توصية',email:'إيميل',meeting:'لقاء',other:'غيره'};
+  var LOST_DEF=['السعر','التوقيت','ما عاد ردّ','اختار غيرنا','مش مناسب لنا','غيره'];
+  var OPEN_ST=['new','discussing','confirmed','awaiting-payment'], WON_ST=['paid','in-progress','review','delivered'], NEWOPP=false;
+  function lostReasons(){ var l=P&&P.crm&&P.crm.lostReasons; return l&&l.length?l:LOST_DEF; }
+  function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function srcOf(o){ return o.source||'website'; }
+  function dueFollow(o){ return !!o.followUp && o.followUp<=todayISO() && o.status!=='cancelled' && o.status!=='delivered'; }
+  function srcSel(attr,val){ return '<select '+attr+'>'+Object.keys(SRC).map(function(s){ return '<option value="'+s+'"'+(s===val?' selected':'')+'>'+SRC[s]+'</option>'; }).join('')+'</select>'; }
+  function fdate(s){ return s? new Date(s+'T12:00:00').toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}) : ''; }
+  function topOf(arr){ var m={}; arr.forEach(function(x){ if(x) m[x]=(m[x]||0)+1; }); return Object.keys(m).sort(function(a,b){ return m[b]-m[a]; }).map(function(k){ return [k,m[k]]; }); }
+  function funnel(){
+    var open=ORDERS.filter(function(o){ return OPEN_ST.indexOf(o.status)>=0; }), val=open.reduce(function(a,o){ return a+pnum(o.price||o.total); },0);
+    var since=Date.now()-30*864e5, recent=ORDERS.filter(function(o){ return Date.parse(o.createdAt)>=since; }), won=recent.filter(function(o){ return o.paid||WON_ST.indexOf(o.status)>=0; });
+    var paidSum=ORDERS.filter(function(o){return o.paid}).reduce(function(a,o){ return a+(parseFloat(o.paidAmount||o.price)||0); },0);
+    var srcs=topOf(ORDERS.map(srcOf)), lost=topOf(ORDERS.filter(function(o){ return o.status==='cancelled'; }).map(function(o){ return o.lostReason; }));
+    return '<div class="kpis"><div><b>'+open.length+'</b><span>فرص مفتوحة'+(val?' · <span dir="ltr">'+esc(pfmt(val,(C.packages&&C.packages.currency)||'$'))+'</span>':'')+'</span></div>'+
+      '<div><b>'+ORDERS.filter(dueFollow).length+'</b><span>بحاجة متابعة اليوم</span></div>'+
+      '<div><b>'+(recent.length?Math.round(won.length*100/recent.length)+'%':'—')+'</b><span>تحوّلت لشغل (آخر 30 يوم'+(recent.length?' · '+won.length+' من '+recent.length:'')+')</span></div>'+
+      '<div><b dir="ltr">'+paidSum+'</b><span>مجموع المدفوع</span></div></div>'+
+      (srcs.length||lost.length?'<p class="small muted crm-line">'+(srcs.length?'من وين بيجوا: '+srcs.slice(0,4).map(function(x){ return esc(SRC[x[0]]||x[0])+' <b>'+x[1]+'</b>'; }).join(' · '):'')+(lost.length?(srcs.length?'<span class="sep">|</span>':'')+'أكتر سبب خسارة: '+esc(lost[0][0])+' <b>'+lost[0][1]+'</b>':'')+'</p>':'');
+  }
+  function oppForm(){
+    return '<form class="opp" id="oppForm"><div class="ph"><b>فرصة جديدة</b><span class="small muted">حدا كتبلك برّا الموقع؟ سجّله هون، وبيمشي بنفس المراحل ومسار الدفع</span></div>'+
+      '<div class="row"><div class="field"><label>الاسم *</label><input name="name" dir="auto" required></div><div class="field"><label>التواصل (رقم أو حساب)</label><input name="contact" dir="ltr"></div></div>'+
+      '<div class="row"><div class="field"><label>الإيميل (اختياري)</label><input name="email" type="email" dir="ltr"></div><div class="field"><label>المصدر</label>'+srcSel('name="source"','instagram')+'</div></div>'+
+      '<div class="row"><div class="field"><label>شو بدو باختصار</label><input name="title" dir="auto" placeholder="مثال: فيديو إطلاق مطعم"></div><div class="field"><label>القيمة التقديرية</label><input name="value" dir="ltr" placeholder="300 $"></div></div>'+
+      '<div class="field"><label>التفاصيل</label><textarea name="details" dir="auto"></textarea></div>'+
+      '<div class="row"><div class="field"><label>الخطوة الجاية</label><input name="nextStep" dir="auto" placeholder="مثال: ابعتله عرض السعر"></div><div class="field"><label>موعد المتابعة</label><input name="followUp" type="date" value="'+todayISO()+'"></div></div>'+
+      '<div class="actions"><button class="btn primary sm" type="submit">إضافة الفرصة</button><button class="btn sm" type="button" data-oppx>إلغاء</button></div></form>';
+  }
+  function crmFields(o,k){
+    var cancelled=o.status==='cancelled', canConv=o.email && WON_ST.concat(['confirmed','awaiting-payment']).indexOf(o.status)>=0;
+    return '<div class="crm">'+
+      '<div class="row"><div class="field"><label>المصدر</label>'+srcSel('data-of="source"',srcOf(o))+'</div><div class="field"><label>موعد المتابعة</label><input type="date" data-of="followUp" value="'+esc(o.followUp||'')+'"></div></div>'+
+      '<div class="field"><label>الخطوة الجاية</label><input data-of="nextStep" dir="auto" value="'+esc(o.nextStep||'')+'" placeholder="شو لازم يصير بعدين؟"></div>'+
+      '<div class="field lostf"'+(cancelled?'':' hidden')+'><label>ليش ما مشي؟</label><select data-of="lostReason"><option value="">اختر السبب…</option>'+lostReasons().map(function(r){ return '<option'+(r===o.lostReason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+(o.lostReason&&lostReasons().indexOf(o.lostReason)<0?'<option selected>'+esc(o.lostReason)+'</option>':'')+'</select></div>'+
+      (o.email?'':'<div class="field"><label>إيميل العميل (لحسابه ومسار الدفع)</label><input data-of="email" type="email" dir="ltr" placeholder="name@example.com"></div>')+
+      '<div class="touch"><div class="small muted">سجل التواصل</div><div class="trow">'+srcSel('data-tch','whatsapp')+'<input data-tnote dir="auto" placeholder="شو صار؟ مثال: بعتتله الأسعار، رح يرد بكرا"><button class="btn sm" type="button" data-otouch="'+k+'">سجّل</button></div>'+
+        ((o.touches||[]).length?'<ul class="tlist">'+o.touches.slice(0,6).map(function(t){ return '<li><b>'+esc(SRC[t.channel]||t.channel)+'</b> '+esc(t.note)+'<span class="small muted"> · '+esc(new Date(t.at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}))+'</span></li>'; }).join('')+'</ul>':'')+'</div>'+
+      (canConv?'<button class="btn sm conv" type="button" data-oconv="'+k+'">حوّله لعميل متعاقد ←</button>':'')+
+    '</div>';
+  }
+  function api(path,method,body){ return fetch(API+path,{method:method,headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.status=r.status; return j; },function(){ return {status:r.status}; }); }); }
+  // a won order becomes a contracted client: the client record, the account (or the existing one upgraded), then the profile with the login details
+  function convertClient(o,b){
+    if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; }
+    var em=o.email, phone=/^\+?[0-9 ()-]{8,}$/.test(o.contact||'')?o.contact.trim():''; b.disabled=true;
+    fetch(API+'/work?admin=1&profile='+encodeURIComponent(em),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).catch(function(){ return {}; })
+      .then(function(p){ return p&&p.ok&&p.client? null : api('/work','POST',{action:'clientSave',email:em,name:o.name,phone:phone}); })
+      .then(function(){ return api('/access','POST',{action:'createAccount',email:em,name:o.name,lang:o.lang==='en'?'en':'ar'}); })
+      .then(function(r){
+        if(r.ok){ PKG={email:em,name:o.name,password:r.password,link:r.link,lang:r.lang,phone:phone,sent:r.sent}; return 'جاهز: هاي بيانات دخول العميل، ابعتله ياها'; }
+        if(r.error==='exists') return api('/access','POST',{action:'setRole',email:em,role:'client'}).then(function(){ return 'عنده حساب أصلاً، فتفعّلت له مساحة العمل'; });
+        throw new Error(r.error||'fail'); })
+      .then(function(msg){ toast(msg); TAB='clients'; CL=null; render(); loadUsers(); loadClients(); loadProfile(em,'overview'); scrollTo(0,0); })
+      .catch(function(){ b.disabled=false; toast('ما زبط التحويل، جرّب مرة تانية',true); });
+  }
+  document.addEventListener('change',function(e){ var el=e.target; if(TAB!=='orders') return;
+    if(el.matches('.order [data-of="status"]')){ var lf=el.closest('.order').querySelector('.lostf'); if(lf) lf.hidden=el.value!=='cancelled'; } });
+  document.addEventListener('submit',function(e){ var f=e.target; if(f.id!=='oppForm') return; e.preventDefault();
+    var d={action:'manual'}; [].forEach.call(f.elements,function(el){ if(el.name) d[el.name]=el.value.trim(); });
+    if(!d.name){ toast('اكتب الاسم',true); f.elements.name.focus(); return; }
+    if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ toast('الإيميل مش صحيح',true); f.elements.email.focus(); return; }
+    var add=function(o){ ORDERS.unshift(o); NEWOPP=false; OFILTER='all'; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd){ dd.open=true; dd.scrollIntoView({block:'center'}); } toast('انضافت الفرصة '+o.code); };
+    if(!LIVE){ var now=new Date().toISOString(); add({key:'order:demo-'+Date.now(),code:'EB-DEMO'+(ORDERS.length+1),status:'new',createdAt:now,name:d.name,contact:d.contact,email:d.email,details:d.details||'—',packageName:d.title||'فرصة',total:d.value,source:d.source,manual:true,nextStep:d.nextStep,followUp:d.followUp,touches:[],messages:[],history:[{at:now,status:'new'}],demo:true}); return; }
+    var b=f.querySelector('[type=submit]'); b.disabled=true;
+    api('/orders','POST',d).then(function(j){ if(!j.ok) throw new Error(j.error); add(j.order); }).catch(function(err){ b.disabled=false; toast(err.message==='email'?'الإيميل مش صحيح':'ما انحفظت، جرّب مرة تانية',true); }); });
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-oppnew],[data-oppx],[data-otouch],[data-oconv],[data-lostsave]'); if(!b) return;
+    if(b.hasAttribute('data-oppnew')){ NEWOPP=!NEWOPP; renderOrders(); var f=$('#oppForm'); if(f) f.elements.name.focus(); return; }
+    if(b.hasAttribute('data-oppx')){ NEWOPP=false; renderOrders(); return; }
+    if(b.dataset.oconv){ convertClient(orderOf(b.dataset.oconv),b); return; }
+    if(b.hasAttribute('data-lostsave')){ var l=$('#lostList').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean).slice(0,20);
+      P=P||{}; P.crm=Object.assign({},P.crm,{lostReasons:l});
+      if(!LIVE){ savePrivDraft(); renderOrders(); toast('انحفظت الأسباب'); return; }
+      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); renderOrders(); toast('انحفظت الأسباب'); }).catch(function(){ b.disabled=false; toast('ما انحفظت',true); }); return; }
+    var o=orderOf(b.dataset.otouch), box=b.closest('.touch'), note=box.querySelector('[data-tnote]').value.trim(), ch=box.querySelector('[data-tch]').value;
+    if(!note){ toast('اكتب شو صار',true); box.querySelector('[data-tnote]').focus(); return; }
+    var addT=function(t){ o.touches=t||[{at:new Date().toISOString(),channel:ch,note:note}].concat(o.touches||[]); renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('انسجّل التواصل'); };
+    if(!LIVE||o.demo){ addT(); return; }
+    b.disabled=true; api('/orders','PATCH',{key:o.key,touch:{channel:ch,note:note}}).then(function(j){ if(!j.ok) throw 0; addT(j.order.touches); }).catch(function(){ b.disabled=false; toast('ما انسجّل',true); });
+  });
+
   function renderOrders(){
     renderTabs();
-    var list=ORDERS.filter(function(o){ return OFILTER==='all'||o.status===OFILTER; });
-    var count=function(st){ return ORDERS.filter(function(o){return o.status===st}).length; };
-    var paidSum=ORDERS.filter(function(o){return o.paid}).reduce(function(a,o){ return a+(parseFloat(o.paidAmount||o.price)||0); },0);
+    var list=ORDERS.filter(function(o){ return OFILTER==='all'||(OFILTER==='follow'?dueFollow(o):o.status===OFILTER); });
+    var count=function(st){ return ORDERS.filter(function(o){return o.status===st}).length; }, due=ORDERS.filter(dueFollow).length;
     var methods=((C.payments&&C.payments.methods)||[]);
-    var head='<section class="sec"><div class="kpis"><div><b>'+ORDERS.length+'</b><span>كل الطلبات</span></div><div><b>'+count('new')+'</b><span>جديدة</span></div><div><b>'+count('awaiting-payment')+'</b><span>بانتظار الدفع</span></div><div><b>'+count('in-progress')+'</b><span>قيد التنفيذ</span></div><div><b dir="ltr">'+paidSum+'</b><span>مجموع المدفوع</span></div></div>'+
-      '<div class="chips">'+[['all','الكل']].concat(Object.keys(ST).map(function(k){return [k,ST[k]]})).map(function(x){return '<button type="button" class="btn sm'+(OFILTER===x[0]?' primary':'')+'" data-ofilter="'+x[0]+'">'+x[1]+'</button>'}).join('')+'</div>'+
+    var head='<section class="sec"><div class="crm-top"><h3>الطلبات والفرص</h3><button class="btn sm'+(NEWOPP?'':' primary')+'" type="button" data-oppnew>'+(NEWOPP?'إغلاق':'+ فرصة جديدة')+'</button></div>'+(NEWOPP?oppForm():'')+funnel()+
+      '<div class="chips">'+[['all','الكل',ORDERS.length]].concat(due?[['follow','بحاجة متابعة',due]]:[]).concat(Object.keys(ST).map(function(k){return [k,ST[k],count(k)]})).map(function(x){return '<button type="button" class="btn sm'+(OFILTER===x[0]?' primary':'')+(x[0]==='follow'?' due':'')+'" data-ofilter="'+x[0]+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</button>'}).join('')+'</div>'+
+      '<details class="crmset"><summary class="small muted">أسباب الخسارة (لما يتلغى طلب)</summary><textarea id="lostList" dir="auto" rows="6">'+esc(lostReasons().join('\n'))+'</textarea><div class="actions"><span class="small muted">كل سبب بسطر</span><button class="btn sm" type="button" data-lostsave>حفظ</button></div></details>'+
       (!LIVE?'<p class="hint">هذا طلب تجريبي ليظهر لك طريقة العمل. الطلبات الحقيقية تصل هنا بعد نشر الموقع على Cloudflare.</p>':'')+'</section>';
     if(!list.length){ $('#panel').innerHTML=head+'<div class="sec"><div class="empty">لا توجد طلبات هنا.</div></div>'; return; }
     $('#panel').innerHTML=head+'<div class="orders">'+list.map(function(o){
       var k=esc(o.key);
-      return '<details class="order item" data-okey="'+k+'"'+(o.status==='new'||o.unread?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span>'+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
+      return '<details class="order item" data-okey="'+k+'"'+(o.status==='new'||o.unread?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+(o.status==='cancelled'&&o.lostReason?' · '+esc(o.lostReason):'')+'</span>'+(o.manual?'<span class="pill src">'+esc(SRC[srcOf(o)]||'')+'</span>':'')+(dueFollow(o)?'<span class="pill due">متابعة'+(o.followUp<todayISO()?' متأخرة':' اليوم')+'</span>':o.followUp&&o.status!=='cancelled'&&o.status!=='delivered'?'<span class="pill">متابعة '+esc(fdate(o.followUp))+'</span>':'')+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
         '<b>'+esc(o.name)+' · '+esc(o.packageName||o.package)+'</b><span class="muted small">'+esc(new Date(o.createdAt).toLocaleDateString('ar'))+'</span></summary><div class="body">'+
         '<div class="grid2"><div>'+
-          '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b> · التقدير: <span dir="ltr">'+esc(o.total)+'</span>'+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
+          '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b>'+(o.total?' · التقدير: <span dir="ltr">'+esc(o.total)+'</span>':'')+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
-          (o.visit?'<div class="small muted" style="margin-top:8px">مصدر الزيارة</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
+          (o.visit&&!o.visit.manual?'<div class="small muted" style="margin-top:8px">مصدر الزيارة</div><div class="small visit">'+[o.visit.source&&('المصدر: <b dir="ltr">'+esc(o.visit.source)+'</b>'),o.visit.utm&&('حملة: <span dir="ltr">'+esc(o.visit.utm)+'</span>'),o.visit.landing&&('أول صفحة: <span dir="ltr">'+esc(o.visit.landing)+'</span>'),o.visit.visits&&('عدد الزيارات قبل الطلب: '+esc(o.visit.visits)),o.visit.first&&('أول زيارة: '+esc(new Date(o.visit.first).toLocaleDateString('ar'))),(o.visit.country||o.visit.city)&&('الموقع: '+esc([o.visit.city,o.visit.country].filter(Boolean).join('، '))),o.visit.device&&('الجهاز: '+esc(DEV[o.visit.device]||o.visit.device)+' · '+esc(o.visit.os||''))].filter(Boolean).join(' · ')+'</div>':'')+
           '<div class="small muted" style="margin-top:8px">التفاصيل</div><pre>'+esc(o.details)+'</pre>'+
           (o.link?'<div dir="ltr" class="small"><a href="'+esc(o.link)+'" target="_blank" rel="noopener">'+esc(o.link)+'</a></div>':'')+(o.deadline?'<div class="small muted">الموعد: '+esc(o.deadline)+'</div>':'')+
           (o.email?'<div class="small muted" style="margin-top:12px">المحادثة مع العميل (تظهر له في حسابه)</div><div class="athread">'+thread(o)+'</div>'+
@@ -529,6 +612,7 @@
         '</div><div class="ofields">'+
           '<div class="row"><div class="field"><label>الحالة</label><select data-of="status">'+Object.keys(ST).map(function(s2){return '<option value="'+s2+'"'+(s2===o.status?' selected':'')+'>'+ST[s2]+'</option>'}).join('')+'</select></div>'+
           '</div>'+
+          crmFields(o,k)+
           payFlow(o,k,methods)+
           '<div class="field"><label>ملاحظات داخلية</label><textarea data-of="notes">'+esc(o.notes)+'</textarea></div>'+
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
