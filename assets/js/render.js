@@ -294,7 +294,8 @@
       [].forEach.call(grid.querySelectorAll('.proj'),function(card){
         var v=card.querySelector('video.hov'); if(!v) return;
         var want=false;
-        function start(){ want=true; if(!v.src) v.src=v.dataset.src; var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); }
+        function start(){ want=true; if(!v.src) v.src=v.dataset.src; var pr=v.play();
+          if(pr&&pr.then) pr.then(function(){ if(want) v.classList.add('on'); else v.pause(); },function(){}); }
         function stop(){ if(!want) return; want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
         card._pv={start:start,stop:stop};
         v.addEventListener('playing',function(){ if(want) v.classList.add('on'); else v.pause(); });

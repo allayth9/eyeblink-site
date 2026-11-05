@@ -1,11 +1,21 @@
-// GET  /api/media/<key> — public: serves an uploaded preview video, image or logo
+// GET  /api/media/<key> — public: serves an uploaded preview video, image or logo. Answers byte ranges
+//                         (Safari and iPhones only play a video that can be fetched in parts).
 // POST /api/media        — admin: upload a file (raw body, header x-filename); max 24 MB
-export async function onRequestGet({ params, env }) {
+export async function onRequestGet({ request, params, env }) {
   const key = (params.path || []).join("/");
   if (!key) return new Response("not found", { status: 404 });
   const { value, metadata } = await env.EB.getWithMetadata("media:" + key, { type: "arrayBuffer" });
   if (!value) return new Response("not found", { status: 404 });
-  return new Response(value, { headers: { "content-type": metadata?.type || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable" } });
+  const size = value.byteLength;
+  const head = { "content-type": metadata?.type || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable", "accept-ranges": "bytes" };
+  const m = /^bytes=(\d*)-(\d*)$/.exec((request.headers.get("range") || "").trim());
+  if (m && (m[1] !== "" || m[2] !== "")) {
+    let a = m[1] === "" ? size - +m[2] : +m[1], b = m[1] === "" || m[2] === "" ? size - 1 : Math.min(+m[2], size - 1);
+    if (a < 0) a = 0;
+    if (a >= size || a > b) return new Response(null, { status: 416, headers: { ...head, "content-range": "bytes */" + size } });
+    return new Response(value.slice(a, b + 1), { status: 206, headers: { ...head, "content-range": `bytes ${a}-${b}/${size}`, "content-length": String(b - a + 1) } });
+  }
+  return new Response(value, { headers: { ...head, "content-length": String(size) } });
 }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
