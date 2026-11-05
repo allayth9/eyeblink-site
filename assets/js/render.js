@@ -295,13 +295,15 @@
         var v=card.querySelector('video.hov'); if(!v) return;
         var want=false;
         function start(){ want=true; if(!v.src) v.src=v.dataset.src; var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); }
-        function stop(){ want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
+        function stop(){ if(!want) return; want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
+        card._pv={start:start,stop:stop};
         v.addEventListener('playing',function(){ if(want) v.classList.add('on'); else v.pause(); });
         card.addEventListener('pointerenter',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') start(); });
         card.addEventListener('pointerleave',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') stop(); });
         card.addEventListener('focus',function(){ if(card.matches(':focus-visible')) start(); });
         card.addEventListener('blur',stop);
       });
+      centerPreview();
     }
     var used=(C.services||[]).map(function(s){return s.id}).filter(function(k){return list.some(function(p){return p.service===k})});
     if(filters && !limit && list.length>=4 && used.length>1){
@@ -317,6 +319,44 @@
     }
     bindLB();
   }
+  /* ---------------- phones: the work in the middle of the screen plays its preview ----------------
+     No pointer to hover with, so while scrolling, the card whose photo sits nearest the middle of the screen
+     plays once it has rested there for a moment; one at a time, back to the cover as it leaves the middle.
+     Skipped when the visitor asked to save data or to reduce motion. */
+  var CP={on:false,cur:null,timer:0,tick:false,settle:0};
+  function centerPreview(){
+    if(CP.on) return check();
+    var touch=matchMedia('(hover: none)').matches && matchMedia('(pointer: coarse)').matches;
+    var save=navigator.connection&&navigator.connection.saveData;
+    if(!touch||save||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    CP.on=true;
+    // cards glide in as they scroll into view, so look again once scrolling has stopped and that motion has settled
+    addEventListener('scroll',function(){
+      if(!CP.tick){ CP.tick=true; requestAnimationFrame(function(){ CP.tick=false; check(); }); }
+      clearTimeout(CP.settle); CP.settle=setTimeout(function(){ check(); CP.settle=setTimeout(check,600); },250);
+    },{passive:true});
+    addEventListener('resize',check);
+    document.addEventListener('visibilitychange',function(){ if(document.hidden) play(null); else check(); });
+    check();
+  }
+  function play(card){
+    if(CP.cur&&CP.cur!==card&&CP.cur._pv) CP.cur._pv.stop();
+    CP.cur=card; if(card&&card._pv) card._pv.start();
+  }
+  function check(){
+    clearTimeout(CP.timer);
+    if(document.hidden||(lb&&!lb.hidden)){ play(null); return; }
+    var H=innerHeight, mid=H/2, best=null, bd=1e9;
+    [].forEach.call(document.querySelectorAll('#workGrid .proj'),function(c){
+      if(!c._pv||c.hidden) return; var r=(c.querySelector('.ph')||c).getBoundingClientRect();
+      if(!r.height) return; var cy=r.top+r.height/2, d=Math.abs(cy-mid);
+      if(cy>H*0.22 && cy<H*0.78 && d<bd){ bd=d; best=c; }   // its photo has to be in the middle band of the screen
+    });
+    if(best===CP.cur) return;
+    if(CP.cur&&CP.cur._pv) { CP.cur._pv.stop(); CP.cur=null; }
+    if(best) CP.timer=setTimeout(function(){ play(best); },450);   // rested there a moment, not just scrolled past
+  }
+
   /* ---------------- view counts ---------------- */
   // the key the server uses for a work (functions/api/views.js): its id, or a fingerprint of its media before it has one
   function fp(s){ var h=5381; s=String(s); for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
@@ -354,7 +394,7 @@
     addEventListener('keydown',function(e){ if(e.key==='Escape'&&!lb.hidden) closeLB(); });
   }
   function openLB(p){
-    countView(p);
+    countView(p); if(CP.on) play(null);
     var f=p.full||{}, src='', html='', title=L(p.title);
     var v=vid(f);
     if(v&&v.type==='vimeo') src='https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1';
@@ -433,7 +473,7 @@
     }
   }
   function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
-  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; fadeAudio(null,0,650,0); lb.classList.remove('show');
+  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; fadeAudio(null,0,650,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
     setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },760); }
 
   /* ---------------- order: a popup like the player, same waves ---------------- */
