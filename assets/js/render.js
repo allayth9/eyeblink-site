@@ -293,18 +293,21 @@
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
       [].forEach.call(grid.querySelectorAll('.proj'),function(card){
         var v=card.querySelector('video.hov'); if(!v) return;
-        var want=false;
+        var want=false, single=false;
         function start(){ want=true; if(!v.src) v.src=v.dataset.src; var pr=v.play();
           if(pr&&pr.then) pr.then(function(){ if(want) v.classList.add('on'); else v.pause(); },function(){}); }
-        function stop(){ if(!want) return; want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
-        card._pv={start:start,stop:stop};
+        function stop(){ single=false; v.loop=true; if(!want) return; want=false; v.classList.remove('on'); v.pause(); setTimeout(function(){ if(!want) try{ v.currentTime=0; }catch(_){} },350); }
+        // play the preview through once (scroll reveal on desktop), then back to the cover
+        function once(){ if(want) return; single=true; v.loop=false; try{ v.currentTime=0; }catch(_){} start(); }
+        card._pv={start:start,stop:stop,once:once};
+        v.addEventListener('ended',function(){ if(single) stop(); });
         v.addEventListener('playing',function(){ if(want) v.classList.add('on'); else v.pause(); });
-        card.addEventListener('pointerenter',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') start(); });
+        card.addEventListener('pointerenter',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen'){ single=false; v.loop=true; start(); } });
         card.addEventListener('pointerleave',function(e){ if(e.pointerType==='mouse'||e.pointerType==='pen') stop(); });
         card.addEventListener('focus',function(){ if(card.matches(':focus-visible')) start(); });
         card.addEventListener('blur',stop);
       });
-      centerPreview();
+      centerPreview(); rowPreview();
     }
     var used=(C.services||[]).map(function(s){return s.id}).filter(function(k){return list.some(function(p){return p.service===k})});
     if(filters && !limit && list.length>=4 && used.length>1){
@@ -356,6 +359,35 @@
     if(best===CP.cur) return;
     if(CP.cur&&CP.cur._pv) { CP.cur._pv.stop(); CP.cur=null; }
     if(best) CP.timer=setTimeout(function(){ play(best); },450);   // rested there a moment, not just scrolled past
+  }
+
+  /* ---------------- desktop: each row plays its previews once while scrolling down ----------------
+     When a row of works reaches the middle of the screen on the way down, all its previews play through once
+     together and return to their covers. A row does this only once per visit; after that, hover only. */
+  var RP={on:false,lastY:0,tick:false,settle:0};
+  function rowPreview(){
+    if(RP.on) return;
+    var mouse=matchMedia('(hover: hover)').matches && matchMedia('(pointer: fine)').matches;
+    var save=navigator.connection&&navigator.connection.saveData;
+    if(!mouse||save||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    RP.on=true; RP.lastY=scrollY;
+    addEventListener('scroll',function(){
+      var down=scrollY>RP.lastY; RP.lastY=scrollY; if(!down) return;
+      if(!RP.tick){ RP.tick=true; requestAnimationFrame(function(){ RP.tick=false; rows(); }); }
+      clearTimeout(RP.settle); RP.settle=setTimeout(rows,500);   // cards glide in: look again once that has settled
+    },{passive:true});
+  }
+  function rows(){
+    if(document.hidden||(lb&&!lb.hidden)) return;
+    var groups={}, H=innerHeight;
+    [].forEach.call(document.querySelectorAll('#workGrid .proj'),function(c){
+      if(!c._pv||c.hidden||c._rowDone) return;
+      var k=Math.round(c.offsetTop/20); (groups[k]=groups[k]||[]).push(c);   // same row = same top within the grid
+    });
+    Object.keys(groups).forEach(function(k){
+      var row=groups[k], r=(row[0].querySelector('.ph')||row[0]).getBoundingClientRect(), cy=r.top+r.height/2;
+      if(r.height && cy>0 && cy<H*0.62){ row.forEach(function(c){ c._rowDone=true; c._pv.once(); }); }
+    });
   }
 
   /* ---------------- view counts ---------------- */
