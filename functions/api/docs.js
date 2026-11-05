@@ -60,7 +60,7 @@ function clean(type, d){
     days: INT(d.days, 0, 365, 0), revisions: INT(d.revisions, 0, 10, 2), valid: INT(d.valid, 1, 120, 14),
     plan: d.plan === "full" ? "full" : "split", pct: INT(d.pct, 10, 90, 50),
     includes: LINES(d.includes, 20, 260), excludes: LINES(d.excludes, 20, 260),
-    payMethods: S(d.payMethods, 260), notes: S(d.notes, 2000), quoteNo: S(d.quoteNo, 30),
+    payMethods: S(d.payMethods, 260), payIds: LINES(d.payIds, 12, 40), payOther: S(d.payOther, 120), notes: S(d.notes, 2000), quoteNo: S(d.quoteNo, 30),
   };
   if (type === "agreement") b.clauses = (Array.isArray(d.clauses) ? d.clauses : []).slice(0, 40)
     .map(x => ({ h: S(x && x.h, 140), p: S(x && x.p, 4000) })).filter(x => x.h || x.p);
@@ -91,7 +91,7 @@ async function issue(env, d){
   }
   await env.EB.put("doc:" + doc.token, JSON.stringify(doc));
   putSummary(o, doc); await env.EB.put(o.key, JSON.stringify(o));
-  return json({ ok: true, doc, url: SITE + "/d/" + doc.token, docs: o.docs });
+  return json({ ok: true, doc, url: SITE + "/" + doc.type + "/" + doc.token, docs: o.docs });
 }
 
 async function seen(ctx, d){
@@ -129,6 +129,7 @@ async function accept(ctx, d){
     if (doc.type === "quote") {
       // the accepted quote becomes the order's price and payment plan, and an opportunity still being discussed becomes confirmed
       o.price = fmt(doc.body.total, doc.body.cur); o.cur = doc.body.cur; o.plan = doc.body.plan; o.depositPct = doc.body.pct;
+      if ((doc.body.payIds || []).length === 1 && !o.method) o.method = doc.body.payIds[0];
       if (["new", "discussing"].includes(o.status)) { o.history.push({ at: now, status: "confirmed", by: "client" }); o.status = "confirmed"; }
       if (o.manual && !o.clientVisible && o.status !== "cancelled") {
         o.clientVisible = true;

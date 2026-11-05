@@ -595,7 +595,7 @@
         excludes:['On-location filming and equipment, unless listed above','Open project files (Premiere Pro / After Effects)','Paid advertising costs','Licences for footage or music the client requests from outside our libraries']}};
   function dset(){ var d=(P&&P.docs)||{}, s=(C.settings||{});
     return {studioName:d.studioName||'Eyeblink Studio', studioPlace:d.studioPlace||'', studioContact:d.studioContact||[s.whatsapp,s.email].filter(Boolean).join('\n'),
-      payMethods:d.payMethods||'Binance Pay (USDT) · Western Union', days:d.days||10, revisions:d.revisions!=null?d.revisions:2, valid:d.valid||14, plan:d.plan||'split', pct:d.pct||50,
+      payMethods:d.payMethods||'Binance Pay (USDT) · Western Union', payIds:d.payIds||['binance','westernunion'], payOther:d.payOther||'', days:d.days||10, revisions:d.revisions!=null?d.revisions:2, valid:d.valid||14, plan:d.plan||'split', pct:d.pct||50,
       approvalDays:d.approvalDays||7, silenceDays:d.silenceDays||14, archiveDays:d.archiveDays||60, jurisdiction:d.jurisdiction||'', lists:d.lists||{}}; }
   function dlists(lang){ var L=dset().lists[lang]||{}; return {includes:L.includes||DDEF[lang].includes, excludes:L.excludes||DDEF[lang].excludes}; }
   function revAr(n){ return n==0?'لا يشمل جولات تعديل':'يشمل '+(n==1?'جولة واحدة':n==2?'جولتين':n+' جولات')+' من التعديلات'; }
@@ -648,7 +648,10 @@
       {h:'File retention', p:'The First Party keeps a copy of the project files for '+v.archiveDays+' days after final delivery, after which it is not obliged to keep them or provide copies'},
       {h:'General', p:'Emails and messages exchanged through the parties’ agreed channels form part of this agreement. No amendment is valid unless documented and accepted by both parties, and this agreement prevails over any earlier arrangement. The parties will try to settle any dispute amicably; failing that, it falls under '+(v.jurisdiction||'the competent courts in the First Party’s country')} ];
   }
-  function docUrl(t){ return location.origin+'/d/'+t; }
+  function docUrl(t,type){ return location.origin+'/'+(type==='agreement'?'agreement':type==='quote'?'quote':'d')+'/'+t; }
+  function payList(){ return ((C.payments&&C.payments.methods)||[]).filter(function(m){ return m&&m.id&&m.name; }); }
+  // the methods line the client reads: the ticked methods in the site's order, then anything written by hand
+  function payText(b){ var ids=b.payIds||[]; return payList().filter(function(m){ return ids.indexOf(m.id)>=0; }).map(function(m){ return m.name; }).concat(String(b.payOther||'').trim()?[String(b.payOther).trim()]:[]).join(' · '); }
   function docShareText(o,s,lang,url){ var en=lang==='en', n=(o.name||'').trim();
     return en ? 'Hello '+n+', here is the '+(s.type==='quote'?'quote':'service agreement')+' for “'+(s.title||'')+'”:\n'+url+'\nYou can download it as a PDF and '+(s.type==='quote'?'accept it':'sign it')+' from the same link'
       : 'مرحباً '+n+'، هذا '+(s.type==='quote'?'عرض السعر':'اتفاق العمل')+' لمشروع «'+(s.title||'')+'»:\n'+url+'\nيمكنك تحميله PDF و'+(s.type==='quote'?'الموافقة عليه':'توقيعه')+' من الرابط نفسه'; }
@@ -658,7 +661,7 @@
     var list=o.docs||[];
     return '<div class="docs"><div class="dh"><b>عرض السعر والاتفاقية</b><span class="small muted">برابط خاص: العميل بيفتحه، بيحمّله PDF، وبيوافق أو بيوقّع</span></div>'+
       (list.length?'<ul class="dlist">'+list.map(function(s){ return '<li><div class="dl1"><b>'+esc(DTYPE[s.type])+'</b> <span dir="ltr" class="muted">'+esc(s.no)+(s.ver>1?' · v'+s.ver:'')+'</span><span class="pill '+(s.status==='accepted'?'ok':s.viewedAt?'seen':'')+'">'+esc(docState(s))+'</span></div>'+
-        '<div class="dl2"><a class="btn sm" href="'+esc(docUrl(s.token))+'" target="_blank" rel="noopener">فتح</a><a class="btn sm" href="'+esc(docUrl(s.token))+'?print=1" target="_blank" rel="noopener">PDF</a>'+
+        '<div class="dl2"><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'" target="_blank" rel="noopener">فتح</a><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'?print=1" target="_blank" rel="noopener">PDF</a>'+
         '<button class="btn sm" type="button" data-dshare="'+k+'" data-t="'+esc(s.token)+'">إرسال</button>'+(s.status!=='accepted'?'<button class="btn sm" type="button" data-dedit="'+k+'" data-t="'+esc(s.token)+'" data-type="'+s.type+'">تعديل</button>':'')+
         (s.type==='quote'&&s.status==='accepted'&&!list.some(function(x){return x.type==='agreement'})?'<button class="btn sm primary" type="button" data-dnew="'+k+'" data-type="agreement" data-from="'+esc(s.token)+'">اتفاقية من هالعرض</button>':'')+'</div></li>'; }).join('')+'</ul>':'')+
       '<div class="actions"><button class="btn sm" type="button" data-dnew="'+k+'" data-type="quote">+ عرض سعر</button><button class="btn sm" type="button" data-dnew="'+k+'" data-type="agreement">+ اتفاقية</button></div></div>';
@@ -674,7 +677,7 @@
     var L=dlists(lang), digits=String(o.contact||'');
     return {lang:lang,title:o.packageName&&o.packageName!=='فرصة'?o.packageName:'',summary:'',client:{name:o.name||'',company:'',place:'',contact:o.contact||'',email:o.email||''},
       studio:{name:S.studioName,place:S.studioPlace,contact:S.studioContact},items:items,cur:pcur(o),discount:0,days:S.days,revisions:S.revisions,valid:S.valid,
-      plan:o.plan||S.plan,pct:+(o.depositPct||S.pct),includes:L.includes.slice(),excludes:L.excludes.slice(),payMethods:S.payMethods,notes:'',quoteNo:'',
+      plan:o.plan||S.plan,pct:+(o.depositPct||S.pct),includes:L.includes.slice(),excludes:L.excludes.slice(),payIds:S.payIds.slice(),payOther:S.payOther,payMethods:'',notes:'',quoteNo:'',
       clauses:null,v:{approvalDays:S.approvalDays,silenceDays:S.silenceDays,archiveDays:S.archiveDays,sourceFiles:false,portfolio:true,jurisdiction:S.jurisdiction}};
   }
   function openDoc(o,type,token,fromToken){
@@ -682,6 +685,7 @@
       var ex=token&&list.filter(function(d){return d.token===token})[0], from=fromToken&&list.filter(function(d){return d.token===fromToken})[0];
       if(!from&&type==='agreement'&&!ex){ from=list.filter(function(d){return d.type==='quote'&&d.status==='accepted'})[0]||null; }
       var b= ex? JSON.parse(JSON.stringify(ex.body)) : docSeed(o,type,from);
+      if(!b.payIds){ var pm=String(b.payMethods||''); b.payIds=payList().filter(function(m){ return pm.indexOf(m.name)>=0; }).map(function(m){ return m.id; }); if(!b.payIds.length) b.payOther=pm; }   // documents made before the picker
       var S=dset(); b.v=b.v||{approvalDays:S.approvalDays,silenceDays:S.silenceDays,archiveDays:S.archiveDays,sourceFiles:false,portfolio:true,jurisdiction:S.jurisdiction};
       if(type==='agreement'&&!b.clauses) b.clauses=clausesFor(b.lang,docVars(b));
       DED={o:o,type:type,token:ex?ex.token:null,no:ex?ex.no:'',b:b,quotes:list.filter(function(d){return d.type==='quote'}),result:null};
@@ -691,7 +695,7 @@
   }
   function docVars(b){ var v=b.v||{}, t=0; (b.items||[]).forEach(function(x){ t+=(+x.qty||1)*pnum(x.unit); }); t=Math.max(0,t-pnum(b.discount));
     return {studio:(b.studio&&b.studio.name)||'Eyeblink Studio',client:(b.client&&(b.client.company||b.client.name))||'—',title:b.title||'—',total:pfmt(t,b.cur||'$'),plan:b.plan,pct:b.pct,days:+b.days||0,revisions:+b.revisions,
-      payMethods:b.payMethods,approvalDays:v.approvalDays||7,silenceDays:v.silenceDays||14,archiveDays:v.archiveDays||60,sourceFiles:!!v.sourceFiles,portfolio:v.portfolio!==false,jurisdiction:v.jurisdiction||''}; }
+      payMethods:payText(b)||b.payMethods,approvalDays:v.approvalDays||7,silenceDays:v.silenceDays||14,archiveDays:v.archiveDays||60,sourceFiles:!!v.sourceFiles,portfolio:v.portfolio!==false,jurisdiction:v.jurisdiction||''}; }
   function dField(lbl,html,cls){ return '<div class="field'+(cls?' '+cls:'')+'"><label>'+lbl+'</label>'+html+'</div>'; }
   function dIn(path,val,attrs){ return '<input data-dp="'+path+'" value="'+esc(val==null?'':val)+'" '+(attrs||'dir="auto"')+'>'; }
   function drawDoc(){
@@ -712,7 +716,9 @@
       '<div class="actions"><button class="btn sm" type="button" data-ditemadd>+ بند</button>'+(pk.length?'<select data-dpkg><option value="">أضف من الباقات…</option>'+pk.map(function(p,i){ return '<option value="'+i+'">'+esc((p.name&&(p.name[b.lang]||p.name.ar))||p.id)+' · '+esc(p.price)+'</option>'; }).join('')+'</select>':'')+'</div></div>';
     var money='<div class="row">'+dField('العملة',dIn('cur',b.cur,'dir="ltr"'))+dField('خصم (مبلغ)',dIn('discount',b.discount||'','dir="ltr" placeholder="0"'))+'<div class="field dtotal"><label>الإجمالي</label><b dir="ltr">'+esc(pfmt(total,b.cur||'$'))+'</b></div></div>';
     var terms='<div class="row">'+dField('مدة التنفيذ (أيام عمل)',dIn('days',b.days,'type="number" min="0"'))+dField('جولات التعديل',dIn('revisions',b.revisions,'type="number" min="0" max="10"'))+(q?dField('العرض صالح لمدة (يوم)',dIn('valid',b.valid,'type="number" min="1"')):'')+'</div>'+
-      '<div class="row">'+dField('خطة الدفع','<select data-dp="plan"><option value="split"'+(b.plan!=='full'?' selected':'')+'>عربون والباقي قبل التسليم</option><option value="full"'+(b.plan==='full'?' selected':'')+'>كامل المبلغ قبل البدء</option></select>')+(b.plan!=='full'?dField('نسبة العربون %',dIn('pct',b.pct,'type="number" min="10" max="90"')):'')+dField('طرق الدفع',dIn('payMethods',b.payMethods))+'</div>';
+      '<div class="row">'+dField('خطة الدفع','<select data-dp="plan"><option value="split"'+(b.plan!=='full'?' selected':'')+'>عربون والباقي قبل التسليم</option><option value="full"'+(b.plan==='full'?' selected':'')+'>كامل المبلغ قبل البدء</option></select>')+(b.plan!=='full'?dField('نسبة العربون %',dIn('pct',b.pct,'type="number" min="10" max="90"')):'')+'</div>'+
+      dField('طرق الدفع المقبولة بهالمستند','<div class="dpay">'+payList().map(function(m){ var on=(b.payIds||[]).indexOf(m.id)>=0; return '<label class="dchip'+(on?' on':'')+'"><input type="checkbox" data-dpay="'+esc(m.id)+'"'+(on?' checked':'')+'>'+(m.logo?'<img src="'+esc(abs(String(m.logo).replace(/^\//,'')))+'" alt="">':'')+esc(m.name)+'</label>'; }).join('')+'</div>'+dIn('payOther',b.payOther,'dir="auto" placeholder="غيرها (اختياري): مثال تحويل بنكي"'))+
+      '<div class="small muted dpayline">بيظهر للعميل: <b>'+esc(payText(b)||'—')+'</b></div>';
     var lists='<div class="row">'+dField('يشمل (كل سطر بند)','<textarea data-dp="includes" data-lines dir="auto" rows="4">'+esc((b.includes||[]).join('\n'))+'</textarea>')+dField('لا يشمل','<textarea data-dp="excludes" data-lines dir="auto" rows="4">'+esc((b.excludes||[]).join('\n'))+'</textarea>')+'</div>';
     var v=b.v||{};
     var agr= q?'':'<section class="dsec"><h4>البنود</h4><p class="small muted">بتتولّد من الأرقام فوق. عدّل أي بند لهالعميل بس، أو اضغط «توليد من جديد» بعد ما تغيّر الأرقام</p>'+
@@ -738,6 +744,7 @@
     var v= el.type==='checkbox'? el.checked : el.hasAttribute('data-lines')? el.value.split('\n') : el.value; dpath(DED.b,el.dataset.dp,v);
     if(/^items\.|^discount|^cur/.test(el.dataset.dp)){ var b=DED.b, s=0; b.items.forEach(function(x){ s+=(+x.qty||1)*pnum(x.unit); }); var t=$('#dsheet .dtotal b'); if(t) t.textContent=pfmt(Math.max(0,s-pnum(b.discount)),b.cur||'$'); } });
   document.addEventListener('change',function(e){ var el=e.target; if(!DED||!el.closest('#dsheet')) return;
+    if(el.dataset.dpay){ var ids=(DED.b.payIds||[]).filter(function(x){ return x!==el.dataset.dpay; }); if(el.checked) ids.push(el.dataset.dpay); DED.b.payIds=ids; DED.b.payMethods=payText(DED.b); drawDoc(); return; }
     if(el.dataset.dp==='plan'||el.dataset.dp==='lang'||el.type==='checkbox'){ if(el.dataset.dp==='lang'){ var L=dlists(el.value), b=DED.b; b.includes=L.includes.slice(); b.excludes=L.excludes.slice(); if(DED.type==='agreement') b.clauses=clausesFor(el.value,docVars(b)); } drawDoc(); return; }
     if(el.hasAttribute('data-dpkg')&&el.value!==''){ var p=C.packages.items[+el.value], lg=DED.b.lang, f=(p.features&&(p.features[lg]||p.features.ar))||[];
       DED.b.items.push({name:(p.name&&(p.name[lg]||p.name.ar))||'',desc:f.join(lg==='en'?' · ':' · '),qty:1,unit:+p.price||0}); drawDoc(); return; }
@@ -745,7 +752,7 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-dnew],[data-dedit],[data-dshare],[data-dclose],[data-ditemadd],[data-ditemx],[data-dcladd],[data-dclx],[data-dregen],[data-dissue],[data-ddefault],[data-dcopy],[data-dchat]'); if(!b) return;
     if(b.dataset.dnew||b.dataset.dedit){ var o=orderOf(b.dataset.dnew||b.dataset.dedit); if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; } openDoc(o,b.dataset.type,b.dataset.t||null,b.dataset.from||null); return; }
     if(b.dataset.dshare){ var o2=orderOf(b.dataset.dshare), s=(o2.docs||[]).filter(function(x){return x.token===b.dataset.t})[0]; if(!s) return;
-      DED={o:o2,type:s.type,token:s.token,no:s.no,b:{lang:o2.lang==='en'?'en':'ar'},quotes:[],result:{url:docUrl(s.token),s:s,updated:false,share:true}}; drawDoc(); $('#dsheet .dok').textContent='رابط '+(s.type==='quote'?'عرض السعر':'الاتفاقية')+' '+s.no; return; }
+      DED={o:o2,type:s.type,token:s.token,no:s.no,b:{lang:o2.lang==='en'?'en':'ar'},quotes:[],result:{url:docUrl(s.token,s.type),s:s,updated:false,share:true}}; drawDoc(); $('#dsheet .dok').textContent='رابط '+(s.type==='quote'?'عرض السعر':'الاتفاقية')+' '+s.no; return; }
     if(!DED) return; var B=DED.b;
     if(b.hasAttribute('data-dclose')){ closeDoc(); return; }
     if(b.hasAttribute('data-ditemadd')){ B.items.push({name:'',desc:'',qty:1,unit:0}); drawDoc(); return; }
@@ -756,7 +763,7 @@
     if(b.hasAttribute('data-dcopy')){ var t=$('#dmsg'); try{ navigator.clipboard.writeText(t.value).then(function(){ toast('انتسخت الرسالة'); },function(){ t.select(); }); }catch(_){ t.select(); } return; }
     if(b.hasAttribute('data-dchat')){ sendMsg(DED.o.key,$('#dmsg').value,b); return; }
     if(b.hasAttribute('data-ddefault')){ P=P||{}; var d=P.docs=Object.assign({},P.docs);
-      Object.assign(d,{studioName:B.studio.name,studioPlace:B.studio.place,studioContact:B.studio.contact,payMethods:B.payMethods,days:+B.days,revisions:+B.revisions,valid:+B.valid||14,plan:B.plan,pct:+B.pct});
+      Object.assign(d,{studioName:B.studio.name,studioPlace:B.studio.place,studioContact:B.studio.contact,payIds:(B.payIds||[]).slice(),payOther:B.payOther||'',payMethods:payText(B),days:+B.days,revisions:+B.revisions,valid:+B.valid||14,plan:B.plan,pct:+B.pct});
       if(B.v) Object.assign(d,{approvalDays:+B.v.approvalDays,silenceDays:+B.v.silenceDays,archiveDays:+B.v.archiveDays,jurisdiction:B.v.jurisdiction||''});
       d.lists=Object.assign({},d.lists); d.lists[B.lang]={includes:(B.includes||[]).filter(Boolean),excludes:(B.excludes||[]).filter(Boolean)};
       b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظت كإعدادات افتراضية لكل مستند جديد'); }).catch(function(){ toast('ما انحفظت',true); }).then(function(){ b.disabled=false; }); return; }
@@ -764,10 +771,10 @@
       if(!String(B.title||'').trim()){ toast('اكتب عنوان المشروع',true); var ti=$('#dsheet [data-dp="title"]'); if(ti) ti.focus(); return; }
       B.items=B.items.filter(function(x){ return String(x.name||'').trim(); }); if(!B.items.length){ toast('ضيف بند واحد عالأقل',true); drawDoc(); return; }
       if(DED.type==='agreement') B.clauses=(B.clauses||[]).filter(function(c){ return String(c.h||'').trim()||String(c.p||'').trim(); });
-      b.disabled=true; var wasToken=DED.token;
+      B.payMethods=payText(B); b.disabled=true; var wasToken=DED.token;
       api('/docs','POST',{action:'issue',key:DED.o.key,type:DED.type,token:DED.token,doc:B}).then(function(j){
         if(!j.ok) throw new Error(j.error||'fail');
-        DED.o.docs=j.docs; DED.token=j.doc.token; DED.no=j.doc.no; DED.result={url:docUrl(j.doc.token),s:j.docs.filter(function(x){return x.token===j.doc.token})[0],updated:!!wasToken}; drawDoc();
+        DED.o.docs=j.docs; DED.token=j.doc.token; DED.no=j.doc.no; DED.result={url:docUrl(j.doc.token,j.doc.type),s:j.docs.filter(function(x){return x.token===j.doc.token})[0],updated:!!wasToken}; drawDoc();
       }).catch(function(err){ b.disabled=false; toast(({title:'اكتب عنوان المشروع',items:'ضيف بند واحد عالأقل',clauses:'ضيف بند واحد عالأقل',locked:'العميل وافق عليه، ما بينعدّل. اعمل نسخة جديدة'})[err.message]||'ما انحفظ، جرّب مرة تانية',true); }); return; }
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&DED) closeDoc(); });

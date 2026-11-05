@@ -471,3 +471,11 @@ html.dlock,html.dlock body{overflow:hidden}
  .dirow input[data-dp$=".name"],.dirow textarea{grid-column:1/-1}
  .dfoot{bottom:0}
 }
+.dpay{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.dchip{position:relative;display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;cursor:pointer;font-size:13.5px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);color:var(--mist);user-select:none}
+.dchip input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;pointer-events:none}
+.dchip img{height:16px;width:auto;max-width:44px;object-fit:contain;opacity:.55;filter:grayscale(1)}
+.dchip.on{background:rgba(63,224,232,.1);box-shadow:inset 0 0 0 1px rgba(63,224,232,.55);color:var(--light)}
+.dchip.on img{opacity:1;filter:none}
+.dchip:focus-within{outline:2px solid var(--hour);outline-offset:2px}
+.dpayline b{color:var(--light);font-weight:500}
