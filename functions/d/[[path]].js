@@ -9,18 +9,19 @@ function fmt(n, c){ const a = Math.abs(n), v = (Math.round(a * 100) / 100).toLoc
   return (n < 0 ? "−" : "") + (c === "$" || c === "€" || c === "£" ? c + v : v + " " + c); }
 
 const T = {
-  ar: { quote: "عرض سعر", agreement: "اتفاقية تقديم خدمات", latin: { quote: "Quotation", agreement: "Service Agreement" },
-    no: { quote: "رقم العرض", agreement: "رقم الاتفاقية" }, date: "تاريخ الإصدار", valid: "صالح حتى", order: "رقم الطلب", ref: "مرجع العرض",
+  ar: { quote: "عرض سعر", agreement: "اتفاقية تقديم خدمات", team: "اتفاقية تعاون", latin: { quote: "Quotation", agreement: "Service Agreement", team: "Collaboration Agreement" },
+    no: { quote: "رقم العرض", agreement: "رقم الاتفاقية", team: "رقم الاتفاقية" }, p1t: "الطرف الأول · الاستوديو", p2t: "الطرف الثاني · المتعاون", date: "تاريخ الإصدار", valid: "صالح حتى", order: "رقم الطلب", ref: "مرجع العرض",
     from: "مقدّم الخدمة", to: "مقدَّم إلى", p1: "الطرف الأول · مقدّم الخدمة", p2: "الطرف الثاني · العميل",
     item: "البند", qty: "الكمية", unit: "سعر الوحدة", amount: "المبلغ", sub: "المجموع", disc: "خصم", total: "الإجمالي", value: "قيمة المشروع",
     days: "مدة التنفيذ", daysV: n => n ? n + " يوم عمل" : "تُحدَّد مع البدء", rev: "جولات التعديل", revV: n => ["بدون تعديلات", "جولة واحدة", "جولتان"][n] || n + " جولات",
     pay: "الدفع", payV: (p, pct) => p === "full" ? "كامل المبلغ قبل البدء" : pct + "% عربون قبل البدء، والباقي قبل التسليم النهائي",
     inc: "يشمل العرض", exc: "لا يشمل", methods: "طرق الدفع المعتمدة", notes: "ملاحظات", scope: "نطاق العمل والمخرجات", terms: "البنود",
-    accH: { quote: "الموافقة على العرض", agreement: "التوقيع الإلكتروني" },
+    accH: { quote: "الموافقة على العرض", agreement: "التوقيع الإلكتروني", team: "التوقيع الإلكتروني" },
     accP: { quote: "اكتب اسمك الكامل واضغط «أوافق على العرض». تُسجَّل موافقتك بالتاريخ والوقت، ونرتّب معك بعدها الخطوة التالية",
-            agreement: "اكتب اسمك الكامل واضغط «أوقّع الاتفاقية». يُعدّ ذلك توقيعاً إلكترونياً ملزماً لجميع بنودها، ويُسجَّل بالتاريخ والوقت" },
-    name: "الاسم الكامل", agree: { quote: "اطّلعت على العرض وأوافق عليه", agreement: "قرأت جميع البنود وأوافق عليها" },
-    btn: { quote: "أوافق على العرض", agreement: "أوقّع الاتفاقية" }, done: { quote: "تمّت الموافقة على العرض", agreement: "وُقّعت الاتفاقية إلكترونياً" },
+            agreement: "اكتب اسمك الكامل واضغط «أوقّع الاتفاقية». يُعدّ ذلك توقيعاً إلكترونياً ملزماً لجميع بنودها، ويُسجَّل بالتاريخ والوقت",
+            team: "اكتب اسمك الكامل واضغط «أوقّع الاتفاقية». بعد التوقيع تُفتح لك مهامك في بوابة الفريق" },
+    name: "الاسم الكامل", agree: { quote: "اطّلعت على العرض وأوافق عليه", agreement: "قرأت جميع البنود وأوافق عليها", team: "قرأت جميع البنود وأوافق عليها" },
+    btn: { quote: "أوافق على العرض", agreement: "أوقّع الاتفاقية", team: "أوقّع الاتفاقية" }, done: { quote: "تمّت الموافقة على العرض", agreement: "وُقّعت الاتفاقية إلكترونياً", team: "وُقّعت الاتفاقية إلكترونياً" }, portal: "افتح بوابة الفريق",
     by: "الاسم", at: "التاريخ والوقت", sref: "مرجع التوقيع", expired: "انتهت صلاحية هذا العرض. راسلنا لنحدّثه لك",
     pdf: "تحميل PDF", issued: "صادرة إلكترونياً", sig: "التوقيع", sigName: "الاسم", sigDate: "التاريخ",
     err: { email: "اكتب بريداً إلكترونياً صحيحاً", name: "اكتب اسمك الكامل وفعّل خانة الموافقة", slow: "محاولات كثيرة، جرّب بعد قليل", expired: "انتهت صلاحية العرض", done: "تمّت الموافقة مسبقاً", x: "تعذّر الإرسال، جرّب مرة أخرى" },
@@ -32,18 +33,19 @@ const T = {
     wsH: "مساحة العمل الخاصة بمشروعك",
     wsP: "من هنا تتابع مراحل التنفيذ، وتراجع النسخ وتعتمدها، وترسل ملاحظاتك وملفاتك، وتجد فواتيرك. فعّلها بالبريد نفسه الذي وقّعت به",
     wsBtn: "فعّل مساحة العمل", wsIn: "ادخل إلى مساحة العمل", wsDone: "مساحة العمل مفعّلة" },
-  en: { quote: "Quotation", agreement: "Service Agreement", latin: { quote: "Quotation", agreement: "Service Agreement" },
-    no: { quote: "Quote no.", agreement: "Agreement no." }, date: "Date issued", valid: "Valid until", order: "Order", ref: "Quote reference",
+  en: { quote: "Quotation", agreement: "Service Agreement", team: "Collaboration Agreement", latin: { quote: "Quotation", agreement: "Service Agreement", team: "Collaboration Agreement" },
+    no: { quote: "Quote no.", agreement: "Agreement no.", team: "Agreement no." }, p1t: "First party · The studio", p2t: "Second party · Collaborator", date: "Date issued", valid: "Valid until", order: "Order", ref: "Quote reference",
     from: "From", to: "Prepared for", p1: "First party · Service provider", p2: "Second party · Client",
     item: "Item", qty: "Qty", unit: "Unit price", amount: "Amount", sub: "Subtotal", disc: "Discount", total: "Total", value: "Project value",
     days: "Timeline", daysV: n => n ? n + " working days" : "Set at kick-off", rev: "Revision rounds", revV: n => ["No revisions", "One round", "Two rounds"][n] || n + " rounds",
     pay: "Payment", payV: (p, pct) => p === "full" ? "Full amount before we start" : pct + "% deposit before we start, the rest before final delivery",
     inc: "Included", exc: "Not included", methods: "Accepted payment methods", notes: "Notes", scope: "Scope and deliverables", terms: "Terms",
-    accH: { quote: "Accept this quote", agreement: "Electronic signature" },
+    accH: { quote: "Accept this quote", agreement: "Electronic signature", team: "Electronic signature" },
     accP: { quote: "Type your full name and press «Accept quote». Your approval is recorded with the date and time, and we arrange the next step with you",
-            agreement: "Type your full name and press «Sign agreement». This counts as a binding electronic signature of every term and is recorded with the date and time" },
-    name: "Full name", agree: { quote: "I have read the quote and accept it", agreement: "I have read every term and agree to it" },
-    btn: { quote: "Accept quote", agreement: "Sign agreement" }, done: { quote: "Quote accepted", agreement: "Signed electronically" },
+            agreement: "Type your full name and press «Sign agreement». This counts as a binding electronic signature of every term and is recorded with the date and time",
+            team: "Type your full name and press «Sign agreement». Your tasks open in the team portal once it is signed" },
+    name: "Full name", agree: { quote: "I have read the quote and accept it", agreement: "I have read every term and agree to it", team: "I have read every term and agree to it" },
+    btn: { quote: "Accept quote", agreement: "Sign agreement", team: "Sign agreement" }, done: { quote: "Quote accepted", agreement: "Signed electronically", team: "Signed electronically" }, portal: "Open the team portal",
     by: "Name", at: "Date and time", sref: "Signature reference", expired: "This quote has expired. Message us and we will update it for you",
     pdf: "Download PDF", issued: "Issued electronically", sig: "Signature", sigName: "Name", sigDate: "Date",
     err: { email: "Enter a valid email", name: "Type your full name and tick the box", slow: "Too many attempts, try again shortly", expired: "This quote has expired", done: "Already accepted", x: "Could not send, please try again" },
@@ -74,12 +76,12 @@ function page(status, lang, title, main, doc){
   const en = lang === "en", L = T[en ? "en" : "ar"];
   let head = title, body = main, og = "";
   if (doc) {
-    const b = doc.body, type = doc.type, q = type === "quote";
+    const b = doc.body, type = doc.type, q = type === "quote", tm = type === "team";
     const expired = q && !doc.accepted && Date.now() > Date.parse(doc.updatedAt) + b.valid * 864e5;
     const st = doc.accepted ? (q ? "accepted" : "signed") : expired ? "expired" : "sent";
     head = (en ? "Eyeblink " : "Eyeblink · ") + L[type] + " " + doc.no + (b.client.name ? " · " + b.client.name : "");
     og = `<meta property="og:title" content="${h(L[type] + " · " + b.title)}"><meta property="og:description" content="${h("Eyeblink Studio · " + doc.no)}"><meta property="og:image" content="${SITE}/assets/img/og.jpg">`;
-    const meta = [[L.no[type], doc.no, 1], [L.date, dateOf(doc.updatedAt, en)], q ? [L.valid, dateOf(Date.parse(doc.updatedAt) + b.valid * 864e5, en)] : (b.quoteNo ? [L.ref, b.quoteNo, 1] : null), [L.order, doc.code, 1]].filter(Boolean);
+    const meta = [[L.no[type], doc.no, 1], [L.date, dateOf(doc.updatedAt, en)], q ? [L.valid, dateOf(Date.parse(doc.updatedAt) + b.valid * 864e5, en)] : (b.quoteNo ? [L.ref, b.quoteNo, 1] : null), doc.code ? [L.order, doc.code, 1] : null].filter(Boolean);
     const party = (lab, name, lines) => `<div class="party"><div class="lab">${h(lab)}</div><div class="pname">${h(name)}</div>${lines.filter(Boolean).map(x => `<div class="pline">${x}</div>`).join("")}</div>`;
     const studioLines = [h(L.svc), b.studio.place && h(b.studio.place), b.studio.contact && `<bdi>${nl(b.studio.contact)}</bdi>`, `<bdi>eyeblinkstudio.com</bdi>`];
     const clientLines = [b.client.company && h(b.client.company), b.client.place && h(b.client.place), b.client.contact && `<bdi>${h(b.client.contact)}</bdi>`, b.client.email && `<bdi>${h(b.client.email)}</bdi>`];
@@ -101,8 +103,8 @@ function page(status, lang, title, main, doc){
     const ws = !q && doc.accepted && ob ? `<div class="next ws"><span class="lab">${h(L.next)}</span><h4>${h(L.wsH)}</h4><p>${h(L.wsP)}</p>` +
       (ob.client || ob.used ? `<a class="go" href="${base}/workspace.html">${h(L.wsIn)}</a><span class="wsok">✓ ${h(L.wsDone)}</span>` : `<a class="go" href="${base}/account.html?invite=${h(ob.invite)}">${h(L.wsBtn)}</a><span class="wsmail"><bdi>${h(ob.email)}</bdi></span>`) + `</div>` : "";
     // signatures: the studio's side is issued electronically; the client's side is the e-signature, or blank lines on paper
-    const sigs = `<section class="sigs"><div class="sig"><div class="lab">${h(q ? L.from : L.p1)}</div><div class="sname">${h(b.studio.name)}</div><div class="sline">${h(L.issued)} · ${h(dateOf(doc.updatedAt, en))}</div></div>` +
-      `<div class="sig"><div class="lab">${h(q ? L.to : L.p2)}</div>${doc.accepted ? `<div class="sname">${h(doc.accepted.name)}</div><div class="sline">${h(L.done[type])} · ${h(dateOf(doc.accepted.at, en))}</div>` : `<div class="blank"><span>${h(L.sigName)}</span></div><div class="blank"><span>${h(L.sig)}</span></div><div class="blank"><span>${h(L.sigDate)}</span></div>`}</div></section>`;
+    const sigs = `<section class="sigs"><div class="sig"><div class="lab">${h(q ? L.from : tm ? L.p1t : L.p1)}</div><div class="sname">${h(b.studio.name)}</div><div class="sline">${h(L.issued)} · ${h(dateOf(doc.updatedAt, en))}</div></div>` +
+      `<div class="sig"><div class="lab">${h(q ? L.to : tm ? L.p2t : L.p2)}</div>${doc.accepted ? `<div class="sname">${h(doc.accepted.name)}</div><div class="sline">${h(L.done[type])} · ${h(dateOf(doc.accepted.at, en))}</div>` : `<div class="blank"><span>${h(L.sigName)}</span></div><div class="blank"><span>${h(L.sig)}</span></div><div class="blank"><span>${h(L.sigDate)}</span></div>`}</div></section>`;
     const accBlock = `<section class="acc">${stamp}${nextQ}${ws}${exp}${form}</section>`;
     main = `<div class="bar"><div class="bin"><a class="home" href="${en ? "/en/" : "/"}" aria-label="Eyeblink Studio"><img src="/assets/img/mark.svg" alt=""><span>Eyeblink Studio</span></a><span class="bno num">${h(doc.no)}</span><span class="pill ${st}">${h(L.status[st])}</span><button type="button" class="pdf" id="pdf">${h(L.pdf)}</button></div></div>
 <main class="sheet ${type}">
@@ -110,8 +112,9 @@ function page(status, lang, title, main, doc){
  <div class="hair"></div>
  <section class="hero"><h1>${h(b.title)}</h1>${b.summary ? `<p>${nl(b.summary)}</p>` : ""}</section>
  <section class="meta">${meta.map(m => `<div><span class="lab">${h(m[0])}</span><b>${m[2] ? `<bdi class="num">${h(m[1])}</bdi>` : h(m[1])}</b></div>`).join("")}</section>
- <section class="parties">${party(q ? L.from : L.p1, b.studio.name, studioLines)}${party(q ? L.to : L.p2, b.client.name || "—", clientLines)}</section>
+ <section class="parties">${party(q ? L.from : tm ? L.p1t : L.p1, b.studio.name, studioLines)}${party(q ? L.to : tm ? L.p2t : L.p2, b.client.name || "—", clientLines)}</section>
  ${q ? `<section class="block">${table}${totals}</section>${facts}${incexc}${methods}${notes}${accBlock}${sigs}`
+     : tm ? `<div class="lab sec">${h(L.terms)}</div>${clauses}${notes}${sigs}${accBlock}${doc.accepted ? `<div class="next"><a class="go" href="/team/">${h(L.portal)}</a></div>` : ""}`
      : `<section class="block"><div class="lab sec">${h(L.scope)}</div>${table}${totals}</section>${facts}${incexc}${methods}<div class="lab sec">${h(L.terms)}</div>${clauses}${notes}${sigs}${accBlock}`}
  <footer class="foot"><span>Eyeblink Studio</span><span class="num">${h(doc.no)}${doc.ver > 1 ? " · v" + doc.ver : ""}</span><span>eyeblinkstudio.com</span></footer>
 </main>

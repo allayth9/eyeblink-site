@@ -6,9 +6,11 @@
 // POST /api/docs { action:"seen", t }                          — the client opened it (the first time: a Telegram note to the studio)
 // POST /api/docs { action:"accept", t, name, agree:true }      — the client accepts the quote / signs the agreement electronically
 // Each document is a frozen snapshot (KV "doc:<token>"): changing the templates later never changes what a client already saw or signed.
-const TYPES = ["quote", "agreement"];
-const NO_PREFIX = { quote: "Q", agreement: "AG" };
-const TYPE_AR = { quote: "عرض السعر", agreement: "الاتفاقية" };
+// "team": the collaboration agreement a new team member signs (key "member:<email>" instead of an order)
+const TYPES = ["quote", "agreement", "team"];
+const NO_PREFIX = { quote: "Q", agreement: "AG", team: "TA" };
+const TYPE_AR = { quote: "عرض السعر", agreement: "الاتفاقية", team: "اتفاقية التعاون" };
+const PATH = { quote: "quote", agreement: "agreement", team: "team-agreement" };
 const TOKEN = /^[a-f0-9]{32}$/;
 const MAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const INVITE_DAYS_DOC = 30;
@@ -64,7 +66,7 @@ function clean(type, d){
     includes: LINES(d.includes, 20, 260), excludes: LINES(d.excludes, 20, 260),
     payMethods: S(d.payMethods, 260), payIds: LINES(d.payIds, 12, 40), payOther: S(d.payOther, 120), notes: S(d.notes, 2000), quoteNo: S(d.quoteNo, 30),
   };
-  if (type === "agreement") b.clauses = (Array.isArray(d.clauses) ? d.clauses : []).slice(0, 40)
+  if (type !== "quote") b.clauses = (Array.isArray(d.clauses) ? d.clauses : []).slice(0, 40)
     .map(x => ({ h: S(x && x.h, 140), p: S(x && x.p, 4000) })).filter(x => x.h || x.p);
   return b;
 }
@@ -75,6 +77,7 @@ function putSummary(o, doc){ const s = summaryOf(doc); o.docs = (o.docs || []).f
 
 async function issue(env, d){
   if (!TYPES.includes(d.type)) return json({ ok: false, error: "type" }, 400);
+  if (d.type === "team") return issueTeam(env, d);
   const o = await getOrder(env, d.key); if (!o) return json({ ok: false, error: "order" }, 404);
   const body = clean(d.type, d.doc);
   if (!body.title) return json({ ok: false, error: "title" }, 400);
@@ -93,7 +96,19 @@ async function issue(env, d){
   }
   await env.EB.put("doc:" + doc.token, JSON.stringify(doc));
   putSummary(o, doc); await env.EB.put(o.key, JSON.stringify(o));
-  return json({ ok: true, doc, url: SITE + "/" + doc.type + "/" + doc.token, docs: o.docs });
+  return json({ ok: true, doc, url: SITE + "/" + PATH[doc.type] + "/" + doc.token, docs: o.docs });
+}
+async function issueTeam(env, d){
+  const mk = "member:" + String(d.key || "").replace(/^member:/, "").toLowerCase(), m = JSON.parse(await env.EB.get(mk) || "null"); if (!m) return json({ ok: false, error: "member" }, 404);
+  const body = clean("team", d.doc); if (!body.title) return json({ ok: false, error: "title" }, 400); if (!body.clauses.length) return json({ ok: false, error: "clauses" }, 400);
+  const now = new Date().toISOString(); let doc = m.contract && m.contract.token ? JSON.parse(await env.EB.get("doc:" + m.contract.token) || "null") : null;
+  if (doc && doc.accepted) return json({ ok: false, error: "locked" }, 409);
+  if (doc) { doc.body = body; doc.ver = (doc.ver || 1) + 1; doc.updatedAt = now; doc.lang = body.lang; }
+  else { const seq = (+(await env.EB.get("docseq:team") || 0)) + 1; await env.EB.put("docseq:team", String(seq));
+    doc = { token: randHex(16), type: "team", no: "TA-" + new Date().getFullYear() + "-" + String(seq).padStart(4, "0"), ver: 1, memberKey: mk, code: "", lang: body.lang, createdAt: now, updatedAt: now, status: "sent", body }; }
+  await env.EB.put("doc:" + doc.token, JSON.stringify(doc));
+  m.contract = { token: doc.token, no: doc.no, at: now, signedAt: null }; await env.EB.put(mk, JSON.stringify(m));
+  return json({ ok: true, doc, url: SITE + "/team-agreement/" + doc.token });
 }
 
 async function seen(ctx, d){
@@ -119,7 +134,7 @@ async function accept(ctx, d){
   const doc = JSON.parse(await env.EB.get("doc:" + d.t) || "null"); if (!doc) return json({ ok: false }, 404);
   if (doc.accepted) return json({ ok: false, error: "done" }, 409);
   if (doc.type === "quote" && Date.now() > Date.parse(doc.updatedAt) + doc.body.valid * 864e5) return json({ ok: false, error: "expired" }, 410);
-  const o0 = await getOrder(env, doc.orderKey);
+  const o0 = doc.orderKey ? await getOrder(env, doc.orderKey) : null;
   let email = S(doc.body.client.email, 200).toLowerCase() || (o0 && o0.email) || "";
   if (doc.type === "agreement" && !MAIL_RE.test(email)) { const em = S(d.email, 200).toLowerCase(); if (!MAIL_RE.test(em)) return json({ ok: false, error: "email" }, 400); email = em; }
   const now = new Date().toISOString();
@@ -134,6 +149,7 @@ async function accept(ctx, d){
       doc.onboard = { email, invite: tok }; }
   }
   await env.EB.put("doc:" + doc.token, JSON.stringify(doc));
+  if (doc.type === "team" && doc.memberKey) { const m = JSON.parse(await env.EB.get(doc.memberKey) || "null"); if (m) { m.contract = Object.assign({}, m.contract, { token: doc.token, no: doc.no, signedAt: now, signedName: name }); await env.EB.put(doc.memberKey, JSON.stringify(m)); } }
   const o = o0;
   if (o) {
     const note = doc.type === "quote" ? "وافق على عرض السعر " + doc.no : "وقّع الاتفاقية " + doc.no;
@@ -151,7 +167,7 @@ async function accept(ctx, d){
     if (doc.onboard) o.onboard = Object.assign({}, o.onboard, doc.onboard, { at: now, doc: doc.no });
     putSummary(o, doc); o.updatedAt = now; await env.EB.put(o.key, JSON.stringify(o));
   }
-  later(ctx, telegram(env, "✅ " + name + (doc.type === "quote" ? " وافق على عرض السعر " : " وقّع الاتفاقية ") + doc.no + " · " + fmt(doc.body.total, doc.body.cur) + (o ? " · " + o.code : "") + "\n" + SITE + "/admin/"));
+  later(ctx, telegram(env, "✅ " + name + (doc.type === "quote" ? " وافق على عرض السعر " : doc.type === "team" ? " وقّع اتفاقية التعاون " : " وقّع الاتفاقية ") + doc.no + (doc.type === "team" ? "" : " · " + fmt(doc.body.total, doc.body.cur)) + (o ? " · " + o.code : "") + "\n" + SITE + "/admin/"));
   return json({ ok: true, accepted: doc.accepted });
 }
 

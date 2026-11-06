@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#04061A">
+<title>بوابة الفريق — Eyeblink</title>
+<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:"EYEN Ammon";src:url(../assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:Oswald;src:url(../assets/fonts/oswald-300.woff2) format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:Oswald;src:url(../assets/fonts/oswald-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Manrope;src:url(../assets/fonts/manrope-600.woff2) format("woff2");font-weight:600;font-display:swap}
+:root{--night:#04061A;--panel:#0a0f2e;--line:rgba(190,210,255,.13);--light:#EEF2F6;--mist:#AEBBD2;--dim:#6F7FA0;--horizon:#3FE0E8;--hour:#2E62FF;--dusk:#8B5CFF;--warn:#F5B94A;--ok:#4ADE9B;--bad:#F87171}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--light)}
+body{font:400 14.5px/1.8 Hayyakum,Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+.num{font-family:Oswald,sans-serif;direction:ltr;unicode-bidi:isolate}
+button,input,textarea{font:inherit}
+.btn{border:0;border-radius:999px;padding:10px 18px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px var(--line);color:var(--light);cursor:pointer;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn.primary{background:var(--light);color:var(--night);box-shadow:0 10px 30px -14px rgba(63,224,232,.7);font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+input,textarea{width:100%;color:var(--light);background:rgba(4,6,26,.7);border:0;border-radius:12px;padding:12px 14px;box-shadow:inset 0 0 0 1px var(--line);outline:none}
+input:focus,textarea:focus{box-shadow:inset 0 0 0 1px var(--horizon),0 0 0 4px rgba(63,224,232,.1)}
+textarea{min-height:90px;resize:vertical}
+label{display:grid;gap:6px;color:var(--mist);font-size:13.5px}
+.center{min-height:100vh;display:grid;place-items:center;padding:24px}
+.card{width:min(420px,100%);padding:30px;border-radius:22px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line),0 40px 90px -40px #000;display:grid;gap:14px}
+.card h1{margin:0;font:700 24px "EYEN Ammon",Hayyakum,sans-serif}
+.card p{margin:0;color:var(--mist);font-size:13.5px}
+.logo{display:flex;align-items:center;gap:10px;font:600 12px Manrope,sans-serif;letter-spacing:.2em;color:var(--mist)}
+.logo img{width:28px;height:28px}
+.msg{font-size:13px;min-height:1em}.msg.err{color:#f8a3a3}
+header.bar{position:sticky;top:0;z-index:5;background:rgba(4,6,26,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar .in{max-width:1100px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px}
+.bar .who{margin-inline-start:auto;text-align:end;line-height:1.3}
+.bar .who b{display:block;font-weight:500}.bar .who span{font-size:12px;color:var(--dim)}
+main{max-width:1100px;margin:0 auto;padding:28px 20px 80px;display:grid;gap:26px}
+.hello h2{margin:0;font:700 26px "EYEN Ammon",Hayyakum,sans-serif}
+.hello p{margin:4px 0 0;color:var(--mist)}
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.money div{padding:16px 18px;border-radius:16px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);display:grid;gap:2px}
+.money b{font:300 30px/1.1 Oswald,sans-serif}
+.money span{font-size:12.5px;color:var(--mist)}
+.money .due b{color:var(--warn)}.money .paid b{color:var(--ok)}
+.cols{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start}
+.col h3{margin:0 0 10px;font:500 13px Hayyakum,sans-serif;color:var(--mist);display:flex;align-items:center;gap:8px}
+.col h3 i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.col h3 small{margin-inline-start:auto;font-family:Oswald;color:var(--dim)}
+.t{display:grid;gap:6px;padding:14px;border-radius:14px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);margin-bottom:10px;cursor:pointer;text-align:start;color:inherit;border:0;width:100%;position:relative;overflow:hidden}
+.t::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--c)}
+html[dir=rtl] .t::before{inset:0 0 0 auto}
+.t:hover{box-shadow:inset 0 0 0 1px rgba(190,210,255,.28)}
+.t b{font-weight:500;font-size:14.5px;line-height:1.5}
+.t .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--dim)}
+.t .late{color:var(--bad)}
+.empty{padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px dashed var(--line);color:var(--dim);font-size:13px;text-align:center}
+.st-assigned{--c:var(--hour)}.st-progress{--c:var(--horizon)}.st-changes{--c:var(--warn)}.st-qc{--c:var(--dusk)}.st-approved{--c:var(--ok)}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(2,3,14,.7);backdrop-filter:blur(6px);display:flex;justify-content:flex-start}
+.drawer{width:min(620px,100%);height:100%;overflow:auto;background:var(--panel);box-shadow:0 0 80px rgba(0,0,0,.6);padding:24px;display:grid;gap:18px;align-content:start;animation:in .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes in{from{transform:translateX(-24px);opacity:0}to{transform:none;opacity:1}}
+.dh{display:flex;align-items:flex-start;gap:12px}
+.dh h2{margin:0;font:700 22px/1.4 "EYEN Ammon",Hayyakum,sans-serif;flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.facts div{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
+.facts span{display:block;font-size:11.5px;color:var(--dim)}.facts b{font-weight:500}
+.sec h4{margin:0 0 8px;font:500 12.5px Hayyakum,sans-serif;color:var(--dim);letter-spacing:.02em}
+.brief{white-space:pre-wrap;color:#dfe5f1}
+.links{display:grid;gap:6px}.links a{color:var(--horizon);word-break:break-all;font-size:13px}
+.vers{display:grid;gap:8px}.vers div{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.vers a{color:var(--horizon)}.vers small{color:var(--dim)}
+.thread{display:grid;gap:8px}
+.c{padding:10px 12px;border-radius:12px;max-width:85%;font-size:13.5px}
+.c.me{background:rgba(46,98,255,.16);justify-self:end}.c.studio{background:rgba(255,255,255,.05);justify-self:start}
+.c small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+.row{display:flex;gap:8px}.row input{flex:1}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:12px;background:#111842;box-shadow:inset 0 0 0 1px var(--line);z-index:40;font-size:14px}
+.notice{padding:18px 20px;border-radius:16px;background:linear-gradient(135deg,rgba(46,98,255,.18),rgba(139,92,255,.1));box-shadow:inset 0 0 0 1px rgba(46,98,255,.35);display:grid;gap:8px;justify-items:start}
+.notice b{font-size:16px}
+@media (max-width:900px){.cols{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.cols{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}.money div:first-child{grid-column:1/-1}.facts{grid-template-columns:1fr 1fr}.drawer{padding:18px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+(function(){
+  var root=document.getElementById('root'), ME=null, TASKS=[], EARN=null, OPEN=null;
+  var ST={assigned:'جديدة',progress:'قيد العمل',changes:'تعديلات مطلوبة',qc:'عند المراجعة',approved:'معتمدة'};
+  var COLS=[['assigned','لازم تنعمل',['assigned']],['progress','قيد العمل',['progress','changes']],['qc','عند المراجعة',['qc']],['approved','معتمدة',['approved']]];
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
+  function money(n,c){ n=+n||0; var v=(Math.round(n*100)/100).toString(); return c==='$'||!c?'$'+v:v+' '+c; }
+  function day(s){ return s? new Date(s+(s.length===10?'T12:00:00':'')).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}) : '—'; }
+  function today(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function toast(t){ var el=document.getElementById('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(function(){ el.hidden=true; },2600); }
+  function api(body){ return fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+  function load(){ return fetch('/api/team?me=1',{credentials:'same-origin',cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
+    if(!j.ok){ ME=null; return drawLogin(); } ME=j.me; TASKS=j.tasks; EARN=j.earnings;
+    if(ME.mustChange) return drawPassword(true);
+    drawHome(); if(OPEN){ var t=TASKS.filter(function(x){return x.id===OPEN})[0]; if(t) drawTask(t); } }); }
+  function logo(){ return '<div class="logo"><img src="../assets/img/favicon.svg" alt="">EYEBLINK · TEAM</div>'; }
+  function drawLogin(){
+    root.innerHTML='<div class="center"><form class="card" id="lf">'+logo()+'<h1>بوابة الفريق</h1><p>مهامك، ونسخك، وأجورك، بمكان واحد</p>'+
+      '<label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="username" required></label><label>كلمة السر<input name="password" type="password" dir="ltr" autocomplete="current-password" required></label>'+
+      '<button class="btn primary" type="submit">دخول</button><div class="msg" id="m"></div></form></div>';
+    document.getElementById('lf').onsubmit=function(e){ e.preventDefault(); var f=e.target, b=f.querySelector('button'); b.disabled=true;
+      api({action:'login',email:f.email.value.trim(),password:f.password.value}).then(function(j){ if(j.ok) return load(); b.disabled=false; var m=document.getElementById('m'); m.className='msg err'; m.textContent=j.error==='slow'?'محاولات كثيرة، جرّب بعد ساعة':'البريد أو كلمة السر غير صحيحة'; }); };
+  }
+  function drawPassword(first){
+    root.innerHTML='<div class="center"><form class="card" id="pf">'+logo()+'<h1>'+(first?'اختر كلمة سرك':'تغيير كلمة السر')+'</h1><p>'+(first?'كلمة السر المؤقتة تُستخدم مرة واحدة. اختر كلمة سر خاصة بك (10 أحرف على الأقل)':'')+'</p>'+
+      (first?'':'<label>الحالية<input name="current" type="password" dir="ltr"></label>')+'<label>الجديدة<input name="next" type="password" dir="ltr" autocomplete="new-password" minlength="10" required></label>'+
+      '<button class="btn primary" type="submit">حفظ</button><div class="msg" id="m"></div></form></div>';
+    document.getElementById('pf').onsubmit=function(e){ e.preventDefault(); var f=e.target; api({action:'password',current:f.current?f.current.value:'',next:f.next.value}).then(function(j){
+      if(j.ok){ toast('انحفظت كلمة السر'); return load(); } var m=document.getElementById('m'); m.className='msg err'; m.textContent=j.error==='short'?'10 أحرف على الأقل':'كلمة السر الحالية غير صحيحة'; }); };
+  }
+  function bar(){ return '<header class="bar"><div class="in">'+logo()+'<div class="who"><b>'+esc(ME.name)+'</b><span>'+esc(ME.roleAr)+'</span></div><button class="btn" id="out" type="button">خروج</button></div></header>'; }
+  function drawHome(){
+    var t0=today(), contractOk=ME.contract&&ME.contract.signedAt;
+    var open=TASKS.filter(function(t){ return t.status!=='approved'; }), late=open.filter(function(t){ return t.due&&t.due<t0&&t.status!=='qc'; });
+    root.innerHTML=bar()+'<main>'+
+      '<section class="hello"><h2>أهلاً '+esc(String(ME.name).split(' ')[0])+'</h2><p>'+(open.length?open.length+' مهام مفتوحة'+(late.length?' · <span style="color:var(--bad)">'+late.length+' متأخرة</span>':''):'ما في مهام مفتوحة هلق')+'</p></section>'+
+      (!contractOk? '<div class="notice"><b>وقّع اتفاقية التعاون لتبدأ</b><span style="color:var(--mist)">المهام تنفتح بعد التوقيع</span>'+(ME.contract&&ME.contract.url?'<a class="btn primary" href="'+esc(ME.contract.url)+'">افتح الاتفاقية</a>':'<span style="color:var(--dim)">الاستوديو عم يجهّز الاتفاقية</span>')+'</div>':'')+
+      '<section class="money"><div><b class="num">'+money(EARN.approved,EARN.cur)+'</b><span>مجموع أجورك المعتمدة</span></div><div class="due"><b class="num">'+money(EARN.due,EARN.cur)+'</b><span>مستحق، لسا ما انصرف</span></div><div class="paid"><b class="num">'+money(EARN.paid,EARN.cur)+'</b><span>انصرف</span></div></section>'+
+      '<section class="cols">'+COLS.map(function(c){ var list=TASKS.filter(function(t){ return c[2].indexOf(t.status)>=0; });
+        return '<div class="col st-'+c[0]+'"><h3><i></i>'+c[1]+'<small>'+list.length+'</small></h3>'+(list.length?list.map(function(t){
+          var isLate=t.due&&t.due<t0&&t.status!=='approved'&&t.status!=='qc';
+          return '<button type="button" class="t st-'+t.status+'" data-open="'+esc(t.id)+'"><b>'+esc(t.title)+'</b>'+(t.alias?'<span style="font-size:12px;color:var(--mist)">'+esc(t.alias)+'</span>':'')+
+            '<div class="meta"><span class="'+(isLate?'late':'')+'">'+(t.due?'التسليم '+day(t.due):'بدون موعد')+'</span><span class="num">'+money(t.fee,t.cur)+'</span></div>'+(t.status==='changes'?'<span class="pill" style="--c:var(--warn)">تعديلات مطلوبة</span>':'')+'</button>'; }).join(''):'<div class="empty">—</div>')+'</div>'; }).join('')+'</section>'+
+      '<p style="color:var(--dim);font-size:12.5px;margin:0">بتشوف هون مهامك وأجرك عن كل مهمة. تفاصيل العملاء وأسعارهم بتضل عند الاستوديو · <a href="#" id="pw" style="color:var(--mist)">تغيير كلمة السر</a></p>'+
+    '</main>';
+    document.getElementById('out').onclick=function(){ api({action:'logout'}).then(drawLogin); };
+    document.getElementById('pw').onclick=function(e){ e.preventDefault(); drawPassword(false); };
+  }
+  function drawTask(t){
+    OPEN=t.id; var old=document.querySelector('.sheet'); if(old) old.remove();
+    var el=document.createElement('div'); el.className='sheet'; var canWork=ME.contract&&ME.contract.signedAt&&t.status!=='approved';
+    el.innerHTML='<div class="drawer st-'+t.status+'"><div class="dh"><h2>'+esc(t.title)+'</h2><button class="btn" type="button" data-close>إغلاق</button></div>'+
+      '<div><span class="pill">'+ST[t.status]+'</span>'+(t.alias?' <span style="color:var(--mist);font-size:13px">'+esc(t.alias)+'</span>':'')+'</div>'+
+      '<div class="facts"><div><span>التسليم</span><b>'+day(t.due)+'</b></div><div><span>أجرك</span><b class="num">'+money(t.fee,t.cur)+'</b></div><div><span>الصرف</span><b>'+(t.paid?'انصرف '+day(t.paidAt.slice(0,10)):t.status==='approved'?'مستحق':'بعد الاعتماد')+'</b></div></div>'+
+      '<div class="sec"><h4>البريف</h4><div class="brief">'+esc(t.brief||'—')+'</div></div>'+
+      (t.links.length?'<div class="sec"><h4>الملفات والمراجع</h4><div class="links">'+t.links.map(function(l){ return '<a href="'+esc(l)+'" target="_blank" rel="noopener" dir="ltr">'+esc(l)+'</a>'; }).join('')+'</div></div>':'')+
+      (t.status==='assigned'&&canWork?'<button class="btn primary" type="button" data-start style="justify-self:start">ابدأ المهمة</button>':'')+
+      '<div class="sec"><h4>النسخ</h4><div class="vers">'+(t.versions.length?t.versions.slice().reverse().map(function(v){ return '<div><b class="num">v'+v.n+'</b><a href="'+esc(v.url)+'" target="_blank" rel="noopener">افتح النسخة</a><small>'+day(v.at.slice(0,10))+'</small>'+(v.note?'<span style="color:var(--mist);font-size:13px;flex-basis:100%">'+esc(v.note)+'</span>':'')+'</div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في نسخ بعد</span>')+'</div></div>'+
+      (canWork?'<form class="sec" id="sub"><h4>سلّم نسخة للمراجعة الداخلية</h4><div style="display:grid;gap:8px"><input name="url" type="url" dir="ltr" placeholder="رابط النسخة: Drive، Frame.io، Vimeo…" required><textarea name="note" placeholder="ملاحظة (اختياري)"></textarea><button class="btn primary" type="submit" style="justify-self:start">تسليم</button></div><p style="color:var(--dim);font-size:12px;margin:6px 0 0">النسخة بتوصل للاستوديو أول، وهو بيراجعها قبل العميل</p></form>':'')+
+      '<div class="sec"><h4>المحادثة مع الاستوديو</h4><div class="thread">'+(t.comments.length?t.comments.map(function(c){ return '<div class="c '+c.from+'">'+esc(c.text)+'<small>'+(c.from==='me'?'أنت':'الاستوديو')+' · '+day(c.at.slice(0,10))+'</small></div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في رسائل</span>')+'</div>'+
+        '<form class="row" id="cm" style="margin-top:10px"><input name="text" placeholder="اكتب سؤال أو ملاحظة…" dir="auto"><button class="btn" type="submit">إرسال</button></form></div>'+
+    '</div>';
+    document.body.appendChild(el);
+    el.onclick=function(e){ if(e.target===el||e.target.closest('[data-close]')){ el.remove(); OPEN=null; } };
+    var st=el.querySelector('[data-start]'); if(st) st.onclick=function(){ st.disabled=true; api({action:'start',id:t.id}).then(after); };
+    var s=el.querySelector('#sub'); if(s) s.onsubmit=function(e){ e.preventDefault(); var b=s.querySelector('button'); b.disabled=true; api({action:'submit',id:t.id,url:s.url.value.trim(),note:s.note.value.trim()}).then(function(j){ if(!j.ok){ b.disabled=false; toast(j.error==='url'?'الرابط لازم يبدأ بـ https://':'ما زبط'); return; } toast('وصلت النسخة للمراجعة'); after(j); }); };
+    var c=el.querySelector('#cm'); c.onsubmit=function(e){ e.preventDefault(); if(!c.text.value.trim()) return; api({action:'comment',id:t.id,text:c.text.value.trim()}).then(after); };
+  }
+  function after(j){ if(j&&j.ok===false&&j.error==='contract'){ toast('وقّع الاتفاقية أول'); } load(); }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-open]'); if(!b) return; var t=TASKS.filter(function(x){return x.id===b.dataset.open})[0]; if(t) drawTask(t); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ var s=document.querySelector('.sheet'); if(s){ s.remove(); OPEN=null; } } });
+  load();
+})();
+</script>
+</body>
+</html>
