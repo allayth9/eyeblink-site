@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04061A">
+<title>Join the team — Eyeblink Studio</title>
+<meta name="description" content="Eyeblink Studio is looking for collaborators in editing, motion, sound and colour">
+<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:"EYEN Ammon";src:url(../assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:Oswald;src:url(../assets/fonts/oswald-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Manrope;src:url(../assets/fonts/manrope-600.woff2) format("woff2");font-weight:600;font-display:swap}
+:root{--night:#04061A;--light:#EEF2F6;--mist:#AEBBD2;--dim:#7F8DAB;--horizon:#3FE0E8;--hour:#2E62FF;--dusk:#8B5CFF;--venus:#E07BE0;--ease:cubic-bezier(.2,.8,.2,1)}
+*{box-sizing:border-box}
+html{background:var(--night)}
+body{margin:0;color:var(--light);font:400 15px/1.85 Hayyakum,Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+/* the site's field of light, behind everything; a soft vignette keeps the text readable */
+#field{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:0;transition:opacity 1.6s var(--ease)}
+#field.on{opacity:.9}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(120% 80% at 50% 10%,transparent 30%,rgba(4,6,26,.55) 75%,rgba(4,6,26,.85))}
+.wrap{max-width:740px;margin:0 auto;padding:28px 20px 90px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:64px}
+.top a{display:flex;align-items:center;gap:10px;color:var(--light);text-decoration:none;font:600 13px Manrope,sans-serif;letter-spacing:.18em}
+.top img{width:30px;height:30px}
+.kick{font:400 11px Oswald,sans-serif;letter-spacing:.3em;color:var(--horizon);text-transform:uppercase}
+h1{margin:12px 0 0;font:700 clamp(32px,6.4vw,50px)/1.22 "EYEN Ammon",Hayyakum,sans-serif;text-wrap:balance;text-shadow:0 10px 40px rgba(4,6,26,.6)}
+.lead{margin:16px 0 0;color:var(--mist);max-width:56ch}
+
+/* liquid glass: a frosted body, a bright rim that bends light at the edge, and a highlight that follows the pointer */
+.glass{position:relative;isolation:isolate;border-radius:26px;
+  background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025) 42%,rgba(255,255,255,.06));
+  -webkit-backdrop-filter:blur(24px) saturate(175%);backdrop-filter:blur(24px) saturate(175%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 -1px 0 rgba(255,255,255,.06),0 40px 90px -40px rgba(0,0,0,.75),0 2px 10px -4px rgba(0,0,0,.4)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:radial-gradient(460px circle at var(--mx,20%) var(--my,-10%),rgba(255,255,255,.16),transparent 46%);transition:opacity .4s var(--ease)}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(255,255,255,.55),rgba(255,255,255,.05) 28%,rgba(63,224,232,.28) 62%,rgba(139,92,255,.34) 86%,rgba(224,123,224,.25));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.roles{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0}
+.roles span{position:relative;padding:7px 16px;border-radius:999px;font-size:13.5px;color:var(--light);
+  background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px rgba(255,255,255,.08)}
+form{margin:48px 0 0;display:grid;gap:18px}
+fieldset{border:0;margin:0;padding:26px;display:grid;gap:16px;min-width:0}
+legend{float:left;width:100%;padding:0;margin-bottom:2px;font:500 12px Hayyakum,sans-serif;letter-spacing:.04em;color:var(--horizon)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:grid;gap:7px;font-size:13.5px;color:var(--mist)}
+input,select,textarea{font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);border:0;border-radius:14px;padding:13px 15px;width:100%;outline:none;
+  background:rgba(4,6,26,.38);box-shadow:inset 0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .3s var(--ease),background .3s var(--ease)}
+input:hover,select:hover,textarea:hover{background:rgba(4,6,26,.48)}
+input:focus,select:focus,textarea:focus{background:rgba(4,6,26,.55);box-shadow:inset 0 0 0 1px rgba(63,224,232,.7),0 0 0 5px rgba(63,224,232,.10),0 0 30px -8px rgba(63,224,232,.45)}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mist) 50%),linear-gradient(135deg,var(--mist) 50%,transparent 50%);background-size:5px 5px;background-repeat:no-repeat;background-position:18px 52%,23px 52%}
+option{background:#0b1236;color:var(--light)}
+textarea{min-height:116px;resize:vertical}
+input[dir=ltr]{text-align:left}
+.hint{font-size:12.5px;color:var(--dim)}
+.hp{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;opacity:0}
+/* the send button glows like Siri: brand colours turning slowly around its edge */
+.send{position:relative;justify-self:start;margin-top:6px;border-radius:999px;padding:1.5px;isolation:isolate}
+.send::before{content:"";position:absolute;inset:-1px;border-radius:inherit;z-index:-1;
+  background:conic-gradient(from var(--a,0deg),var(--horizon),var(--hour),var(--dusk),var(--venus),var(--horizon));animation:turn 6s linear infinite}
+.send::after{content:"";position:absolute;inset:-8px;border-radius:inherit;z-index:-2;filter:blur(18px);opacity:.55;
+  background:conic-gradient(from var(--a,0deg),var(--horizon),var(--hour),var(--dusk),var(--venus),var(--horizon));animation:turn 6s linear infinite;transition:opacity .4s var(--ease)}
+.send:hover::after{opacity:.9}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes turn{to{--a:360deg}}
+button{font:600 15.5px Hayyakum,Manrope,sans-serif;border:0;border-radius:999px;padding:15px 34px;cursor:pointer;color:var(--light);
+  background:linear-gradient(180deg,rgba(17,24,66,.92),rgba(8,12,40,.96));box-shadow:inset 0 1px 0 rgba(255,255,255,.25);transition:transform .25s var(--ease)}
+button:hover{transform:translateY(-1px)}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.5;cursor:default;transform:none}
+.msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
+.done,.closed{margin:48px 0 0;padding:30px}
+.done h2,.closed h2{margin:0;font:700 23px "EYEN Ammon",Hayyakum,sans-serif}
+.done p,.closed p{margin:8px 0 0;color:var(--mist)}
+.closed a{color:var(--horizon)}
+@media (max-width:620px){.row{grid-template-columns:1fr}.top{margin-bottom:40px}fieldset{padding:20px}}
+@media (prefers-reduced-motion:reduce){.send::before,.send::after{animation:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(14,20,56,.92)}}
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<div class="wrap">
+  <div class="top"><a href="/en/"><img src="../assets/img/favicon.svg" alt="">EYEBLINK</a><a class="kick" href="../join" style="text-decoration:none">عربي</a></div>
+  <div class="kick">Join the team</div>
+  <h1>We are looking for people who cut on the right frame</h1>
+  <p class="lead" id="intro">We work with brands across the Gulf and the region on short films, ads, motion and social content. We collaborate with freelancers who care about detail, deliver on time, and treat every second as a decision</p>
+  <div class="roles" id="roles"></div>
+
+  <div id="closed" class="closed glass" hidden><h2>We are not hiring right now</h2><p>Follow us on Instagram <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a> — we announce it there when we open applications</p></div>
+
+  <form id="apply" hidden novalidate>
+    <fieldset class="glass"><legend>About you</legend>
+      <div class="row"><label>Full name<input name="name" autocomplete="name" required maxlength="120"></label>
+        <label>Role<select name="role" id="roleSel"></select></label></div>
+      <div class="row"><label>Email<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
+        <label>WhatsApp<input name="phone" type="tel" dir="ltr" autocomplete="tel" placeholder="+971…"></label></div>
+      <div class="row"><label>City and country<input name="city" maxlength="120"></label>
+        <label>Languages<input name="langs" placeholder="Arabic, English" maxlength="120"></label></div>
+    </fieldset>
+    <fieldset class="glass"><legend>Your work</legend>
+      <label>Showreel link<input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
+      <label>Other work links<textarea name="links" dir="ltr" placeholder="One link per line: Behance, Instagram, Drive…"></textarea><span class="hint">At least one link, between the showreel and these</span></label>
+      <label>Tools you master<input name="tools" placeholder="Premiere Pro, After Effects, DaVinci…" maxlength="300"></label>
+    </fieldset>
+    <fieldset class="glass"><legend>How you work</legend>
+      <div class="row"><label>Hours available per week<input name="hours" type="number" min="1" max="80" dir="ltr"></label>
+        <label>Your expected rate<input name="rate" placeholder="e.g. $40 per reel, or $15 an hour" maxlength="120"></label></div>
+      <label>A few lines about you<textarea name="about" maxlength="2000" placeholder="What you love in the work, and what sets your way apart"></textarea></label>
+    </fieldset>
+    <div class="hp" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
+    <span class="send"><button type="submit">Send application</button></span>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <div id="done" class="done glass" hidden><h2>Application received</h2><p>We review every portfolio carefully. If we see a fit, we send you a short paid trial task, then we talk</p></div>
+</div>
+<script>
+(function(){
+  var RA={editor:'Video editor',motion:'Motion designer',color:'Colorist',sound:'Sound engineer',writer:'Copywriter',shooter:'Videographer',designer:'Designer',producer:'Production coordinator'};
+  var $=function(s){return document.querySelector(s)}, f=$('#apply'), m=$('#msg');
+  fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
+    if(!j.open){ $('#closed').hidden=false; return; }
+    if(j.intro) $('#intro').textContent=j.intro;
+    $('#roles').innerHTML=j.roles.map(function(r){return '<span>'+(RA[r]||r)+'</span>'}).join('');
+    $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
+    f.hidden=false;
+  }).catch(function(){ $('#closed').hidden=false; });
+  f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
+    ['name','role','email','phone','city','langs','reel','links','tools','hours','rate','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    var links=d.links.split('\n').filter(function(x){return /^https?:\/\//i.test(x.trim())});
+    if(d.name.length<2){ m.textContent='Enter your full name'; m.className='msg err'; E.name.focus(); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ m.textContent='Enter a valid email'; m.className='msg err'; E.email.focus(); return; }
+    if(!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='Add a showreel or at least one work link (starting with https://)'; m.className='msg err'; E.reel.focus(); return; }
+    var b=f.querySelector('button'); b.disabled=true; m.textContent='';
+    fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json()}).then(function(j){
+      if(j.ok){ f.hidden=true; $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); return; }
+      b.disabled=false; m.className='msg err'; m.textContent=({slow:'Too many attempts, try again in an hour',closed:'Applications just closed',fields:'Check your name, email and links'})[j.error]||'Could not send, please try again';
+    }).catch(function(){ b.disabled=false; m.className='msg err'; m.textContent='Could not send, please try again'; });
+  };
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../assets/js/bg.js?v=4fcc822d"></script>
+<script src="../assets/js/fa.js?v=b0bc4c19"></script>
+<script>addEventListener("pointermove",function(e){ document.querySelectorAll(".glass").forEach(function(g){ var r=g.getBoundingClientRect(); g.style.setProperty("--mx",(e.clientX-r.left)+"px"); g.style.setProperty("--my",(e.clientY-r.top)+"px"); }); },{passive:true});</script>
+</body>
+</html>

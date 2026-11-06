@@ -164,6 +164,14 @@
       wf.href='https://wa.me/'+wa; wf.setAttribute('aria-label',UI.wa); wf.title=UI.wa;
       wf.innerHTML='<svg viewBox="0 0 24 24"><path class="f" d="'+((window.EB_BRANDS&&EB_BRANDS.whatsapp&&EB_BRANDS.whatsapp.p)||'')+'"/></svg>'; }
     else if(wf) wf.remove();
+    // account and workspace: one tap to tell support what went wrong, with the details already written
+    var hf=document.querySelector('.help-float');
+    if(document.querySelector('.acct-page,.ws-page')){ if(!hf){ hf=document.createElement('a'); hf.className='help-float'; document.body.appendChild(hf); }
+      var subj=(AR?'مشكلة تقنية':'Technical issue')+(location.hash.length>1?' · '+decodeURIComponent(location.hash.slice(1)).slice(0,60):'');
+      var body=(AR?'ما الذي حدث؟\n\n\n— تفاصيل تساعدنا —\n':'What happened?\n\n\n— details that help us —\n')+'Page: '+location.href+'\nBrowser: '+navigator.userAgent+'\nTime: '+new Date().toISOString();
+      hf.href='mailto:support@eyeblinkstudio.com?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+      hf.innerHTML='<i>?</i><span>'+(AR?'مشكلة؟':'Problem?')+'</span>'; hf.setAttribute('aria-label',AR?'راسل الدعم الفني':'Email support'); }
+    else if(hf) hf.remove();
     // showreel: a button in the hero, plus a small autoplaying preview when one is uploaded
     var H=C.hero||{}, reel=H.reel||{}, rb=document.getElementById('reelBtn'), rc=document.getElementById('reelCard');
     var hasReel=!!(vid(reel)||(reel.type==='mp4'&&reel.src));

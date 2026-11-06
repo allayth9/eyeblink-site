@@ -594,11 +594,14 @@
         excludes:['On-location filming and equipment, unless listed above','Open project files (Premiere Pro / After Effects)','Paid advertising costs','Licences for footage or music the client requests from outside our libraries']}};
   // shortcut: fixed pegs (KWD is a basket, ~0.307) and a hand-set SYP rate; no live rates service, update the SYP rate when it moves
   var FXC=[['$','دولار أمريكي',1],['AED','درهم إماراتي',3.6725],['SAR','ريال سعودي',3.75],['QAR','ريال قطري',3.64],['KWD','دينار كويتي',0.307],['BHD','دينار بحريني',0.376],['OMR','ريال عُماني',0.3845],['SYP','ليرة سورية',13000]];
-  function fxRate(c){ var o=(P&&P.fx)||{}; if(+o[c]) return +o[c]; var x=FXC.filter(function(k){ return k[0]===c; })[0]; return x?x[2]:1; }
+  // the pound follows the daily market price (sp-today, via /api/fx) unless the studio typed a rate after that update
+  var FXLIVE=null;
+  function loadFx(){ if(!LIVE) return; fetch(API+'/fx',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ FXLIVE=j; if(TAB==='today') renderTabs(); }).catch(function(){ FXLIVE={ok:false}; }); }
+  function fxRate(c){ var o=(P&&P.fx)||{}, at=(P&&P.fxAt)||{}; if(c==='SYP'&&FXLIVE&&+FXLIVE.SYP&&(!at.SYP||Date.parse(FXLIVE.at)>Date.parse(at.SYP))) return +FXLIVE.SYP; if(+o[c]) return +o[c]; var x=FXC.filter(function(k){ return k[0]===c; })[0]; return x?x[2]:1; }
   function fxConv(v,from,to){ var n=pnum(v)/fxRate(from)*fxRate(to); return to==='SYP'?Math.round(n):Math.round(n*100)/100; }
   function curSel(attr,val){ var known=FXC.some(function(k){ return k[0]===val; }); return '<select '+attr+'>'+FXC.map(function(k){ return '<option value="'+k[0]+'"'+(k[0]===val?' selected':'')+'>'+k[1]+' · '+k[0]+'</option>'; }).join('')+(val&&!known?'<option selected value="'+esc(val)+'">'+esc(val)+'</option>':'')+'</select>'; }
-  function fxBox(c){ return c&&c!=='$'&&FXC.some(function(k){ return k[0]===c; })?'<span class="fx small muted">1$ = <input data-dfx="'+c+'" dir="ltr" value="'+fxRate(c)+'"> '+c+'</span>':''; }
-  function saveFx(c,v){ P=P||{}; P.fx=Object.assign({},P.fx); P.fx[c]=+v; if(!LIVE){ savePrivDraft(); return; } fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظ سعر الصرف'); }).catch(function(){ toast('ما انحفظ سعر الصرف',true); }); }
+  function fxBox(c){ return c&&c!=='$'&&FXC.some(function(k){ return k[0]===c; })?'<span class="fx small muted">1$ = <input data-dfx="'+c+'" dir="ltr" value="'+fxRate(c)+'"> '+c+(c==='SYP'&&FXLIVE&&FXLIVE.at?' · <span title="سعر المبيع بدمشق">تلقائي من «الليرة اليوم» · '+esc(new Date(FXLIVE.at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}))+'</span>':'')+'</span>':''; }
+  function saveFx(c,v){ P=P||{}; P.fx=Object.assign({},P.fx); P.fx[c]=+v; P.fxAt=Object.assign({},P.fxAt); P.fxAt[c]=new Date().toISOString(); if(!LIVE){ savePrivDraft(); return; } fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظ سعر الصرف'); }).catch(function(){ toast('ما انحفظ سعر الصرف',true); }); }
   document.addEventListener('change',function(e){ var el=e.target;
     if(el.dataset.dfx){ if(+el.value>0) saveFx(el.dataset.dfx,el.value); return; }
     // documents: switching currency converts every price and the discount from the old currency to the new one
@@ -900,6 +903,7 @@
         else if(t.due&&t.due<t0&&t.status!=='approved') add('crit','مهمة فريق متأخرة',esc(t.title)+' · '+esc(mn(t.member)),g,t.due);
         if(t.status==='approved'&&!(t.payout&&t.payout.paid)){ due+=+t.fee||0; cur=t.cur||cur; } });
       if(due) add('info','أجور فريق مستحقة','<span dir="ltr">'+esc(pfmt(due,cur))+'</span>',{tab:'team',sub:'members'}); }
+    if(FXLIVE&&(FXLIVE.ok===false||(FXLIVE.at&&hrs(FXLIVE.at)>72))) add('info','سعر الليرة ما تحدّث',FXLIVE.at?'آخر سعر '+ago(FXLIVE.at)+' · بتقدر تكتبه بإيدك من خانة العملة':'ما قدرنا نجيب السعر من «الليرة اليوم»',{tab:'orders'});
     var rank={crit:0,warn:1,info:2}; return A.sort(function(a,b){ return rank[a.lvl]-rank[b.lvl]||(a.at<b.at?-1:1); });
   }
   function renderToday(soft){
@@ -2131,7 +2135,7 @@
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
         var wm=/^#(?:work|tasks)\/(T-[A-Z0-9]+)$|^#tasks$/.exec(location.hash); if(wm){ TAB='tasks'; WOPEN=wm[1]||null; }
         var cm=/^#clients(?:\/(.+))?$/.exec(location.hash); if(cm) TAB='clients'; if(location.hash==='#team') TAB='team';
-        render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); if(cm&&cm[1]) loadProfile(decodeURIComponent(cm[1])); });
+        render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); if(cm&&cm[1]) loadProfile(decodeURIComponent(cm[1])); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });
   }
   $('#loginForm').addEventListener('submit',function(e){
