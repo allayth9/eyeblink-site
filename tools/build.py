@@ -20,7 +20,7 @@ for _f in ["assets/js/render.js", "admin/admin.js"]:
     _p = os.path.join(ROOT, _f); _t = open(_p, encoding="utf-8").read()
     _n = re.sub(r"/\*MIG\*/.*?/\*/MIG\*/", lambda m: "/*MIG*/" + _MIG + "/*/MIG*/", _t, flags=re.S)
     if _n != _t: open(_p, "w", encoding="utf-8").write(_n)
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/hdr.js","assets/js/brands.js","assets/img/favicon.svg"]}
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/hdr.js","assets/js/brands.js","assets/js/fa.js","assets/img/favicon.svg"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "workspace", "privacy"]
 PRIVATE = ("account", "workspace")   # signed-in pages: noindex, out of the sitemap
 
@@ -258,18 +258,27 @@ def p_contact(U, lang):
 </div></section>'''
 
 PRIVACY = {
- "ar": [("ما نجمعه", ["عند إنشاء حساب أو إرسال طلب نحفظ: اسمك، بريدك الإلكتروني، تفاصيل الطلب التي تكتبها، والرسائل بينك وبيننا داخل الموقع.", "إن سجّلت عبر Google نستلم من Google اسمك وبريدك الإلكتروني فقط، ولا نصل إلى أي بيانات أخرى في حسابك.", "كلمة السر تُحفظ مشفّرة، ولا يمكن لأحد قراءتها، بما في ذلك نحن."]),
-        ("لماذا نجمعه", ["لتنفيذ طلبك، والتواصل معك بخصوصه، وإظهار حالته في حسابك. لا نستخدم بياناتك لأي غرض آخر."]),
-        ("مع من نشاركها", ["لا نبيع بياناتك ولا نستخدمها للإعلانات. لتشغيل الموقع نعتمد على مزوّدين يعالجون جزءاً منها نيابةً عنا فقط:", "Cloudflare: استضافة الموقع وتخزين حسابك وطلباتك ورسائلك وملفاتك.", "Resend: إرسال رسائل البريد الإلكتروني إليك (تأكيد الطلب، والرسائل، والفواتير، والدعوات)، فيصل إليها بريدك ومحتوى الرسالة.", "Google: فقط إن اخترت الدخول عبر Google، فنستلم اسمك وبريدك.", "Telegram: تصل إلى الاستوديو تنبيهات داخلية بالطلبات الجديدة والرسائل، وفيها اسمك وبريدك وتفاصيل الطلب.", "WhatsApp (Meta): فقط إن فعّلت إشعارات واتساب بنفسك ووافقت عليها من «إعدادات الإشعارات»، فيصل إلى Meta رقمك ونص الإشعار. ويمكنك إيقافها في أي وقت من الصفحة نفسها أو بالرد على أي رسالة بكلمة «إيقاف»."]),
-        ("ملفات تعريف الارتباط والإحصائيات", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات.", "نعدّ الزيارات بشكل مجهول لنعرف أي الصفحات مفيدة ومن أين يصل الزوار (الصفحة، الدولة، نوع الجهاز، الموقع الذي أحالك). لا نحفظ عنوان IP ولا أي بيانات تعرّف بك، ولا نشاركها مع أي جهة."]),
-        ("حقوقك", ["يمكنك طلب نسخة من بياناتك أو حذف حسابك وكل ما يتعلق به في أي وقت عبر البريد: hello@eyeblinkstudio.com"]),
+ "ar": [("ما نجمعه", ["عند إنشاء حساب أو إرسال طلب نحفظ: اسمك، وبريدك الإلكتروني، ورقم التواصل إن كتبته، وتفاصيل الطلب، والرسائل والملفات التي تتبادلها معنا داخل الموقع. وإن سجّلت دخولك بحساب خارجي نستلم منه اسمك وبريدك فقط، ولا نصل إلى أي بيانات أخرى فيه.", "كلمة السر تُحفظ مشفّرة، ولا يمكن لأحد قراءتها، بما في ذلك نحن."]),
+        ("العروض والاتفاقيات", ["عند موافقتك على عرض سعر أو توقيعك اتفاقية إلكترونياً نحفظ الاسم الذي كتبته، وتاريخ الموافقة ووقتها، ورمزاً مختصراً مشتقاً من عنوان اتصالك يُستخدم لإثبات التوقيع فقط. ولا نحفظ عنوان الاتصال نفسه."]),
+        ("لماذا نجمعه", ["لتنفيذ طلبك، والتواصل معك بخصوصه، وإظهار مراحله في حسابك ومساحة عملك، وإصدار فواتيرك. لا نستخدم بياناتك لأي غرض آخر."]),
+        ("مع من نشاركها", ["لا نبيع بياناتك ولا نستخدمها للإعلانات. لتشغيل الموقع نعتمد على مزوّدي خدمات تقنية موثوقين للاستضافة وتخزين البيانات وإرسال البريد والتنبيهات الداخلية، يعالجون ما يلزم منها نيابةً عنا فقط.", "المتعاونون في فريقنا يعملون على مهام محددة، ولا يطّلعون على هويتك أو بيانات تواصلك أو الأسعار المتفق عليها معك، ويلتزمون باتفاقية سرية.", "إشعارات تطبيقات المراسلة على هاتفك لا تُفعّل إلا بموافقتك، ويمكنك إيقافها في أي وقت."]),
+        ("الدفع", ["لا نجمع بيانات بطاقتك أو حساباتك المالية داخل الموقع. تتم الدفعات عبر الجهة التي تختارها، ونحفظ فقط المبلغ وطريقة الدفع والإيصال إن أرفقته."]),
+        ("طلبات الانضمام إلى الفريق", ["إن قدّمت طلب انضمام نحفظ ما كتبته وروابط أعمالك لمراجعة الطلب فقط، ويمكنك طلب حذفه في أي وقت."]),
+        ("ملفات تعريف الارتباط والإحصائيات", ["نستخدم ملف ارتباط واحداً ضرورياً ليبقى تسجيل دخولك فعّالاً. لا نستخدم ملفات تتبّع أو إعلانات.", "نعدّ الزيارات بشكل مجهول لنعرف أي الصفحات مفيدة (الصفحة، الدولة، نوع الجهاز، مصدر الزيارة)، دون حفظ عنوان الاتصال أو أي بيانات تعرّف بك."]),
+        ("مدة الحفظ", ["نحتفظ ببيانات الطلبات والفواتير ما دامت لازمة لخدمتك وللسجلات المحاسبية، وبملفات المشاريع للمدة المذكورة في اتفاقيتك."]),
+        ("حقوقك", ["يمكنك طلب نسخة من بياناتك، أو تصحيحها، أو حذف حسابك وكل ما يتعلق به في أي وقت عبر البريد: info@eyeblinkstudio.com", "وللإبلاغ عن أي مشكلة تقنية أو أمنية: support@eyeblinkstudio.com"]),
         ("التحديثات", ["قد نحدّث هذه السياسة عند الحاجة، وتظهر أحدث نسخة دائماً في هذه الصفحة. آخر تحديث: نوفمبر 2026."])],
- "en": [("What we collect", ["When you create an account or send a request we store your name, email address, the request details you write, and the messages between you and us on the site.", "If you sign in with Google we receive only your name and email address from Google. We cannot access anything else in your Google account.", "Passwords are stored hashed. Nobody can read them, including us."]),
-        ("Why", ["To deliver your request, talk to you about it, and show its progress in your account. We do not use your data for anything else."]),
-        ("Sharing", ["We never sell your data or use it for ads. To run the site we rely on providers that process part of it on our behalf only:", "Cloudflare: hosts the site and stores your account, requests, messages and files.", "Resend: sends our e-mails to you (request confirmations, messages, invoices, invitations), so it receives your address and the message.", "Google: only if you choose to sign in with Google; we receive your name and e-mail.", "Telegram: the studio receives internal alerts about new requests and messages, including your name, e-mail and request details.", "WhatsApp (Meta): only if you turn WhatsApp notifications on yourself and agree to them in Notification settings; Meta then receives your number and the notification text. Stop them at any time on the same page or by replying STOP to any message."]),
-        ("Cookies and statistics", ["We use one essential cookie that keeps you signed in. No tracking or advertising cookies.", "We count visits anonymously to learn which pages help and where visitors come from (page, country, device type, the site that sent you). We never store your IP address or anything that identifies you, and we share none of it."]),
-        ("Your rights", ["You can ask for a copy of your data or have your account and everything linked to it deleted at any time: hello@eyeblinkstudio.com"]),
-        ("Updates", ["We may update this policy when needed; the latest version always lives on this page. Last updated: November 2026."])]}
+ "en": [("What we collect", ["When you create an account or send a request we store your name, email address, phone number if you give one, the request details, and the messages and files you exchange with us on the site. If you sign in with an outside account we receive only your name and email from it, and nothing else.", "Passwords are stored encrypted; nobody can read them, including us."]),
+        ("Quotes and agreements", ["When you accept a quote or sign an agreement electronically we store the name you typed, the date and time, and a short code derived from your connection address, used only to prove the signature. We do not store the address itself."]),
+        ("Why", ["To deliver your request, talk to you about it, show its progress in your account and workspace, and issue your invoices. We do not use your data for anything else."]),
+        ("Sharing", ["We never sell your data or use it for ads. To run the site we rely on trusted technical providers for hosting, storage, email and internal alerts, who process only what is needed and only on our behalf.", "Collaborators on our team work on defined tasks and never see your identity, your contact details or the prices agreed with you, and they are bound by a confidentiality agreement.", "Messaging-app notifications on your phone are only turned on with your consent, and you can stop them at any time."]),
+        ("Payments", ["We do not collect card or bank details on the site. Payments go through the provider you choose; we keep only the amount, the method and your receipt if you attach one."]),
+        ("Team applications", ["If you apply to join the team we keep what you wrote and your portfolio links only to review the application, and you can ask us to delete it at any time."]),
+        ("Cookies and statistics", ["We use one essential cookie that keeps you signed in. No tracking or advertising cookies.", "We count visits anonymously to learn which pages help (page, country, device type, where the visit came from), without storing your connection address or anything that identifies you."]),
+        ("Retention", ["We keep request and invoice records as long as they are needed to serve you and for accounting, and project files for the period stated in your agreement."]),
+        ("Your rights", ["You can ask for a copy of your data, correct it, or have your account and everything linked to it deleted at any time by writing to info@eyeblinkstudio.com", "To report a technical or security problem: support@eyeblinkstudio.com"]),
+        ("Updates", ["We may update this policy when needed; the latest version always lives on this page. Last updated: November 2026."])]
+}
 
 def p_privacy(U, lang):
     body = "".join(f'<h2>{h}</h2>' + "".join(f"<p>{x}</p>" for x in ps) for h, ps in PRIVACY[lang])
@@ -386,7 +395,7 @@ def build(lang, page):
 <footer><div class="wrap row">
   <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
   <nav aria-label="{U["quick"]}">{foot_nav}</nav>
-  <span class="c"><a href="privacy.html">{U["titles"]["privacy"]}</a> · <a href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a></span>
+  <span class="c"><a href="mailto:support@eyeblinkstudio.com">{"الدعم الفني" if lang == "ar" else "Support"}</a> · <a href="privacy.html">{U["titles"]["privacy"]}</a> · <a href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a></span>
 </div><div class="wrap"><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></footer>
 <nav class="dock glass" aria-label="{U["menu"]}">{dock}</nav>
 <script type="application/json" id="eb-seed">{seed()}</script>
@@ -394,6 +403,7 @@ def build(lang, page):
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
 <script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
+<script src="{A}assets/js/fa.js?v={ASSET_V["assets/js/fa.js"]}"></script>
 <script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>
 <script src="{A}assets/js/hdr.js?v={ASSET_V["assets/js/hdr.js"]}"></script>{f'{chr(10)}<script src="{A}assets/js/portal.js?v={ASSET_V["assets/js/portal.js"]}"></script>' if page == "workspace" else ""}{f'{chr(10)}<script src="{A}assets/js/account.js?v={ASSET_V["assets/js/account.js"]}"></script>' if page in ("pricing","account") else ""}
 </body>

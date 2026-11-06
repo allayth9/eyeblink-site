@@ -370,7 +370,7 @@ async function pushSend(D, sub, payload){
   const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, cat8(utf8(JSON.stringify(payload)), new Uint8Array([2]))));
   const head = new Uint8Array(21); head.set(salt, 0); new DataView(head.buffer).setUint32(16, 4096); head[20] = 65;
-  const ep = new URL(sub.endpoint), jh = b64u(utf8(JSON.stringify({ typ: "JWT", alg: "ES256" }))), jc = b64u(utf8(JSON.stringify({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:hello@eyeblinkstudio.com" })));
+  const ep = new URL(sub.endpoint), jh = b64u(utf8(JSON.stringify({ typ: "JWT", alg: "ES256" }))), jc = b64u(utf8(JSON.stringify({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:info@eyeblinkstudio.com" })));
   const sig = b64u(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, V.key, utf8(jh + "." + jc)));
   const r = await fetch(sub.endpoint, { method: "POST", headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "normal",
     Authorization: `vapid t=${jh}.${jc}.${sig}, k=${V.pub}` }, body: cat8(head, asPub, ct) }).catch(e => ({ ok: false, status: 0, _e: String(e) }));
@@ -397,7 +397,7 @@ async function logSend(D, r){ if (!D) return; try {
 async function mailSend(env, to, subject, html){
   if (!env.RESEND_API_KEY) return { ok: false, skip: "e-mail not configured" };
   try { const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
-      body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <hello@eyeblinkstudio.com>", to: [to], subject, html }) });
+      body: JSON.stringify({ from: env.MAIL_FROM || "Eyeblink Studio <info@eyeblinkstudio.com>", to: [to], subject, html }) });
     const j = await r.json().catch(() => ({})); if (r.ok) return { ok: true, id: j.id };
     return { ok: false, error: "HTTP " + r.status + (j.message ? ": " + String(j.message).slice(0, 160) : ""), retry: r.status === 429 || r.status >= 500 };
   } catch { return { ok: false, error: "network", retry: true }; }

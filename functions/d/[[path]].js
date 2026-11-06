@@ -116,7 +116,7 @@ function page(status, lang, title, main, doc){
  ${q ? `<section class="block">${table}${totals}</section>${facts}${incexc}${methods}${notes}${accBlock}${sigs}`
      : tm ? `<div class="lab sec">${h(L.terms)}</div>${clauses}${notes}${sigs}${accBlock}${doc.accepted ? `<div class="next"><a class="go" href="/team/">${h(L.portal)}</a></div>` : ""}`
      : `<section class="block"><div class="lab sec">${h(L.scope)}</div>${table}${totals}</section>${facts}${incexc}${methods}<div class="lab sec">${h(L.terms)}</div>${clauses}${notes}${sigs}${accBlock}`}
- <footer class="foot"><span>Eyeblink Studio</span><span class="num">${h(doc.no)}${doc.ver > 1 ? " · v" + doc.ver : ""}</span><span>eyeblinkstudio.com</span></footer>
+ <footer class="foot"><span>Eyeblink Studio</span><span class="num">${h(doc.no)}${doc.ver > 1 ? " · v" + doc.ver : ""}</span><span>support@eyeblinkstudio.com · eyeblinkstudio.com</span></footer>
 </main>
 <script>(function(){var t=${JSON.stringify(doc.token)},E=${JSON.stringify(L.err)};
 document.getElementById('pdf').onclick=function(){window.print();};
@@ -132,7 +132,7 @@ fetch('/api/docs',{method:'POST',headers:{'content-type':'application/json'},bod
   const html = `<!doctype html><html lang="${en ? "en" : "ar"}" dir="${en ? "ltr" : "rtl"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#04061A">
 <title>${h(head)}</title>${og}<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-<style>${CSS}</style></head><body>${body}</body></html>`;
+<style>${CSS}</style></head><body>${body}<script src="/assets/js/fa.js?v=b0bc4c19"></script></body></html>`;
   return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
 }
 

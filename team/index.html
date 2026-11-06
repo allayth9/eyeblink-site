@@ -133,7 +133,7 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
           var isLate=t.due&&t.due<t0&&t.status!=='approved'&&t.status!=='qc';
           return '<button type="button" class="t st-'+t.status+'" data-open="'+esc(t.id)+'"><b>'+esc(t.title)+'</b>'+(t.alias?'<span style="font-size:12px;color:var(--mist)">'+esc(t.alias)+'</span>':'')+
             '<div class="meta"><span class="'+(isLate?'late':'')+'">'+(t.due?'التسليم '+day(t.due):'بدون موعد')+'</span><span class="num">'+money(t.fee,t.cur)+'</span></div>'+(t.status==='changes'?'<span class="pill" style="--c:var(--warn)">تعديلات مطلوبة</span>':'')+'</button>'; }).join(''):'<div class="empty">—</div>')+'</div>'; }).join('')+'</section>'+
-      '<p style="color:var(--dim);font-size:12.5px;margin:0">بتشوف هون مهامك وأجرك عن كل مهمة. تفاصيل العملاء وأسعارهم بتضل عند الاستوديو · <a href="#" id="pw" style="color:var(--mist)">تغيير كلمة السر</a></p>'+
+      '<p style="color:var(--dim);font-size:12.5px;margin:0">بتشوف هون مهامك وأجرك عن كل مهمة. تفاصيل العملاء وأسعارهم بتضل عند الاستوديو · <a href="#" id="pw" style="color:var(--mist)">تغيير كلمة السر</a> · مشكلة تقنية؟ <a href="mailto:support@eyeblinkstudio.com" style="color:var(--mist)" dir="ltr">support@eyeblinkstudio.com</a></p>'+
     '</main>';
     document.getElementById('out').onclick=function(){ api({action:'logout'}).then(drawLogin); };
     document.getElementById('pw').onclick=function(e){ e.preventDefault(); drawPassword(false); };
@@ -164,5 +164,6 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
   load();
 })();
 </script>
+<script src="../assets/js/fa.js?v=b0bc4c19"></script>
 </body>
 </html>

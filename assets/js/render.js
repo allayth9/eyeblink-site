@@ -162,7 +162,7 @@
     var wa=String(S.whatsapp||'').replace(/[^0-9]/g,''), wf=document.querySelector('.wa-float');
     if(wa && !document.querySelector('.acct-page')){ if(!wf){ wf=document.createElement('a'); wf.className='wa-float'; wf.target='_blank'; wf.rel='noopener'; document.body.appendChild(wf); }
       wf.href='https://wa.me/'+wa; wf.setAttribute('aria-label',UI.wa); wf.title=UI.wa;
-      wf.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3.2a8.7 8.7 0 0 0-7.5 13.1L3.3 20.7l4.5-1.2A8.7 8.7 0 1 0 12 3.2z"/><path d="M8.9 7.9c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.7c.1.2 0 .4-.1.6l-.5.6c-.1.1-.2.3 0 .5.4.8 1 1.5 1.7 2 .6.4 1 .6 1.3.7.2.1.3 0 .4-.1l.7-.8c.2-.2.3-.2.6-.1l1.6.8c.3.1.4.3.4.5 0 .5-.2 1.2-.7 1.5-.6.4-1.4.6-2.4.3-1.1-.3-2.6-1-3.9-2.3-1.3-1.3-2.1-2.8-2.4-3.8-.2-.9 0-1.6.4-2z" class="f"/></svg>'; }
+      wf.innerHTML='<svg viewBox="0 0 24 24"><path class="f" d="'+((window.EB_BRANDS&&EB_BRANDS.whatsapp&&EB_BRANDS.whatsapp.p)||'')+'"/></svg>'; }
     else if(wf) wf.remove();
     // showreel: a button in the hero, plus a small autoplaying preview when one is uploaded
     var H=C.hero||{}, reel=H.reel||{}, rb=document.getElementById('reelBtn'), rc=document.getElementById('reelCard');

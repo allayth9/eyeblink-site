@@ -674,3 +674,11 @@ html[dir=rtl] .lv-crit button{background:linear-gradient(270deg,rgba(255,107,107
 #tsheet details.dsec summary{cursor:pointer;color:var(--mist);font-size:14px}
 #tsheet details.dsec[open] summary{margin-bottom:6px}
 @media (max-width:700px){#tsheet{padding:0}#tsheet .dbox{border-radius:0;min-height:100%;padding:0 14px 18px}#tsheet .dtop{top:0}}
+.topico{display:inline-flex;gap:4px}
+.tico{position:relative;width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--mist);display:grid;place-items:center;cursor:pointer;transition:background .2s var(--ease),color .2s var(--ease)}
+.tico:hover,.tico[aria-current="true"]{background:rgba(63,224,232,.1);color:var(--light)}
+.tico .ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tico .dot{position:absolute;top:-4px;inset-inline-end:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--s-new);color:var(--night);font:600 10.5px/18px Oswald,sans-serif;text-align:center;box-shadow:0 0 0 2px var(--night)}
+
+.fx{display:inline-flex;align-items:center;gap:6px;margin-top:6px}
+.fx input{width:110px;padding:5px 8px;font-family:Oswald,sans-serif}

@@ -13,41 +13,76 @@
 @font-face{font-family:Hayyakum;src:url(assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:500;font-display:swap}
 @font-face{font-family:Oswald;src:url(assets/fonts/oswald-400.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:Manrope;src:url(assets/fonts/manrope-600.woff2) format("woff2");font-weight:600;font-display:swap}
-:root{--night:#04061A;--card:#0B1236;--line:rgba(190,210,255,.14);--light:#EEF2F6;--mist:#AEBBD2;--dim:#6F7FA0;--horizon:#3FE0E8;--hour:#2E62FF;--dusk:#8B5CFF}
+:root{--night:#04061A;--light:#EEF2F6;--mist:#AEBBD2;--dim:#7F8DAB;--horizon:#3FE0E8;--hour:#2E62FF;--dusk:#8B5CFF;--venus:#E07BE0;--ease:cubic-bezier(.2,.8,.2,1)}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--night);color:var(--light)}
-body{font:400 15px/1.85 Hayyakum,Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;
-  background:radial-gradient(900px 500px at 85% -10%,rgba(46,98,255,.18),transparent 60%),radial-gradient(700px 420px at 0% 110%,rgba(139,92,255,.12),transparent 60%),var(--night)}
-.wrap{max-width:720px;margin:0 auto;padding:28px 20px 80px}
-.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:56px}
-.top a{display:flex;align-items:center;gap:10px;color:var(--light);text-decoration:none;font:600 13px Manrope,sans-serif;letter-spacing:.16em}
+html{background:var(--night)}
+body{margin:0;color:var(--light);font:400 15px/1.85 Hayyakum,Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+/* the site's field of light, behind everything; a soft vignette keeps the text readable */
+#field{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:0;transition:opacity 1.6s var(--ease)}
+#field.on{opacity:.9}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(120% 80% at 50% 10%,transparent 30%,rgba(4,6,26,.55) 75%,rgba(4,6,26,.85))}
+.wrap{max-width:740px;margin:0 auto;padding:28px 20px 90px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:64px}
+.top a{display:flex;align-items:center;gap:10px;color:var(--light);text-decoration:none;font:600 13px Manrope,sans-serif;letter-spacing:.18em}
 .top img{width:30px;height:30px}
 .kick{font:400 11px Oswald,sans-serif;letter-spacing:.3em;color:var(--horizon);text-transform:uppercase}
-h1{margin:10px 0 0;font:700 clamp(30px,6vw,46px)/1.25 "EYEN Ammon",Hayyakum,sans-serif;text-wrap:balance}
-.lead{margin:14px 0 0;color:var(--mist);max-width:56ch}
-.roles{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
-.roles span{padding:6px 14px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line);color:var(--mist);font-size:13.5px}
-form{margin:44px 0 0;display:grid;gap:18px}
-fieldset{border:0;margin:0;padding:22px;border-radius:18px;background:rgba(11,18,54,.6);box-shadow:inset 0 0 0 1px var(--line);display:grid;gap:14px}
-legend{float:right;width:100%;padding:0;margin-bottom:4px;font:500 12px Oswald,Hayyakum,sans-serif;letter-spacing:.2em;color:var(--dim)}
+h1{margin:12px 0 0;font:700 clamp(32px,6.4vw,50px)/1.22 "EYEN Ammon",Hayyakum,sans-serif;text-wrap:balance;text-shadow:0 10px 40px rgba(4,6,26,.6)}
+.lead{margin:16px 0 0;color:var(--mist);max-width:56ch}
+
+/* liquid glass: a frosted body, a bright rim that bends light at the edge, and a highlight that follows the pointer */
+.glass{position:relative;isolation:isolate;border-radius:26px;
+  background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025) 42%,rgba(255,255,255,.06));
+  -webkit-backdrop-filter:blur(24px) saturate(175%);backdrop-filter:blur(24px) saturate(175%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 -1px 0 rgba(255,255,255,.06),0 40px 90px -40px rgba(0,0,0,.75),0 2px 10px -4px rgba(0,0,0,.4)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:radial-gradient(460px circle at var(--mx,20%) var(--my,-10%),rgba(255,255,255,.16),transparent 46%);transition:opacity .4s var(--ease)}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(255,255,255,.55),rgba(255,255,255,.05) 28%,rgba(63,224,232,.28) 62%,rgba(139,92,255,.34) 86%,rgba(224,123,224,.25));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.roles{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0}
+.roles span{position:relative;padding:7px 16px;border-radius:999px;font-size:13.5px;color:var(--light);
+  background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px rgba(255,255,255,.08)}
+form{margin:48px 0 0;display:grid;gap:18px}
+fieldset{border:0;margin:0;padding:26px;display:grid;gap:16px;min-width:0}
+legend{float:right;width:100%;padding:0;margin-bottom:2px;font:500 12px Hayyakum,sans-serif;letter-spacing:.04em;color:var(--horizon)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-label{display:grid;gap:6px;font-size:13.5px;color:var(--mist)}
-input,select,textarea{font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);background:rgba(4,6,26,.6);border:0;border-radius:12px;padding:12px 14px;box-shadow:inset 0 0 0 1px var(--line);outline:none;width:100%}
-input:focus,select:focus,textarea:focus{box-shadow:inset 0 0 0 1px var(--horizon),0 0 0 4px rgba(63,224,232,.1)}
-textarea{min-height:110px;resize:vertical}
+label{display:grid;gap:7px;font-size:13.5px;color:var(--mist)}
+input,select,textarea{font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);border:0;border-radius:14px;padding:13px 15px;width:100%;outline:none;
+  background:rgba(4,6,26,.38);box-shadow:inset 0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .3s var(--ease),background .3s var(--ease)}
+input:hover,select:hover,textarea:hover{background:rgba(4,6,26,.48)}
+input:focus,select:focus,textarea:focus{background:rgba(4,6,26,.55);box-shadow:inset 0 0 0 1px rgba(63,224,232,.7),0 0 0 5px rgba(63,224,232,.10),0 0 30px -8px rgba(63,224,232,.45)}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mist) 50%),linear-gradient(135deg,var(--mist) 50%,transparent 50%);background-size:5px 5px;background-repeat:no-repeat;background-position:18px 52%,23px 52%}
+option{background:#0b1236;color:var(--light)}
+textarea{min-height:116px;resize:vertical}
 input[dir=ltr]{text-align:left}
 .hint{font-size:12.5px;color:var(--dim)}
 .hp{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;opacity:0}
-button{justify-self:start;font:600 15px Hayyakum,Manrope,sans-serif;border:0;border-radius:999px;padding:14px 30px;background:var(--light);color:var(--night);cursor:pointer;box-shadow:0 12px 34px -14px rgba(63,224,232,.7)}
-button:disabled{opacity:.5;cursor:default}
-.msg{min-height:1em;font-size:14px}.msg.err{color:#f8a3a3}
-.done,.closed{margin:44px 0 0;padding:28px;border-radius:18px;background:rgba(11,18,54,.6);box-shadow:inset 0 0 0 1px var(--line)}
-.done h2,.closed h2{margin:0;font:700 22px "EYEN Ammon",Hayyakum,sans-serif}
+/* the send button glows like Siri: brand colours turning slowly around its edge */
+.send{position:relative;justify-self:start;margin-top:6px;border-radius:999px;padding:1.5px;isolation:isolate}
+.send::before{content:"";position:absolute;inset:-1px;border-radius:inherit;z-index:-1;
+  background:conic-gradient(from var(--a,0deg),var(--horizon),var(--hour),var(--dusk),var(--venus),var(--horizon));animation:turn 6s linear infinite}
+.send::after{content:"";position:absolute;inset:-8px;border-radius:inherit;z-index:-2;filter:blur(18px);opacity:.55;
+  background:conic-gradient(from var(--a,0deg),var(--horizon),var(--hour),var(--dusk),var(--venus),var(--horizon));animation:turn 6s linear infinite;transition:opacity .4s var(--ease)}
+.send:hover::after{opacity:.9}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes turn{to{--a:360deg}}
+button{font:600 15.5px Hayyakum,Manrope,sans-serif;border:0;border-radius:999px;padding:15px 34px;cursor:pointer;color:var(--light);
+  background:linear-gradient(180deg,rgba(17,24,66,.92),rgba(8,12,40,.96));box-shadow:inset 0 1px 0 rgba(255,255,255,.25);transition:transform .25s var(--ease)}
+button:hover{transform:translateY(-1px)}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.5;cursor:default;transform:none}
+.msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
+.done,.closed{margin:48px 0 0;padding:30px}
+.done h2,.closed h2{margin:0;font:700 23px "EYEN Ammon",Hayyakum,sans-serif}
 .done p,.closed p{margin:8px 0 0;color:var(--mist)}
-@media (max-width:620px){.row{grid-template-columns:1fr}.top{margin-bottom:36px}}
+.closed a{color:var(--horizon)}
+@media (max-width:620px){.row{grid-template-columns:1fr}.top{margin-bottom:40px}fieldset{padding:20px}}
+@media (prefers-reduced-motion:reduce){.send::before,.send::after{animation:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(14,20,56,.92)}}
 </style>
 </head>
 <body>
+<canvas id="field" aria-hidden="true"></canvas>
 <div class="wrap">
   <div class="top"><a href="/"><img src="assets/img/favicon.svg" alt="">EYEBLINK</a><span class="kick">Join the team</span></div>
   <div class="kick">انضم إلى الفريق</div>
@@ -55,10 +90,10 @@ button:disabled{opacity:.5;cursor:default}
   <p class="lead" id="intro">نعمل مع علامات في الخليج والمنطقة على أفلام قصيرة، وإعلانات، وموشن، ومحتوى سوشال. نتعاون مع مستقلين يهتمون بالتفاصيل، ويسلّمون في الموعد، ويرون في كل ثانية قراراً</p>
   <div class="roles" id="roles"></div>
 
-  <div id="closed" class="closed" hidden><h2>لا نستقبل طلبات حالياً</h2><p>تابعنا على إنستغرام <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a>، ونعلن هناك حين نفتح باب الانضمام</p></div>
+  <div id="closed" class="closed glass" hidden><h2>لا نستقبل طلبات حالياً</h2><p>تابعنا على إنستغرام <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a>، ونعلن هناك حين نفتح باب الانضمام</p></div>
 
   <form id="apply" hidden novalidate>
-    <fieldset><legend>عنك</legend>
+    <fieldset class="glass"><legend>عنك</legend>
       <div class="row"><label>الاسم الكامل<input name="name" autocomplete="name" required maxlength="120"></label>
         <label>الدور<select name="role" id="roleSel"></select></label></div>
       <div class="row"><label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
@@ -66,22 +101,22 @@ button:disabled{opacity:.5;cursor:default}
       <div class="row"><label>المدينة والدولة<input name="city" maxlength="120"></label>
         <label>اللغات<input name="langs" placeholder="عربي، إنجليزي" maxlength="120"></label></div>
     </fieldset>
-    <fieldset><legend>شغلك</legend>
+    <fieldset class="glass"><legend>شغلك</legend>
       <label>رابط الشوريل<input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
       <label>روابط أعمال أخرى<textarea name="links" dir="ltr" placeholder="رابط بكل سطر: Behance، Instagram، Drive…"></textarea><span class="hint">رابط واحد على الأقل، بين الشوريل وهذه الروابط</span></label>
       <label>الأدوات التي تتقنها<input name="tools" placeholder="Premiere Pro، After Effects، DaVinci…" maxlength="300"></label>
     </fieldset>
-    <fieldset><legend>طريقة العمل</legend>
+    <fieldset class="glass"><legend>طريقة العمل</legend>
       <div class="row"><label>ساعات متاحة أسبوعياً<input name="hours" type="number" min="1" max="80" dir="ltr"></label>
         <label>أجرك المتوقع<input name="rate" placeholder="مثال: 40$ للريل، أو 15$ للساعة" maxlength="120"></label></div>
       <label>سطور عنك<textarea name="about" maxlength="2000" placeholder="ما الذي تحبه في العمل، وما الذي يميز طريقتك"></textarea></label>
     </fieldset>
     <div class="hp" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
-    <button type="submit">أرسل الطلب</button>
+    <span class="send"><button type="submit">أرسل الطلب</button></span>
     <div class="msg" id="msg" role="status"></div>
   </form>
 
-  <div id="done" class="done" hidden><h2>وصل طلبك</h2><p>نراجع الأعمال بهدوء. إن رأينا تقاطعاً، نرسل لك مهمة تجريبية قصيرة مدفوعة، ثم نتحدث</p></div>
+  <div id="done" class="done glass" hidden><h2>وصل طلبك</h2><p>نراجع الأعمال بهدوء. إن رأينا تقاطعاً، نرسل لك مهمة تجريبية قصيرة مدفوعة، ثم نتحدث</p></div>
 </div>
 <script>
 (function(){
@@ -108,5 +143,9 @@ button:disabled{opacity:.5;cursor:default}
   };
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/js/bg.js?v=4fcc822d"></script>
+<script src="assets/js/fa.js?v=b0bc4c19"></script>
+<script>addEventListener("pointermove",function(e){ document.querySelectorAll(".glass").forEach(function(g){ var r=g.getBoundingClientRect(); g.style.setProperty("--mx",(e.clientX-r.left)+"px"); g.style.setProperty("--my",(e.clientY-r.top)+"px"); }); },{passive:true});</script>
 </body>
 </html>
