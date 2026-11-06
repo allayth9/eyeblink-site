@@ -859,7 +859,7 @@
       var rec=o.payInfo&&(o.messages||[]).some(function(m){ return m.kind==='receipt'&&m.at>o.payInfo.at; }), stagePaid=o.payInfo&&(o.payInfo.stage==='deposit'?(o.deposit&&o.deposit.paid):o.paid);
       if(rec&&!stagePaid) add('crit','إيصال دفع بانتظار تأكيدك',nm+' · '+esc(o.payInfo.amount||''),g,o.payInfo.at);
       if(o.followUp&&!closed){ if(o.followUp<t0) add('crit','متابعة متأخرة',nm+(o.nextStep?' · '+esc(o.nextStep):''),g,o.followUp); else if(o.followUp===t0) add('warn','متابعة اليوم',nm+(o.nextStep?' · '+esc(o.nextStep):''),g,o.followUp); }
-      if(o.status==='new') add(hrs(o.createdAt)>24?'warn':'info',hrs(o.createdAt)>24?'طلب جديد ما انرد عليه':'طلب جديد',nm+' · '+ago(o.createdAt),g,o.createdAt);
+      if(o.status==='new'&&!o.manual) add(hrs(o.createdAt)>24?'warn':'info',hrs(o.createdAt)>24?'طلب جديد ما انرد عليه':'طلب جديد',nm+' · '+ago(o.createdAt),g,o.createdAt);
       if(o.unread) add('warn',o.unread+(o.unread>1?' رسائل':' رسالة')+' من العميل',nm,g,o.updatedAt||o.createdAt);
       if(o.payInfo&&!stagePaid&&!rec&&hrs(o.payInfo.at)>48) add('warn','الدفع متأخر',nm+' · طلبته '+ago(o.payInfo.at),g,o.payInfo.at);
       (o.docs||[]).forEach(function(s){ var ty=s.type==='quote'?'عرض السعر':'الاتفاقية';

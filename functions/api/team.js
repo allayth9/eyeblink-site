@@ -29,7 +29,7 @@ function tempPass(){ const A = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ2
 async function member(req, env){
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)eb_t=([a-f0-9]{48})(?:;|$)/); if (!m) return null;
   const email = await env.EB.get("tsess:" + m[1]); if (!email) return null;
-  const u = await kvJSON(env, "member:" + email); return u && u.status !== "removed" ? u : null;
+  const u = await kvJSON(env, "member:" + email); return u && u.status === "active" ? u : null;   // paused or removed: no way in
 }
 // what a member may see of a task: no client, no order, no studio price — only the brief, the dates, their own fee and the conversation
 function memberTask(t){ return { id: t.id, title: t.title, alias: t.alias, brief: t.brief, links: t.links || [], due: t.due, fee: t.fee, cur: t.cur,
@@ -45,6 +45,7 @@ export async function onRequestGet({ request, env }) {
   if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], intro: s.open ? s.intro || "" : "" }); }
   if (q.get("me")) {
     const u = await member(request, env); if (!u) return json({ ok: false }, 401);
+    // shortcut: reads every task to find this member’s (one KV read each), fine up to a few hundred tasks; past that keep task ids on the member record
     const tasks = (await listJSON(env, "ttask:")).filter(t => t.member === u.email).sort((a, b) => (a.due || "9") < (b.due || "9") ? -1 : 1);
     const earned = tasks.filter(t => t.status === "approved"), sum = (l) => l.reduce((a, t) => a + num(t.fee), 0);
     return json({ ok: true, me: publicMember(u), tasks: tasks.map(memberTask),
@@ -67,7 +68,7 @@ export async function onRequestPost(ctx) {
   if (d.action === "login") {
     if (await limited(env, "tlog:" + ip, 12, 3600)) return json({ ok: false, error: "slow" }, 429);
     const email = C_(d.email, 254).toLowerCase(), u = await kvJSON(env, "member:" + email);
-    if (!u || u.status === "removed" || !u.hash || (await pbkdf2(String(d.password || ""), u.salt)) !== u.hash) return json({ ok: false, error: "wrong" }, 401);
+    if (!u || u.status !== "active" || !u.hash || (await pbkdf2(String(d.password || ""), u.salt)) !== u.hash) return json({ ok: false, error: "wrong" }, 401);
     u.lastLogin = new Date().toISOString(); await env.EB.put("member:" + email, JSON.stringify(u));
     return json({ ok: true, me: publicMember(u) }, 200, { "set-cookie": await sessionCookie(env, email) });
   }
