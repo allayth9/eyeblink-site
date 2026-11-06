@@ -10,6 +10,8 @@ const TYPES = ["quote", "agreement"];
 const NO_PREFIX = { quote: "Q", agreement: "AG" };
 const TYPE_AR = { quote: "عرض السعر", agreement: "الاتفاقية" };
 const TOKEN = /^[a-f0-9]{32}$/;
+const MAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+const INVITE_DAYS_DOC = 30;
 
 export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
@@ -117,11 +119,22 @@ async function accept(ctx, d){
   const doc = JSON.parse(await env.EB.get("doc:" + d.t) || "null"); if (!doc) return json({ ok: false }, 404);
   if (doc.accepted) return json({ ok: false, error: "done" }, 409);
   if (doc.type === "quote" && Date.now() > Date.parse(doc.updatedAt) + doc.body.valid * 864e5) return json({ ok: false, error: "expired" }, 410);
+  const o0 = await getOrder(env, doc.orderKey);
+  let email = S(doc.body.client.email, 200).toLowerCase() || (o0 && o0.email) || "";
+  if (doc.type === "agreement" && !MAIL_RE.test(email)) { const em = S(d.email, 200).toLowerCase(); if (!MAIL_RE.test(em)) return json({ ok: false, error: "email" }, 400); email = em; }
   const now = new Date().toISOString();
   doc.accepted = { name, at: now, country: (request.cf && request.cf.country) || "", ip: (await sha256("eb-doc|" + ip)).slice(0, 16), ver: doc.ver };
   doc.status = "accepted"; if (!doc.viewedAt) doc.viewedAt = now;
+  // the agreement is signed: the next step is the client workspace — an invitation made right here, offered on the same page
+  if (doc.type === "agreement" && MAIL_RE.test(email)) {
+    const uv = await env.EB.get("user:" + email), u = uv ? JSON.parse(uv) : null;
+    if (u && u.role === "client") doc.onboard = { email, client: true };
+    else { const tok = randHex(24);
+      await env.EB.put("invite:" + tok, JSON.stringify({ email, name: doc.body.client.name || name, lang: doc.lang, note: "", at: now, expires: new Date(Date.now() + INVITE_DAYS_DOC * 864e5).toISOString(), via: "agreement", doc: doc.no }), { expirationTtl: INVITE_DAYS_DOC * 86400 });
+      doc.onboard = { email, invite: tok }; }
+  }
   await env.EB.put("doc:" + doc.token, JSON.stringify(doc));
-  const o = await getOrder(env, doc.orderKey);
+  const o = o0;
   if (o) {
     const note = doc.type === "quote" ? "وافق على عرض السعر " + doc.no : "وقّع الاتفاقية " + doc.no;
     (o.history ||= []).push({ at: now, status: o.status, by: "client", note: doc.type === "quote" ? "quote accepted" : "agreement signed", doc: doc.no });
@@ -130,12 +143,12 @@ async function accept(ctx, d){
       // the accepted quote becomes the order's price and payment plan, and an opportunity still being discussed becomes confirmed
       o.price = fmt(doc.body.total, doc.body.cur); o.cur = doc.body.cur; o.plan = doc.body.plan; o.depositPct = doc.body.pct;
       if ((doc.body.payIds || []).length === 1 && !o.method) o.method = doc.body.payIds[0];
-      if (["new", "discussing"].includes(o.status)) { o.history.push({ at: now, status: "confirmed", by: "client" }); o.status = "confirmed"; }
-      if (o.manual && !o.clientVisible && o.status !== "cancelled") {
-        o.clientVisible = true;
-        if (o.email) { const uv = await env.EB.get("user:" + o.email); if (uv) { const u = JSON.parse(uv); if (!(u.orders || []).includes(o.key)) { (u.orders ||= []).push(o.key); await env.EB.put("user:" + o.email, JSON.stringify(u)); } } }
-      }
     }
+    if (!o.email && MAIL_RE.test(email)) o.email = email;
+    if (["new", "discussing"].includes(o.status)) { o.history.push({ at: now, status: "confirmed", by: "client" }); o.status = "confirmed"; }
+    if (o.manual && !o.clientVisible && o.status !== "cancelled") o.clientVisible = true;
+    if (o.email && !(o.manual && !o.clientVisible)) { const uv = await env.EB.get("user:" + o.email); if (uv) { const u = JSON.parse(uv); if (!(u.orders || []).includes(o.key)) { (u.orders ||= []).push(o.key); await env.EB.put("user:" + o.email, JSON.stringify(u)); } } }
+    if (doc.onboard) o.onboard = Object.assign({}, o.onboard, doc.onboard, { at: now, doc: doc.no });
     putSummary(o, doc); o.updatedAt = now; await env.EB.put(o.key, JSON.stringify(o));
   }
   later(ctx, telegram(env, "✅ " + name + (doc.type === "quote" ? " وافق على عرض السعر " : " وقّع الاتفاقية ") + doc.no + " · " + fmt(doc.body.total, doc.body.cur) + (o ? " · " + o.code : "") + "\n" + SITE + "/admin/"));

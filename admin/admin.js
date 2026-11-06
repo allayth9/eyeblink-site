@@ -589,9 +589,9 @@
   /* ---------- documents: a quote and an agreement per order, each a private link the client opens, saves as PDF and accepts / signs ---------- */
   var DTYPE={quote:'عرض سعر',agreement:'اتفاقية'}, DOCS={}, DED=null;
   var DDEF={
-    ar:{includes:['الموسيقى والمؤثرات الصوتية المرخّصة لاستخدامها ضمن المشروع','نسخ بالمقاسات المتفق عليها لكل منصة','الملف النهائي بجودة عالية (MP4)'],
+    ar:{includes:['مساحة عمل خاصة على الموقع لمتابعة المشروع ومراجعة النسخ واعتمادها','الموسيقى والمؤثرات الصوتية المرخّصة لاستخدامها ضمن المشروع','نسخ بالمقاسات المتفق عليها لكل منصة','الملف النهائي بجودة عالية (MP4)'],
         excludes:['التصوير الميداني ومعداته، ما لم يُذكر في البنود','الملفات المفتوحة للمشروع (Premiere Pro / After Effects)','تكاليف الإعلانات الممولة','تراخيص لقطات أو موسيقى يطلبها العميل من خارج مكتباتنا']},
-    en:{includes:['Licensed music and sound effects for use within this project','Versions in the agreed sizes for each platform','Final high-quality file (MP4)'],
+    en:{includes:['A private workspace on our site to follow the project and review and approve each version','Licensed music and sound effects for use within this project','Versions in the agreed sizes for each platform','Final high-quality file (MP4)'],
         excludes:['On-location filming and equipment, unless listed above','Open project files (Premiere Pro / After Effects)','Paid advertising costs','Licences for footage or music the client requests from outside our libraries']}};
   function dset(){ var d=(P&&P.docs)||{}, s=(C.settings||{});
     return {studioName:d.studioName||'Eyeblink Studio', studioPlace:d.studioPlace||'', studioContact:d.studioContact||[s.whatsapp,s.email].filter(Boolean).join('\n'),
@@ -610,6 +610,7 @@
         {h:'القيمة وطريقة الدفع', p:pay+(v.payMethods?'. طرق الدفع المعتمدة: '+v.payMethods+'، وأي رسوم تحويل يتحملها الطرف الثاني':'')},
         {h:'مدة التنفيذ', p:'مدة التنفيذ المتوقعة '+(v.days?v.days+' يوم عمل':'يُتفق عليها عند البدء')+'، تبدأ من تاريخ استلام العربون والمواد اللازمة كاملة. ولا تُحتسب ضمنها أي فترة تأخير سببها تأخر الطرف الثاني في إرسال المواد أو المحتوى، أو في الرد والملاحظات، أو طلب تعديلات خارج نطاق العمل'},
         {h:'المواد والمحتوى', p:'يلتزم الطرف الثاني بتزويد الطرف الأول بكل ما يلزم للتنفيذ قبل البدء، مثل اللقطات والصور والشعارات والنصوص والهوية البصرية والموافقات اللازمة. ويقرّ بأنه يملك حق استخدام كل ما يرسله، ويتحمل وحده أي مطالبة تتعلق به'},
+        {h:'مساحة العمل', p:'يحصل الطرف الثاني طوال مدة المشروع على حساب في مساحة عمل Eyeblink على الموقع، يتابع منه مراحل التنفيذ، ويستلم النسخ ويراجعها ويعتمدها، ويرسل ملاحظاته وملفاته، ويجد فواتيره. وتُعدّ الموافقات والملاحظات المرسلة عبرها موافقات كتابية بموجب هذه الاتفاقية'},
         {h:'التعديلات', p:'المشروع '+revAr(v.revisions)+'. جولة التعديل هي قائمة ملاحظات واحدة مجمّعة على نسخة واحدة. ولا يُعد تعديلاً تغيير الفكرة أو السكريبت بعد اعتماده، أو إضافة مطالب جديدة، أو إعادة تنفيذ عمل معتمد، وتُحتسب هذه أعمالاً إضافية'},
         {h:'الأعمال الإضافية', p:'أي طلب خارج نطاق العمل أو زيادة في حجمه يُسعَّر ويُتفق عليه كتابياً قبل تنفيذه، وقد يغيّر موعد التسليم'},
         {h:'اعتماد المخرجات', p:'تُعدّ النسخة معتمدة عند موافقة الطرف الثاني عليها كتابياً بأي وسيلة تواصل معتمدة بين الطرفين، أو إذا مضى '+v.silenceDays+' يوماً على تسليمها دون ملاحظات. وإذا تأخر الرد أكثر من '+v.approvalDays+' أيام، يُعدَّل موعد التسليم بقدر التأخير'},
@@ -633,6 +634,7 @@
       {h:'Value and payment', p:pay+(v.payMethods?'. Accepted payment methods: '+v.payMethods+'; any transfer fees are borne by the Client':'')},
       {h:'Timeline', p:'The expected timeline is '+(v.days?v.days+' working days':'agreed at kick-off')+', starting from receipt of the deposit and all required materials. It excludes any delay caused by the Client sending materials late, replying or giving feedback late, or requesting changes outside the scope'},
       {h:'Materials and content', p:'The Client provides everything needed before work begins — footage, images, logos, copy, brand assets and approvals — and confirms it holds the right to use everything it sends, bearing sole responsibility for any related claim'},
+      {h:'Workspace', p:'For the length of the project the Client has an account in the Eyeblink workspace on our site to follow each stage, receive, review and approve versions, send feedback and files, and find its invoices. Approvals and feedback sent there count as written approvals under this agreement'},
       {h:'Revisions', p:'The project '+rev+'. A revision round is one consolidated list of feedback on one version. Changing the idea or script after approval, adding new requirements, or redoing approved work are not revisions and are charged as additional work'},
       {h:'Additional work', p:'Any request outside the scope, or an increase in its volume, is priced and agreed in writing before it is done, and may change the delivery date'},
       {h:'Approval of deliverables', p:'A version is approved once the Client confirms it in writing through any agreed channel, or if '+v.silenceDays+' days pass after delivery without feedback. If a reply takes longer than '+v.approvalDays+' days, the delivery date moves by the length of the delay'},
@@ -664,8 +666,39 @@
         '<div class="dl2"><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'" target="_blank" rel="noopener">فتح</a><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'?print=1" target="_blank" rel="noopener">PDF</a>'+
         '<button class="btn sm" type="button" data-dshare="'+k+'" data-t="'+esc(s.token)+'">إرسال</button>'+(s.status!=='accepted'?'<button class="btn sm" type="button" data-dedit="'+k+'" data-t="'+esc(s.token)+'" data-type="'+s.type+'">تعديل</button>':'')+
         (s.type==='quote'&&s.status==='accepted'&&!list.some(function(x){return x.type==='agreement'})?'<button class="btn sm primary" type="button" data-dnew="'+k+'" data-type="agreement" data-from="'+esc(s.token)+'">اتفاقية من هالعرض</button>':'')+'</div></li>'; }).join('')+'</ul>':'')+
+      onboardBox(o,k)+
       '<div class="actions"><button class="btn sm" type="button" data-dnew="'+k+'" data-type="quote">+ عرض سعر</button><button class="btn sm" type="button" data-dnew="'+k+'" data-type="agreement">+ اتفاقية</button></div></div>';
   }
+  // after the agreement is signed: the client's way in, their project in the workspace, then the deposit — one short checklist
+  function onboardBox(o,k){
+    var ag=(o.docs||[]).filter(function(s){ return s.type==='agreement'&&s.status==='accepted'; })[0]; if(!ag) return '';
+    var ob=o.onboard||{}, inv=ob.invite?location.origin+(o.lang==='en'?'/en':'')+'/account.html?invite='+ob.invite:'', dep=o.paid||(o.deposit&&o.deposit.paid);
+    var row=function(done,title,body){ return '<li class="'+(done?'ok':'')+'"><i>'+(done?'✓':'')+'</i><div><b>'+title+'</b>'+(body?'<div class="small">'+body+'</div>':'')+'</div></li>'; };
+    var waTxt=(o.lang==='en'?'Your workspace for the project is ready. Activate it with your email '+(ob.email||o.email||'')+':\n':'مساحة العمل الخاصة بمشروعك جاهزة. فعّلها ببريدك '+(ob.email||o.email||'')+':\n')+inv;
+    return '<div class="onb"><div class="small muted">بعد التوقيع</div><ol>'+
+      row(true,'وقّع الاتفاقية '+esc(ag.no),esc(ag.acceptedBy||'')+(ag.acceptedAt?' · '+esc(new Date(ag.acceptedAt).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):''))+
+      row(!!ob.client,'مساحة العمل', ob.client?'عنده حساب متعاقد أصلاً':
+        (inv?'الدعوة جاهزة وظاهرة للعميل بصفحة الاتفاقية نفسها. لما يفعّلها بيوصلك تيليغرام<div class="dl2"><a class="btn sm" target="_blank" rel="noopener" href="'+esc(waLink(o.contact,waTxt))+'">ابعتله الدعوة واتساب</a><button class="btn sm" type="button" data-copytxt="'+esc(inv)+'">نسخ رابط الدعوة</button>'+(o.email?'<button class="btn sm" type="button" data-oconv="'+k+'">أو جهّز حسابه بكلمة سر مؤقتة</button>':'')+'</div>':'ما في إيميل للعميل'))+
+      row(!!o.projectId,'مشروعه بمساحة العمل', o.projectId?'مربوط بـ «'+esc(o.projectName||'')+'»':'<div class="dl2"><button class="btn sm primary" type="button" data-oproj="'+k+'">افتح مشروعه من الاتفاقية</button></div>')+
+      row(!!dep,'العربون', dep?'وصل':'من «مسار الدفع» تحت: السعر وخطة الدفع جاهزين من العرض')+
+    '</ol></div>';
+  }
+  // the agreement becomes a project in the workspace: client record (if new), project with dates from the timeline, linked to this order
+  function openProject(o,b){
+    if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; }
+    var em=o.email; if(!em){ toast('ما في إيميل للعميل',true); return; } b.disabled=true;
+    loadDocs(o).then(function(list){ var ag=list.filter(function(d){ return d.type==='agreement'&&d.accepted; })[0]; if(!ag) throw new Error('no agreement');
+      var B=ag.body, start=new Date(), end=new Date(Date.now()+Math.ceil((+B.days||10)*7/5)*864e5), iso=function(d){ return d.toISOString().slice(0,10); };
+      return fetch(API+'/work?admin=1&profile='+encodeURIComponent(em),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).catch(function(){ return {}; })
+        .then(function(p){ return p&&p.ok&&p.client? null : api('/work','POST',{action:'clientSave',email:em,name:B.client.name||o.name,company:B.client.company||'',phone:/^\+?[0-9 ()-]{8,}$/.test(o.contact||'')?o.contact.trim():''}); })
+        .then(function(){ return api('/work','POST',{action:'project',client_email:em,name:B.title,type:'once',start_date:iso(start),end_date:iso(end),description:(B.summary?B.summary+'\n\n':'')+B.items.map(function(x){ return '• '+x.name+(x.qty>1?' ×'+x.qty:''); }).join('\n')+'\n\n'+ag.no,services:B.items.map(function(x){ return x.name; }).slice(0,12)}); })
+        .then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); return api('/orders','PATCH',{key:o.key,project:j.id}); })
+        .then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); Object.assign(o,j.order); WORK=null; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('انفتح مشروعه بمساحة العمل وانربط بالطلب'); }); })
+      .catch(function(err){ b.disabled=false; toast(({'not client':'عنده حساب عادي لسا: استنى يفعّل الدعوة، أو رقّيه من «العملاء»','no account':'ما في حساب ولا سجل عميل بهالإيميل','no agreement':'ما في اتفاقية موقّعة'})[err.message]||'ما زبط، جرّب مرة تانية',true); });
+  }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-oproj],[data-copytxt]'); if(!b) return;
+    if(b.dataset.oproj){ openProject(orderOf(b.dataset.oproj),b); return; }
+    try{ navigator.clipboard.writeText(b.dataset.copytxt).then(function(){ toast('انتسخ الرابط'); }); }catch(_){ toast('ما انتسخ',true); } });
   function loadDocs(o){ if(!LIVE||o.demo) return Promise.resolve([]);
     return fetch(API+'/docs?key='+encodeURIComponent(o.key),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ DOCS[o.key]=j.docs||[]; return DOCS[o.key]; }); }
   // a fresh document starts from the order (and, for an agreement, from its quote when there is one)

@@ -23,9 +23,15 @@ const T = {
     btn: { quote: "أوافق على العرض", agreement: "أوقّع الاتفاقية" }, done: { quote: "تمّت الموافقة على العرض", agreement: "وُقّعت الاتفاقية إلكترونياً" },
     by: "الاسم", at: "التاريخ والوقت", sref: "مرجع التوقيع", expired: "انتهت صلاحية هذا العرض. راسلنا لنحدّثه لك",
     pdf: "تحميل PDF", issued: "صادرة إلكترونياً", sig: "التوقيع", sigName: "الاسم", sigDate: "التاريخ",
-    err: { name: "اكتب اسمك الكامل وفعّل خانة الموافقة", slow: "محاولات كثيرة، جرّب بعد قليل", expired: "انتهت صلاحية العرض", done: "تمّت الموافقة مسبقاً", x: "تعذّر الإرسال، جرّب مرة أخرى" },
+    err: { email: "اكتب بريداً إلكترونياً صحيحاً", name: "اكتب اسمك الكامل وفعّل خانة الموافقة", slow: "محاولات كثيرة، جرّب بعد قليل", expired: "انتهت صلاحية العرض", done: "تمّت الموافقة مسبقاً", x: "تعذّر الإرسال، جرّب مرة أخرى" },
     svc: "مونتاج · موشن غرافيك · أفلام", status: { sent: "بانتظار موافقتك", accepted: "موافَق عليه", signed: "موقّعة", expired: "منتهي الصلاحية" },
-    gone: "هذا الرابط غير متاح. ربما سُحب المستند أو تغيّر رابطه، راسلنا لنرسل لك النسخة الحالية" },
+    gone: "هذا الرابط غير متاح. ربما سُحب المستند أو تغيّر رابطه، راسلنا لنرسل لك النسخة الحالية",
+    email: "بريدك الإلكتروني (لمساحة العمل والفواتير)",
+    next: "الخطوة التالية",
+    nextQ: "نرسل لك اتفاقية العمل لتوقيعها، ثم تفاصيل العربون، ونبدأ",
+    wsH: "مساحة العمل الخاصة بمشروعك",
+    wsP: "من هنا تتابع مراحل التنفيذ، وتراجع النسخ وتعتمدها، وترسل ملاحظاتك وملفاتك، وتجد فواتيرك. فعّلها بالبريد نفسه الذي وقّعت به",
+    wsBtn: "فعّل مساحة العمل", wsIn: "ادخل إلى مساحة العمل", wsDone: "مساحة العمل مفعّلة" },
   en: { quote: "Quotation", agreement: "Service Agreement", latin: { quote: "Quotation", agreement: "Service Agreement" },
     no: { quote: "Quote no.", agreement: "Agreement no." }, date: "Date issued", valid: "Valid until", order: "Order", ref: "Quote reference",
     from: "From", to: "Prepared for", p1: "First party · Service provider", p2: "Second party · Client",
@@ -40,16 +46,24 @@ const T = {
     btn: { quote: "Accept quote", agreement: "Sign agreement" }, done: { quote: "Quote accepted", agreement: "Signed electronically" },
     by: "Name", at: "Date and time", sref: "Signature reference", expired: "This quote has expired. Message us and we will update it for you",
     pdf: "Download PDF", issued: "Issued electronically", sig: "Signature", sigName: "Name", sigDate: "Date",
-    err: { name: "Type your full name and tick the box", slow: "Too many attempts, try again shortly", expired: "This quote has expired", done: "Already accepted", x: "Could not send, please try again" },
+    err: { email: "Enter a valid email", name: "Type your full name and tick the box", slow: "Too many attempts, try again shortly", expired: "This quote has expired", done: "Already accepted", x: "Could not send, please try again" },
     svc: "Video editing · Motion graphics · Film", status: { sent: "Awaiting your approval", accepted: "Accepted", signed: "Signed", expired: "Expired" },
-    gone: "This link is not available. The document may have been withdrawn or replaced; message us and we will send the current one" },
+    gone: "This link is not available. The document may have been withdrawn or replaced; message us and we will send the current one",
+    email: "Your email (for the workspace and invoices)",
+    next: "Next step",
+    nextQ: "We send you the service agreement to sign, then the deposit details, and we start",
+    wsH: "Your project workspace",
+    wsP: "Follow every stage, review and approve each version, send feedback and files, and find your invoices. Activate it with the same email you signed with",
+    wsBtn: "Activate the workspace", wsIn: "Open the workspace", wsDone: "Workspace active" },
 };
 
 export async function onRequestGet({ request, env, params }) {
   const t = String([].concat(params.path || [])[0] || "").toLowerCase();
   const v = /^[a-f0-9]{32}$/.test(t) && await env.EB.get("doc:" + t);
   if (!v) return page(404, "ar", "Eyeblink Studio", `<main class="gone"><img src="/assets/img/invoice-logo.png" alt="Eyeblink Studio" width="184" height="20"><p>${h(T.ar.gone)}</p><p dir="ltr">${h(T.en.gone)}</p></main>`);
-  return page(200, JSON.parse(v).lang, null, null, JSON.parse(v));
+  const doc = JSON.parse(v);
+  if (doc.onboard && doc.onboard.invite) { const iv = await env.EB.get("invite:" + doc.onboard.invite); doc.onboard.used = !iv || !!JSON.parse(iv).usedAt; }
+  return page(200, doc.lang, null, null, doc);
 }
 
 function dateOf(iso, en, time){ const d = new Date(iso);
@@ -80,12 +94,16 @@ function page(status, lang, title, main, doc){
     const clauses = !q ? `<section class="clauses">${(b.clauses || []).map((c, i) => `<article><h3><em class="num">${String(i + 1).padStart(2, "0")}</em>${h(c.h)}</h3><p>${nl(c.p)}</p></article>`).join("")}</section>` : "";
     const ref = doc.accepted ? doc.token.slice(0, 8).toUpperCase() + "-" + doc.accepted.ip.slice(0, 4).toUpperCase() : "";
     const stamp = doc.accepted ? `<div class="stamp"><div class="sh"><i>✓</i>${h(L.done[type])}</div><dl><div><dt>${h(L.by)}</dt><dd>${h(doc.accepted.name)}</dd></div><div><dt>${h(L.at)}</dt><dd>${h(dateOf(doc.accepted.at, en, 1))}</dd></div><div><dt>${h(L.sref)}</dt><dd><bdi class="num">${h(ref)}</bdi></dd></div></dl></div>` : "";
-    const form = !doc.accepted && !expired ? `<form class="accept" id="acc" novalidate><h4>${h(L.accH[type])}</h4><p>${h(L.accP[type])}</p><div class="frow"><input name="name" autocomplete="name" dir="auto" placeholder="${h(L.name)}" required maxlength="120"><button type="submit">${h(L.btn[type])}</button></div><label class="chk"><input type="checkbox" name="agree"> ${h(L.agree[type])}</label><div class="msg" role="status"></div></form>` : "";
+    const form = !doc.accepted && !expired ? `<form class="accept" id="acc" novalidate><h4>${h(L.accH[type])}</h4><p>${h(L.accP[type])}</p>${!q && !b.client.email ? `<input class="femail" name="email" type="email" autocomplete="email" dir="ltr" placeholder="${h(L.email)}" maxlength="200">` : ""}<div class="frow"><input name="name" autocomplete="name" dir="auto" placeholder="${h(L.name)}" required maxlength="120"><button type="submit">${h(L.btn[type])}</button></div><label class="chk"><input type="checkbox" name="agree"> ${h(L.agree[type])}</label><div class="msg" role="status"></div></form>` : "";
     const exp = expired ? `<div class="expired">${h(L.expired)}</div>` : "";
+    const ob = doc.onboard, base = en ? "/en" : "";
+    const nextQ = q && doc.accepted ? `<div class="next"><span class="lab">${h(L.next)}</span><p>${h(L.nextQ)}</p></div>` : "";
+    const ws = !q && doc.accepted && ob ? `<div class="next ws"><span class="lab">${h(L.next)}</span><h4>${h(L.wsH)}</h4><p>${h(L.wsP)}</p>` +
+      (ob.client || ob.used ? `<a class="go" href="${base}/workspace.html">${h(L.wsIn)}</a><span class="wsok">✓ ${h(L.wsDone)}</span>` : `<a class="go" href="${base}/account.html?invite=${h(ob.invite)}">${h(L.wsBtn)}</a><span class="wsmail"><bdi>${h(ob.email)}</bdi></span>`) + `</div>` : "";
     // signatures: the studio's side is issued electronically; the client's side is the e-signature, or blank lines on paper
     const sigs = `<section class="sigs"><div class="sig"><div class="lab">${h(q ? L.from : L.p1)}</div><div class="sname">${h(b.studio.name)}</div><div class="sline">${h(L.issued)} · ${h(dateOf(doc.updatedAt, en))}</div></div>` +
       `<div class="sig"><div class="lab">${h(q ? L.to : L.p2)}</div>${doc.accepted ? `<div class="sname">${h(doc.accepted.name)}</div><div class="sline">${h(L.done[type])} · ${h(dateOf(doc.accepted.at, en))}</div>` : `<div class="blank"><span>${h(L.sigName)}</span></div><div class="blank"><span>${h(L.sig)}</span></div><div class="blank"><span>${h(L.sigDate)}</span></div>`}</div></section>`;
-    const accBlock = `<section class="acc">${stamp}${exp}${form}</section>`;
+    const accBlock = `<section class="acc">${stamp}${nextQ}${ws}${exp}${form}</section>`;
     main = `<div class="bar"><div class="bin"><a class="home" href="${en ? "/en/" : "/"}" aria-label="Eyeblink Studio"><img src="/assets/img/mark.svg" alt=""><span>Eyeblink Studio</span></a><span class="bno num">${h(doc.no)}</span><span class="pill ${st}">${h(L.status[st])}</span><button type="button" class="pdf" id="pdf">${h(L.pdf)}</button></div></div>
 <main class="sheet ${type}">
  <header class="top"><img class="logo" src="/assets/img/invoice-logo.png" alt="Eyeblink Studio" width="184" height="20"><div class="kind"><span>${h(L.latin[type])}</span>${en ? "" : `<b>${h(L[type])}</b>`}</div></header>
@@ -102,9 +120,9 @@ document.getElementById('pdf').onclick=function(){window.print();};
 if(/[?&]print=1/.test(location.search)){(document.fonts&&document.fonts.ready||Promise.resolve()).then(function(){setTimeout(function(){window.print();},350);});}
 else{try{fetch('/api/docs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'seen',t:t})});}catch(_){}}
 var f=document.getElementById('acc');if(!f)return;var m=f.querySelector('.msg');
-f.onsubmit=function(e){e.preventDefault();var n=f.name.value.trim(),a=f.agree.checked;if(n.length<2||!a){m.textContent=E.name;m.className='msg err';return;}
+f.onsubmit=function(e){e.preventDefault();var n=f.name.value.trim(),a=f.agree.checked,em=f.email?f.email.value.trim():'';if(f.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){m.textContent=E.email;m.className='msg err';f.email.focus();return;}if(n.length<2||!a){m.textContent=E.name;m.className='msg err';return;}
 var btn=f.querySelector('button');btn.disabled=true;m.textContent='';
-fetch('/api/docs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'accept',t:t,name:n,agree:true})}).then(function(r){return r.json();})
+fetch('/api/docs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'accept',t:t,name:n,email:em,agree:true})}).then(function(r){return r.json();})
 .then(function(j){if(j.ok){location.reload();return;}btn.disabled=false;m.textContent=E[j.error]||E.x;m.className='msg err';}).catch(function(){btn.disabled=false;m.textContent=E.x;m.className='msg err';});};})();</script>`;
     body = main;
   }
@@ -233,6 +251,18 @@ html[lang=en] .accept h4{font:600 16px Manrope,sans-serif}
 .stamp dl{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:4px 34px;margin:12px 0 0}
 .stamp dt{font-size:11px;color:var(--grey)}
 .stamp dd{margin:0;font-size:13px;font-weight:500}
+.femail{width:100%;font:500 15px Manrope,sans-serif;padding:12px 14px;border:1px solid #cfd4e2;border-radius:10px;color:var(--ink);background:#fff;outline:none;margin-bottom:10px;text-align:left}
+.femail:focus{border-color:var(--hour);box-shadow:0 0 0 3px rgba(46,98,255,.14)}
+.next{margin-top:14px;padding:18px 20px;border-radius:14px;background:var(--night);color:#EEF2F6;display:grid;gap:6px;justify-items:start}
+.next .lab{color:#3FE0E8}
+.next h4{margin:0;font:700 18px/1.4 "EYEN Ammon",Hayyakum,sans-serif}
+html[lang=en] .next h4{font:600 17px Manrope,sans-serif}
+.next p{margin:0;color:#AEBBD2;font-size:13.5px;max-width:62ch}
+.next .go{margin-top:8px;display:inline-block;padding:11px 20px;border-radius:999px;background:#EEF2F6;color:var(--night);font:600 14px Hayyakum,Manrope,sans-serif;text-decoration:none}
+.next .go:hover{background:#fff}
+.wsmail,.wsok{font-size:12px;color:#6F7FA0}
+.wsok{color:#3FE0E8}
+@media print{.next{display:none}}
 .expired{padding:14px 18px;border-radius:12px;background:#fbf2fb;color:#8a3f8a;font-size:13.5px}
 .foot{margin-top:auto;padding-top:36px;display:flex;justify-content:space-between;gap:10px;font:400 10.5px Oswald,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9aa1b5}
 .gone{max-width:520px;margin:18vh auto;padding:0 24px;text-align:center;color:var(--grey)}
