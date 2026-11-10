@@ -723,8 +723,10 @@
     if((o.items||[]).length) items=o.items.filter(function(x){return x&&x.name}).map(function(x){ return {name:x.name,desc:'',qty:+x.qty||1,unit:pnum(x.unit)}; });
     else { var q=+o.qty||1, t=pnum(o.price||o.total); items=[{name:o.packageName||o.package||'',desc:[o.addons&&o.addons.length?(lang==='en'?'Add-ons: ':'الإضافات: ')+o.addons.join(lang==='en'?', ':'، '):'',(o.platforms||[]).length?(lang==='en'?'Platforms: ':'المنصات: ')+o.platforms.join(', '):''].filter(Boolean).join('\n'),qty:q,unit:t?Math.round(t/q*100)/100:0}]; }
     var L=dlists(lang), digits=String(o.contact||'');
+    // the client picked a currency on the site: start the quote in it
+    if(o.ccy&&o.ccy!=='$'&&o.ccy!==pcur(o)&&FXC.some(function(k){ return k[0]===o.ccy; })){ items.forEach(function(x){ x.unit=fxConv(x.unit,pcur(o)==='$'?'$':pcur(o),o.ccy); }); var CCY=o.ccy; }
     return {lang:lang,title:o.packageName&&o.packageName!=='فرصة'?o.packageName:'',summary:'',client:{name:o.name||'',company:'',place:'',contact:o.contact||'',email:o.email||''},
-      studio:{name:S.studioName,place:S.studioPlace,contact:S.studioContact},items:items,cur:pcur(o),discount:0,days:S.days,revisions:S.revisions,valid:S.valid,
+      studio:{name:S.studioName,place:S.studioPlace,contact:S.studioContact},items:items,cur:CCY||pcur(o),discount:0,days:S.days,revisions:S.revisions,valid:S.valid,
       plan:o.plan||S.plan,pct:+(o.depositPct||S.pct),includes:L.includes.slice(),excludes:L.excludes.slice(),payIds:S.payIds.slice(),payOther:S.payOther,payMethods:'',notes:'',quoteNo:'',
       clauses:null,v:{approvalDays:S.approvalDays,silenceDays:S.silenceDays,archiveDays:S.archiveDays,sourceFiles:false,portfolio:true,jurisdiction:S.jurisdiction}};
   }
@@ -1267,7 +1269,7 @@
         '<label class="check"><input type="checkbox" data-ltog="intro"'+(L.intro!==false?' checked':'')+'> مقدّمة فتح العين عند أول زيارة</label>'+
         '<label class="check"><input type="checkbox" data-ltog="particles"'+(L.particles!==false?' checked':'')+'> خلفية الجزيئات المتحركة</label>'+
         '<label class="check"><input type="checkbox" data-ltog="countUp"'+(L.countUp!==false?' checked':'')+'> عدّاد الأرقام (يعدّ من الصفر عند ظهور الخانات)</label>'+
-        '<div class="field"><label>مؤشر الماوس</label><select data-lsel="cursor">'+[['glass','السهم الزجاجي (Eyeblink)'],['soft','المؤشر الناعم السابق'],['system','مؤشر النظام الافتراضي']].map(function(o){return '<option value="'+o[0]+'"'+((L.cursor||'glass')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
+        ''+
         '<div class="field"><label>خانة التواصل أسفل الصفحات</label><select data-lsel="cta">'+[['aurora','بلون خاص (أورورا)'],['glass','زجاجية مثل باقي الخانات']].map(function(o){return '<option value="'+o[0]+'"'+((L.cta||'aurora')===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>'+
         '<p class="hint" style="margin-top:8px">التغييرات تظهر بعد «نشر التعديلات». استخدم «معاينة» لتراها قبل النشر.</p></section>';
   }

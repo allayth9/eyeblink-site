@@ -33,7 +33,7 @@ export async function onRequestPost(ctx) {
     link: clip(d.link, 500), deadline: clip(d.deadline, 20), package: clip(d.package, 60), packageName: clip(d.packageName, 120),
     addons: (Array.isArray(d.addons) ? d.addons : []).slice(0, 12).map(a => clip(a, 80)), total: clip(d.total, 40), lang: clip(d.lang, 4),
     items: (Array.isArray(d.items) ? d.items : []).slice(0, 14).map(x => ({ name: clip(x && x.name, 120), qty: Math.max(1, Math.min(50, parseInt(x && x.qty) || 1)), unit: Math.round((+(x && x.unit) || 0) * 100) / 100 })).filter(x => x.name),
-    cur: clip(d.cur, 6), visit: visitOf(request, d.visit),
+    cur: clip(d.cur, 6), ccy: clip(d.ccy, 6), visit: visitOf(request, d.visit),
     qty: Math.max(1, Math.min(50, parseInt(d.qty) || 1)), platforms: (Array.isArray(d.platforms) ? d.platforms : []).slice(0, 8).map(a => clip(a, 30)), payPref: clip(d.payPref, 60),
     email: user.email, messages: [], seenClient: "", seenAdmin: "",
     price: "", method: "", paid: false, paidAmount: "", notes: "", history: [{ at: new Date().toISOString(), status: "new" }] };

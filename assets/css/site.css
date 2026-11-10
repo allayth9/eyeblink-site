@@ -2075,3 +2075,17 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
 .help-float:hover{transform:translateY(-2px)}
 .help-float i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:600 13px/1 Manrope,sans-serif;font-style:normal;color:var(--night);background:var(--horizon)}
 @media (max-width:860px){ .help-float{bottom:calc(92px + env(safe-area-inset-bottom,0px))} }
+
+/* the help pill sits above the WhatsApp bubble instead of under it */
+body:has(.wa-float) .help-float{bottom:calc(max(22px,env(safe-area-inset-bottom,0px)) + 68px)}
+@media (max-width:860px){ body:has(.wa-float) .help-float{bottom:calc(92px + 60px + env(safe-area-inset-bottom,0px))} }
+/* contact card: WhatsApp drawn like the floating bubble — white mark on the WhatsApp green */
+.chip .bt.soc[data-k="whatsapp"]{background:#25D366!important;box-shadow:none}
+.chip .bt.soc[data-k="whatsapp"] svg circle{display:none}
+.chip .bt.soc[data-k="whatsapp"] svg path{fill:#fff!important}
+.chip .bt.soc[data-k="whatsapp"] svg{transform:scale(.72)}
+/* currency next to the language */
+.curpick{appearance:none;-webkit-appearance:none;height:42px;padding:0 12px;border:0;border-radius:999px;font:600 12px/1 var(--latin);letter-spacing:.06em;color:var(--light);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;text-align:center}
+.curpick option{background:#0b1236;color:var(--light)}
+.bar.is-client .curpick{height:36px}
+@media (max-width:860px){ .curpick{height:36px;padding:0 9px;font-size:11px} }

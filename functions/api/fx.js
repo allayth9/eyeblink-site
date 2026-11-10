@@ -16,7 +16,7 @@ async function fetchSyp(){
 }
 
 export async function onRequestGet({ request, env }) {
-  if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+  // public: visitors who pick the pound need it; the source is read at most once a day whoever asks
   const old = JSON.parse(await env.EB.get(FX_KEY) || "null");
   if (old && Date.now() - Date.parse(old.at) < FX_TTL && !new URL(request.url).searchParams.get("force")) return json({ ok: true, ...old });
   try { const fresh = await fetchSyp(); await env.EB.put(FX_KEY, JSON.stringify(fresh)); return json({ ok: true, ...fresh }); }
