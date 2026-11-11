@@ -466,7 +466,7 @@ div.done .code{font-family:var(--latin);font-size:28px;letter-spacing:.12em;dire
   .world{max-width:100%}
   .order{padding:20px}
 }
-@media (max-width:420px){ .stats{grid-template-columns:1fr 1fr 1fr} .stat b{font-size:28px} .dock a{font-size:10px} }
+@media (max-width:420px){ .stats{grid-template-columns:1fr 1fr 1fr} .stat b{font-size:28px} .dock a{font-size:11px} }
 .story{padding:clamp(26px,5vw,56px);display:grid;gap:14px;max-width:880px}
 .story h2{font-size:clamp(28px,3.8vw,46px)}
 .story .prose p{color:var(--mist);margin:0 0 14px;max-width:62ch;font-size:clamp(16px,1.5vw,18px)}
