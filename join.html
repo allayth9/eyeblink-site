@@ -77,6 +77,19 @@ button:disabled{opacity:.5;cursor:default;transform:none}
 .roles button[aria-pressed="true"]{background:rgba(63,224,232,.12);color:var(--light);box-shadow:inset 0 0 0 1px rgba(63,224,232,.45)}
 .roles button[aria-pressed="false"]{color:var(--mist)}
 @media (prefers-reduced-motion:reduce){.glass::after{animation:none}}
+.lab small{font-size:11.5px;color:var(--dim);margin-inline-start:4px}.lab .req{font-style:normal;color:var(--horizon)}
+.tel{display:grid;grid-template-columns:auto 1fr;gap:8px;direction:ltr}
+.bsel{position:relative}.bsel select{position:absolute;opacity:0;pointer-events:none;inset:0}
+.bsel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);border:0;border-radius:14px;padding:13px 15px;cursor:pointer;background:rgba(4,6,26,.38);box-shadow:inset 0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .25s var(--ease),background .25s var(--ease)}
+.bsel-btn:hover{background:rgba(4,6,26,.5)}.bsel.open .bsel-btn,.bsel-btn:focus-visible{outline:0;box-shadow:inset 0 0 0 1px rgba(63,224,232,.5),0 0 0 4px rgba(63,224,232,.06)}
+.bsel-btn>i{width:8px;height:8px;border-inline-end:1.5px solid var(--mist);border-bottom:1.5px solid var(--mist);transform:translateY(-2px) rotate(45deg);transition:transform .25s var(--ease)}
+.bsel.open .bsel-btn>i{transform:translateY(2px) rotate(-135deg)}
+.bv,.bsel-list li{display:flex;align-items:center;gap:10px;min-width:0}.bv span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bsel-list{position:absolute;z-index:10;inset-inline:0;top:calc(100% + 6px);min-width:max-content;margin:0;padding:6px;list-style:none;border-radius:16px;max-height:280px;overflow:auto;background:rgba(11,18,54,.92);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 24px 60px -20px rgba(0,0,0,.7);transform-origin:top center;animation:pop .18s cubic-bezier(.23,1,.32,1)}
+.bsel-list li{padding:9px 11px;border-radius:11px;font-size:14.5px;cursor:pointer;outline:0}.bsel-list li:hover,.bsel-list li:focus{background:rgba(63,224,232,.1)}.bsel-list li[aria-selected="true"]{background:rgba(63,224,232,.16)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+.flag{width:22px;height:15px;flex:none;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+select{display:none}
 @media (max-width:620px){.row{grid-template-columns:1fr}.top{margin-bottom:40px}fieldset{padding:20px}}
 @media (prefers-reduced-motion:reduce){.send::before,.send::after{animation:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(14,20,56,.92)}}
@@ -98,19 +111,17 @@ button:disabled{opacity:.5;cursor:default;transform:none}
       <div class="row"><label>الاسم الكامل<input name="name" autocomplete="name" required maxlength="120"></label>
         <label>الدور<select name="role" id="roleSel"></select></label></div>
       <div class="row"><label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
-        <label>واتساب<input name="phone" type="tel" dir="ltr" autocomplete="tel" placeholder="+971…"></label></div>
-      <div class="row"><label>المدينة والدولة<input name="city" maxlength="120"></label>
-        <label>اللغات<input name="langs" placeholder="عربي، إنجليزي" maxlength="120"></label></div>
+        <label data-f="phone"><span class="lab">واتساب</span><span class="tel"><select name="dial" id="dialSel" aria-label="مفتاح الدولة"></select><input name="phone" type="tel" dir="ltr" autocomplete="tel-national" inputmode="tel" placeholder="50 123 4567"></span></label></div>
+      <div class="row"><label data-f="city"><span class="lab">المدينة والدولة</span><input name="city" maxlength="120"></label>
+        <label data-f="langs"><span class="lab">اللغات</span><input name="langs" placeholder="عربي، إنجليزي" maxlength="120"></label></div>
     </fieldset>
     <fieldset class="glass"><legend>شغلك</legend>
-      <label>رابط الشوريل<input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
-      <label>روابط أعمال أخرى<textarea name="links" dir="ltr" placeholder="رابط بكل سطر: Behance، Instagram، Drive…"></textarea><span class="hint">رابط واحد على الأقل، بين الشوريل وهذه الروابط</span></label>
-      <label>الأدوات التي تتقنها<input name="tools" placeholder="Premiere Pro، After Effects، DaVinci…" maxlength="300"></label>
+      <label data-f="reel"><span class="lab">رابط الشوريل</span><input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
+      <label data-f="links"><span class="lab">روابط أعمال أخرى</span><textarea name="links" dir="ltr" placeholder="رابط بكل سطر: Behance، Instagram، Drive…"></textarea><span class="hint">رابط واحد على الأقل، بين الشوريل وهذه الروابط</span></label>
+      <label data-f="tools"><span class="lab">الأدوات التي تتقنها</span><input name="tools" placeholder="Premiere Pro، After Effects، DaVinci…" maxlength="300"></label>
     </fieldset>
     <fieldset class="glass"><legend>طريقة العمل</legend>
-      <div class="row"><label>ساعات متاحة أسبوعياً<input name="hours" type="number" min="1" max="80" dir="ltr"></label>
-        <label>أجرك المتوقع<input name="rate" placeholder="مثال: 40$ للريل، أو 15$ للساعة" maxlength="120"></label></div>
-      <label>سطور عنك<textarea name="about" maxlength="2000" placeholder="ما الذي تحبه في العمل، وما الذي يميز طريقتك"></textarea></label>
+      <label data-f="about"><span class="lab">سطور عنك</span><textarea name="about" maxlength="2000" placeholder="ما الذي تحبه في العمل، وما الذي يميز طريقتك"></textarea></label>
     </fieldset>
     <div class="hp" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
     <span class="send"><button type="submit">أرسل الطلب</button></span>
@@ -119,9 +130,10 @@ button:disabled{opacity:.5;cursor:default;transform:none}
 
   <div id="done" class="done glass" hidden><h2>وصل طلبك</h2><p>نراجع الأعمال بهدوء. إن رأينا تقاطعاً، نرسل لك مهمة تجريبية قصيرة مدفوعة، ثم نتحدث</p></div>
 </div>
+<script src="assets/js/flags.js"></script>
 <script>
 (function(){
-  var RA={editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
+  var RA={voice:'معلّق صوتي',illustrator:'رسّام',social:'مدير سوشال ميديا',subtitles:'مترجم ومحرّر نصوص',editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
   var $=function(s){return document.querySelector(s)}, f=$('#apply'), m=$('#msg');
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
@@ -129,19 +141,41 @@ button:disabled{opacity:.5;cursor:default;transform:none}
     $('#roles').innerHTML=j.roles.map(function(r){return '<button type="button" data-r="'+r+'">'+(RA[r]||r)+'</button>'}).join('');
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
+    // the admin decides which fields show and which must be filled
+    var FL=j.fields||{}; [].forEach.call(f.querySelectorAll('[data-f]'),function(l){ var v=FL[l.dataset.f]||'optional', el=l.querySelector('input:not([type=hidden]),textarea');
+      l.hidden=v==='hidden'; if(el) el.required=v==='required'; var s=l.querySelector('.lab'); s.innerHTML=s.textContent.replace(/\s*[*·].*$/,'')+(v==='required'?' <i class="req">*</i>':' <small>'+"اختياري"+'</small>'); });
+    var ds=$('#dialSel'); ds.innerHTML=(window.EB_DIAL||[]).map(function(x){ return '<option value="'+x[1]+'">'+x[1]+'</option>'; }).join(''); bsel(ds,function(v){ var d=(window.EB_DIAL||[]).filter(function(x){ return x[1]===v; })[0]; return d&&window.EB_FLAG?EB_FLAG(d[0]):''; });
+    bsel($('#roleSel'));
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
-  var COPY={"editor":["نبحث عن مونتير يعرف متى يقطع","إيقاع، وصبر على التفاصيل، وحسّ بالقصة قبل الأدوات. تعمل معنا على إعلانات وأفلام قصيرة ومحتوى سوشال لعلامات في الخليج والمنطقة"],"motion":["نبحث عن موشن ديزاينر يحرّك الفكرة لا الأشكال","توقيت دقيق، ومنحنيات حركة نظيفة، وذوق في التفاصيل الصغيرة. شعارات وإعلانات وشروحات لعلامات في الخليج والمنطقة"],"color":["نبحث عن كولوريست يعرف أين يقع الضوء","لون يخدم المزاج ولا يستعرض. تعمل على إعلانات وأفلام قصيرة من كاميرات مختلفة، وتسلّم صورة متّسقة من لقطة إلى أخرى"],"sound":["نبحث عن مهندس صوت يُسمعنا ما لا يُرى","تصميم صوت، وتنظيف حوار، وميكس نظيف لكل منصة. الصوت عندنا نصف الصورة"],"writer":["نبحث عن كاتب يقول الكثير في سطر","سكريبتات إعلانات، وكابشن، ونصوص على الشاشة، بالعربية أولاً. جمل قصيرة ومحددة، وظُرف حين يلزم"],"shooter":["نبحث عن مصوّر يرى الإطار قبل أن يرفع الكاميرا","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. إضاءة مدروسة، وحركة هادئة، ولقطات تصلح للمونتاج"],"designer":["نبحث عن مصمم يعرف متى يحذف","هويات، وبوسترات، ومواد سوشال بشبكة واحدة ومسافات منتظمة. بساطة محسوبة، لا فراغ"],"producer":["نبحث عن منسّق إنتاج يبقي كل شيء في موعده","متابعة المشاريع بين الفريق والعملاء، وجداول، وتفاصيل لوجستية. هدوء تحت الضغط ودقة في المواعيد"]};
+  var COPY=Object.assign({"voice":["نبحث عن معلّق صوتي يُصدَّق من أول جملة","إعلانات وأفلام تعريفية بلهجات الخليج والشام والفصحى. أداء طبيعي، ونَفَس مضبوط، وتسجيل نظيف"],"illustrator":["نبحث عن رسّام يرسم ما لا تلتقطه الكاميرا","رسوم للموشن والستوري بورد والحملات. خط واثق، وألوان محسوبة، وقدرة على تبسيط الفكرة"],"social":["نبحث عن مدير سوشال ميديا يعرف ماذا يوقف الإبهام","خطط محتوى، وجدولة، وقراءة أرقام، وتواصل مع الجمهور لعلامات في الخليج. ذوق في الاختيار، ونَفَس طويل"],"subtitles":["نبحث عن مترجم يحفظ المعنى قبل الكلمات","ترجمة وترجمة على الشاشة بين العربية والإنجليزية، بتوقيت دقيق ولغة تناسب كل جمهور"]},{"editor":["نبحث عن مونتير يعرف متى يقطع","إيقاع، وصبر على التفاصيل، وحسّ بالقصة قبل الأدوات. تعمل معنا على إعلانات وأفلام قصيرة ومحتوى سوشال لعلامات في الخليج والمنطقة"],"motion":["نبحث عن موشن ديزاينر يحرّك الفكرة لا الأشكال","توقيت دقيق، ومنحنيات حركة نظيفة، وذوق في التفاصيل الصغيرة. شعارات وإعلانات وشروحات لعلامات في الخليج والمنطقة"],"color":["نبحث عن كولوريست يعرف أين يقع الضوء","لون يخدم المزاج ولا يستعرض. تعمل على إعلانات وأفلام قصيرة من كاميرات مختلفة، وتسلّم صورة متّسقة من لقطة إلى أخرى"],"sound":["نبحث عن مهندس صوت يُسمعنا ما لا يُرى","تصميم صوت، وتنظيف حوار، وميكس نظيف لكل منصة. الصوت عندنا نصف الصورة"],"writer":["نبحث عن كاتب يقول الكثير في سطر","سكريبتات إعلانات، وكابشن، ونصوص على الشاشة، بالعربية أولاً. جمل قصيرة ومحددة، وظُرف حين يلزم"],"shooter":["نبحث عن مصوّر يرى الإطار قبل أن يرفع الكاميرا","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. إضاءة مدروسة، وحركة هادئة، ولقطات تصلح للمونتاج"],"designer":["نبحث عن مصمم يعرف متى يحذف","هويات، وبوسترات، ومواد سوشال بشبكة واحدة ومسافات منتظمة. بساطة محسوبة، لا فراغ"],"producer":["نبحث عن منسّق إنتاج يبقي كل شيء في موعده","متابعة المشاريع بين الفريق والعملاء، وجداول، وتفاصيل لوجستية. هدوء تحت الضغط ودقة في المواعيد"]});
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
     [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
   $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
   $('#roleSel').onchange=function(){ pick(this.value); };
+  // a glass dropdown in place of the browser's grey one; the real <select> stays for the form
+  function bsel(sel,icon){ icon=icon||function(){ return ''; }; var w=sel._b; if(!w){ w=document.createElement('div'); w.className='bsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel._b=w;
+      var b=document.createElement('button'); b.type='button'; b.className='bsel-btn'; b.setAttribute('aria-haspopup','listbox'); b.setAttribute('aria-expanded','false'); w.appendChild(b);
+      var l=document.createElement('ul'); l.className='bsel-list'; l.setAttribute('role','listbox'); l.hidden=true; w.appendChild(l);
+      var open=function(on){ l.hidden=!on; w.classList.toggle('open',on); b.setAttribute('aria-expanded',on); if(on){ var c=l.querySelector('[aria-selected="true"]')||l.firstChild; c&&c.focus(); } };
+      b.onclick=function(){ open(l.hidden); };
+      l.onclick=function(e){ var li=e.target.closest('li'); if(!li) return; sel.value=li.dataset.v; sel.dispatchEvent(new Event('change',{bubbles:true})); open(false); b.focus(); };
+      l.onkeydown=function(e){ var li=document.activeElement; if(e.key==='ArrowDown'&&li.nextSibling){ e.preventDefault(); li.nextSibling.focus(); } else if(e.key==='ArrowUp'&&li.previousSibling){ e.preventDefault(); li.previousSibling.focus(); } else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); li.click(); } else if(e.key==='Escape'){ open(false); b.focus(); } };
+      document.addEventListener('click',function(e){ if(!w.contains(e.target)) open(false); });
+      sel.addEventListener('change',function(){ w._draw(); });
+      w._draw=function(){ var o=sel.options[sel.selectedIndex]; b.innerHTML='<span class="bv">'+icon(o?o.value:'')+'<span>'+(o?o.text:'')+'</span></span><i aria-hidden="true"></i>';
+        l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+o.value+'" aria-selected="'+o.selected+'">'+icon(o.value)+'<span>'+o.text+'</span></li>'; }).join(''); }; }
+    w._draw(); }
   f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
-    ['name','role','email','phone','city','langs','reel','links','tools','hours','rate','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    if(d.phone) d.phone=E.dial.value+' '+d.phone.replace(/^0+/,'');
+    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&!el.value.trim(); })[0];
+    if(miss){ m.textContent="اكتب {f}".replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
     var links=d.links.split('\n').filter(function(x){return /^https?:\/\//i.test(x.trim())});
     if(d.name.length<2){ m.textContent='اكتب اسمك الكامل'; m.className='msg err'; E.name.focus(); return; }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ m.textContent='اكتب بريداً صحيحاً'; m.className='msg err'; E.email.focus(); return; }
-    if(!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='أضف رابط شوريل أو رابط أعمال واحداً على الأقل (يبدأ بـ https://)'; m.className='msg err'; E.reel.focus(); return; }
+    var showLinks=!f.querySelector('[data-f="reel"]').hidden||!f.querySelector('[data-f="links"]').hidden;
+    if(showLinks&&!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='أضف رابط شوريل أو رابط أعمال واحداً على الأقل (يبدأ بـ https://)'; m.className='msg err'; E.reel.focus(); return; }
     var b=f.querySelector('button'); b.disabled=true; m.textContent='';
     fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json()}).then(function(j){
       if(j.ok){ f.hidden=true; $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); return; }

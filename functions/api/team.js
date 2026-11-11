@@ -9,8 +9,11 @@
 //          POST /api/team { action:"start"|"submit"|"comment", id, … }
 // admin    GET  /api/team?admin=1                        → applications, members, tasks, settings
 //          POST /api/team { action:"settings"|"app"|"appDelete"|"memberCreate"|"memberUpdate"|"memberReset"|"taskSave"|"taskReview"|"taskPaid"|"taskDelete", … }
-const ROLES = ["editor", "motion", "color", "sound", "writer", "shooter", "designer", "producer"];
-const ROLE_AR = { editor: "مونتير", motion: "موشن ديزاينر", color: "كولوريست", sound: "مهندس صوت", writer: "كاتب محتوى", shooter: "مصوّر", designer: "مصمم", producer: "منسّق إنتاج" };
+const ROLES = ["editor", "motion", "color", "sound", "writer", "shooter", "designer", "producer", "voice", "illustrator", "social", "subtitles"];
+// the application fields the studio can show as optional, require, or hide (name and e-mail are always asked)
+const FIELDS = ["phone", "city", "langs", "reel", "links", "tools", "about"];
+const cleanFields = x => Object.fromEntries(FIELDS.map(k => [k, ["hidden", "optional", "required"].includes((x || {})[k]) ? x[k] : "optional"]));
+const ROLE_AR = { editor: "مونتير", motion: "موشن ديزاينر", color: "كولوريست", sound: "مهندس صوت", writer: "كاتب محتوى", shooter: "مصوّر", designer: "مصمم", producer: "منسّق إنتاج", voice: "معلّق صوتي", illustrator: "رسّام", social: "مدير سوشال ميديا", subtitles: "مترجم ومحرّر نصوص" };
 const APP_ST = ["new", "trial", "interview", "accepted", "rejected"];
 const TASK_ST = ["assigned", "progress", "qc", "changes", "approved"];
 const MAIL_OK = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
@@ -42,7 +45,7 @@ async function sessionCookie(env, email){ const t = randHex(24); await env.EB.pu
 
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
-  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], intro: s.open ? s.intro || "" : "" }); }
+  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields) }); }
   if (q.get("me")) {
     const u = await member(request, env); if (!u) return json({ ok: false }, 401);
     // shortcut: reads every task to find this member’s (one KV read each), fine up to a few hundred tasks; past that keep task ids on the member record
@@ -90,9 +93,11 @@ async function apply(ctx, d, ip){
   const a = { id: "a_" + randHex(6), at: new Date().toISOString(), status: "new",
     name: C_(d.name, 120), email: C_(d.email, 254).toLowerCase(), phone: C_(d.phone, 40), role: ROLES.includes(d.role) ? d.role : "editor",
     city: C_(d.city, 120), tz: C_(d.tz, 60), links: L_(d.links, 6, 400).filter(x => URL_OK.test(x)), reel: URL_OK.test(C_(d.reel, 600)) ? C_(d.reel, 600) : "",
-    tools: C_(d.tools, 300), hours: Math.max(0, Math.min(80, parseInt(d.hours) || 0)), rate: C_(d.rate, 120), langs: C_(d.langs, 120), about: C_(d.about, 2000),
+    tools: C_(d.tools, 300), langs: C_(d.langs, 120), about: C_(d.about, 2000),
     notes: "", history: [] };
-  if (a.name.length < 2 || !MAIL_OK.test(a.email) || !(a.links.length || a.reel)) return json({ ok: false, error: "fields" }, 400);
+  const fl = cleanFields(s.fields), linksShown = fl.reel !== "hidden" || fl.links !== "hidden";
+  const missing = FIELDS.filter(k => fl[k] === "required" && !(Array.isArray(a[k]) ? a[k].length : a[k]));
+  if (a.name.length < 2 || !MAIL_OK.test(a.email) || missing.length || (linksShown && !(a.links.length || a.reel))) return json({ ok: false, error: "fields", missing }, 400);
   await env.EB.put("teamapp:" + a.id, JSON.stringify(a));
   ctx.waitUntil(telegram(env, "🧑‍🎨 طلب انضمام جديد — " + a.name + " · " + (ROLE_AR[a.role] || a.role) + (a.city ? " · " + a.city : "") + "\n" + SITE + "/admin/#team"));
   return json({ ok: true });
@@ -127,7 +132,7 @@ async function memberAction(ctx, u, d){
 async function adminAction(ctx, d){
   const { env } = ctx, now = new Date().toISOString();
   if (d.action === "settings") {
-    const s = { open: !!d.open, roles: (Array.isArray(d.roles) ? d.roles : []).filter(r => ROLES.includes(r)), intro: C_(d.intro, 1200) };
+    const s = { open: !!d.open, roles: (Array.isArray(d.roles) ? d.roles : []).filter(r => ROLES.includes(r)), intro: C_(d.intro, 1200), fields: cleanFields(d.fields) };
     await env.EB.put("team:settings", JSON.stringify(s)); return json({ ok: true, settings: s });
   }
   if (d.action === "app" || d.action === "appDelete") {

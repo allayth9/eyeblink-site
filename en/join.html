@@ -77,6 +77,19 @@ button:disabled{opacity:.5;cursor:default;transform:none}
 .roles button[aria-pressed="true"]{background:rgba(63,224,232,.12);color:var(--light);box-shadow:inset 0 0 0 1px rgba(63,224,232,.45)}
 .roles button[aria-pressed="false"]{color:var(--mist)}
 @media (prefers-reduced-motion:reduce){.glass::after{animation:none}}
+.lab small{font-size:11.5px;color:var(--dim);margin-inline-start:4px}.lab .req{font-style:normal;color:var(--horizon)}
+.tel{display:grid;grid-template-columns:auto 1fr;gap:8px;direction:ltr}
+.bsel{position:relative}.bsel select{position:absolute;opacity:0;pointer-events:none;inset:0}
+.bsel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);border:0;border-radius:14px;padding:13px 15px;cursor:pointer;background:rgba(4,6,26,.38);box-shadow:inset 0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .25s var(--ease),background .25s var(--ease)}
+.bsel-btn:hover{background:rgba(4,6,26,.5)}.bsel.open .bsel-btn,.bsel-btn:focus-visible{outline:0;box-shadow:inset 0 0 0 1px rgba(63,224,232,.5),0 0 0 4px rgba(63,224,232,.06)}
+.bsel-btn>i{width:8px;height:8px;border-inline-end:1.5px solid var(--mist);border-bottom:1.5px solid var(--mist);transform:translateY(-2px) rotate(45deg);transition:transform .25s var(--ease)}
+.bsel.open .bsel-btn>i{transform:translateY(2px) rotate(-135deg)}
+.bv,.bsel-list li{display:flex;align-items:center;gap:10px;min-width:0}.bv span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bsel-list{position:absolute;z-index:10;inset-inline:0;top:calc(100% + 6px);min-width:max-content;margin:0;padding:6px;list-style:none;border-radius:16px;max-height:280px;overflow:auto;background:rgba(11,18,54,.92);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 24px 60px -20px rgba(0,0,0,.7);transform-origin:top center;animation:pop .18s cubic-bezier(.23,1,.32,1)}
+.bsel-list li{padding:9px 11px;border-radius:11px;font-size:14.5px;cursor:pointer;outline:0}.bsel-list li:hover,.bsel-list li:focus{background:rgba(63,224,232,.1)}.bsel-list li[aria-selected="true"]{background:rgba(63,224,232,.16)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+.flag{width:22px;height:15px;flex:none;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+select{display:none}
 @media (max-width:620px){.row{grid-template-columns:1fr}.top{margin-bottom:40px}fieldset{padding:20px}}
 @media (prefers-reduced-motion:reduce){.send::before,.send::after{animation:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(14,20,56,.92)}}
@@ -98,19 +111,17 @@ button:disabled{opacity:.5;cursor:default;transform:none}
       <div class="row"><label>Full name<input name="name" autocomplete="name" required maxlength="120"></label>
         <label>Role<select name="role" id="roleSel"></select></label></div>
       <div class="row"><label>Email<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
-        <label>WhatsApp<input name="phone" type="tel" dir="ltr" autocomplete="tel" placeholder="+971…"></label></div>
-      <div class="row"><label>City and country<input name="city" maxlength="120"></label>
-        <label>Languages<input name="langs" placeholder="Arabic, English" maxlength="120"></label></div>
+        <label data-f="phone"><span class="lab">WhatsApp</span><span class="tel"><select name="dial" id="dialSel" aria-label="Country code"></select><input name="phone" type="tel" dir="ltr" autocomplete="tel-national" inputmode="tel" placeholder="50 123 4567"></span></label></div>
+      <div class="row"><label data-f="city"><span class="lab">City and country</span><input name="city" maxlength="120"></label>
+        <label data-f="langs"><span class="lab">Languages</span><input name="langs" placeholder="Arabic, English" maxlength="120"></label></div>
     </fieldset>
     <fieldset class="glass"><legend>Your work</legend>
-      <label>Showreel link<input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
-      <label>Other work links<textarea name="links" dir="ltr" placeholder="One link per line: Behance, Instagram, Drive…"></textarea><span class="hint">At least one link, between the showreel and these</span></label>
-      <label>Tools you master<input name="tools" placeholder="Premiere Pro, After Effects, DaVinci…" maxlength="300"></label>
+      <label data-f="reel"><span class="lab">Showreel link</span><input name="reel" type="url" dir="ltr" placeholder="https://vimeo.com/…"></label>
+      <label data-f="links"><span class="lab">Other work links</span><textarea name="links" dir="ltr" placeholder="One link per line: Behance, Instagram, Drive…"></textarea><span class="hint">At least one link, between the showreel and these</span></label>
+      <label data-f="tools"><span class="lab">Tools you master</span><input name="tools" placeholder="Premiere Pro, After Effects, DaVinci…" maxlength="300"></label>
     </fieldset>
     <fieldset class="glass"><legend>How you work</legend>
-      <div class="row"><label>Hours available per week<input name="hours" type="number" min="1" max="80" dir="ltr"></label>
-        <label>Your expected rate<input name="rate" placeholder="e.g. $40 per reel, or $15 an hour" maxlength="120"></label></div>
-      <label>A few lines about you<textarea name="about" maxlength="2000" placeholder="What you love in the work, and what sets your way apart"></textarea></label>
+      <label data-f="about"><span class="lab">A few lines about you</span><textarea name="about" maxlength="2000" placeholder="What you love in the work, and what sets your way apart"></textarea></label>
     </fieldset>
     <div class="hp" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
     <span class="send"><button type="submit">Send application</button></span>
@@ -119,9 +130,10 @@ button:disabled{opacity:.5;cursor:default;transform:none}
 
   <div id="done" class="done glass" hidden><h2>Application received</h2><p>We review every portfolio carefully. If we see a fit, we send you a short paid trial task, then we talk</p></div>
 </div>
+<script src="../assets/js/flags.js"></script>
 <script>
 (function(){
-  var RA={editor:'Video editor',motion:'Motion designer',color:'Colorist',sound:'Sound engineer',writer:'Copywriter',shooter:'Videographer',designer:'Designer',producer:'Production coordinator'};
+  var RA={voice:'Voice-over artist',illustrator:'Illustrator',social:'Social media manager',subtitles:'Translator & subtitler',editor:'Video editor',motion:'Motion designer',color:'Colorist',sound:'Sound engineer',writer:'Copywriter',shooter:'Videographer',designer:'Designer',producer:'Production coordinator'};
   var $=function(s){return document.querySelector(s)}, f=$('#apply'), m=$('#msg');
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
@@ -129,19 +141,41 @@ button:disabled{opacity:.5;cursor:default;transform:none}
     $('#roles').innerHTML=j.roles.map(function(r){return '<button type="button" data-r="'+r+'">'+(RA[r]||r)+'</button>'}).join('');
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
+    // the admin decides which fields show and which must be filled
+    var FL=j.fields||{}; [].forEach.call(f.querySelectorAll('[data-f]'),function(l){ var v=FL[l.dataset.f]||'optional', el=l.querySelector('input:not([type=hidden]),textarea');
+      l.hidden=v==='hidden'; if(el) el.required=v==='required'; var s=l.querySelector('.lab'); s.innerHTML=s.textContent.replace(/\s*[*·].*$/,'')+(v==='required'?' <i class="req">*</i>':' <small>'+"optional"+'</small>'); });
+    var ds=$('#dialSel'); ds.innerHTML=(window.EB_DIAL||[]).map(function(x){ return '<option value="'+x[1]+'">'+x[1]+'</option>'; }).join(''); bsel(ds,function(v){ var d=(window.EB_DIAL||[]).filter(function(x){ return x[1]===v; })[0]; return d&&window.EB_FLAG?EB_FLAG(d[0]):''; });
+    bsel($('#roleSel'));
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
-  var COPY={"editor":["We are looking for an editor who knows when to cut","Rhythm, patience with detail, and a feel for story before tools. Ads, short films and social content for brands across the Gulf and the region"],"motion":["We are looking for a motion designer who moves ideas, not shapes","Precise timing, clean motion curves and taste in the small things. Logos, ads and explainers for brands across the Gulf and the region"],"color":["We are looking for a colorist who knows where the light falls","Colour that serves the mood instead of showing off. Ads and short films from mixed cameras, delivered consistent from shot to shot"],"sound":["We are looking for a sound engineer who makes us hear what we cannot see","Sound design, dialogue clean-up and a clean mix for every platform. For us, sound is half the picture"],"writer":["We are looking for a writer who says a lot in a line","Ad scripts, captions and on-screen text, Arabic first. Short, precise lines, and wit when it is needed"],"shooter":["We are looking for a videographer who sees the frame before lifting the camera","Shoots in Gulf cities for ads and brand content. Considered light, calm movement and footage that cuts well"],"designer":["We are looking for a designer who knows when to remove","Identities, posters and social assets on one grid with even spacing. Measured simplicity, never emptiness"],"producer":["We are looking for a production coordinator who keeps everything on time","Running projects between the team and clients, schedules and logistics. Calm under pressure, exact with dates"]};
+  var COPY=Object.assign({"voice":["We are looking for a voice-over artist people believe from the first line","Ads and brand films in Gulf, Levantine and standard Arabic. Natural delivery, controlled breath and a clean recording"],"illustrator":["We are looking for an illustrator who draws what cameras miss","Art for motion, storyboards and campaigns. A confident line, measured colour and a gift for simplifying ideas"],"social":["We are looking for a social media manager who knows what stops the thumb","Content plans, scheduling, reading the numbers and talking with audiences for Gulf brands. Taste, and stamina"],"subtitles":["We are looking for a translator who keeps the meaning before the words","Translation and subtitles between Arabic and English, timed precisely, in a voice that fits each audience"]},{"editor":["We are looking for an editor who knows when to cut","Rhythm, patience with detail, and a feel for story before tools. Ads, short films and social content for brands across the Gulf and the region"],"motion":["We are looking for a motion designer who moves ideas, not shapes","Precise timing, clean motion curves and taste in the small things. Logos, ads and explainers for brands across the Gulf and the region"],"color":["We are looking for a colorist who knows where the light falls","Colour that serves the mood instead of showing off. Ads and short films from mixed cameras, delivered consistent from shot to shot"],"sound":["We are looking for a sound engineer who makes us hear what we cannot see","Sound design, dialogue clean-up and a clean mix for every platform. For us, sound is half the picture"],"writer":["We are looking for a writer who says a lot in a line","Ad scripts, captions and on-screen text, Arabic first. Short, precise lines, and wit when it is needed"],"shooter":["We are looking for a videographer who sees the frame before lifting the camera","Shoots in Gulf cities for ads and brand content. Considered light, calm movement and footage that cuts well"],"designer":["We are looking for a designer who knows when to remove","Identities, posters and social assets on one grid with even spacing. Measured simplicity, never emptiness"],"producer":["We are looking for a production coordinator who keeps everything on time","Running projects between the team and clients, schedules and logistics. Calm under pressure, exact with dates"]});
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
     [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
   $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
   $('#roleSel').onchange=function(){ pick(this.value); };
+  // a glass dropdown in place of the browser's grey one; the real <select> stays for the form
+  function bsel(sel,icon){ icon=icon||function(){ return ''; }; var w=sel._b; if(!w){ w=document.createElement('div'); w.className='bsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel._b=w;
+      var b=document.createElement('button'); b.type='button'; b.className='bsel-btn'; b.setAttribute('aria-haspopup','listbox'); b.setAttribute('aria-expanded','false'); w.appendChild(b);
+      var l=document.createElement('ul'); l.className='bsel-list'; l.setAttribute('role','listbox'); l.hidden=true; w.appendChild(l);
+      var open=function(on){ l.hidden=!on; w.classList.toggle('open',on); b.setAttribute('aria-expanded',on); if(on){ var c=l.querySelector('[aria-selected="true"]')||l.firstChild; c&&c.focus(); } };
+      b.onclick=function(){ open(l.hidden); };
+      l.onclick=function(e){ var li=e.target.closest('li'); if(!li) return; sel.value=li.dataset.v; sel.dispatchEvent(new Event('change',{bubbles:true})); open(false); b.focus(); };
+      l.onkeydown=function(e){ var li=document.activeElement; if(e.key==='ArrowDown'&&li.nextSibling){ e.preventDefault(); li.nextSibling.focus(); } else if(e.key==='ArrowUp'&&li.previousSibling){ e.preventDefault(); li.previousSibling.focus(); } else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); li.click(); } else if(e.key==='Escape'){ open(false); b.focus(); } };
+      document.addEventListener('click',function(e){ if(!w.contains(e.target)) open(false); });
+      sel.addEventListener('change',function(){ w._draw(); });
+      w._draw=function(){ var o=sel.options[sel.selectedIndex]; b.innerHTML='<span class="bv">'+icon(o?o.value:'')+'<span>'+(o?o.text:'')+'</span></span><i aria-hidden="true"></i>';
+        l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+o.value+'" aria-selected="'+o.selected+'">'+icon(o.value)+'<span>'+o.text+'</span></li>'; }).join(''); }; }
+    w._draw(); }
   f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
-    ['name','role','email','phone','city','langs','reel','links','tools','hours','rate','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    if(d.phone) d.phone=E.dial.value+' '+d.phone.replace(/^0+/,'');
+    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&!el.value.trim(); })[0];
+    if(miss){ m.textContent="Fill in {f}".replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
     var links=d.links.split('\n').filter(function(x){return /^https?:\/\//i.test(x.trim())});
     if(d.name.length<2){ m.textContent='Enter your full name'; m.className='msg err'; E.name.focus(); return; }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ m.textContent='Enter a valid email'; m.className='msg err'; E.email.focus(); return; }
-    if(!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='Add a showreel or at least one work link (starting with https://)'; m.className='msg err'; E.reel.focus(); return; }
+    var showLinks=!f.querySelector('[data-f="reel"]').hidden||!f.querySelector('[data-f="links"]').hidden;
+    if(showLinks&&!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='Add a showreel or at least one work link (starting with https://)'; m.className='msg err'; E.reel.focus(); return; }
     var b=f.querySelector('button'); b.disabled=true; m.textContent='';
     fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json()}).then(function(j){
       if(j.ok){ f.hidden=true; $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); return; }

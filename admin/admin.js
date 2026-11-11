@@ -982,7 +982,8 @@
 
   /* ================= the team: applications → trial → account → collaboration agreement → tasks → review → pay ================= */
   var TEAM=null, TSUB='tasks', TOPEN=null;
-  var TROLE={editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
+  var TROLE={editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج',voice:'معلّق صوتي',illustrator:'رسّام',social:'مدير سوشال ميديا',subtitles:'مترجم ومحرّر نصوص'};
+  var TFIELDS=[['phone','واتساب'],['city','المدينة والدولة'],['langs','اللغات'],['reel','رابط الشوريل'],['links','روابط أعمال أخرى'],['tools','الأدوات'],['about','سطور عنه']];
   var TAPP={new:'جديد',trial:'مهمة تجريبية',interview:'مقابلة',accepted:'مقبول',rejected:'مرفوض'};
   var TTST={assigned:'جديدة',progress:'قيد العمل',changes:'تعديلات مطلوبة',qc:'بانتظار مراجعتك',approved:'معتمدة'};
   function loadTeam(){ if(!LIVE){ TEAM={err:'live',apps:[],members:[],tasks:[],settings:{}}; if(TAB==='team') renderTeam(); return; }
@@ -1040,7 +1041,7 @@
     return '<form class="sec" id="tSet"><h3>التوظيف</h3><p class="hint">لما يكون مفعّل، صفحة <a href="/join" target="_blank" dir="ltr">eyeblinkstudio.com/join</a> بتستقبل طلبات. لما يكون مطفي، بتقول «لا نستقبل طلبات حالياً»</p>'+
       '<label class="check"><input type="checkbox" name="open"'+(s.open?' checked':'')+'> نستقبل طلبات انضمام</label>'+
       '<div class="field"><label>الأدوار المطلوبة</label><div class="dpay">'+Object.keys(TROLE).map(function(r){ var on=roles.indexOf(r)>=0; return '<label class="dchip'+(on?' on':'')+'"><input type="checkbox" name="roles" value="'+r+'"'+(on?' checked':'')+'>'+TROLE[r]+'</label>'; }).join('')+'</div></div>'+
-      '<div class="field"><label>سطرين بأول الصفحة (اختياري)</label><textarea name="intro" dir="auto">'+esc(s.intro||'')+'</textarea></div><div class="actions"><button class="btn primary" type="submit">حفظ</button><a class="btn" href="/join" target="_blank">افتح الصفحة</a></div></form>';
+      '<div class="field"><label>خانات النموذج</label><p class="hint" style="margin:0">الاسم والإيميل دايماً إجباريين. كل خانة تانية: مخفية، أو اختيارية، أو إجبارية</p><div class="tfields">'+TFIELDS.map(function(x){ var v=(s.fields||{})[x[0]]||'optional'; return '<label class="tfrow"><span>'+x[1]+'</span><select name="f_'+x[0]+'">'+[['optional','اختيارية'],['required','إجبارية'],['hidden','مخفية']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></label>'; }).join('')+'</div></div><div class="actions"><button class="btn primary" type="submit">حفظ</button><a class="btn" href="/join" target="_blank">افتح الصفحة</a></div></form>';
   }
   // the collaboration agreement: written from the member's role; studio can edit it before sending like any agreement
   function teamClauses(lang,v){
@@ -1116,7 +1117,8 @@
           msg:'أهلاً '+j.member.name+'، صار عندك حساب ببوابة فريق Eyeblink:\n'+j.link+'\nالإيميل: '+j.member.email+'\nكلمة السر المؤقتة: '+j.password+'\nأول دخول بتختار كلمة سرك، وبتلاقي اتفاقية التعاون لتوقّعها',phone:E2.phone.value.trim()});
         TSUB='members'; loadTeam(); }).catch(function(){}); return; }
     if(f.id==='tSet'){ e.preventDefault(); var roles=[].map.call(f.querySelectorAll('[name=roles]:checked'),function(i){ return i.value; });
-      treq({action:'settings',open:f.elements.open.checked,roles:roles,intro:f.elements.intro.value},f.querySelector('[type=submit]'),f.elements.open.checked?'صفحة التقديم مفتوحة':'صفحة التقديم مسكّرة').then(function(j){ TEAM.settings=j.settings; renderTeam(); }).catch(function(){}); }
+      var fields={}; TFIELDS.forEach(function(x){ fields[x[0]]=f.elements['f_'+x[0]].value; });
+      treq({action:'settings',open:f.elements.open.checked,roles:roles,intro:(TEAM.settings||{}).intro||'',fields:fields},f.querySelector('[type=submit]'),f.elements.open.checked?'صفحة التقديم مفتوحة':'صفحة التقديم مسكّرة').then(function(j){ TEAM.settings=j.settings; renderTeam(); }).catch(function(){}); }
   });
   document.addEventListener('change',function(e){ var el=e.target; if(el.closest('#tSet')&&el.name==='roles') el.closest('.dchip').classList.toggle('on',el.checked); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-tsub],[data-tnew],[data-ttask],[data-tclose],[data-tcopy],[data-treview],[data-tpaid],[data-tcomment],[data-tdel],[data-tmadd],[data-tcontract],[data-treset],[data-tpause],[data-tpayall],[data-asave],[data-aaccept],[data-adel]'); if(!b) return;

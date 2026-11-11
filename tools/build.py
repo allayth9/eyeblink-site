@@ -395,9 +395,8 @@ def build(lang, page):
 <div class="field-end" data-field-end aria-hidden="true"></div>
 <footer><div class="wrap row">
   <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
-  <nav aria-label="{U["quick"]}">{foot_nav}</nav>
-  <span class="c"><a href="mailto:support@eyeblinkstudio.com">{"الدعم الفني" if lang == "ar" else "Support"}</a> · <a href="privacy.html">{U["titles"]["privacy"]}</a> · <a href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a></span>
-</div><div class="wrap"><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></footer>
+  <nav class="flegal" aria-label="{"روابط قانونية" if lang == "ar" else "Legal"}"><a href="mailto:support@eyeblinkstudio.com">{"الدعم الفني" if lang == "ar" else "Support"}</a><a href="privacy.html">{U["titles"]["privacy"]}</a></nav>
+</div><div class="wrap"><div class="fbase"><a class="copy" href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></div></footer>
 <nav class="dock glass" aria-label="{U["menu"]}">{dock}</nav>
 <script type="application/json" id="eb-seed">{seed()}</script>
 <script src="{THREE}"></script>

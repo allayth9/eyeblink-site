@@ -2089,3 +2089,15 @@ body:has(.wa-float) .help-float{bottom:calc(max(22px,env(safe-area-inset-bottom,
 .curhost .dsel{flex:0 1 250px;min-width:0}
 .wsx .curhost{margin:0 0 14px;justify-content:flex-start}
 .flag{width:24px;height:16px;flex:none;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+
+/* footer: two quiet lines — the mark and the legal links; then copyright and the payment marks */
+footer{padding-block:44px 30px}
+footer .row{justify-content:space-between;align-items:center}
+.flegal{display:flex;flex-wrap:wrap;gap:8px 28px}
+.flegal a{font-size:14px;color:var(--mist);text-decoration:none;transition:color .2s ease}
+.flegal a:hover{color:var(--light)}
+.fbase{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}
+.fbase .copy{font-family:var(--latin);font-size:12.5px;letter-spacing:.06em;color:var(--dim);direction:ltr;text-decoration:none;transition:color .2s ease}
+.fbase .copy:hover{color:var(--mist)}
+.fbase .foot2{margin:0;padding:0;border:0}
+@media (max-width:620px){ footer .row{flex-direction:column;align-items:flex-start;gap:18px} .fbase{flex-direction:column-reverse;align-items:flex-start} }
