@@ -137,7 +137,9 @@
     if(STILL){ for(var q=0;q<items.length;q++){ var s=items[q]; s.enter=s.exit=s.t=1; } return; }
     for(var k=0;k<items.length;k++){
       var it=items[k], r=it.el.getBoundingClientRect();
-      var enter=clamp((H - r.top)/(H*0.42) - it.i*0.1);           // rises in over the lower 40% of the screen, staggered in a row
+      // near the end of the page there is not enough scroll left to lift an element 42% up the screen: it finishes by the last pixel instead
+      var left=Math.max(0,document.documentElement.scrollHeight-H-(window.pageYOffset||0)), span=Math.max(40,Math.min(H*0.42,(H-(r.top-left))/(1+it.i*0.1)));
+      var enter=clamp((H - r.top)/span - it.i*0.1);           // rises in over the lower 40% of the screen, staggered in a row
       var exit=clamp(r.bottom/(H*0.32));                          // fades back out as it leaves at the top
       it.enter=enter; it.exit=exit; it.t=Math.min(enter,exit);
     }

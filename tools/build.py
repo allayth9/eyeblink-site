@@ -20,7 +20,7 @@ for _f in ["assets/js/render.js", "admin/admin.js"]:
     _p = os.path.join(ROOT, _f); _t = open(_p, encoding="utf-8").read()
     _n = re.sub(r"/\*MIG\*/.*?/\*/MIG\*/", lambda m: "/*MIG*/" + _MIG + "/*/MIG*/", _t, flags=re.S)
     if _n != _t: open(_p, "w", encoding="utf-8").write(_n)
-ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/hdr.js","assets/js/brands.js","assets/js/fa.js","assets/img/favicon.svg"]}
+ASSET_V = {k: _v(k) for k in ["assets/css/site.css","assets/js/bg.js","assets/js/render.js","assets/js/site.js","assets/js/account.js","assets/js/portal.js","assets/js/hdr.js","assets/js/brands.js","assets/js/fa.js","assets/js/flags.js","assets/img/favicon.svg"]}
 PAGES = ["index", "services", *[f"service-{s}" for s in SERVICES], "work", "pricing", "about", "contact", "account", "workspace", "privacy"]
 PRIVATE = ("account", "workspace")   # signed-in pages: noindex, out of the sitemap
 
@@ -192,6 +192,7 @@ def order_modal(U, lang):
         <div class="oqty" id="qtyRow" hidden><span data-ot="qty">{T("عدد الفيديوهات", "Number of videos")}</span><div class="stepper"><button type="button" data-q="-1" aria-label="−">−</button><output id="qty">1</output><button type="button" data-q="1" aria-label="+">+</button></div></div>
         <p class="olab" data-ot="addons">{U["addons"]}</p>
         <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
+        <div class="curhost"><span>{"اعرض الأسعار بعملة" if lang == "ar" else "Show prices in"}</span></div>
         <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
         <p class="fine" id="priceNote"></p>
         <p class="fine" id="payNote"></p>
@@ -402,6 +403,7 @@ def build(lang, page):
 <script src="{THREE}"></script>
 <script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
 <script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
+<script src="{A}assets/js/flags.js?v={ASSET_V["assets/js/flags.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
 <script src="{A}assets/js/fa.js?v={ASSET_V["assets/js/fa.js"]}"></script>
 <script src="{A}assets/js/site.js?v={ASSET_V["assets/js/site.js"]}"></script>

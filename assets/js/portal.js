@@ -489,13 +489,14 @@
     });
   }
   /* ---- invoices: the client's own, with a printable copy ---- */
-  function money(n,c){ var a=Math.abs(+n||0), v=(Math.round(a*100)/100).toFixed(a%1?2:0); return ((+n||0)<0?'−':'')+(c==='$'||c==='€'||c==='£'?c+v:v+' '+c); }
+  function money(n,c){ var a=Math.abs(+n||0), v=(Math.round(a*100)/100).toFixed(a%1?2:0), eq=c==='$'&&a&&window.EBCur?EBCur.conv(a):''; return ((+n||0)<0?'−':'')+(c==='$'||c==='€'||c==='£'?c+v:v+' '+c)+(eq?' ≈ '+eq:''); }
   function invoices(openId){
     loading();
     api('?view=invoices').then(function(j){ if(!j.ok) return fail(j); var L2=j.invoices||[], by={};
       L2.forEach(function(x){ if(x.state==='cancelled'||x.state==='refunded') return; var c=x.currency; by[c]=by[c]||{due:0,paid:0}; by[c].due+=x.balance; by[c].paid+=x.paid; });
       var cur=Object.keys(by);
-      host.innerHTML=head('invoices','INVOICES',T.bl.h,T.bl.p)+
+      setTimeout(function(){ var h=host.querySelector('.curhost'); if(h&&window.EBCur) EBCur.pick(h); },0);
+      host.innerHTML=head('invoices','INVOICES',T.bl.h,T.bl.p)+'<div class="curhost"><span>'+(document.documentElement.lang==='en'?'Show the equivalent in':'اعرض المعادل بعملة')+'</span></div>'+
         (cur.length?'<div class="wkpis wkpis3">'+cur.map(function(c){ return '<div class="wkpi glass" style="--k:#F5C66B"><b dir="ltr">'+esc(money(by[c].due,c))+'</b><span>'+T.bl.open+'</span></div><div class="wkpi glass" style="--k:#5EF0B0"><b dir="ltr">'+esc(money(by[c].paid,c))+'</b><span>'+T.bl.paidAll+'</span></div>'; }).join('')+
           '<div class="wkpi glass" style="--k:#ff8c9c"><b>'+L2.filter(function(x){return x.state==='overdue'}).length+'</b><span>'+T.bl.overdue+'</span></div></div>':'')+
         (L2.length?'<div class="wtable"><table><thead><tr><th>'+T.bl.no+'</th><th>'+T.status+'</th><th>'+T.bl.issued+'</th><th>'+T.bl.due+'</th><th>'+T.bl.total+'</th><th>'+T.bl.bal+'</th><th></th></tr></thead><tbody>'+L2.map(function(x){

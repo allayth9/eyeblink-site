@@ -36,11 +36,13 @@
   if(VC==='SYP'&&!FX.SYP) getSyp().then(function(){ if(FX.SYP) location.reload(); });
   function money(c,n){ if(c==='$'&&VC!=='$'&&FX[VC]&&n!==''&&isFinite(+n)){ var v=+n*FX[VC]; n=VC==='SYP'?Math.round(v/100)*100:FX[VC]<1?Math.round(v*10)/10:Math.round(v); c=VC; }
     var s=isFinite(+n)?(+n).toLocaleString('en-US'):n; return AR? s+' '+c : (c.length>1?c+' ':c)+s; }
-  (function curPick(){ var lg=document.querySelector('.bar .lang'); if(!lg||document.querySelector('.curpick')) return;
-    var s=document.createElement('select'); s.className='curpick'; s.setAttribute('aria-label',AR?'العملة':'Currency');
-    s.innerHTML=Object.keys(FX).map(function(k){ return '<option value="'+k+'"'+(k===VC?' selected':'')+'>'+(k==='$'?'USD':k)+'</option>'; }).join('');
+  var CURN=AR?{'$':'دولار أمريكي',AED:'درهم إماراتي',SAR:'ريال سعودي',QAR:'ريال قطري',KWD:'دينار كويتي',BHD:'دينار بحريني',OMR:'ريال عُماني',SYP:'ليرة سورية'}:{'$':'US dollar',AED:'UAE dirham',SAR:'Saudi riyal',QAR:'Qatari riyal',KWD:'Kuwaiti dinar',BHD:'Bahraini dinar',OMR:'Omani rial',SYP:'Syrian pound'};
+  // a currency picker with flags, mounted wherever a price is being agreed or paid (order form, invoices)
+  function curPicker(host){ if(!host||host.querySelector('.curpick')) return; var s=document.createElement('select'); s.className='curpick'; s.setAttribute('aria-label',AR?'العملة':'Currency');
+    s.innerHTML=Object.keys(FX).map(function(k){ return '<option value="'+k+'"'+(k===VC?' selected':'')+'>'+CURN[k]+' · '+(k==='$'?'USD':k)+'</option>'; }).join(''); host.appendChild(s);
     s.onchange=function(){ try{ localStorage.setItem('eb-cur',s.value); }catch(_){} (s.value==='SYP'&&!FX.SYP?getSyp():Promise.resolve()).then(function(){ location.reload(); }); };
-    lg.parentNode.insertBefore(s,lg); })();
+    dsel(s,function(v){ return window.EB_FLAG?EB_FLAG((window.EB_CUR_FLAG||{})[v]):''; }); }
+  window.EBCur={pick:curPicker,code:function(){ return VC; },conv:function(n){ return VC!=='$'&&FX[VC]?money('$',n):''; }};
   function ratio(r){ var m=/^(\d+(?:\.\d+)?)[:\/](\d+(?:\.\d+)?)$/.exec(r||''); return m?m[1]+'/'+m[2]:'16/10'; }
 
   var C=null, REV=null;
@@ -617,7 +619,7 @@
     if(selected!==id){ qty=1; }
     selected=id;
     [].forEach.call(document.querySelectorAll('[data-list="packages"] .pkg'),function(b){ var on=b.dataset.id===id; b.setAttribute('aria-pressed',on); var pk=b.querySelector('.pick'); if(pk) pk.textContent=on?UI.chosen:(b.classList.contains('wide')?UI.choosePkg:UI.choose); });
-    var p=item(), P=C.packages||{}, cur=P.currency||'$';
+    var p=item(), P=C.packages||{}, cur=P.currency||'$'; curPicker(document.querySelector('.olb .curhost'));
     if(p){
       document.getElementById('selName').textContent=L(p.name);
       document.getElementById('selDesc').textContent=L(p.desc)||'';
