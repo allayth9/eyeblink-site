@@ -1,9 +1,9 @@
 User-agent: *
 Disallow: /admin/
 Disallow: /api/
-Disallow: /account.html
-Disallow: /en/account.html
-Disallow: /workspace.html
-Disallow: /en/workspace.html
+Disallow: /account
+Disallow: /en/account
+Disallow: /workspace
+Disallow: /en/workspace
 
 Sitemap: https://eyeblinkstudio.com/sitemap.xml

@@ -30,13 +30,13 @@
   function url(p){ return !p? '' : /^(https?:|data:|blob:|\/)/.test(p)? p : BASE+p; }
   // the visitor's currency, picked next to the language: prices are stored in dollars; Gulf currencies are pegged, the Syrian pound follows the daily rate (/api/fx)
   var FX={'$':1,AED:3.6725,SAR:3.75,QAR:3.64,KWD:0.307,BHD:0.376,OMR:0.3845,SYP:0}, VC='$';
-  try{ VC=localStorage.getItem('eb-cur')||'$'; var sy=JSON.parse(localStorage.getItem('eb-syp')||'null'); if(sy&&Date.now()-sy.t<12*36e5) FX.SYP=+sy.r; }catch(_){}
+  try{ localStorage.removeItem('eb-cur'); VC=sessionStorage.getItem('eb-cur')||'$'; var sy=JSON.parse(localStorage.getItem('eb-syp')||'null'); if(sy&&Date.now()-sy.t<12*36e5) FX.SYP=+sy.r; }catch(_){}
   if(!(VC in FX)) VC='$';
   function getSyp(){ return fetch('/api/fx').then(function(r){ return r.json(); }).then(function(j){ if(+j.SYP){ FX.SYP=+j.SYP; try{ localStorage.setItem('eb-syp',JSON.stringify({r:FX.SYP,t:Date.now()})); }catch(_){} } }).catch(function(){}); }
-  if(VC==='SYP'&&!FX.SYP) getSyp().then(function(){ if(FX.SYP) location.reload(); });
+  if(VC==='SYP'&&!FX.SYP) getSyp().then(function(){ if(FX.SYP) repaintPrices(); else VC='$'; });
   /* ---- support window: a short form the first time, then the conversation; the studio answers from the admin ---- */
-  var SUPT=AR?{h:'الدعم الفني',sub:'نرد عادةً خلال ساعات، وبيوصلك الرد هون وعلى إيميلك',name:'الاسم',email:'البريد الإلكتروني',msg:'اكتب المشكلة بالتفصيل…',send:'إرسال',close:'إغلاق',you:'أنت',bot:'رد تلقائي',studio:'Eyeblink',err:'اكتب اسمك وبريداً صحيحاً ورسالتك',fail:'تعذّر الإرسال، جرّب مرة أخرى',slow:'محاولات كثيرة، جرّب بعد قليل',reply:'اكتب ردك…'}
-                 :{h:'Support',sub:'We usually reply within a few hours, here and by email',name:'Name',email:'Email',msg:'Describe the problem…',send:'Send',close:'Close',you:'You',bot:'Automatic reply',studio:'Eyeblink',err:'Enter your name, a valid email and your message',fail:'Could not send, please try again',slow:'Too many attempts, try again shortly',reply:'Write a reply…'};
+  var SUPT=AR?{h:'الدعم الفني',sub:'نرد عادةً خلال ساعات، وبيوصلك الرد هون وعلى إيميلك',name:'الاسم',email:'البريد الإلكتروني',msg:'اكتب المشكلة… (Enter للإرسال)',send:'إرسال',close:'إغلاق',you:'أنت',bot:'رد تلقائي',studio:'Eyeblink',err:'اكتب رسالتك وبريداً صحيحاً لنرد عليك',fail:'تعذّر الإرسال، جرّب مرة أخرى',slow:'محاولات كثيرة، جرّب بعد قليل',reply:'اكتب ردك…'}
+                 :{h:'Support',sub:'We usually reply within a few hours, here and by email',name:'Name',email:'Email',msg:'Describe the problem… (Enter to send)',send:'Send',close:'Close',you:'You',bot:'Automatic reply',studio:'Eyeblink',err:'Write your message and a valid email so we can reply',fail:'Could not send, please try again',slow:'Too many attempts, try again shortly',reply:'Write a reply…'};
   var SUP=null, supTimer=0, supWho=null;
   window.addEventListener('eb:who',function(e){ supWho=e.detail||null; });
   function supGet(){ try{ return JSON.parse(localStorage.getItem('eb-sup')||'null'); }catch(_){ return null; } }
@@ -55,27 +55,34 @@
     var tk=supGet(), b=SUP.querySelector('.sup-b'), f=SUP.querySelector('.sup-f'), u=supWho||{};
     if(th) b.innerHTML=th.messages.map(function(m){ return '<div class="sup-m '+m.from+'"><p>'+esc(m.text).replace(/https?:\/\/[^\s<]+/g,function(u){ return '<a href="'+u+'" target="_blank" rel="noopener" dir="ltr">'+u.replace(/^https?:\/\//,'')+'</a>'; }).replace(/\n/g,'<br>')+'</p><small>'+(m.from==='client'?SUPT.you:m.from==='bot'?SUPT.bot:SUPT.studio)+' · '+new Date(m.at).toLocaleTimeString(AR?'ar-u-nu-latn':'en-GB',{hour:'2-digit',minute:'2-digit'})+'</small></div>'; }).join('');
     else if(!tk) b.innerHTML='';
-    f.innerHTML=(tk?'':'<div class="sup-row"><input name="name" autocomplete="name" placeholder="'+SUPT.name+'" value="'+esc(u.name||'')+'"><input name="email" type="email" dir="ltr" autocomplete="email" placeholder="'+SUPT.email+'" value="'+esc(u.email||'')+'"></div>')+
+    f.innerHTML=(tk||u.email?'':'<div class="sup-row"><input name="email" type="email" dir="ltr" autocomplete="email" placeholder="'+SUPT.email+'"></div>')+
       '<div class="sup-row"><textarea name="text" rows="'+(tk?2:4)+'" dir="auto" placeholder="'+(tk?SUPT.reply:SUPT.msg)+'"></textarea><button class="btn btn-primary" type="submit">'+SUPT.send+'</button></div><input name="website" class="sup-hp" tabindex="-1" autocomplete="off"><p class="sup-e" role="status"></p>';
     b.scrollTop=b.scrollHeight;
+    var ta=f.elements.text; ta.onkeydown=function(e){ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); f.requestSubmit(); } };
   }
   function supPull(){ var tk=supGet(); if(!tk) return; fetch('/api/support?id='+encodeURIComponent(tk.id)+'&token='+tk.token,{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(j.ok) { var keep=SUP.querySelector('[name=text]'), v=keep&&keep.value; supDraw(j.ticket); if(v) SUP.querySelector('[name=text]').value=v; } else if(j.ok===false){ try{ localStorage.removeItem('eb-sup'); }catch(_){} } }).catch(function(){}); }
   function supSend(e){ e.preventDefault(); var f=e.target, E=f.elements, tk=supGet(), err=f.querySelector('.sup-e'), text=E.text.value.trim();
-    var body= tk? {action:'send',id:tk.id,token:tk.token,text:text} : {action:'open',name:E.name.value.trim(),email:E.email.value.trim(),text:text,page:location.href,lang:lang,website:E.website.value};
-    if(!text||(!tk&&(body.name.length<2||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)))){ err.textContent=SUPT.err; return; }
+    var body= tk? {action:'send',id:tk.id,token:tk.token,text:text} : {action:'open',email:E.email?E.email.value.trim():'',text:text,page:location.href,lang:lang,website:E.website.value};
+    if(!text||(!tk&&E.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email))){ err.textContent=SUPT.err; return; }
     var btn=f.querySelector('button'); btn.disabled=true; err.textContent='';
     fetch('/api/support',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json(); }).then(function(j){
       btn.disabled=false; if(!j.ok){ err.textContent=j.error==='slow'?SUPT.slow:j.error==='fields'?SUPT.err:SUPT.fail; return; }
       if(j.token){ try{ localStorage.setItem('eb-sup',JSON.stringify({id:j.id,token:j.token})); }catch(_){} }
-      supDraw(j.ticket); }).catch(function(){ btn.disabled=false; err.textContent=SUPT.fail; }); }
+      supDraw(j.ticket); var nt=f.elements.text; if(nt) nt.focus(); }).catch(function(){ btn.disabled=false; err.textContent=SUPT.fail; }); }
   function money(c,n){ if(c==='$'&&VC!=='$'&&FX[VC]&&n!==''&&isFinite(+n)){ var v=+n*FX[VC]; n=VC==='SYP'?Math.round(v/100)*100:FX[VC]<1?Math.round(v*10)/10:Math.round(v); c=VC; }
     var s=isFinite(+n)?(+n).toLocaleString('en-US'):n; return AR? s+' '+c : (c.length>1?c+' ':c)+s; }
   var CURN=AR?{'$':'دولار أمريكي',AED:'درهم إماراتي',SAR:'ريال سعودي',QAR:'ريال قطري',KWD:'دينار كويتي',BHD:'دينار بحريني',OMR:'ريال عُماني',SYP:'ليرة سورية'}:{'$':'US dollar',AED:'UAE dirham',SAR:'Saudi riyal',QAR:'Qatari riyal',KWD:'Kuwaiti dinar',BHD:'Bahraini dinar',OMR:'Omani rial',SYP:'Syrian pound'};
   // a currency picker with flags, mounted wherever a price is being agreed or paid (order form, invoices)
   function curPicker(host){ if(!host||host.querySelector('.curpick')) return; var s=document.createElement('select'); s.className='curpick'; s.setAttribute('aria-label',AR?'العملة':'Currency');
     s.innerHTML=Object.keys(FX).map(function(k){ return '<option value="'+k+'"'+(k===VC?' selected':'')+'>'+CURN[k]+' · '+(k==='$'?'USD':k)+'</option>'; }).join(''); host.appendChild(s);
-    s.onchange=function(){ try{ localStorage.setItem('eb-cur',s.value); }catch(_){} (s.value==='SYP'&&!FX.SYP?getSyp():Promise.resolve()).then(function(){ location.reload(); }); };
-    dsel(s,function(v){ return window.EB_FLAG?EB_FLAG((window.EB_CUR_FLAG||{})[v]):''; }); }
+    s.onchange=function(){ var v=s.value; try{ sessionStorage.setItem('eb-cur',v); }catch(_){} (v==='SYP'&&!FX.SYP?getSyp():Promise.resolve()).then(function(){ if(v==='SYP'&&!FX.SYP) return; swapCur(v); }); };
+    dsel(s,function(v){ return window.EB_FLAG?EB_FLAG((window.EB_CUR_FLAG||{})[v]):''; },host.classList.contains('mini')?function(v){ return v==='$'?'USD':v; }:null); }
+  // fade the numbers out, swap them, fade back in (the page and its scroll stay where they are)
+  function swapCur(v){ var r=document.documentElement; r.classList.add('cur-swap'); setTimeout(function(){ VC=v; repaintPrices(); [].forEach.call(document.querySelectorAll('.curpick'),function(o){ if(o.value!==v){ o.value=v; o._d&&o._d._draw(); } }); window.dispatchEvent(new CustomEvent('eb:cur',{detail:v})); requestAnimationFrame(function(){ r.classList.remove('cur-swap'); }); },140); }
+  function repaintPrices(){ var P=C.packages||{}, cur=P.currency||'$';
+    [].forEach.call(document.querySelectorAll('.pkg[data-id]'),function(b){ var p=(P.items||[]).filter(function(x){ return x.id===b.dataset.id; })[0], pr=b.querySelector('.price'); if(p&&pr) pr.innerHTML=priceHtml(p); });
+    [].forEach.call(document.querySelectorAll('#addons input'),function(i){ var a=(P.addons||[]).filter(function(x){ return x.id===i.value; })[0], b=i.parentNode.querySelector('b'); if(a&&b&&a.type!=='percent') b.textContent='+'+money(cur,a.price); });
+    if(selected) pick(selected); }
   window.EBCur={pick:curPicker,code:function(){ return VC; },conv:function(n){ return VC!=='$'&&FX[VC]?money('$',n):''; }};
   function ratio(r){ var m=/^(\d+(?:\.\d+)?)[:\/](\d+(?:\.\d+)?)$/.exec(r||''); return m?m[1]+'/'+m[2]:'16/10'; }
 
@@ -91,7 +98,7 @@
       if((C.layout||{}).countUp!==false) countUp(el); },
     'services-cards':function(el){ var mode=el.dataset.mode||'teaser';
       el.innerHTML=(C.services||[]).map(function(s){
-        return '<a class="card glass rv" href="service-'+esc(s.id)+'.html"><div class="icon glass">'+(ICON[s.id]||ICON.editing)+'</div><span class="k">'+esc(s.label)+'</span><h3>'+esc(L(s.name))+'</h3><p>'+esc(L(mode==='full'?s.body:s.short))+'</p>'+
+        return '<a class="card glass rv" href="service-'+esc(s.id)+'"><div class="icon glass">'+(ICON[s.id]||ICON.editing)+'</div><span class="k">'+esc(s.label)+'</span><h3>'+esc(L(s.name))+'</h3><p>'+esc(L(mode==='full'?s.body:s.short))+'</p>'+
           (mode==='full'?'<ul class="tags">'+(L(s.tags)||[]).map(function(t){return '<li>'+esc(t)+'</li>'}).join('')+'</ul>':'')+
           '<span class="more">'+UI.details+' <span class="arr">'+ARW+'</span></span></a>'; }).join('');
       el.style.gridTemplateColumns=(C.services||[]).length===4&&innerWidth>980?'repeat(4,1fr)':''; },
@@ -112,7 +119,7 @@
       var ic=appIcon(t); return '<li class="glass">'+(ic||'<i>'+esc(ab)+'</i>')+esc(t)+'</li>'}).join(''); },
     'svc-packages':function(el,s){ var items=((C.packages&&C.packages.items)||[]).filter(function(p){return p.service===s.id});
       el.innerHTML=items.map(function(p){return pkgCard(p,true)}).join(''); el.closest('section').hidden=!items.length; },
-    'svc-nav':function(el,s){ el.innerHTML=(C.services||[]).map(function(x){return '<a class="glass" href="service-'+esc(x.id)+'.html"'+(x.id===s.id?' aria-current="page"':'')+'>'+esc(L(x.name))+'</a>'}).join(''); },
+    'svc-nav':function(el,s){ el.innerHTML=(C.services||[]).map(function(x){return '<a class="glass" href="service-'+esc(x.id)+'"'+(x.id===s.id?' aria-current="page"':'')+'>'+esc(L(x.name))+'</a>'}).join(''); },
     faq:function(el){ var it=(C.faq&&C.faq.items)||[]; el.innerHTML=it.map(function(f,i){ return '<details class="qa glass rv"'+(i===0?' open':'')+'><summary><span>'+esc(L(f.q))+'</span><i aria-hidden="true"></i></summary><div class="a">'+esc(L(f.a)).replace(/\n/g,'<br>')+'</div></details>'; }).join('');
       var s=el.closest('section'); if(s) s.hidden=!it.length; },
     reviews:function(el){ var s=el.closest('section'); if(s&&!REV) s.hidden=true;
@@ -180,12 +187,17 @@
   function kind(p){ return p.kind || (p.id==='monthly'||/month/i.test((p.unit&&p.unit.en)||'')? 'package':'service'); }
   function pkgCard(p,link,wide){
     var cur=(C.packages&&C.packages.currency)||'$', has=p.price!=null&&p.price!=='', isPkg=kind(p)==='package';
-    var was=has&&+p.oldPrice>+p.price? '<s class="was">'+esc(money(cur,p.oldPrice))+'</s><span class="off">'+UI.save+' <bdi>'+Math.round((1-p.price/p.oldPrice)*100)+'%</bdi></span>' : '';
-    var price=!has? '<b class="ask">'+UI.ask+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
-    var tag=link?'a':'button', attr=link?' href="pricing.html#'+esc(p.id)+'"':' type="button" aria-pressed="false"';
+    var pr='<div class="price">'+priceHtml(p)+'</div>';
+    var tag=link?'a':'button', attr=link?' href="pricing#'+esc(p.id)+'"':' type="button" aria-pressed="false"';
     var label=isPkg? UI.month : (((C.services||[]).filter(function(s){return s.id===p.service})[0]||{}).label||'SERVICE');
     var top='<span class="pkg-top"><span class="k">'+esc(label)+'</span>'+(p.featured?'<span class="badge">'+UI.featured+'</span>':'')+'</span>';
-    var pr='<div class="price">'+(was?'<span class="wasrow">'+was+'</span>':'')+(has&&!isPkg?'<small>'+UI.from+'</small>':'')+price+'</div>';
+    return pkgTail(p,link,wide,tag,attr,top,pr,isPkg);
+  }
+  function priceHtml(p){ var cur=(C.packages&&C.packages.currency)||'$', has=p.price!=null&&p.price!=='', isPkg=kind(p)==='package';
+    var was=has&&+p.oldPrice>+p.price? '<s class="was">'+esc(money(cur,p.oldPrice))+'</s><span class="off">'+UI.save+' <bdi>'+Math.round((1-p.price/p.oldPrice)*100)+'%</bdi></span>' : '';
+    var price=!has? '<b class="ask">'+UI.ask+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
+    return (was?'<span class="wasrow">'+was+'</span>':'')+(has&&!isPkg?'<small>'+UI.from+'</small>':'')+price; }
+  function pkgTail(p,link,wide,tag,attr,top,pr,isPkg){
     var btn='<span class="btn '+(p.featured||isPkg?'btn-primary':'btn-glass glass')+' pick">'+(link?UI.details+' <span class="arr">'+ARW+'</span>':(isPkg?UI.choosePkg:UI.choose))+'</span>';
     var feats='<ul>'+(L(p.features)||[]).map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul>';
     if(wide) return '<'+tag+' class="pkg wide glass rv" data-id="'+esc(p.id)+'"'+attr+'><div class="w-main">'+top+'<h3>'+esc(L(p.name))+'</h3><p>'+esc(L(p.desc))+'</p>'+feats+'</div><div class="w-side">'+pr+btn+'</div></'+tag+'>';
@@ -227,6 +239,8 @@
     if(rb){ rb.hidden=!hasReel; rb.onclick=function(){ bindLB(); openLB({title:{ar:UI.reel,en:UI.reel},full:reel,ratio:'16:9',poster:H.reelPoster||''}); }; }
     if(rc){ rc.hidden=!(hasReel&&H.reelPreview); if(!rc.hidden){ var rv=rc.querySelector('video'); if(rv.getAttribute('src')!==url(H.reelPreview)) rv.src=url(H.reelPreview); rc.onclick=function(){ rb&&rb.onclick(); }; } }
     renderWork(); setupOrder(); renderLaunch();
+    // links typed in the admin as «pricing.html» point at the clean address the site serves
+    [].forEach.call(document.querySelectorAll('a[href]'),function(a){ var h=a.getAttribute('href'); if(/^[\w\/.-]*\.html(?=[#?]|$)/.test(h)) a.setAttribute('href',h.replace(/(^|\/)index\.html/,'$1').replace(/\.html(?=[#?]|$)/,'')||'./'); });
     if(window.EB&&EB.refresh) EB.refresh();
   }
 
@@ -291,7 +305,7 @@
           if(!a2.dataset.def) a2.dataset.def=a2.textContent;
           var lab=L(n.label); a2.textContent= lab || a2.dataset.def;
           item.hidden = n.show===false; box.appendChild(item); });
-        [].forEach.call(document.querySelectorAll('.dock a[href="'+n.id+'.html"]'),function(d){ d.hidden=n.show===false; var sp=d.querySelector('span'); if(sp){ if(!sp.dataset.def) sp.dataset.def=sp.textContent; sp.textContent=L(n.label)||sp.dataset.def; } });
+        [].forEach.call(document.querySelectorAll('.dock a[href="'+n.id+'"]'),function(d){ d.hidden=n.show===false; var sp=d.querySelector('span'); if(sp){ if(!sp.dataset.def) sp.dataset.def=sp.textContent; sp.textContent=L(n.label)||sp.dataset.def; } });
       });
     }
     // home: section order + visibility
@@ -415,7 +429,7 @@
   function centerPreview(){
     if(CP.on) return check();
     var touch=matchMedia('(hover: none)').matches && matchMedia('(pointer: coarse)').matches;
-    var save=navigator.connection&&navigator.connection.saveData;
+    var save=root.classList.contains('lite');   // data saver or a slow connection (set in the page head)
     if(!touch||save||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     CP.on=true;
     // cards glide in as they scroll into view, so look again once scrolling has stopped and that motion has settled
@@ -452,7 +466,7 @@
   function rowPreview(){
     if(RP.on) return;
     var mouse=matchMedia('(hover: hover)').matches && matchMedia('(pointer: fine)').matches;
-    var save=navigator.connection&&navigator.connection.saveData;
+    var save=root.classList.contains('lite');   // data saver or a slow connection (set in the page head)
     if(!mouse||save||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     RP.on=true; RP.lastY=scrollY;
     addEventListener('scroll',function(){
@@ -612,8 +626,8 @@
     }
   }
   function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
-  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; [].forEach.call(lb.querySelectorAll('.lb-view'),function(v){ v.remove(); }); fadeAudio(null,0,650,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
-    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },760); }
+  function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; [].forEach.call(lb.querySelectorAll('.lb-view'),function(v){ v.remove(); }); fadeAudio(null,0,300,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
+    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },340); }
 
   /* ---------------- order: a popup like the player, same waves ---------------- */
   var selected=null, qty=1, olb=null;
@@ -669,7 +683,7 @@
     if(open) openOrder();
   }
   // a dark liquid-glass dropdown in place of the browser's grey one (the real <select> stays for the form)
-  function dsel(sel,icon){
+  function dsel(sel,icon,short){
     var w=sel._d; if(!w){ w=document.createElement('div'); w.className='dsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel.setAttribute('aria-hidden','true'); sel._d=w;
       var b=document.createElement('button'); b.type='button'; b.className='dsel-btn'; b.setAttribute('aria-haspopup','listbox'); b.setAttribute('aria-expanded','false'); w.appendChild(b);
       var l=document.createElement('ul'); l.className='dsel-list'; l.setAttribute('role','listbox'); l.hidden=true; w.appendChild(l);
@@ -678,7 +692,7 @@
       l.onclick=function(e){ var li=e.target.closest('li'); if(!li) return; sel.value=li.dataset.v; sel.dispatchEvent(new Event('change',{bubbles:true})); draw(); open(false); b.focus(); };
       l.onkeydown=function(e){ var li=document.activeElement; if(e.key==='ArrowDown'&&li.nextSibling){ e.preventDefault(); li.nextSibling.focus(); } else if(e.key==='ArrowUp'&&li.previousSibling){ e.preventDefault(); li.previousSibling.focus(); } else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); li.click(); } else if(e.key==='Escape'){ e.stopPropagation(); open(false); b.focus(); } };
       document.addEventListener('click',function(e){ if(!w.contains(e.target)) open(false); });
-      var draw=w._draw=function(){ var o=sel.options[sel.selectedIndex]; b.innerHTML='<span class="dv">'+(o&&icon(o.value)||'')+'<span>'+esc(o?o.text:'')+'</span></span><i aria-hidden="true"></i>';
+      var draw=w._draw=function(){ var o=sel.options[sel.selectedIndex]; b.innerHTML='<span class="dv">'+(o&&icon(o.value)||'')+'<span>'+esc(o?(short?short(o.value):o.text):'')+'</span></span><i aria-hidden="true"></i>';
         l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+esc(o.value)+'" aria-selected="'+(o.selected)+'">'+(icon(o.value)||'<span class="dot0"></span>')+'<span>'+esc(o.text)+'</span></li>'; }).join(''); };
     }
     w._draw();
@@ -689,7 +703,7 @@
     setTimeout(function(){ var f=document.getElementById('f-details'); if(f&&innerWidth>860) f.focus({preventScroll:true}); else document.getElementById('olbClose').focus(); },500);
     try{ history.replaceState(null,'','#'+selected); }catch(_){} }
   function closeOrder(){ if(!olb||olb.hidden||olb._closing) return; olb._closing=1; olb.classList.remove('show');
-    setTimeout(function(){ waves(false,olb); olb.hidden=true; olb._closing=0; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); try{ history.replaceState(null,'',location.pathname+location.search); }catch(_){} },700); }
+    setTimeout(function(){ waves(false,olb); olb.hidden=true; olb._closing=0; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); try{ history.replaceState(null,'',location.pathname+location.search); }catch(_){} },340); }
   function calc(){
     var P=C.packages||{}, cur=P.currency||'$', p=item();
     var t=document.getElementById('total'), qo=document.getElementById('qty'); if(qo) qo.textContent=qty;
@@ -740,7 +754,7 @@
       fetch(BASE+'api/orders',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(data)})
         .then(function(r){ if(r.status===401) return 'login'; if(!r.ok) throw 0; return r.json(); })
         .then(function(j){ if(j==='login'){ btn.disabled=false; btn.innerHTML=old; window.EBAcct.require(function(u){ if(u) send(); else if(u===false) offline(); }); return; }
-          btn.textContent='✓'; location.href='account.html#'+j.code; })
+          btn.textContent='✓'; location.href='account#'+j.code; })
         .catch(offline);
     };
     if(!/^https?:/.test(location.protocol) || !window.EBAcct) return offline();

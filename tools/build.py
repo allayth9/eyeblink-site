@@ -98,7 +98,7 @@ def p_index(U, lang):
     <span class="eyebrow" data-t="hero.eyebrow"></span>
     <h1 data-t="hero.h1"></h1>
     <p class="lead" data-t="hero.lead"></p>
-    <div class="actions"><a class="btn btn-primary" href="pricing.html">{U["cta"]}</a><a class="btn btn-glass glass" href="services.html"><span class="dot"></span>{U["explore"]}</a>
+    <div class="actions"><a class="btn btn-primary" href="pricing">{U["cta"]}</a><a class="btn btn-glass glass" href="services"><span class="dot"></span>{U["explore"]}</a>
       <button class="btn btn-glass glass reel-btn" type="button" id="reelBtn" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>{U["reel"]}</button></div>
   </div>
   <div class="stage" data-field-anchor aria-hidden="true">
@@ -115,12 +115,12 @@ def p_index(U, lang):
 <section class="block teaser" data-show="showWorkTeaser" data-sec="work"><div class="wrap">
   <div class="head rv" id="workHead"><div><span class="eyebrow">SHOWREEL • COMING SOON</span><h2 data-t="work.h"></h2></div><p data-t="work.p"></p></div>
   <div class="grid3" id="workGrid" data-limit="3">{slots(U)}</div>
-  <div class="center"><a class="btn btn-glass glass" href="work.html"><span class="dot"></span>{U["all_work"]} <span class="arr">{U["arrow"]}</span></a></div>
+  <div class="center"><a class="btn btn-glass glass" href="work"><span class="dot"></span>{U["all_work"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></section>
 <section class="block teaser" data-show="showPackagesTeaser" data-sec="packages"><div class="wrap">
   <div class="head rv"><div><span class="eyebrow">PRICING</span><h2 data-t="packages.h"></h2></div><p data-t="packages.p"></p></div>
   <div class="pkgs" data-list="packages-teaser"></div>
-  <div class="center"><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>{U["all_pkgs"]} <span class="arr">{U["arrow"]}</span></a></div>
+  <div class="center"><a class="btn btn-glass glass" href="pricing"><span class="dot"></span>{U["all_pkgs"]} <span class="arr">{U["arrow"]}</span></a></div>
 </div></section>
 {reviews_block(U)}
 {cta_band(U)}'''
@@ -139,11 +139,11 @@ def p_service(U, lang, sid):
     svc = [s for s in CONTENT["services"] if s["id"] == sid][0]
     return f'''<section><div class="wrap svc-hero">
   <div class="intro">
-    <span class="eyebrow crumb"><a href="services.html">{"SERVICES" if lang == "en" else '<span class="ar">الخدمات</span>'}</a> {f'<b>/ {svc["label"]}</b>' if lang == "en" else f'<b class="ar">/ {L(svc["name"], lang)}</b>'}</span>
+    <span class="eyebrow crumb"><a href="services">{"SERVICES" if lang == "en" else '<span class="ar">الخدمات</span>'}</a> {f'<b>/ {svc["label"]}</b>' if lang == "en" else f'<b class="ar">/ {L(svc["name"], lang)}</b>'}</span>
     <h1 data-s="name">{L(svc["name"], lang)}</h1>
     <p class="lead" data-s="body"></p>
     <ul class="tags" data-list="svc-tags"></ul>
-    <div class="actions" style="margin-top:22px"><a class="btn btn-primary" href="pricing.html">{U["cta"]}</a><a class="btn btn-glass glass" href="#pk"><span class="dot"></span>{U["see_pkgs"]}</a></div>
+    <div class="actions" style="margin-top:22px"><a class="btn btn-primary" href="pricing">{U["cta"]}</a><a class="btn btn-glass glass" href="#pk"><span class="dot"></span>{U["see_pkgs"]}</a></div>
     <div class="svc-tools"><span class="tl">{U["tools"]}</span><ul class="tools" data-list="svc-tools"></ul></div>
   </div>
   <div class="world glass" aria-hidden="true">{WORLDS[sid]()}</div>
@@ -184,7 +184,7 @@ def order_modal(U, lang):
   <div class="lb-pattern" aria-hidden="true">{PATTERN}</div>
   <canvas class="lb-waves" aria-hidden="true"></canvas><i class="owc" aria-hidden="true"></i>
   <div class="oscroll"><div class="box obox glass">
-    <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle" data-ot="title">{U["order_h"]}</h3></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
+    <div class="bar2"><div><span class="eyebrow">ORDER</span><h3 id="olbTitle" data-ot="title">{U["order_h"]}</h3></div><div class="curhost mini" title="{"العملة" if lang == "ar" else "Currency"}"></div><button class="close glass" id="olbClose" type="button" aria-label="{U["close"]}">×</button></div>
     <div class="order" id="order">
       <aside class="osum">
         <div class="ocard"><span class="k" id="selKind"></span><h4 id="selName"></h4><p id="selDesc"></p>
@@ -192,7 +192,6 @@ def order_modal(U, lang):
         <div class="oqty" id="qtyRow" hidden><span data-ot="qty">{T("عدد الفيديوهات", "Number of videos")}</span><div class="stepper"><button type="button" data-q="-1" aria-label="−">−</button><output id="qty">1</output><button type="button" data-q="1" aria-label="+">+</button></div></div>
         <p class="olab" data-ot="addons">{U["addons"]}</p>
         <ul class="addons" id="addons" aria-label="{U["addons"]}"></ul>
-        <div class="curhost"><span>{"اعرض الأسعار بعملة" if lang == "ar" else "Show prices in"}</span></div>
         <div class="total"><span>{U["total"]}</span><b id="total">—</b></div>
         <p class="fine" id="priceNote"></p>
         <p class="fine" id="payNote"></p>
@@ -332,13 +331,13 @@ def json_ld(lang, page, svc, title, desc):
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False).replace("</", "<\\/")
 
 def url(lang, page):
-    path = ("en/" if lang == "en" else "") + ("" if page == "index" else page + ".html")
+    path = ("en/" if lang == "en" else "") + ("" if page == "index" else page)
     return f"{SITE}/{path}"
 
 def build(lang, page):
     LANG[0] = lang
     U = UI[lang]; en = lang == "en"; A = "../" if en else ""
-    other = f"../{page}.html" if en else f"en/{page}.html"
+    other = ("../" if page == "index" else f"../{page}") if en else ("en/" if page == "index" else f"en/{page}")
     sid = page[8:] if page.startswith("service-") else ""
     svc = [s for s in CONTENT["services"] if s["id"] == sid][0] if sid else None
     title = (L(svc["name"], lang) + " — Eyeblink Studio") if svc else (U["titles"][page] if page == "index" else U["titles"][page] + " — Eyeblink Studio")
@@ -381,10 +380,10 @@ def build(lang, page):
 <div class="rail" aria-hidden="true"><i></i></div>
 <div class="cut-lids" aria-hidden="true"><i></i><i></i></div>
 <header class="nav"><div class="wrap"><div class="bar glass"><span class="shade" aria-hidden="true"></span>
-  <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
+  <a class="brand" href="./" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
   <ul class="links" id="links">{nav}</ul>
-  <a class="btn btn-primary" href="pricing.html">{U["cta"]}</a>
-  <a class="acct-link" href="account.html" aria-label="{U["acct"]}" title="{U["acct"]}"{" aria-current=\"page\"" if page=="account" else ""}><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 19.5c1.3-3.4 4-5 7.2-5s5.9 1.6 7.2 5"/></svg></a>
+  <a class="btn btn-primary" href="pricing">{U["cta"]}</a>
+  <a class="acct-link" href="account" aria-label="{U["acct"]}" title="{U["acct"]}"{" aria-current=\"page\"" if page=="account" else ""}><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 19.5c1.3-3.4 4-5 7.2-5s5.9 1.6 7.2 5"/></svg></a>
   <a class="lang{" ar" if en else ""}" href="{other}" hreflang="{"ar" if en else "en"}" lang="{"ar" if en else "en"}" aria-label="{U["lang_label"]}">{U["lang_short"]}</a>
   <button class="menu-btn" id="menuBtn" aria-label="{U["menu"]}" aria-expanded="false" aria-controls="links"><span></span><span></span></button>
 </div></div></header>
@@ -394,13 +393,12 @@ def build(lang, page):
 {lb}{order_modal(U, lang) if page == "pricing" else ""}
 <div class="field-end" data-field-end aria-hidden="true"></div>
 <footer><div class="wrap row">
-  <a class="brand" href="index.html" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
-  <nav class="flegal" aria-label="{"روابط قانونية" if lang == "ar" else "Legal"}"><a href="mailto:support@eyeblinkstudio.com">{"الدعم الفني" if lang == "ar" else "Support"}</a><a href="privacy.html">{U["titles"]["privacy"]}</a></nav>
-</div><div class="wrap"><div class="fbase"><a class="copy" href="{A}admin/index.html" rel="nofollow">© 2026 Eyeblink Studio</a><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></div></footer>
+  <a class="brand" href="./" aria-label="{U["home"]}">{MARK}<span class="wm">EYEBLINK<span>STUDIO</span></span></a>
+  <nav class="flegal" aria-label="{"روابط قانونية" if lang == "ar" else "Legal"}"><a href="mailto:support@eyeblinkstudio.com">{"الدعم الفني" if lang == "ar" else "Support"}</a><a href="privacy">{U["titles"]["privacy"]}</a></nav>
+</div><div class="wrap"><div class="fbase"><a class="copy" href="{A}admin/" rel="nofollow">© 2026 Eyeblink Studio</a><div class="foot2" data-show="showPayments"><ul class="paystrip" data-list="pay-strip" aria-label="Payment methods"></ul></div></div></div></footer>
 <nav class="dock glass" aria-label="{U["menu"]}">{dock}</nav>
 <script type="application/json" id="eb-seed">{seed()}</script>
-<script src="{THREE}"></script>
-<script src="{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}"></script>
+<script>(function(d){{var c=navigator.connection||{{}},r=d.documentElement,slow=c.saveData||/2g$/.test(c.effectiveType||'');if(slow)r.classList.add('lite');function go(){{var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(slow||(n&&n.responseEnd-n.requestStart>2000)){{r.classList.add('lite');return}}var s=d.createElement('script');s.src='{THREE}';s.onload=function(){{var b=d.createElement('script');b.src='{A}assets/js/bg.js?v={ASSET_V["assets/js/bg.js"]}';d.body.appendChild(b)}};d.body.appendChild(s)}}if(d.readyState==='complete')go();else addEventListener('load',go)}})(document)</script>
 <script src="{A}assets/js/brands.js?v={ASSET_V["assets/js/brands.js"]}"></script>
 <script src="{A}assets/js/flags.js?v={ASSET_V["assets/js/flags.js"]}"></script>
 <script src="{A}assets/js/render.js?v={ASSET_V["assets/js/render.js"]}"></script>
@@ -421,7 +419,7 @@ if __name__ == "__main__":
     pub = [p for p in PAGES if p not in PRIVATE]
     sm = "".join(f'<url><loc>{url(l, p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="{url("ar", p)}"/><xhtml:link rel="alternate" hreflang="en" href="{url("en", p)}"/></url>' for p in pub for l in ("ar", "en"))
     open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' + sm + '</urlset>\n')
-    open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account.html\nDisallow: /en/account.html\nDisallow: /workspace.html\nDisallow: /en/workspace.html\n\nSitemap: {SITE}/sitemap.xml\n")
+    open(os.path.join(ROOT, "robots.txt"), "w", encoding="utf-8").write(f"User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /account\nDisallow: /en/account\nDisallow: /workspace\nDisallow: /en/workspace\n\nSitemap: {SITE}/sitemap.xml\n")
     # the admin page is hand-written: stamp its css/js with content hashes so a new version is never served from cache
     ap = os.path.join(ROOT, "admin/index.html"); ah = open(ap, encoding="utf-8").read()
     ah = re.sub(r'href="admin\.css(\?v=\w+)?"', f'href="admin.css?v={_v("admin/admin.css")}"', ah)

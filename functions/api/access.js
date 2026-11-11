@@ -16,7 +16,7 @@ async function getUser(env, email){ const v = await env.EB.get("user:" + String(
 async function putUser(env, u){ await env.EB.put("user:" + u.email, JSON.stringify(u)); }
 // a temporary password that is easy to read and type: no 0/O, 1/l/I
 function tempPw(){ const A = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(12)); let s = ""; for (let i = 0; i < 12; i++) { s += A[b[i] % A.length]; if (i === 3 || i === 7) s += "-"; } return s; }
-function acctLink(lang, extra){ return SITE + (lang === "en" ? "/en" : "") + "/account.html" + (extra || ""); }
+function acctLink(lang, extra){ return SITE + (lang === "en" ? "/en" : "") + "/account" + (extra || ""); }
 
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
@@ -111,7 +111,7 @@ async function adminAction(ctx, d, clip){
     } else { if (!ex) return json({ ok: false, error: "no account" }, 404); u = ex; logAct(u, "admin", "temporary password issued"); }
     u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); u.mustChange = true; u.provider ||= "password";
     await putUser(env, u);
-    const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", link = SITE + (en ? "/en" : "") + "/workspace.html";
+    const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", link = SITE + (en ? "/en" : "") + "/workspace";
     let sent = false;
     if (d.mail) {
       const body = (en ? `Your <b style="color:#fff">Eyeblink Studio workspace</b> is ready. Sign in with the details below; you will choose your own password the first time.`
@@ -137,7 +137,7 @@ async function adminAction(ctx, d, clip){
       mail(lang, en ? "Welcome to your client workspace" : "أهلاً بك في مساحة العمل",
         en ? "Your account is now an <b style=\"color:#fff\">Active Client</b> account. Your requests, invoices and history stay exactly as they were; the workspace is added on top of them."
            : "أصبح حسابك حساب <b style=\"color:#fff\">عميل متعاقد</b>. بقيت طلباتك وفواتيرك وسجلك كما هي، وأُضيفت إليها مساحة العمل.",
-        en ? "Open my workspace" : "افتح مساحة العمل", SITE + (lang === "en" ? "/en" : "") + "/workspace.html", greet({ name: u.name, lang }))));
+        en ? "Open my workspace" : "افتح مساحة العمل", SITE + (lang === "en" ? "/en" : "") + "/workspace", greet({ name: u.name, lang }))));
   };
   if (d.action === "approve") {
     const r = await env.EB.get("accreq:" + email); if (!r) return json({ ok: false, error: "no request" }, 404);
@@ -280,7 +280,7 @@ async function notifyStudio(env, subject, text){
 async function notifyClient(env, o, kind, text){
   if (!o.email) return;
   if (kind === "received") return mailReceived(env, o);
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
   const T = en ? { message:"New message about your request "+o.code, status:"Update on your request "+o.code, cta:"Open my request", statusP:"Your request is now: " }
                : { message:"رسالة جديدة بخصوص طلبك "+o.code, status:"تحديث على طلبك "+o.code, cta:"افتح طلبي", statusP:"حالة طلبك الآن: " };
   const body = kind==="message" ? h(text).replace(/\n/g,"<br>") : h(T.statusP) + "<b style=\"color:#fff\">"+h((en?ST_EN:ST_AR)[text]||text)+"</b>";
@@ -381,7 +381,7 @@ function rows(list, rtl){ return `<table role="presentation" width="100%" cellpa
 function steps(list){ return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 0">${list.map((s,i)=>`<tr><td style="vertical-align:top;padding:0 0 12px;width:26px"><div style="width:24px;height:24px;line-height:24px;border-radius:12px;background:#3FE0E8;color:#04061A;text-align:center;font:bold 12px/24px Arial">${i+1}</div></td><td style="padding:2px 12px 12px;color:#C3CEE2;font-size:14px;line-height:1.7">${h(s)}</td></tr>`).join("")}</table>`; }
 async function mailReceived(env, o){
   if (!o.email) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, rtl = !en;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, rtl = !en;
   const c = await siteContent(env); let next = ((c.order||{}).next||{})[en?"en":"ar"] || [];
   if (!next.length) next = en ? ["We review your request and reply in your account within 24 hours","We agree on the details and date, then you get the payment details","We start production; you follow every stage until delivery"]
                               : ["نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة","نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع","نبدأ التنفيذ، وتتابع كل مرحلة حتى التسليم"];
@@ -396,7 +396,7 @@ async function mailReceived(env, o){
 async function mailInvoice(env, o, kind){
   const inv = kind === "deposit" ? (o.deposit || {}).invoice : o.invoice;
   if (!o.email || !inv) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, s = await siteSettings(env), c = curOf(o);
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, s = await siteSettings(env), c = curOf(o);
   const T = en ? { deposit:"Deposit received ✓", final:"Final payment received ✓", full:"Payment received ✓",
                    depositP:"Your deposit is confirmed and production starts now. The remaining "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" is due before final delivery. Your invoice is below.",
                    finalP:"Your request is now fully paid. Thank you! Your invoice is below.", fullP:"Your payment is confirmed and production starts now. You can follow every stage from your account. Your invoice is below.", cta:"View my request" }
@@ -429,7 +429,7 @@ async function sweepReminders(env){
         if (Date.now() - Date.parse(p.at) < hrs * 3600e3) continue;
         if ((o.messages || []).some(m => m.from === "client" && m.kind === "receipt" && m.at > p.at)) continue;
         p.reminded = new Date().toISOString(); await env.EB.put(k.name, JSON.stringify(o));
-        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
         const body = en ? `A quick reminder: the payment details for <b style="color:#fff">${h(o.code)}</b> are waiting in your account (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). Once you pay, attach the receipt there and we start right away. If anything is unclear, just reply in the chat.`
                         : `تذكير لطيف: تفاصيل الدفع لطلبك <b style="color:#fff">${h(o.code)}</b> بانتظارك في حسابك (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). بعد الدفع أرفق الإيصال هناك وسنبدأ فوراً. وإن كان أي أمر غير واضح، فراسلنا في المحادثة.`;
         await sendMail(env, o.email, en ? "Reminder: payment for " + o.code : "تذكير بالدفع لطلبك " + o.code, mail(en?"en":"ar", en ? "Your payment details are waiting" : "تفاصيل الدفع بانتظارك", body, en ? "Open my request" : "افتح طلبي", link, greet(o)));

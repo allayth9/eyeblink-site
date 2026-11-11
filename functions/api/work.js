@@ -163,7 +163,7 @@ const MINE = "(SELECT id FROM projects WHERE client_email=?1 UNION SELECT projec
 async function myProject(D, email, id){ return D.prepare(`SELECT * FROM projects WHERE id=?2 AND id IN ${MINE}`).bind(email, id).first(); }
 async function myTask(D, email, ref){ return D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?2 AND t.project_id IN ${MINE}`).bind(email, ref).first(); }
 async function userOf(env, email){ const v = await env.EB.get("user:" + String(email || "").toLowerCase()); return v ? JSON.parse(v) : null; }
-const taskLink = (lang, ref) => SITE + (lang === "en" ? "/en" : "") + "/workspace.html#w/t/" + ref;
+const taskLink = (lang, ref) => SITE + (lang === "en" ? "/en" : "") + "/workspace#w/t/" + ref;
 const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
@@ -476,7 +476,7 @@ async function tellClient(env, t, kind, extra){
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
     const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
-    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/workspace.html" + hash, greet({ name: u.name, lang }));
+    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/workspace" + hash, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
@@ -493,7 +493,7 @@ async function tellClient(env, t, kind, extra){
   if (D && (!P || P.push_cats[cat])) jobs.push((async () => {
     const subs = (await D.prepare("SELECT * FROM push_subs WHERE email=?").bind(u.email).all()).results; if (!subs.length) return;
     const body = shortText(lang, kind, data, L); if (!body) return;
-    const url = SITE + (en ? "/en" : "") + "/workspace.html" + hash;
+    const url = SITE + (en ? "/en" : "") + "/workspace" + hash;
     for (const sub of subs) { const r = await pushSend(D, sub, { title: "Eyeblink Studio", body, url, tag: (t.ref || kind), lang, dir: en ? "ltr" : "rtl" }).catch(e => ({ ok: false, error: String(e).slice(0, 120) }));
       await logSend(D, { channel: "push", recipient: u.email, target: new URL(sub.endpoint).hostname, kind, status: r.ok ? "sent" : "failed", error: r.error }); }
   })());
@@ -501,7 +501,7 @@ async function tellClient(env, t, kind, extra){
   if (D && (!P || P.tg_cats[cat])) jobs.push((async () => {
     const link = await D.prepare("SELECT * FROM tg_links WHERE email=?").bind(u.email).first(); if (!link || !tgTok(env)) return;
     const body = shortText(lang, kind, data, L); if (!body) return;
-    const r = await tgSend(env, link.chat_id, "✦ Eyeblink Studio\n\n" + body, SITE + (en ? "/en" : "") + "/workspace.html" + hash, en ? "Open in my workspace" : "افتح في مساحة العمل");
+    const r = await tgSend(env, link.chat_id, "✦ Eyeblink Studio\n\n" + body, SITE + (en ? "/en" : "") + "/workspace" + hash, en ? "Open in my workspace" : "افتح في مساحة العمل");
     await logSend(D, { channel: "telegram", recipient: u.email, target: link.username ? "@" + link.username : "chat", kind, status: r.ok ? "sent" : "failed", error: r.error, provider_id: r.id });
   })());
   await Promise.allSettled(jobs);
@@ -641,7 +641,7 @@ export async function onRequestPost(ctx) {
   }
   if (d.action === "pushUnsub") { await D.prepare("DELETE FROM push_subs WHERE email=? AND endpoint=?").bind(u.email, String(d.endpoint || "")).run(); return json({ ok: true }); }
   if (d.action === "pushTest" || d.action === "tgTest") {
-    const en = u.lang === "en", body = en ? "Notifications are on. You'll hear from us here when something changes in your workspace." : "الإشعارات تعمل. ستصلك هنا تحديثات مساحة العمل أولاً بأول.", url = SITE + (en ? "/en" : "") + "/workspace.html#w/settings";
+    const en = u.lang === "en", body = en ? "Notifications are on. You'll hear from us here when something changes in your workspace." : "الإشعارات تعمل. ستصلك هنا تحديثات مساحة العمل أولاً بأول.", url = SITE + (en ? "/en" : "") + "/workspace#w/settings";
     if (d.action === "tgTest") { const l = await D.prepare("SELECT chat_id FROM tg_links WHERE email=?").bind(u.email).first(); if (!l) return json({ ok: false, error: "not linked" }, 409);
       const r = await tgSend(env, l.chat_id, "✦ Eyeblink Studio\n\n" + body); return json({ ok: r.ok, error: r.error }); }
     const subs = (await D.prepare("SELECT * FROM push_subs WHERE email=?").bind(u.email).all()).results; if (!subs.length) return json({ ok: false, error: "no device" }, 409);
@@ -1296,7 +1296,7 @@ async function notifyStudio(env, subject, text){
 async function notifyClient(env, o, kind, text){
   if (!o.email) return;
   if (kind === "received") return mailReceived(env, o);
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
   const T = en ? { message:"New message about your request "+o.code, status:"Update on your request "+o.code, cta:"Open my request", statusP:"Your request is now: " }
                : { message:"رسالة جديدة بخصوص طلبك "+o.code, status:"تحديث على طلبك "+o.code, cta:"افتح طلبي", statusP:"حالة طلبك الآن: " };
   const body = kind==="message" ? h(text).replace(/\n/g,"<br>") : h(T.statusP) + "<b style=\"color:#fff\">"+h((en?ST_EN:ST_AR)[text]||text)+"</b>";
@@ -1397,7 +1397,7 @@ function rows(list, rtl){ return `<table role="presentation" width="100%" cellpa
 function steps(list){ return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 0">${list.map((s,i)=>`<tr><td style="vertical-align:top;padding:0 0 12px;width:26px"><div style="width:24px;height:24px;line-height:24px;border-radius:12px;background:#3FE0E8;color:#04061A;text-align:center;font:bold 12px/24px Arial">${i+1}</div></td><td style="padding:2px 12px 12px;color:#C3CEE2;font-size:14px;line-height:1.7">${h(s)}</td></tr>`).join("")}</table>`; }
 async function mailReceived(env, o){
   if (!o.email) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, rtl = !en;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, rtl = !en;
   const c = await siteContent(env); let next = ((c.order||{}).next||{})[en?"en":"ar"] || [];
   if (!next.length) next = en ? ["We review your request and reply in your account within 24 hours","We agree on the details and date, then you get the payment details","We start production; you follow every stage until delivery"]
                               : ["نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة","نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع","نبدأ التنفيذ، وتتابع كل مرحلة حتى التسليم"];
@@ -1412,7 +1412,7 @@ async function mailReceived(env, o){
 async function mailInvoice(env, o, kind){
   const inv = kind === "deposit" ? (o.deposit || {}).invoice : o.invoice;
   if (!o.email || !inv) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, s = await siteSettings(env), c = curOf(o);
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, s = await siteSettings(env), c = curOf(o);
   const T = en ? { deposit:"Deposit received ✓", final:"Final payment received ✓", full:"Payment received ✓",
                    depositP:"Your deposit is confirmed and production starts now. The remaining "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" is due before final delivery. Your invoice is below.",
                    finalP:"Your request is now fully paid. Thank you! Your invoice is below.", fullP:"Your payment is confirmed and production starts now. You can follow every stage from your account. Your invoice is below.", cta:"View my request" }
@@ -1445,7 +1445,7 @@ async function sweepReminders(env){
         if (Date.now() - Date.parse(p.at) < hrs * 3600e3) continue;
         if ((o.messages || []).some(m => m.from === "client" && m.kind === "receipt" && m.at > p.at)) continue;
         p.reminded = new Date().toISOString(); await env.EB.put(k.name, JSON.stringify(o));
-        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
         const body = en ? `A quick reminder: the payment details for <b style="color:#fff">${h(o.code)}</b> are waiting in your account (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). Once you pay, attach the receipt there and we start right away. If anything is unclear, just reply in the chat.`
                         : `تذكير لطيف: تفاصيل الدفع لطلبك <b style="color:#fff">${h(o.code)}</b> بانتظارك في حسابك (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). بعد الدفع أرفق الإيصال هناك وسنبدأ فوراً. وإن كان أي أمر غير واضح، فراسلنا في المحادثة.`;
         await sendMail(env, o.email, en ? "Reminder: payment for " + o.code : "تذكير بالدفع لطلبك " + o.code, mail(en?"en":"ar", en ? "Your payment details are waiting" : "تفاصيل الدفع بانتظارك", body, en ? "Open my request" : "افتح طلبي", link, greet(o)));

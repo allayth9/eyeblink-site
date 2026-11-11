@@ -161,7 +161,7 @@
       if(inv){ return invitePage(inv,m); }
       if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); return; }
       if(m.user.mustChange){ return newPassword(m,nextWs); }
-      if(nextWs&&m.user.role==='client'){ location.replace('workspace.html'+(/^#w/.test(location.hash)?location.hash:'')); return; }   // the workspace has its own page now
+      if(nextWs&&m.user.role==='client'){ location.replace('workspace'+(/^#w/.test(location.hash)?location.hash:'')); return; }   // the workspace has its own page now
       dash();
     });
   }
@@ -174,10 +174,10 @@
       if(a.length<8){ msg.textContent=P.short; return; } if(a!==b2){ msg.textContent=P.diff; return; }
       var btn=f.querySelector('button'); btn.disabled=true;
       api('account',{action:'setPassword',password:a}).then(function(j){ if(j&&j.ok){ toast(P.ok); try{ sessionStorage.removeItem('eb-who'); }catch(_){}
-          if(m.user.role==='client') location.replace('workspace.html'+(/^#w/.test(location.hash)?location.hash:'')); else page(); return; }
+          if(m.user.role==='client') location.replace('workspace'+(/^#w/.test(location.hash)?location.hash:'')); else page(); return; }
         btn.disabled=false; msg.textContent=j&&j.error==='same'?P.same:j&&j.error==='password'?P.short:P.err; }); };
   }
-  // invitation links: account.html?invite=TOKEN
+  // invitation links: account?invite=TOKEN
   function INVITE(){ var t=new URLSearchParams(location.search).get('invite'); return /^[a-f0-9]{48}$/.test(t||'')? t : ''; }
   function dropInvite(){ try{ history.replaceState(null,'',location.pathname+location.hash); }catch(_){} }
   function invitePage(tok,m){
@@ -222,14 +222,14 @@
   function dash(){
     var u=ME.user; LIST=ME.orders||[];
     box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
-      '<div class="actions"><a class="btn btn-primary" href="pricing.html">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
-      (u.role==='client'?'<a class="ws-entry glass rv" href="workspace.html"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
+      '<div class="actions"><a class="btn btn-primary" href="pricing">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
+      (u.role==='client'?'<a class="ws-entry glass rv" href="workspace"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
         '<span class="we-t"><b>'+(AR?'مساحة العمل':'Your workspace')+'</b><small>'+(AR?'مشاريعك ومهامك وتسليماتك وفواتيرك في صفحة مستقلة.':'Your projects, tasks, deliveries and invoices on their own page.')+'</small></span><span class="we-go">'+(AR?'افتح مساحة العمل':'Open workspace')+' <i>←</i></span></a>':'')+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
     bindRole();
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); };
     var items=box.querySelector('.olist .items');
-    if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing.html"><span class="dot"></span>'+T.seePricing+'</a></div>';
+    if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing"><span class="dot"></span>'+T.seePricing+'</a></div>';
       box.querySelector('.odetail').hidden=true; box.querySelector('.acct-grid').classList.add('solo'); return; }
     items.innerHTML=LIST.map(function(o){ return '<button type="button" class="oitem" data-code="'+esc(o.code)+'"><span class="c">'+esc(o.code)+'</span><b>'+esc(o.packageName||'')+'</b>'+
       '<span class="pill '+esc(o.status)+'">'+esc(T.st[o.status]||o.status)+'</span>'+(o.unread?'<i class="dot" title="'+T.unread+'">'+o.unread+'</i>':'')+'<small class="muted">'+esc(day(o.createdAt))+'</small></button>'; }).join('');

@@ -4,7 +4,7 @@
    The server decides who is a client; this only draws what it is told (cached for two minutes per tab). */
 (function(){
   var root=document.documentElement, AR=root.lang!=='en', body=document.body;
-  var BASE=body.getAttribute('data-base')||'', API=BASE+'api/', PAGE=body.getAttribute('data-page'), WS=BASE+'workspace.html';
+  var BASE=body.getAttribute('data-base')||'', API=BASE+'api/', PAGE=body.getAttribute('data-page'), WS=BASE+'workspace';
   var bar=document.querySelector('.nav .bar'), acct=bar&&bar.querySelector('.acct-link');
   if(!bar||!acct||!/^https?:/.test(location.protocol)) return;
   var T=AR?{ws:'مساحة العمل',acct:'حسابي وطلباتي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',client:'عميل متعاقد',customer:'حساب عميل',
@@ -68,9 +68,9 @@
     menu=document.createElement('div'); menu.className='hmenu'; menu.setAttribute('role','menu');
     menu.innerHTML='<div class="hm-h"><b>'+esc(u.name)+'</b><small dir="ltr">'+esc(u.email)+'</small><span class="hm-role'+(cl?' on':'')+'">'+(cl?T.client:T.customer)+'</span></div>'+
       (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/new','plus',T.newTask,'c-new')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',T.set,'c-set')+'<i class="hm-sep"></i>':'')+
-      item(BASE+'account.html','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>';
+      item(BASE+'account','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>';
     bar.appendChild(menu); acct.setAttribute('aria-expanded','true'); requestAnimationFrame(function(){ menu.classList.add('show'); });
-    menu.querySelector('.hm-out').onclick=function(){ post('account',{action:'logout'}).then(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} location.href=BASE+'index.html'; }); };
+    menu.querySelector('.hm-out').onclick=function(){ post('account',{action:'logout'}).then(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} location.href=(BASE||'./'); }); };
     menu.addEventListener('click',function(e){ var a=e.target.closest('a'); if(a) sameHash(e,a); });
     var f=menu.querySelector('a,button'); if(f) f.focus({preventScroll:true});
   }

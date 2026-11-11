@@ -82,7 +82,7 @@
       {h:'شريط الإطلاق (Early Access)', hint:'سطر رفيع تحت القائمة العلوية بكل صفحات الموقع. الزائر يقدر يسكّره. يختفي وحده بعد تاريخ الانتهاء أو لما يكتمل العدد. اكتب أرقاماً حقيقية فقط.', fields:[
         {p:'launch.show', t:'check', l:'إظهار شريط الإطلاق'},
         {p:'launch.text', t:'bi', l:'النص', hint:'مثال: إطلاق Eyeblink Studio · نستقبل عدداً محدوداً من المشاريع بشروط الإطلاق'},
-        {row:[{p:'launch.cta', t:'bi', l:'نص الرابط'},{p:'launch.link', t:'text', l:'الرابط', ltr:1, hint:'مثال: pricing.html أو contact.html'}]},
+        {row:[{p:'launch.cta', t:'bi', l:'نص الرابط'},{p:'launch.link', t:'text', l:'الرابط', ltr:1, hint:'مثال: pricing أو contact'}]},
         {row:[{p:'launch.total', t:'num', l:'عدد المشاريع الكلي'},{p:'launch.taken', t:'num', l:'المحجوز منها'},{p:'launch.until', t:'date', l:'ينتهي بتاريخ (اختياري)'}]},
         {p:'launch.counter', t:'check', l:'إظهار العدّاد («تبقّى 3 من 5»)'} ]},
       {h:'العنوان الرئيسي', fields:[
@@ -689,7 +689,7 @@
   // after the agreement is signed: the client's way in, their project in the workspace, then the deposit — one short checklist
   function onboardBox(o,k){
     var ag=(o.docs||[]).filter(function(s){ return s.type==='agreement'&&s.status==='accepted'; })[0]; if(!ag) return '';
-    var ob=o.onboard||{}, inv=ob.invite?location.origin+(o.lang==='en'?'/en':'')+'/account.html?invite='+ob.invite:'', dep=o.paid||(o.deposit&&o.deposit.paid);
+    var ob=o.onboard||{}, inv=ob.invite?location.origin+(o.lang==='en'?'/en':'')+'/account?invite='+ob.invite:'', dep=o.paid||(o.deposit&&o.deposit.paid);
     var row=function(done,title,body){ return '<li class="'+(done?'ok':'')+'"><i>'+(done?'✓':'')+'</i><div><b>'+title+'</b>'+(body?'<div class="small">'+body+'</div>':'')+'</div></li>'; };
     var waTxt=(o.lang==='en'?'Your workspace for the project is ready. Activate it with your email '+(ob.email||o.email||'')+':\n':'مساحة العمل الخاصة بمشروعك جاهزة. فعّلها ببريدك '+(ob.email||o.email||'')+':\n')+inv;
     return '<div class="onb"><div class="small muted">بعد التوقيع</div><ol>'+
@@ -859,6 +859,14 @@
     if(id==='today'){ var al=alerts(); return [al.filter(function(a){return a.lvl!=='info'}).length, al.some(function(a){return a.lvl==='crit'})?'crit':'warn']; }
     return [0];
   }
+  var NAVO=false;
+  function navOpen(on){ var app=$('#app'), sc=$('#scrim'), b=$('#mnavBtn'); if(!app||NAVO===on) return; NAVO=on; b&&b.setAttribute('aria-expanded',on);
+    if(on){ sc.hidden=false; requestAnimationFrame(function(){ if(NAVO) app.classList.add('nav-open'); }); document.body.style.overflow='hidden'; var c=$('#tabs [aria-current="true"]'); if(c) setTimeout(function(){ c.focus({preventScroll:true}); c.scrollIntoView({block:'nearest'}); },60); }
+    else { app.classList.remove('nav-open'); document.body.style.overflow=''; setTimeout(function(){ if(!NAVO) sc.hidden=true; },260); } }
+  document.addEventListener('click',function(e){ if(e.target.closest('#mnavBtn')) return navOpen(!NAVO); if(e.target.closest('#scrim')) return navOpen(false); });
+  // capture: the tab's own handler redraws the menu, so look before it does
+  document.addEventListener('click',function(e){ if(NAVO&&e.target.closest('#tabs [data-tab]')) navOpen(false); },true);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&NAVO) navOpen(false); });
   function renderTabs(){
     $('#tabs').innerHTML=SECT.map(function(s){
       var list=TABS.filter(function(t){ return secOf(t.id)===s[0]&&TOP_TABS.indexOf(t.id)<0; }); if(!list.length) return '';
@@ -1169,7 +1177,7 @@
       (!SUPA.length?'<div class="sec"><div class="empty">ما في تذاكر دعم. أول ما حدا يكبس «هل يوجد مشكلة؟» بالموقع، بتطلع هون</div></div>':
       '<div class="supgrid"><ul class="suplist">'+(list.length?list.map(function(s){ var last=s.messages[s.messages.length-1];
         return '<li><button type="button" data-sopen="'+esc(s.id)+'"'+(s.id===SOPEN?' aria-current="true"':'')+'><b>'+esc(s.name)+(s.unread?' <i class="sdot"></i>':'')+'</b><span>'+esc(String(last.text).slice(0,70))+'</span><small><bdi dir="ltr">'+esc(s.id)+'</bdi> · '+esc(SST[s.status])+' · '+esc(fmtT(s.updatedAt||s.at))+'</small></button></li>'; }).join(''):'<li class="muted small" style="padding:12px">ما في شي هون</li>')+'</ul>'+
-      (cur?'<section class="supth"><div class="supth-h"><div><b>'+esc(cur.name)+'</b> <span class="muted small" dir="ltr">'+esc(cur.email)+'</span><div class="muted small">'+(cur.page?'من: <bdi dir="ltr">'+esc(cur.page.replace(/^https?:\/\/[^/]+/,''))+'</bdi>':'')+'</div></div>'+
+      (cur?'<section class="supth"><div class="supth-h"><div><b>'+esc(cur.name)+'</b> <span class="muted small" dir="ltr">'+esc(cur.email)+'</span>'+(cur.acct?' <span class="muted small">· عميل بحساب</span>':' <span class="muted small">· زائر</span>')+'<div class="muted small">'+(cur.page?'من: <bdi dir="ltr">'+esc(cur.page.replace(/^https?:\/\/[^/]+/,''))+'</bdi>':'')+'</div></div>'+
           '<div class="actions">'+(cur.status==='closed'?'<button class="btn sm" type="button" data-sreopen="'+esc(cur.id)+'">إعادة فتح</button>':'<button class="btn sm" type="button" data-sclose="'+esc(cur.id)+'">تسكير التذكرة</button>')+'<a class="btn sm" href="mailto:'+esc(cur.email)+'?subject='+encodeURIComponent('Eyeblink · '+cur.id)+'">إيميل</a></div></div>'+
         '<div class="athread">'+cur.messages.map(function(m){ return '<div class="amsg '+(m.from==='client'?'c':'s')+(m.from==='bot'?' k-bot':'')+'"><div>'+esc(m.text).replace(/\n/g,'<br>')+'</div><small>'+(m.from==='client'?esc(cur.name):m.from==='bot'?'رد تلقائي':'أنت')+' · '+esc(fmtT(m.at))+'</small></div>'; }).join('')+'</div>'+
         '<div class="asend"><textarea id="sreply" dir="auto" placeholder="اكتب ردك… (بيوصله بالموقع وعلى إيميله)"></textarea><button class="btn primary sm" type="button" data-sreply="'+esc(cur.id)+'">إرسال</button></div></section>':'')+'</div>');
@@ -2082,7 +2090,7 @@
     if(b.dataset.urole){ if(b.dataset.to==='customer'&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='هل أنت متأكد؟ اضغط مرة أخرى'; return; }
       accReq({action:'setRole',email:b.dataset.urole,role:b.dataset.to},b,b.dataset.to==='client'?'أصبح عميلاً متعاقداً، ووصله بريد إلكتروني':'أُلغيت مساحة العمل').catch(function(){}); return; }
     if(b.dataset.irevoke){ accReq({action:'revoke',token:b.dataset.irevoke},b,'أُلغيت الدعوة').catch(function(){}); return; }
-    if(b.dataset.icopy||b.dataset.copylink){ var l=b.dataset.copylink||('https://eyeblinkstudio.com'+(b.dataset.ilang==='en'?'/en':'')+'/account.html?invite='+b.dataset.icopy);
+    if(b.dataset.icopy||b.dataset.copylink){ var l=b.dataset.copylink||('https://eyeblinkstudio.com'+(b.dataset.ilang==='en'?'/en':'')+'/account?invite='+b.dataset.icopy);
       try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ الرابط'); }); }catch(_){ toast(l); } return; }
     if(b.hasAttribute('data-ulog')){ var lg=b.closest('.client').querySelector('.ulog'); if(lg) lg.hidden=!lg.hidden; return; }
   });

@@ -10,8 +10,8 @@ const T_ = (v, m) => String(v ?? "").trim().slice(0, m);
 function autoReply(text, lang, id){
   const en = lang === "en", p = en ? "/en" : "", t = String(text).toLowerCase(), tips = [];
   const has = (...w) => w.some(x => t.includes(x));
-  if (has("كلمة السر", "كلمة المرور", "password", "تسجيل الدخول", "login", "sign in")) tips.push(en ? "Password trouble: use «Forgot password» on " + SITE + p + "/account.html" : "لمشكلة كلمة السر: استخدم «نسيت كلمة السر» في " + SITE + p + "/account.html");
-  if (has("فاتورة", "فواتير", "invoice")) tips.push(en ? "Your invoices are in your workspace: " + SITE + p + "/workspace.html" : "فواتيرك موجودة في مساحة العمل: " + SITE + p + "/workspace.html");
+  if (has("كلمة السر", "كلمة المرور", "password", "تسجيل الدخول", "login", "sign in")) tips.push(en ? "Password trouble: use «Forgot password» on " + SITE + p + "/account" : "لمشكلة كلمة السر: استخدم «نسيت كلمة السر» في " + SITE + p + "/account");
+  if (has("فاتورة", "فواتير", "invoice")) tips.push(en ? "Your invoices are in your workspace: " + SITE + p + "/workspace" : "فواتيرك موجودة في مساحة العمل: " + SITE + p + "/workspace");
   if (has("دفع", "تحويل", "باينانس", "binance", "pay", "usdt", "western")) tips.push(en ? "Payment details are sent inside your request page, with a place to attach the receipt" : "تفاصيل الدفع تصلك داخل صفحة طلبك، ومعها مكان لإرفاق الإيصال");
   if (has("ملف", "رفع", "file", "upload")) tips.push(en ? "Files up to 20 MB attach in the chat of your request; larger ones by a Drive or WeTransfer link" : "الملفات حتى 20MB تُرفق في محادثة طلبك، والأكبر برابط Drive أو WeTransfer");
   return (en ? "Thanks, your message reached the studio (ticket " + id + "). We reply here and by email, usually within a few hours."
@@ -39,10 +39,11 @@ export async function onRequestPost(ctx) {
   if (d.action === "open") {
     if (d.website) return json({ ok: true });                                   // honeypot
     if (await limited(env, "supo:" + ip, 5, 3600)) return json({ ok: false, error: "slow" }, 429);
-    const name = T_(d.name, 120), email = T_(d.email, 254).toLowerCase(), text = T_(d.text, 3000), lang = d.lang === "en" ? "en" : "ar";
-    if (name.length < 2 || !MAIL_RE2.test(email) || text.length < 3) return json({ ok: false, error: "fields" }, 400);
+    const u = await currentUser(request, env), text = T_(d.text, 3000), lang = d.lang === "en" ? "en" : "ar";
+    const email = u ? u.email : T_(d.email, 254).toLowerCase(), name = u ? T_(u.name, 120) || email.split("@")[0] : email.split("@")[0];
+    if (!MAIL_RE2.test(email) || text.length < 2) return json({ ok: false, error: "fields" }, 400);
     let id; do { id = "S-" + randHex(3).toUpperCase().slice(0, 5); } while (await env.EB.get("sup:" + id));
-    const s = { id, token: randHex(16), name, email, lang, page: T_(d.page, 300), ua: T_(request.headers.get("user-agent"), 200), status: "open", unread: 1, at: now,
+    const s = { id, token: randHex(16), name, email, acct: u ? 1 : 0, lang, page: T_(d.page, 300), ua: T_(request.headers.get("user-agent"), 200), status: "open", unread: 1, at: now,
       messages: [{ from: "client", text, at: now }, { from: "bot", text: autoReply(text, lang, id), at: now }] };
     await save(env, s);
     later(ctx, telegram(env, "🛟 تذكرة دعم جديدة " + id + " — " + name + "\n" + text.slice(0, 300) + "\n" + SITE + "/admin/#support"));
@@ -190,7 +191,7 @@ async function notifyStudio(env, subject, text){
 async function notifyClient(env, o, kind, text){
   if (!o.email) return;
   if (kind === "received") return mailReceived(env, o);
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
   const T = en ? { message:"New message about your request "+o.code, status:"Update on your request "+o.code, cta:"Open my request", statusP:"Your request is now: " }
                : { message:"رسالة جديدة بخصوص طلبك "+o.code, status:"تحديث على طلبك "+o.code, cta:"افتح طلبي", statusP:"حالة طلبك الآن: " };
   const body = kind==="message" ? h(text).replace(/\n/g,"<br>") : h(T.statusP) + "<b style=\"color:#fff\">"+h((en?ST_EN:ST_AR)[text]||text)+"</b>";
@@ -291,7 +292,7 @@ function rows(list, rtl){ return `<table role="presentation" width="100%" cellpa
 function steps(list){ return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 0">${list.map((s,i)=>`<tr><td style="vertical-align:top;padding:0 0 12px;width:26px"><div style="width:24px;height:24px;line-height:24px;border-radius:12px;background:#3FE0E8;color:#04061A;text-align:center;font:bold 12px/24px Arial">${i+1}</div></td><td style="padding:2px 12px 12px;color:#C3CEE2;font-size:14px;line-height:1.7">${h(s)}</td></tr>`).join("")}</table>`; }
 async function mailReceived(env, o){
   if (!o.email) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, rtl = !en;
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, rtl = !en;
   const c = await siteContent(env); let next = ((c.order||{}).next||{})[en?"en":"ar"] || [];
   if (!next.length) next = en ? ["We review your request and reply in your account within 24 hours","We agree on the details and date, then you get the payment details","We start production; you follow every stage until delivery"]
                               : ["نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة","نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع","نبدأ التنفيذ، وتتابع كل مرحلة حتى التسليم"];
@@ -306,7 +307,7 @@ async function mailReceived(env, o){
 async function mailInvoice(env, o, kind){
   const inv = kind === "deposit" ? (o.deposit || {}).invoice : o.invoice;
   if (!o.email || !inv) return;
-  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, s = await siteSettings(env), c = curOf(o);
+  const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code, s = await siteSettings(env), c = curOf(o);
   const T = en ? { deposit:"Deposit received ✓", final:"Final payment received ✓", full:"Payment received ✓",
                    depositP:"Your deposit is confirmed and production starts now. The remaining "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" is due before final delivery. Your invoice is below.",
                    finalP:"Your request is now fully paid. Thank you! Your invoice is below.", fullP:"Your payment is confirmed and production starts now. You can follow every stage from your account. Your invoice is below.", cta:"View my request" }
@@ -339,7 +340,7 @@ async function sweepReminders(env){
         if (Date.now() - Date.parse(p.at) < hrs * 3600e3) continue;
         if ((o.messages || []).some(m => m.from === "client" && m.kind === "receipt" && m.at > p.at)) continue;
         p.reminded = new Date().toISOString(); await env.EB.put(k.name, JSON.stringify(o));
-        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code;
+        const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account#" + o.code;
         const body = en ? `A quick reminder: the payment details for <b style="color:#fff">${h(o.code)}</b> are waiting in your account (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). Once you pay, attach the receipt there and we start right away. If anything is unclear, just reply in the chat.`
                         : `تذكير لطيف: تفاصيل الدفع لطلبك <b style="color:#fff">${h(o.code)}</b> بانتظارك في حسابك (${h(p.methodName||"")} · <span dir="ltr">${h(p.amount)}</span>). بعد الدفع أرفق الإيصال هناك وسنبدأ فوراً. وإن كان أي أمر غير واضح، فراسلنا في المحادثة.`;
         await sendMail(env, o.email, en ? "Reminder: payment for " + o.code : "تذكير بالدفع لطلبك " + o.code, mail(en?"en":"ar", en ? "Your payment details are waiting" : "تفاصيل الدفع بانتظارك", body, en ? "Open my request" : "افتح طلبي", link, greet(o)));

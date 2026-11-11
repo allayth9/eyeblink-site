@@ -1,8 +1,9 @@
 {
+  "id": "/workspace",
   "name": "Eyeblink Studio — مساحة العمل",
   "short_name": "Eyeblink",
-  "start_url": "/workspace.html",
-  "scope": "/",
+  "start_url": "/workspace",
+  "scope": "/workspace",
   "display": "standalone",
   "dir": "rtl",
   "lang": "ar",

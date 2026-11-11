@@ -1,5 +1,5 @@
 /* Eyeblink — the client workspace (Active Clients only; the server checks every request).
-   Its own page, workspace.html:  #w overview · #w/projects · #w/tasks[/filter] · #w/invoices · #w/notifications · #w/settings
+   Its own page, workspace:  #w overview · #w/projects · #w/tasks[/filter] · #w/invoices · #w/notifications · #w/settings
    #w/p/ID[/talk|files|report]  project · #w/t/REF  task · #w/new[/ID]  new tasks (one or several at once) */
 (function(){
   var root=document.documentElement, lang=root.lang==='en'?'en':'ar', AR=lang==='ar';
@@ -134,7 +134,7 @@
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
-  /* ======== the workspace page (workspace.html): its own bar, colour per section ======== */
+  /* ======== the workspace page (workspace): its own bar, colour per section ======== */
   var host=null, shell=null, DASH=null, CUR='overview';
   var U2=AR?{more:'المزيد',nav:{overview:'نظرة عامة',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
       g:{login:'سجّل دخولك لفتح مساحة العمل.',client:'مساحة العمل متاحة للعملاء المتعاقدين مع الاستوديو. إن كان لديك تعاون مستمر معنا، فاطلب الوصول من صفحة حسابك.',in:'تسجيل الدخول',acct:'صفحة حسابي'},
@@ -180,19 +180,22 @@
     document.addEventListener('click',function(e){ if(x.classList.contains('open')&&!e.target.closest('.wnav-x')) moreOpen(false); });
     document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&x.classList.contains('open')){ moreOpen(false); mb.focus(); } });
     el.querySelector('.wnav-sec').addEventListener('click',function(e){ if(e.target.closest('a')) moreOpen(false); });
+    // phones: the bar lives directly under <body>, so no parent can turn its fixed position into a scrolling one
+    // shortcut: decided once per load; turning a tablet across 860px keeps the first layout until reload
+    [].forEach.call(document.querySelectorAll('body>.wnav'),function(o){ o.remove(); }); if(matchMedia('(max-width:860px)').matches) document.body.appendChild(el.querySelector('.wnav'));
     route(); }
-  function moreOpen(on){ var x=shell.querySelector('.wnav-x'), mb=x.querySelector('.wnav-more'); x.classList.toggle('open',on); mb.setAttribute('aria-expanded',on?'true':'false');
+  function moreOpen(on){ var x=document.querySelector('.wnav-x'), mb=x.querySelector('.wnav-more'); x.classList.toggle('open',on); mb.setAttribute('aria-expanded',on?'true':'false');
     if(on){ var f=x.querySelector('.wnav-sec a.on')||x.querySelector('.wnav-sec a'); if(f) f.focus({preventScroll:true}); } }
-  function setSec(sec){ if(sec!=='tasks') TC=null; CUR=sec; shell.dataset.sec=sec;
-    [].forEach.call(shell.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  function setSec(sec){ if(sec!=='tasks') TC=null; CUR=sec; shell.dataset.sec=sec; var nv=document.querySelector('.wnav'); if(nv) nv.dataset.sec=sec;
+    [].forEach.call(document.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
     // «More» stands in for the section it hides, so the open section is always named in the bar
-    var mb=shell.querySelector('.wnav-more'), inMore=MORE.some(function(n){ return n[0]===sec; });
+    var mb=document.querySelector('.wnav-more'), inMore=MORE.some(function(n){ return n[0]===sec; });
     mb.classList.toggle('on',inMore); mb.className=mb.className.replace(/\bc-\w+/g,'').trim()+(inMore?' c-'+sec:'');
     mb.querySelector('.wm-l').textContent=inMore?U2.nav[sec]:U2.more; mb.querySelector('svg').outerHTML=inMore?ICO[sec]:ICO.more;
     if(inMore) mb.setAttribute('aria-current','page'); else mb.removeAttribute('aria-current');
-    shell.querySelector('.wnav-new').classList.toggle('on',sec==='new'); moreOpen(false); paintN(LASTN); }
+    document.querySelector('.wnav-new').classList.toggle('on',sec==='new'); moreOpen(false); paintN(LASTN); }
   var LASTN=0;
-  function paintN(n){ LASTN=n; var b=shell&&shell.querySelector('.wnav .wn-n'), d=shell&&shell.querySelector('.wnav .wn-dot'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } if(d){ d.hidden=!n||CUR==='notifications'; d.textContent=n>9?'9+':n; } }
+  function paintN(n){ LASTN=n; var b=shell&&document.querySelector('.wnav .wn-n'), d=shell&&document.querySelector('.wnav .wn-dot'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } if(d){ d.hidden=!n||CUR==='notifications'; d.textContent=n>9?'9+':n; } }
   function setUnread(n){ n=+n||0; paintN(n); if(window.EBHdr) EBHdr.setUnread(n); }
   addEventListener('eb:unread',function(e){ paintN(+e.detail||0); });
   function route(){ if(!shell) return; var h=(location.hash||'').slice(1), m;
@@ -219,9 +222,9 @@
   // boot on the workspace page: signed in + Active Client → mount; otherwise a clear gate
   (function(){ var el=document.getElementById('ws'); if(!el) return;
     api('?view=dash').then(function(j){
-      if(j._s===403&&j.error==='password'){ location.replace('account.html?next=workspace'+location.hash); return; }   // temporary password: choose your own first
+      if(j._s===403&&j.error==='password'){ location.replace('account?next=workspace'+location.hash); return; }   // temporary password: choose your own first
       if(j._s===401||j._s===403){ var lg=j._s===401; el.innerHTML='<div class="wgate glass"><span class="wg-ic">'+ICO.overview+'</span><span class="eyebrow">WORKSPACE</span><h1>'+T.ws+'</h1><p class="muted">'+(lg?U2.g.login:U2.g.client)+'</p>'+
-        '<div class="actions"><a class="btn btn-primary" href="account.html'+(lg?'?next=workspace'+esc(location.hash):'')+'">'+(lg?U2.g.in:U2.g.acct)+'</a></div></div>'; return; }
+        '<div class="actions"><a class="btn btn-primary" href="account'+(lg?'?next=workspace'+esc(location.hash):'')+'">'+(lg?U2.g.in:U2.g.acct)+'</a></div></div>'; return; }
       if(!j.ok){ el.innerHTML='<div class="wcard glass"><p class="muted">'+(j.error==='db'?(AR?'مساحة العمل قيد التجهيز. يُرجى المحاولة بعد قليل.':'The workspace is being set up. Try again shortly.'):T.err)+'</p></div>'; return; }
       j._at=Date.now(); DASH=j; mount(el); setUnread(j.unread);
     }); })();
@@ -490,9 +493,10 @@
   }
   /* ---- invoices: the client's own, with a printable copy ---- */
   function money(n,c){ var a=Math.abs(+n||0), v=(Math.round(a*100)/100).toFixed(a%1?2:0), eq=c==='$'&&a&&window.EBCur?EBCur.conv(a):''; return ((+n||0)<0?'−':'')+(c==='$'||c==='€'||c==='£'?c+v:v+' '+c)+(eq?' ≈ '+eq:''); }
-  function invoices(openId){
-    loading();
-    api('?view=invoices').then(function(j){ if(!j.ok) return fail(j); var L2=j.invoices||[], by={};
+  var INVJ=null; window.addEventListener('eb:cur',function(){ if(INVJ&&host.querySelector('.curhost')) invoices(null,1); });
+  function invoices(openId,cached){
+    if(!cached) loading();
+    (cached?Promise.resolve(INVJ):api('?view=invoices')).then(function(j){ if(!j.ok) return fail(j); INVJ=j; var L2=j.invoices||[], by={};
       L2.forEach(function(x){ if(x.state==='cancelled'||x.state==='refunded') return; var c=x.currency; by[c]=by[c]||{due:0,paid:0}; by[c].due+=x.balance; by[c].paid+=x.paid; });
       var cur=Object.keys(by);
       setTimeout(function(){ var h=host.querySelector('.curhost'); if(h&&window.EBCur) EBCur.pick(h); },0);
@@ -505,7 +509,7 @@
             '<td data-l="'+esc(T.bl.total)+'"><bdi dir="ltr">'+esc(money(x.total,x.currency))+'</bdi></td><td data-l="'+esc(T.bl.bal)+'"><bdi dir="ltr">'+esc(money(x.balance,x.currency))+'</bdi></td><td class="tu"><button type="button" class="btn btn-glass glass wbv" data-inv="'+esc(x.id)+'">'+T.bl.view+'</button></td></tr>'; }).join('')+'</tbody></table></div>'
           :'<div class="wcard glass wempty"><p>'+T.bl.none+'</p></div>');
       host.querySelectorAll('[data-inv]').forEach(function(b){ b.onclick=function(){ invDoc(b.dataset.inv); }; });
-      rise(); if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
+      if(!cached) rise(); if(openId&&L2.some(function(x){return x.id===openId})) invDoc(openId);
     });
   }
   function reportView(body,p,month){ var ms=[], d=new Date(); d.setUTCDate(1); for(var i=0;i<6;i++){ ms.push(d.toISOString().slice(0,7)); d.setUTCMonth(d.getUTCMonth()-1); } month=month||ms[0];
@@ -582,7 +586,7 @@
     api('?view=prefs').then(function(j){ if(!j.ok) return fail(j); var P=j.prefs, wa=j.wa||{}, PU=j.push||{}, TG=j.tg||{}, X=CH(), cats=j.cats||['tasks','requests','deliveries','comments','projects'];
       var sw=function(name,on,dis){ return '<label class="wsw"><input type="checkbox" name="'+name+'"'+(on?' checked':'')+(dis?' disabled':'')+'><i></i></label>'; };
       var masked=P.wa_phone?('+'+P.wa_phone).replace(/\d(?=\d{4})/g,'•'):'';
-      host.innerHTML=head('settings','SETTINGS',T.pf.h,T.pf.p,'<div class="whd-a"><a class="btn btn-glass glass" href="account.html">'+(AR?'بيانات الحساب':'Account details')+'</a></div>')+'<form class="wcard glass wset form" novalidate>'+
+      host.innerHTML=head('settings','SETTINGS',T.pf.h,T.pf.p,'<div class="whd-a"><a class="btn btn-glass glass" href="account">'+(AR?'بيانات الحساب':'Account details')+'</a></div>')+'<form class="wcard glass wset form" novalidate>'+
         '<div class="wprefs wprefs6"><div class="wpr wpr-h"><span></span><span>'+T.pf.inapp+'</span><span>'+T.pf.email+'</span><span>'+X.dev+'</span><span>'+X.tg+'</span><span>'+T.pf.wa+'</span></div>'+cats.map(function(c){ var L2=T.pf.cats[c]||[c,''];
           return '<div class="wpr"><span class="wpr-l"><b>'+esc(L2[0])+'</b><small class="muted">'+esc(L2[1])+'</small></span><span data-l="'+T.pf.inapp+'">'+sw('in_'+c,true,true)+'</span><span data-l="'+T.pf.email+'">'+sw('em_'+c,P.email_cats[c])+'</span><span data-l="'+X.dev+'">'+sw('pu_'+c,P.push_cats[c],!PU.devices)+'</span><span data-l="'+X.tg+'">'+sw('tg_'+c,P.tg_cats[c],!TG.linked)+'</span><span data-l="'+T.pf.wa+'">'+sw('wa_'+c,P.wa_cats[c],!P.consent)+'</span></div>'; }).join('')+'</div>'+
         '<div class="actions"><button class="btn btn-primary" type="submit">'+T.pf.save+'</button></div>'+

@@ -8,13 +8,13 @@
 <title>لوحة تحكم Eyeblink</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#04061A">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Eyeblink Admin">
 <link rel="apple-touch-icon" href="../assets/img/admin-icon-180.png">
 <link rel="icon" href="../assets/img/admin-icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="admin.css?v=5ef83629">
+<link rel="stylesheet" href="admin.css?v=108a4671">
 </head>
 <body>
 <div id="login" class="login">
@@ -30,13 +30,15 @@
 </div>
 
 <div id="app" class="app" hidden>
-  <aside class="side">
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="side" id="side">
     <div class="brand"><img src="../assets/img/favicon.svg" alt="" width="34" height="34"><b>EYEBLINK</b><span>لوحة التحكم</span></div>
     <nav id="tabs"></nav>
     <div class="mode" id="mode"></div>
   </aside>
   <main class="main">
     <header class="top">
+      <button class="mnav" id="mnavBtn" type="button" aria-label="القائمة" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
       <h2 id="tabTitle"></h2>
       <button class="btn sm" type="button" data-cmdk title="بحث (Ctrl+K)">بحث <kbd>Ctrl K</kbd></button>
       <span class="topico" id="topIcons"></span>
@@ -49,7 +51,7 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 <script src="../content.js"></script>
-<script src="admin.js?v=60c1d54b"></script>
+<script src="admin.js?v=2b072758"></script>
 <script src="../assets/js/fa.js?v=b0bc4c19"></script>
 </body>
 </html>
