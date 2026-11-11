@@ -719,3 +719,17 @@ html{-webkit-tap-highlight-color:transparent}
 
 /* «في»: Hayyakum's common ligature folds the yaa under the faa; off everywhere, typing included. Lam-alef is a required ligature and stays */
 *,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
+
+/* version review: the private player, notes with kind and state, internal notes */
+.wrv-a{display:block;width:100%;max-height:360px;margin:8px 0;border-radius:12px;background:#000}
+.wpts-a li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
+.wpts-a .ptx{flex:1;min-width:160px}
+.wpts-a select{width:auto;padding:4px 8px;font-size:12.5px}
+.wpts-a .tc{font:inherit;font-family:Oswald,sans-serif;font-size:12px;color:var(--horizon);background:rgba(63,224,232,.08);border:0;border-radius:99px;padding:1px 8px;cursor:pointer}
+.pkk{font-size:11.5px;padding:1px 8px;border-radius:99px;background:rgba(255,255,255,.06);color:var(--mist)}
+.pk-edit .pkk{color:#E07BE0}.pk-ask .pkk{color:#F5C66B}.pk-note .pkk{color:#6E8BFF}.pk-love .pkk{color:#5EF0B0}
+.pint{opacity:.85}.pint .pkk{box-shadow:inset 0 0 0 1px rgba(245,198,107,.4)}
+.wpadd{margin-top:8px}.wpadd summary{cursor:pointer;color:var(--horizon)}
+.wup{position:relative;height:28px;margin-top:6px;border-radius:8px;background:rgba(255,255,255,.05);overflow:hidden}
+.wup i{position:absolute;inset:0 auto 0 0;width:0;background:rgba(63,224,232,.25);transition:width .3s}
+.wup span{position:relative;display:block;padding:4px 10px;font-size:12.5px}

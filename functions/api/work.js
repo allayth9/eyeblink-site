@@ -143,7 +143,10 @@ function parseP(p){ if (!p) return p; try { p.services = JSON.parse(p.services |
 function parseA(a){ try { a.data = JSON.parse(a.data || "{}"); } catch { a.data = {}; } return a; }
 function parseD(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } try { x.points = JSON.parse(x.points || "[]"); } catch { x.points = []; } x.is_final = !!x.is_final; return x; }
 function parseC(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } return x; }
-function cleanPoints(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(x => ({ t: TC.test(clip(x && x.t, 8)) ? clip(x.t, 8) : "", text: clip(x && x.text, 600), done: false })).filter(x => x.text); }
+const PT_KIND = ["edit", "ask", "note", "love"], PT_ST = ["open", "progress", "resolved", "na"];
+function cleanPoints(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(x => ({ t: TC.test(clip(x && x.t, 8)) ? clip(x.t, 8) : "", text: clip(x && x.text, 600), kind: PT_KIND.includes(x && x.kind) ? x.kind : "edit", status: "open", done: false })).filter(x => x.text); }
+// what the client sees of a version: everything but the studio's internal notes
+const forClient = list => list.map(d => ({ ...d, points: (d.points || []).filter(p => !p.internal) }));
 const isUrl = u => /^https?:\/\/[^\s]+$/i.test(u || "");
 const excerpt = (t, n) => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
 async function deliverablesOf(D, taskId){ return (await D.prepare("SELECT * FROM deliverables WHERE task_id=? ORDER BY version DESC").bind(taskId).all()).results.map(parseD); }
@@ -597,8 +600,8 @@ export async function onRequestGet(ctx) {
   }
   if (q.get("task")) {
     const t = cparse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
-    const activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA);
-    return json({ ok: true, me: e, task: t, activity, deliverables: await deliverablesOf(D, t.id), comments: await commentsOf(D, "task", t.id) });
+    const activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA).filter(a => !(a.data && a.data.internal));
+    return json({ ok: true, me: e, task: t, activity, deliverables: forClient(await deliverablesOf(D, t.id)), comments: await commentsOf(D, "task", t.id) });
   }
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
@@ -618,7 +621,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -728,7 +731,8 @@ export async function onRequestPost(ctx) {
     const note = clip(d.note, 3000);
     if (d.decision === "approve") {
       const to = dl.is_final ? "completed" : "progress";
-      await D.prepare("UPDATE deliverables SET status='approved', decision_note=?, decided_at=?, decided_by=? WHERE id=?").bind(note, at, u.email, dl.id).run();
+      const kept = cleanPoints(d.points);
+      await D.prepare("UPDATE deliverables SET status='approved', decision_note=?, decided_at=?, decided_by=?" + (kept.length ? ", points=?" : "") + " WHERE id=?").bind(...[note, at, u.email].concat(kept.length ? [JSON.stringify(dl.points.filter(p => p.by === "studio").concat(kept))] : [], [dl.id])).run();
       await D.prepare("UPDATE tasks SET status=?, updated_at=?" + (to === "completed" ? ", completed_at=?" : "") + " WHERE id=?").bind(...[to, at].concat(to === "completed" ? [at] : []), t.id).run();
       await act(D, { ...tw, kind: "approved", data: { label: dl.label, final: dl.is_final, note: note || undefined } });
       await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
@@ -737,7 +741,8 @@ export async function onRequestPost(ctx) {
     }
     if (d.decision === "changes") {
       const points = cleanPoints(d.points); if (!points.length && !note) return json({ ok: false, error: "text" }, 400);
-      await D.prepare("UPDATE deliverables SET status='changes', points=?, decision_note=?, decided_at=?, decided_by=? WHERE id=?").bind(JSON.stringify(points), note, at, u.email, dl.id).run();
+      // the studio's own notes on this version (internal or not) stay; the client's are added after them
+      await D.prepare("UPDATE deliverables SET status='changes', points=?, decision_note=?, decided_at=?, decided_by=? WHERE id=?").bind(JSON.stringify(dl.points.filter(p => p.by === "studio").concat(points)), note, at, u.email, dl.id).run();
       await D.prepare("UPDATE tasks SET status='revision', updated_at=? WHERE id=?").bind(at, t.id).run();
       const round = (await D.prepare("SELECT COUNT(*) AS n FROM deliverables WHERE task_id=? AND status='changes'").bind(t.id).first()).n;
       await act(D, { ...tw, kind: "changes_requested", data: { label: dl.label, points: points.length, round, note: note || undefined } });
@@ -1087,10 +1092,22 @@ async function adminPost(ctx, d){
     later(ctx, tellClient(env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
     return json({ ok: true, ref });
   }
-  if (d.action === "point") {
-    const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE id=?").bind(clip(d.deliverable, 40)).first() || {}); const i = +d.index;
-    if (!dl.id || !dl.points[i]) return json({ ok: false }, 404);
-    dl.points[i].done = !!d.done; await D.prepare("UPDATE deliverables SET points=? WHERE id=?").bind(JSON.stringify(dl.points), dl.id).run(); return json({ ok: true });
+  if (d.action === "point" || d.action === "pointAdd") {
+    const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE id=?").bind(clip(d.deliverable, 40)).first() || {}); if (!dl.id) return json({ ok: false }, 404);
+    const aw = { ...studio, client_email: dl.client_email, project_id: dl.project_id, task_id: dl.task_id };
+    if (d.action === "pointAdd") {
+      const p = cleanPoints([{ t: d.t, text: d.text, kind: d.kind }])[0]; if (!p) return json({ ok: false, error: "text" }, 400);
+      p.by = "studio"; p.at = at; if (d.internal) p.internal = true; dl.points.push(p);
+      await D.prepare("UPDATE deliverables SET points=? WHERE id=?").bind(JSON.stringify(dl.points), dl.id).run();
+      await act(D, { ...aw, kind: "point_added", data: { label: dl.label, t: p.t || undefined, internal: !!p.internal, kind: p.kind } });
+      return json({ ok: true, points: dl.points });
+    }
+    const i = +d.index, p = dl.points[i]; if (!p) return json({ ok: false }, 404);
+    const st = PT_ST.includes(d.status) ? d.status : d.done !== undefined ? (d.done ? "resolved" : "open") : null; if (!st) return json({ ok: false }, 400);
+    const from = p.status || (p.done ? "resolved" : "open"); p.status = st; p.done = st === "resolved" || st === "na"; p.statusAt = at;
+    await D.prepare("UPDATE deliverables SET points=? WHERE id=?").bind(JSON.stringify(dl.points), dl.id).run();
+    if (from !== st) await act(D, { ...aw, kind: "point_status", data: { label: dl.label, t: p.t || undefined, text: p.text.slice(0, 80), from, to: st, internal: !!p.internal } });
+    return json({ ok: true });
   }
   if (d.action === "removeComment" || d.action === "removeFile") {
     const tb = d.action === "removeComment" ? "comments" : "files", r = await D.prepare(`SELECT * FROM ${tb} WHERE id=? AND deleted_at IS NULL`).bind(clip(d.id, 40)).first();
