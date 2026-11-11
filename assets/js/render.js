@@ -34,6 +34,40 @@
   if(!(VC in FX)) VC='$';
   function getSyp(){ return fetch('/api/fx').then(function(r){ return r.json(); }).then(function(j){ if(+j.SYP){ FX.SYP=+j.SYP; try{ localStorage.setItem('eb-syp',JSON.stringify({r:FX.SYP,t:Date.now()})); }catch(_){} } }).catch(function(){}); }
   if(VC==='SYP'&&!FX.SYP) getSyp().then(function(){ if(FX.SYP) location.reload(); });
+  /* ---- support window: a short form the first time, then the conversation; the studio answers from the admin ---- */
+  var SUPT=AR?{h:'الدعم الفني',sub:'نرد عادةً خلال ساعات، وبيوصلك الرد هون وعلى إيميلك',name:'الاسم',email:'البريد الإلكتروني',msg:'اكتب المشكلة بالتفصيل…',send:'إرسال',close:'إغلاق',you:'أنت',bot:'رد تلقائي',studio:'Eyeblink',err:'اكتب اسمك وبريداً صحيحاً ورسالتك',fail:'تعذّر الإرسال، جرّب مرة أخرى',slow:'محاولات كثيرة، جرّب بعد قليل',reply:'اكتب ردك…'}
+                 :{h:'Support',sub:'We usually reply within a few hours, here and by email',name:'Name',email:'Email',msg:'Describe the problem…',send:'Send',close:'Close',you:'You',bot:'Automatic reply',studio:'Eyeblink',err:'Enter your name, a valid email and your message',fail:'Could not send, please try again',slow:'Too many attempts, try again shortly',reply:'Write a reply…'};
+  var SUP=null, supTimer=0, supWho=null;
+  window.addEventListener('eb:who',function(e){ supWho=e.detail||null; });
+  function supGet(){ try{ return JSON.parse(localStorage.getItem('eb-sup')||'null'); }catch(_){ return null; } }
+  function supOpen(){
+    if(!SUP){ SUP=document.createElement('div'); SUP.className='sup'; SUP.setAttribute('role','dialog'); SUP.setAttribute('aria-label',SUPT.h); SUP.hidden=true;
+      SUP.innerHTML='<div class="sup-h"><div><b>'+SUPT.h+'</b><span>'+SUPT.sub+'</span></div><button type="button" class="sup-x" aria-label="'+SUPT.close+'">×</button></div><div class="sup-b" aria-live="polite"></div><form class="sup-f" novalidate></form>';
+      document.body.appendChild(SUP);
+      SUP.querySelector('.sup-x').onclick=supClose;
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!SUP.hidden) supClose(); });
+      SUP.querySelector('.sup-f').onsubmit=supSend; }
+    SUP.hidden=false; requestAnimationFrame(function(){ SUP.classList.add('on'); });
+    supDraw(); var tk=supGet(); if(tk) supPull(); clearInterval(supTimer); supTimer=setInterval(function(){ if(supGet()) supPull(); },15000);
+  }
+  function supClose(){ SUP.classList.remove('on'); clearInterval(supTimer); setTimeout(function(){ SUP.hidden=true; },200); }
+  function supDraw(th){
+    var tk=supGet(), b=SUP.querySelector('.sup-b'), f=SUP.querySelector('.sup-f'), u=supWho||{};
+    if(th) b.innerHTML=th.messages.map(function(m){ return '<div class="sup-m '+m.from+'"><p>'+esc(m.text).replace(/https?:\/\/[^\s<]+/g,function(u){ return '<a href="'+u+'" target="_blank" rel="noopener" dir="ltr">'+u.replace(/^https?:\/\//,'')+'</a>'; }).replace(/\n/g,'<br>')+'</p><small>'+(m.from==='client'?SUPT.you:m.from==='bot'?SUPT.bot:SUPT.studio)+' · '+new Date(m.at).toLocaleTimeString(AR?'ar-u-nu-latn':'en-GB',{hour:'2-digit',minute:'2-digit'})+'</small></div>'; }).join('');
+    else if(!tk) b.innerHTML='';
+    f.innerHTML=(tk?'':'<div class="sup-row"><input name="name" autocomplete="name" placeholder="'+SUPT.name+'" value="'+esc(u.name||'')+'"><input name="email" type="email" dir="ltr" autocomplete="email" placeholder="'+SUPT.email+'" value="'+esc(u.email||'')+'"></div>')+
+      '<div class="sup-row"><textarea name="text" rows="'+(tk?2:4)+'" dir="auto" placeholder="'+(tk?SUPT.reply:SUPT.msg)+'"></textarea><button class="btn btn-primary" type="submit">'+SUPT.send+'</button></div><input name="website" class="sup-hp" tabindex="-1" autocomplete="off"><p class="sup-e" role="status"></p>';
+    b.scrollTop=b.scrollHeight;
+  }
+  function supPull(){ var tk=supGet(); if(!tk) return; fetch('/api/support?id='+encodeURIComponent(tk.id)+'&token='+tk.token,{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(j.ok) { var keep=SUP.querySelector('[name=text]'), v=keep&&keep.value; supDraw(j.ticket); if(v) SUP.querySelector('[name=text]').value=v; } else if(j.ok===false){ try{ localStorage.removeItem('eb-sup'); }catch(_){} } }).catch(function(){}); }
+  function supSend(e){ e.preventDefault(); var f=e.target, E=f.elements, tk=supGet(), err=f.querySelector('.sup-e'), text=E.text.value.trim();
+    var body= tk? {action:'send',id:tk.id,token:tk.token,text:text} : {action:'open',name:E.name.value.trim(),email:E.email.value.trim(),text:text,page:location.href,lang:lang,website:E.website.value};
+    if(!text||(!tk&&(body.name.length<2||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)))){ err.textContent=SUPT.err; return; }
+    var btn=f.querySelector('button'); btn.disabled=true; err.textContent='';
+    fetch('/api/support',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json(); }).then(function(j){
+      btn.disabled=false; if(!j.ok){ err.textContent=j.error==='slow'?SUPT.slow:j.error==='fields'?SUPT.err:SUPT.fail; return; }
+      if(j.token){ try{ localStorage.setItem('eb-sup',JSON.stringify({id:j.id,token:j.token})); }catch(_){} }
+      supDraw(j.ticket); }).catch(function(){ btn.disabled=false; err.textContent=SUPT.fail; }); }
   function money(c,n){ if(c==='$'&&VC!=='$'&&FX[VC]&&n!==''&&isFinite(+n)){ var v=+n*FX[VC]; n=VC==='SYP'?Math.round(v/100)*100:FX[VC]<1?Math.round(v*10)/10:Math.round(v); c=VC; }
     var s=isFinite(+n)?(+n).toLocaleString('en-US'):n; return AR? s+' '+c : (c.length>1?c+' ':c)+s; }
   var CURN=AR?{'$':'دولار أمريكي',AED:'درهم إماراتي',SAR:'ريال سعودي',QAR:'ريال قطري',KWD:'دينار كويتي',BHD:'دينار بحريني',OMR:'ريال عُماني',SYP:'ليرة سورية'}:{'$':'US dollar',AED:'UAE dirham',SAR:'Saudi riyal',QAR:'Qatari riyal',KWD:'Kuwaiti dinar',BHD:'Bahraini dinar',OMR:'Omani rial',SYP:'Syrian pound'};
@@ -183,9 +217,10 @@
     if(document.querySelector('.acct-page,.ws-page')){ if(!hf){ hf=document.createElement('a'); hf.className='help-float'; document.body.appendChild(hf); }
       var subj=(AR?'مشكلة تقنية':'Technical issue')+(location.hash.length>1?' · '+decodeURIComponent(location.hash.slice(1)).slice(0,60):'');
       var body=(AR?'ما الذي حدث؟\n\n\n— تفاصيل تساعدنا —\n':'What happened?\n\n\n— details that help us —\n')+'Page: '+location.href+'\nBrowser: '+navigator.userAgent+'\nTime: '+new Date().toISOString();
-      hf.href='mailto:support@eyeblinkstudio.com?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+      hf.href='#support'; hf.onclick=function(e){ e.preventDefault(); supOpen(); };
       hf.innerHTML='<i>?</i><span>'+(AR?'هل يوجد مشكلة؟':'Need help?')+'</span>'; hf.setAttribute('aria-label',AR?'راسل الدعم الفني':'Email support'); }
     else if(hf) hf.remove();
+    if(/[?&]support=S-[A-Z0-9]+\.[a-f0-9]{32}/.test(location.search)){ var sp=location.search.match(/support=(S-[A-Z0-9]+)\.([a-f0-9]{32})/); try{ localStorage.setItem('eb-sup',JSON.stringify({id:sp[1],token:sp[2]})); }catch(_){} history.replaceState(null,'',location.pathname+location.hash); supOpen(); }
     // showreel: a button in the hero, plus a small autoplaying preview when one is uploaded
     var H=C.hero||{}, reel=H.reel||{}, rb=document.getElementById('reelBtn'), rc=document.getElementById('reelCard');
     var hasReel=!!(vid(reel)||(reel.type==='mp4'&&reel.src));

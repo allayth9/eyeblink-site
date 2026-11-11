@@ -45,6 +45,8 @@ fieldset{border:0;margin:0;padding:26px;display:grid;gap:16px;min-width:0}
 legend{float:right;width:100%;padding:0;margin-bottom:2px;font:500 12px Hayyakum,sans-serif;letter-spacing:.04em;color:var(--horizon)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 label{display:grid;gap:7px;font-size:13.5px;color:var(--mist)}
+label[hidden]{display:none}
+fieldset:has(.bsel-list){position:relative;z-index:5}
 input,select,textarea{font:500 15px Hayyakum,Manrope,sans-serif;color:var(--light);border:0;border-radius:14px;padding:13px 15px;width:100%;outline:none;
   background:rgba(4,6,26,.38);box-shadow:inset 0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .3s var(--ease),background .3s var(--ease)}
 input:hover,select:hover,textarea:hover{background:rgba(4,6,26,.48)}
@@ -85,7 +87,7 @@ button:disabled{opacity:.5;cursor:default;transform:none}
 .bsel-btn>i{width:8px;height:8px;border-inline-end:1.5px solid var(--mist);border-bottom:1.5px solid var(--mist);transform:translateY(-2px) rotate(45deg);transition:transform .25s var(--ease)}
 .bsel.open .bsel-btn>i{transform:translateY(2px) rotate(-135deg)}
 .bv,.bsel-list li{display:flex;align-items:center;gap:10px;min-width:0}.bv span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bsel-list{position:absolute;z-index:10;inset-inline:0;top:calc(100% + 6px);min-width:max-content;margin:0;padding:6px;list-style:none;border-radius:16px;max-height:280px;overflow:auto;background:rgba(11,18,54,.92);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 24px 60px -20px rgba(0,0,0,.7);transform-origin:top center;animation:pop .18s cubic-bezier(.23,1,.32,1)}
+.bsel-list{position:absolute;z-index:10;inset-inline:0;top:calc(100% + 6px);min-width:max-content;margin:0;padding:6px;list-style:none;border-radius:16px;max-height:280px;overflow:auto;background:rgba(11,18,54,.985);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 24px 60px -20px rgba(0,0,0,.7);transform-origin:top center;animation:pop .18s cubic-bezier(.23,1,.32,1)}
 .bsel-list li{padding:9px 11px;border-radius:11px;font-size:14.5px;cursor:pointer;outline:0}.bsel-list li:hover,.bsel-list li:focus{background:rgba(63,224,232,.1)}.bsel-list li[aria-selected="true"]{background:rgba(63,224,232,.16)}
 @keyframes pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
 .flag{width:22px;height:15px;flex:none;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.14)}

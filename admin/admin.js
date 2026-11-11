@@ -178,6 +178,7 @@
     {id:'billing', title:'الفوترة', billing:1},
     {id:'clients', title:'العملاء', clients:1},
     {id:'team', title:'الفريق', team:1},
+    {id:'support', title:'الدعم', support:1},
     {id:'notify', title:'الإشعارات', notify:1},
     {id:'reports', title:'التقارير', reports:1},
     {id:'stats', title:'إحصائيات الزيارات', stats:1},
@@ -234,6 +235,7 @@
     $('#tabTitle').textContent=tab.title;
     if(tab.today) return renderToday();
     if(tab.team) return renderTeam();
+    if(tab.support) return renderSupport();
     if(tab.orders) return renderOrders();
     if(tab.stats) return renderStats();
     if(tab.tasks) return renderWork();
@@ -833,11 +835,12 @@
   // every tab belongs to one of four sections; the sidebar draws them in this order
   var TOP_TABS=['notify','settings'];
   var SECT=[['today',''],['work','الشغل'],['site','الموقع'],['studio','الاستوديو']];
-  var SECT_OF={today:'today',orders:'work',tasks:'work',clients:'work',billing:'work',team:'work',notify:'studio',reports:'studio',stats:'studio',settings:'studio',backup:'studio'};
+  var SECT_OF={today:'today',orders:'work',tasks:'work',clients:'work',billing:'work',team:'work',support:'work',notify:'studio',reports:'studio',stats:'studio',settings:'studio',backup:'studio'};
   function secOf(id){ return SECT_OF[id]||'site'; }
   var ICO={today:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',orders:'<path d="M4 13l2-8h12l2 8v6H4zM4 13h5a3 3 0 0 0 6 0h5"/>',tasks:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 4v16"/>',
     clients:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6 6 0 0 1 3.5 5.5"/>',billing:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/>',
     team:'<circle cx="12" cy="7" r="3"/><circle cx="5" cy="10" r="2.2"/><circle cx="19" cy="10" r="2.2"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0M1.5 19a3.5 3.5 0 0 1 4.5-3.3M22.5 19a3.5 3.5 0 0 0-4.5-3.3"/>',
+    support:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/>',
     home:'<path d="M3 11l9-7 9 7v9H3z"/>',services:'<path d="M7 3h7l5 5v13H7zM14 3v5h5"/>',packages:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
     work:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/>',about:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
     contact:'<path d="M4 5h16v11H8l-4 4z"/>',payments:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>',
@@ -852,6 +855,7 @@
     if(id==='notify') return [NOTI&&!NOTI.err?NOTI.unread:(WORK&&WORK.inboxUnread)||0,'hot'];
     if(id==='clients'&&ACC) return [ACC.requests.filter(function(r){return r.status==='pending'}).length,'hot'];
     if(id==='team'&&TEAM&&TEAM.apps) return [TEAM.apps.filter(function(a){return a.status==='new'}).length+TEAM.tasks.filter(function(t){return t.status==='qc'}).length,'hot'];
+    if(id==='support'&&SUPA) return [SUPA.filter(function(s){ return s.status!=='closed'&&s.unread; }).length,'hot'];
     if(id==='today'){ var al=alerts(); return [al.filter(function(a){return a.lvl!=='info'}).length, al.some(function(a){return a.lvl==='crit'})?'crit':'warn']; }
     return [0];
   }
@@ -869,7 +873,7 @@
   // one open at a time: opening a card closes its open siblings (works, packages, orders, tasks, applications…)
   document.addEventListener('click',function(e){ var s=e.target.closest('summary'); if(!s||e.target.closest('button,a,input,select,label')) return; var d=s.parentElement; if(!d||d.tagName!=='DETAILS'||d.open||!d.parentElement) return;
     [].forEach.call(d.parentElement.children,function(x){ if(x!==d&&x.tagName==='DETAILS'&&x.open) x.open=false; }); });
-  function go(tab){ TAB=tab; render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
+  function go(tab){ TAB=tab; render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
   function goOrder(key){ TAB='orders'; OFILTER='all'; render(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; setTimeout(function(){ d.scrollIntoView({block:'start',behavior:'smooth'}); },40); d.classList.add('flash'); setTimeout(function(){ d.classList.remove('flash'); },1600); } }
 
   /* ---------- «Today»: what needs you, ranked; the week ahead; where the pipeline stands ---------- */
@@ -906,6 +910,7 @@
         if(t.status==='approved'&&!(t.payout&&t.payout.paid)){ due+=+t.fee||0; cur=t.cur||cur; } });
       if(due) add('info','أجور فريق مستحقة','<span dir="ltr">'+esc(pfmt(due,cur))+'</span>',{tab:'team',sub:'members'}); }
     if(FXLIVE&&(FXLIVE.ok===false||(FXLIVE.at&&hrs(FXLIVE.at)>72))) add('info','سعر الليرة ما تحدّث',FXLIVE.at?'آخر سعر '+ago(FXLIVE.at)+' · بتقدر تكتبه بإيدك من خانة العملة':'ما قدرنا نجيب السعر من «الليرة اليوم»',{tab:'orders'});
+    (SUPA||[]).forEach(function(s){ if(s.status!=='closed'&&s.unread) add(hrs(s.updatedAt||s.at)>12?'crit':'warn','تذكرة دعم بانتظار ردك',esc(s.name)+' · <span dir="ltr">'+esc(s.id)+'</span>',{tab:'support',id:s.id},s.updatedAt||s.at); });
     var rank={crit:0,warn:1,info:2}; return A.sort(function(a,b){ return rank[a.lvl]-rank[b.lvl]||(a.at<b.at?-1:1); });
   }
   function renderToday(soft){
@@ -951,6 +956,7 @@
     var g={}; try{ g=JSON.parse(b.dataset.go); }catch(_){ return; }
     if(g.tab==='orders'&&g.key) return goOrder(g.key);
     if(g.tab==='tasks'){ WOPEN=g.ref||null; go('tasks'); return; }
+    if(g.tab==='support'){ SOPEN=g.id||null; go('support'); return; }
     if(g.tab==='team'){ TSUB=g.task?'tasks':(g.sub||TSUB); go('team'); if(g.task) setTimeout(function(){ openTTask(g.task); },60); return; }
     go(g.tab);
   });
@@ -1147,6 +1153,35 @@
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&$('#tsheet')) closeT(); });
 
+  /* ---------- support: tickets from the site's «هل يوجد مشكلة؟» window; replies also go out by e-mail ---------- */
+  var SUPA=null, SOPEN=null, SFILT='open';
+  function loadSupport(){ if(!LIVE){ SUPA=[]; if(TAB==='support') renderSupport(); return; }
+    fetch(API+'/support?admin=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ SUPA=j.ok?j.tickets:[]; renderTabs(); if(TAB==='support') renderSupport(); }).catch(function(){ SUPA=SUPA||[]; }); }
+  function supAct(body,btn,ok){ if(btn) btn.disabled=true; return api('/support','POST',body).then(function(j){ if(!j.ok) throw 0; SUPA=SUPA.map(function(s){ return s.id===j.ticket.id?j.ticket:s; }); if(ok) toast(ok); renderTabs(); renderSupport(); }).catch(function(){ if(btn) btn.disabled=false; toast('ما زبط، جرّب مرة تانية',true); }); }
+  var SST={open:'مفتوحة',answered:'انرد عليها',closed:'مسكّرة'};
+  function renderSupport(){
+    renderTabs(); if(!SUPA){ $('#panel').innerHTML='<div class="sec"><div class="empty">عم يحمّل…</div></div>'; loadSupport(); return; }
+    var list=SUPA.filter(function(s){ return SFILT==='all'||(SFILT==='open'?s.status!=='closed':s.status===SFILT); });
+    if(!SOPEN&&list[0]) SOPEN=list[0].id; var cur=SUPA.filter(function(s){ return s.id===SOPEN; })[0];
+    if(cur&&cur.unread&&LIVE) api('/support','POST',{action:'seen',id:cur.id}).then(function(){ cur.unread=0; renderTabs(); });
+    var fmtT=function(a){ return new Date(a).toLocaleString('ar-u-nu-latn',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); };
+    $('#panel').innerHTML='<div class="subtabs">'+[['open','المفتوحة'],['closed','المسكّرة'],['all','الكل']].map(function(x){ return '<button type="button" data-sfilt="'+x[0]+'"'+(SFILT===x[0]?' aria-current="true"':'')+'>'+x[1]+'</button>'; }).join('')+'</div>'+
+      (!SUPA.length?'<div class="sec"><div class="empty">ما في تذاكر دعم. أول ما حدا يكبس «هل يوجد مشكلة؟» بالموقع، بتطلع هون</div></div>':
+      '<div class="supgrid"><ul class="suplist">'+(list.length?list.map(function(s){ var last=s.messages[s.messages.length-1];
+        return '<li><button type="button" data-sopen="'+esc(s.id)+'"'+(s.id===SOPEN?' aria-current="true"':'')+'><b>'+esc(s.name)+(s.unread?' <i class="sdot"></i>':'')+'</b><span>'+esc(String(last.text).slice(0,70))+'</span><small><bdi dir="ltr">'+esc(s.id)+'</bdi> · '+esc(SST[s.status])+' · '+esc(fmtT(s.updatedAt||s.at))+'</small></button></li>'; }).join(''):'<li class="muted small" style="padding:12px">ما في شي هون</li>')+'</ul>'+
+      (cur?'<section class="supth"><div class="supth-h"><div><b>'+esc(cur.name)+'</b> <span class="muted small" dir="ltr">'+esc(cur.email)+'</span><div class="muted small">'+(cur.page?'من: <bdi dir="ltr">'+esc(cur.page.replace(/^https?:\/\/[^/]+/,''))+'</bdi>':'')+'</div></div>'+
+          '<div class="actions">'+(cur.status==='closed'?'<button class="btn sm" type="button" data-sreopen="'+esc(cur.id)+'">إعادة فتح</button>':'<button class="btn sm" type="button" data-sclose="'+esc(cur.id)+'">تسكير التذكرة</button>')+'<a class="btn sm" href="mailto:'+esc(cur.email)+'?subject='+encodeURIComponent('Eyeblink · '+cur.id)+'">إيميل</a></div></div>'+
+        '<div class="athread">'+cur.messages.map(function(m){ return '<div class="amsg '+(m.from==='client'?'c':'s')+(m.from==='bot'?' k-bot':'')+'"><div>'+esc(m.text).replace(/\n/g,'<br>')+'</div><small>'+(m.from==='client'?esc(cur.name):m.from==='bot'?'رد تلقائي':'أنت')+' · '+esc(fmtT(m.at))+'</small></div>'; }).join('')+'</div>'+
+        '<div class="asend"><textarea id="sreply" dir="auto" placeholder="اكتب ردك… (بيوصله بالموقع وعلى إيميله)"></textarea><button class="btn primary sm" type="button" data-sreply="'+esc(cur.id)+'">إرسال</button></div></section>':'')+'</div>');
+    var th=$('#panel .athread'); if(th) th.scrollTop=th.scrollHeight;
+  }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-sfilt],[data-sopen],[data-sreply],[data-sclose],[data-sreopen]'); if(!b) return; var D=b.dataset;
+    if(D.sfilt){ SFILT=D.sfilt; SOPEN=null; renderSupport(); return; }
+    if(D.sopen){ SOPEN=D.sopen; renderSupport(); return; }
+    if(D.sreply){ var tx=($('#sreply')||{}).value||''; if(!tx.trim()){ toast('اكتب الرد',true); return; } supAct({action:'reply',id:D.sreply,text:tx.trim()},b,'وصل الرد للعميل'); return; }
+    if(D.sclose){ supAct({action:'close',id:D.sclose},b,'انسكّرت التذكرة'); return; }
+    if(D.sreopen){ supAct({action:'reopen',id:D.sreopen},b,'انفتحت التذكرة'); }
+  });
   function renderOrders(){
     renderTabs();
     var list=ORDERS.filter(function(o){ return OFILTER==='all'||(OFILTER==='follow'?dueFollow(o):o.status===OFILTER); });
@@ -2138,8 +2173,8 @@
                          : Promise.resolve((function(){ try{ return JSON.parse(localStorage.getItem('eb-private')||'null'); }catch(_){ return null; } })());
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
         var wm=/^#(?:work|tasks)\/(T-[A-Z0-9]+)$|^#tasks$/.exec(location.hash); if(wm){ TAB='tasks'; WOPEN=wm[1]||null; }
-        var cm=/^#clients(?:\/(.+))?$/.exec(location.hash); if(cm) TAB='clients'; if(location.hash==='#team') TAB='team';
-        render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); if(cm&&cm[1]) loadProfile(decodeURIComponent(cm[1])); });
+        var cm=/^#clients(?:\/(.+))?$/.exec(location.hash); if(cm) TAB='clients'; if(location.hash==='#team') TAB='team'; if(location.hash==='#support') TAB='support';
+        render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); loadSupport(); if(cm&&cm[1]) loadProfile(decodeURIComponent(cm[1])); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });
   }
   $('#loginForm').addEventListener('submit',function(e){
