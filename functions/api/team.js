@@ -85,6 +85,33 @@ export async function onRequestPost(ctx) {
   return adminAction(ctx, d);
 }
 
+// ---- e-mails to applicants: Modern Standard Arabic, the site's own template ----
+const IV_TZ = { dxb: "بتوقيت الإمارات", ruh: "بتوقيت السعودية", dam: "بتوقيت دمشق", cai: "بتوقيت القاهرة" };
+const IV_PF = { meet: "Google Meet", zoom: "Zoom", whatsapp: "WhatsApp (مكالمة فيديو)" };
+function ivWhen(iv){ const [d, t] = iv.at.split("T"), dt = new Date(d + "T12:00:00Z");
+  const day = dt.toLocaleDateString("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  let [hh, mm] = t.split(":").map(Number); const pm = hh >= 12; hh = hh % 12 || 12;
+  return day + "، الساعة " + hh + ":" + String(mm).padStart(2, "0") + (pm ? " مساءً " : " صباحاً ") + IV_TZ[iv.tz]; }
+async function appMail(env, a, kind, pw){
+  const hi = "أهلاً " + (String(a.name || "").trim().split(/\s+/)[0] || "") + "،", role = ROLE_AR[a.role] || "";
+  const box = rows => '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#0f1a4a;border:1px solid #1d2758;line-height:1.9">' + rows.map(r => '<b style="color:#ffffff">' + h(r[0]) + ':</b> ' + h(r[1])).join("<br>") + "</div>";
+  let subject, title, body, cta = null, link = null;
+  if (kind === "received") { subject = "تأكيد استلام طلب الانضمام · Eyeblink Studio"; title = "تم استلام طلبك بنجاح";
+    body = "<p style=\"margin:0\">شكراً لاهتمامك بالانضمام إلى Eyeblink Studio" + (role ? " بدور " + h(role) : "") + ". نراجع كل طلب بعناية، ونبدأ دائماً من الأعمال قبل أي شيء آخر.</p><p style=\"margin:12px 0 0\">إن كانت هناك خطوة تالية، سنتواصل معك عبر هذا البريد.</p>"; }
+  else if (kind === "interview") { const iv = a.interview; subject = "موعد المقابلة · Eyeblink Studio"; title = "يسعدنا أن نتحدث معك";
+    body = "<p style=\"margin:0\">أعجبنا ما رأيناه في أعمالك، وحددنا موعداً لمقابلة قصيرة نتعرّف فيها على طريقتك في العمل.</p>" + box([["الموعد", ivWhen(iv)], ["المنصة", IV_PF[iv.platform]]].concat(iv.link && !/^https?:/i.test(iv.link) ? [["التفاصيل", iv.link]] : [])) +
+      "<p style=\"margin:14px 0 0\">إن لم يناسبك الموعد، يمكنك الرد على هذه الرسالة باقتراح موعد آخر.</p>";
+    if (/^https?:\/\//i.test(iv.link || "")) { cta = "رابط المقابلة"; link = iv.link; } }
+  else if (kind === "reject") { subject = "بخصوص طلب انضمامك · Eyeblink Studio"; title = "شكراً لوقتك واهتمامك";
+    body = "<p style=\"margin:0\">راجعنا طلبك وأعمالك بعناية. لا يتوافق ما نحتاجه في هذه المرحلة مع ما تقدّمه، وهذا لا ينتقص من قيمة عملك.</p><p style=\"margin:12px 0 0\">نحتفظ بطلبك، وسنتواصل معك إن فُتح دور أقرب إلى اختصاصك.</p>"; }
+  else if (kind === "welcome") { subject = "أهلاً بك في فريق Eyeblink Studio"; title = "أصبحت من فريق Eyeblink";
+    body = "<p style=\"margin:0\">يسعدنا أن نعمل معاً. جهّزنا حسابك في مساحة الفريق، وهذه خطواتك الأولى:</p>" + box([["البريد", a.email], ["كلمة السر المؤقتة", pw]]) +
+      "<p style=\"margin:14px 0 0\">1. ادخل وغيّر كلمة السر.<br>2. اقرأ اتفاقية التعاون ووقّعها إلكترونياً.<br>3. تصلك المهام في المساحة نفسها، ومعها البريف والموعد وأجرك.</p>";
+    cta = "افتح مساحة الفريق"; link = SITE + "/team/"; }
+  else return false;
+  return sendMail(env, a.email, subject, mail("ar", title, body, cta, link, hi));
+}
+
 async function apply(ctx, d, ip){
   const { env } = ctx;
   if (d.website) return json({ ok: true });                                   // honeypot: bots fill every field
@@ -99,6 +126,7 @@ async function apply(ctx, d, ip){
   const missing = FIELDS.filter(k => fl[k] === "required" && !(Array.isArray(a[k]) ? a[k].length : a[k]));
   if (a.name.length < 2 || !MAIL_OK.test(a.email) || missing.length || (linksShown && !(a.links.length || a.reel))) return json({ ok: false, error: "fields", missing }, 400);
   await env.EB.put("teamapp:" + a.id, JSON.stringify(a));
+  ctx.waitUntil(appMail(env, a, "received"));
   ctx.waitUntil(telegram(env, "🧑‍🎨 طلب انضمام جديد — " + a.name + " · " + (ROLE_AR[a.role] || a.role) + (a.city ? " · " + a.city : "") + "\n" + SITE + "/admin/#team"));
   return json({ ok: true });
 }
@@ -135,11 +163,22 @@ async function adminAction(ctx, d){
     const s = { open: !!d.open, roles: (Array.isArray(d.roles) ? d.roles : []).filter(r => ROLES.includes(r)), intro: C_(d.intro, 1200), fields: cleanFields(d.fields) };
     await env.EB.put("team:settings", JSON.stringify(s)); return json({ ok: true, settings: s });
   }
+  if (d.action === "appReject") {
+    const a = await kvJSON(env, "teamapp:" + C_(d.id, 40)); if (!a) return json({ ok: false }, 404);
+    if (a.status !== "rejected") return json({ ok: false, error: "status" }, 400);
+    if (!(await appMail(env, a, "reject"))) return json({ ok: false, error: "mail" }, 502);
+    a.rejectMailAt = now; a.history.push({ at: now, status: "rejected", mail: "reject" }); await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); return json({ ok: true, app: a });
+  }
   if (d.action === "app" || d.action === "appDelete") {
     const a = await kvJSON(env, "teamapp:" + C_(d.id, 40)); if (!a) return json({ ok: false }, 404);
     if (d.action === "appDelete") { await env.EB.delete("teamapp:" + a.id); return json({ ok: true }); }
     if (d.status && APP_ST.includes(d.status) && d.status !== a.status) { a.history.push({ at: now, status: d.status }); a.status = d.status; }
     if (d.notes !== undefined) a.notes = C_(d.notes, 4000);
+    if (d.interview) { const iv = d.interview, prev = a.interview || {};
+      const n = { at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iv.at || "") ? iv.at : "", tz: IV_TZ[iv.tz] ? iv.tz : "dxb", platform: IV_PF[iv.platform] ? iv.platform : "", link: C_(iv.link, 600), sentAt: prev.sentAt || "" };
+      const changed = n.at !== prev.at || n.tz !== prev.tz || n.platform !== prev.platform || n.link !== prev.link;
+      a.interview = n;
+      if ((d.status || a.status) === "interview" && n.at && n.platform && (changed || !n.sentAt)) { if (await appMail(env, a, "interview")) { n.sentAt = now; a.history.push({ at: now, status: "interview", mail: "interview" }); } else n.mailFailed = now; } }
     if (d.trial) a.trial = { brief: C_(d.trial.brief, 3000), link: URL_OK.test(C_(d.trial.link, 600)) ? C_(d.trial.link, 600) : "", due: /^\d{4}-\d{2}-\d{2}$/.test(d.trial.due || "") ? d.trial.due : "", result: C_(d.trial.result, 600) };
     await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); return json({ ok: true, app: a });
   }
@@ -151,7 +190,8 @@ async function adminAction(ctx, d){
       phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
     await env.EB.put("member:" + email, JSON.stringify(u));
     if (u.app) { const a = await kvJSON(env, "teamapp:" + u.app); if (a) { if (a.status !== "accepted") { a.history.push({ at: now, status: "accepted" }); a.status = "accepted"; } a.member = email; await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); } }
-    return json({ ok: true, member: publicMember(u), password: pw, link: SITE + "/team/" });
+    const welcomed = await appMail(env, { name: u.name, email: u.email, role: u.role }, "welcome", pw);
+    return json({ ok: true, member: publicMember(u), password: pw, link: SITE + "/team/", welcomed });
   }
   if (d.action === "memberUpdate" || d.action === "memberReset") {
     const u = await kvJSON(env, "member:" + C_(d.email, 254).toLowerCase()); if (!u) return json({ ok: false }, 404);

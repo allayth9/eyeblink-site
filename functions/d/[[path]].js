@@ -132,7 +132,7 @@ fetch('/api/docs',{method:'POST',headers:{'content-type':'application/json'},bod
   const html = `<!doctype html><html lang="${en ? "en" : "ar"}" dir="${en ? "ltr" : "rtl"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#04061A">
 <title>${h(head)}</title>${og}<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-<style>${CSS}</style></head><body>${body}<script src="/assets/js/fa.js?v=b0bc4c19"></script></body></html>`;
+<style>*,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}${CSS}</style></head><body>${body}</body></html>`;
   return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
 }
 

@@ -1,13 +1,15 @@
 // GET /api/content — public: the live site content (404 until the first publish)
 // PUT /api/content — admin: replace the content; the previous version is kept for 30 days
+// «فـي» → «في»: a tatweel once typed after the faa to dodge a font fault (now fixed in CSS) is dropped, on reading and on saving
+const unFaa = s => s.replace(/فـ+(?=[يى])/g, "ف");
 export async function onRequestGet({ env }) {
   const v = await env.EB.get("content");
   if (!v) return new Response("not found", { status: 404 });
-  return new Response(v, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  return new Response(unFaa(v), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 export async function onRequestPut({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
-  const body = await request.text();
+  const body = unFaa(await request.text());
   if (body.length > 1_000_000) return json({ ok: false, error: "too large" }, 413);
   let data; try { data = JSON.parse(body); } catch { return json({ ok: false, error: "invalid JSON" }, 400); }
   if (!data || !Array.isArray(data.services) || !data.hero) return json({ ok: false, error: "missing sections" }, 400);

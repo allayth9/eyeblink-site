@@ -716,3 +716,6 @@ html{-webkit-tap-highlight-color:transparent}
   .top [data-cmdk] kbd,.top .state{display:none}
 }
 @media (max-width:860px) and (prefers-reduced-motion:reduce){ .side,.app.nav-open .side,.scrim{transition:none} }
+
+/* «في»: Hayyakum's common ligature folds the yaa under the faa; off everywhere, typing included. Lam-alef is a required ligature and stays */
+*,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}

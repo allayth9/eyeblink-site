@@ -8,6 +8,7 @@
 <meta name="description" content="Eyeblink Studio is looking for collaborators in editing, motion, sound and colour">
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
 <style>
+*,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
 @font-face{font-family:"EYEN Ammon";src:url(../assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:500;font-display:swap}
@@ -80,6 +81,15 @@ button:active{transform:scale(.98)}
 button:disabled{opacity:.5;cursor:default;transform:none}
 .msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
 .done,.closed{margin:48px 0 0;padding:30px}
+.done{text-align:center;display:grid;justify-items:center;gap:6px;padding:40px 24px}
+.okc{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:8px;background:rgba(94,240,176,.1);box-shadow:inset 0 0 0 1px rgba(94,240,176,.45)}
+.okc svg{width:30px;height:30px;fill:none;stroke:#5EF0B0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30}
+.done:not([hidden]) .okc svg{animation:okd .6s .2s cubic-bezier(.23,1,.32,1) forwards}
+@keyframes okd{to{stroke-dashoffset:0}}
+.done .back{margin-top:18px;font-size:14.5px;color:var(--light);text-decoration:none;padding:9px 20px;border-radius:99px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.done .back:hover{background:rgba(255,255,255,.06)}
+.wrap.sent>*:not(.top):not(#done){display:none}
+@media (prefers-reduced-motion:reduce){.okc svg{stroke-dashoffset:0}.done:not([hidden]) .okc svg{animation:none}}
 .done h2,.closed h2{margin:0;font:700 23px "EYEN Ammon",Hayyakum,sans-serif}
 .done p,.closed p{margin:8px 0 0;color:var(--mist)}
 .closed a{color:var(--horizon)}
@@ -109,7 +119,7 @@ select{display:none}
 <div class="wrap">
   <div class="top"><a href="/en/"><img src="../assets/img/favicon.svg" alt="">EYEBLINK</a><a class="kick" href="../join" style="text-decoration:none">عربي</a></div>
   <div class="kick">Join the team</div>
-  <h1 id="headline">We are looking for people who cut on the right frame</h1>
+  <h1 id="headline">An editor who knows when to let an image breathe</h1>
   <p class="lead" id="intro">We work with brands across the Gulf and the region on short films, ads, motion and social content. We collaborate with freelancers who care about detail, deliver on time, and treat every second as a decision</p>
   <div class="roles" id="roles"></div>
 
@@ -137,7 +147,7 @@ select{display:none}
     <div class="msg" id="msg" role="status"></div>
   </form>
 
-  <div id="done" class="done glass" hidden><h2>Application received</h2><p>We review every portfolio carefully. If we see a fit, we send you a short paid trial task, then we talk</p></div>
+  <div id="done" class="done glass" hidden role="status"><span class="okc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h2>Your application was received</h2><p>We sent a confirmation to your email</p><a class="back" href="/en/">Back to the site</a></div>
 </div>
 <script src="../assets/js/flags.js?v=1678e6bc"></script>
 <script>
@@ -161,7 +171,7 @@ select{display:none}
     bsel($('#roleSel'));
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
-  var COPY=Object.assign({"voice":["We are looking for a voice-over artist people believe from the first line","Ads and brand films in Gulf, Levantine and standard Arabic. Natural delivery, controlled breath and a clean recording"],"illustrator":["We are looking for an illustrator who draws what cameras miss","Art for motion, storyboards and campaigns. A confident line, measured colour and a gift for simplifying ideas"],"social":["We are looking for a social media manager who knows what stops the thumb","Content plans, scheduling, reading the numbers and talking with audiences for Gulf brands. Taste, and stamina"],"subtitles":["We are looking for a translator who keeps the meaning before the words","Translation and subtitles between Arabic and English, timed precisely, in a voice that fits each audience"]},{"editor":["We are looking for an editor who knows when to cut","Rhythm, patience with detail, and a feel for story before tools. Ads, short films and social content for brands across the Gulf and the region"],"motion":["We are looking for a motion designer who moves ideas, not shapes","Precise timing, clean motion curves and taste in the small things. Logos, ads and explainers for brands across the Gulf and the region"],"color":["We are looking for a colorist who knows where the light falls","Colour that serves the mood instead of showing off. Ads and short films from mixed cameras, delivered consistent from shot to shot"],"sound":["We are looking for a sound engineer who makes us hear what we cannot see","Sound design, dialogue clean-up and a clean mix for every platform. For us, sound is half the picture"],"writer":["We are looking for a writer who says a lot in a line","Ad scripts, captions and on-screen text, Arabic first. Short, precise lines, and wit when it is needed"],"shooter":["We are looking for a videographer who sees the frame before lifting the camera","Shoots in Gulf cities for ads and brand content. Considered light, calm movement and footage that cuts well"],"designer":["We are looking for a designer who knows when to remove","Identities, posters and social assets on one grid with even spacing. Measured simplicity, never emptiness"],"producer":["We are looking for a production coordinator who keeps everything on time","Running projects between the team and clients, schedules and logistics. Calm under pressure, exact with dates"]});
+  var COPY={"editor":["An editor who knows when to let an image breathe","Rhythm is a decision before it is a skill: where a shot begins, when it ends, and what should never appear at all. We work on ads, short films and content for brands across the Gulf and the region"],"motion":["A motion designer who gives an idea the movement it deserves","Every idea has its own speed and weight. We look for someone who reads the idea before animating it, and picks the curve and timing that say it most clearly"],"color":["A colorist who gives each scene its own mood","Color is part of the story for us: the warmth of a moment, the cold of a distance. Footage comes from different cameras, and we want it to feel like one world"],"sound":["A sound engineer who gives a voice to what we cannot see","Half of what we feel arrives through the ear: sound design, clean dialogue, and a mix that keeps sound and picture together on every platform"],"writer":["A writer who knows a big idea can start with one line","Ad scripts and on-screen text, Arabic first. Lines that know their place in the rhythm, in a voice that sounds like the brand"],"shooter":["A photographer who sees the story inside the frame","Shoots across Gulf cities for ads and brand content. Readable light, calm movement, and shots that know they will be cut"],"designer":["A designer who gives an idea the shape it deserves","Identities, posters and social material on one grid with steady spacing. Simplicity, for us, is a decision, not emptiness"],"producer":["A production coordinator who keeps the work's rhythm off screen","Schedules, deadlines, and the line between the team and clients. Your calm under pressure is what lets everyone else create"],"voice":["A voice that is believed from the first line","Voice-over for ads and brand films in Gulf, Levantine and Standard Arabic. Natural delivery that serves the script and never rises above it"],"illustrator":["An illustrator who draws what the camera cannot reach","Storyboards and illustration for motion and campaigns. A confident line, and an idea understood at first glance"],"social":["A social media manager who knows what makes people stop","Content plans, reading the numbers, and talking with the audience in the brand's voice. Taste in choosing, and stamina in following through"],"subtitles":["A translator who keeps a sentence's tone before its words","On-screen translation between Arabic and English, timed to the rhythm, in language that sounds like its audience"]};
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
     [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
   $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
@@ -195,13 +205,12 @@ select{display:none}
     if(showLinks&&!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='Add a showreel or at least one work link (starting with https://)'; m.className='msg err'; E.reel.focus(); return; }
     var b=f.querySelector('button'); b.disabled=true; m.textContent='';
     fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json()}).then(function(j){
-      if(j.ok){ f.hidden=true; $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); return; }
+      if(j.ok){ document.querySelector('.wrap').classList.add('sent'); $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); try{ sessionStorage.setItem('eb-applied','1'); }catch(_){} return; }
       b.disabled=false; m.className='msg err'; m.textContent=({slow:'Too many attempts, try again in an hour',closed:'Applications just closed',fields:'Check your name, email and links'})[j.error]||'Could not send, please try again';
     }).catch(function(){ b.disabled=false; m.className='msg err'; m.textContent='Could not send, please try again'; });
   };
 })();
 </script>
 <script>(function(d){var c=navigator.connection||{},r=d.documentElement,slow=c.saveData||/2g$/.test(c.effectiveType||'');if(slow)r.classList.add('lite');function go(){var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(slow||(n&&n.responseEnd-n.requestStart>2000)){r.classList.add('lite');return}var s=d.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=function(){var b=d.createElement('script');b.src='../assets/js/bg.js?v=a4961229';d.body.appendChild(b)};d.body.appendChild(s)}if(d.readyState==='complete')go();else addEventListener('load',go)})(document)</script>
-<script src="../assets/js/fa.js?v=b0bc4c19"></script>
 </body>
 </html>

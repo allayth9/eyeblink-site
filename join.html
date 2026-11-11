@@ -8,6 +8,7 @@
 <meta name="description" content="Eyeblink Studio يبحث عن متعاونين في المونتاج والموشن والصوت والتلوين">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <style>
+*,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
 @font-face{font-family:"EYEN Ammon";src:url(assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:500;font-display:swap}
@@ -80,6 +81,15 @@ button:active{transform:scale(.98)}
 button:disabled{opacity:.5;cursor:default;transform:none}
 .msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
 .done,.closed{margin:48px 0 0;padding:30px}
+.done{text-align:center;display:grid;justify-items:center;gap:6px;padding:40px 24px}
+.okc{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:8px;background:rgba(94,240,176,.1);box-shadow:inset 0 0 0 1px rgba(94,240,176,.45)}
+.okc svg{width:30px;height:30px;fill:none;stroke:#5EF0B0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30}
+.done:not([hidden]) .okc svg{animation:okd .6s .2s cubic-bezier(.23,1,.32,1) forwards}
+@keyframes okd{to{stroke-dashoffset:0}}
+.done .back{margin-top:18px;font-size:14.5px;color:var(--light);text-decoration:none;padding:9px 20px;border-radius:99px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.done .back:hover{background:rgba(255,255,255,.06)}
+.wrap.sent>*:not(.top):not(#done){display:none}
+@media (prefers-reduced-motion:reduce){.okc svg{stroke-dashoffset:0}.done:not([hidden]) .okc svg{animation:none}}
 .done h2,.closed h2{margin:0;font:700 23px "EYEN Ammon",Hayyakum,sans-serif}
 .done p,.closed p{margin:8px 0 0;color:var(--mist)}
 .closed a{color:var(--horizon)}
@@ -109,7 +119,7 @@ select{display:none}
 <div class="wrap">
   <div class="top"><a href="/"><img src="assets/img/favicon.svg" alt="">EYEBLINK</a><a class="kick" href="en/join" style="text-decoration:none">English</a></div>
   <div class="kick">انضم إلى الفريق</div>
-  <h1 id="headline">نبحث عمّن يقطع اللقطة في مكانها الصحيح</h1>
+  <h1 id="headline">مونتير يعرف متى يترك للصورة أن تتنفس</h1>
   <p class="lead" id="intro">نعمل مع علامات في الخليج والمنطقة على أفلام قصيرة، وإعلانات، وموشن، ومحتوى سوشال. نتعاون مع مستقلين يهتمون بالتفاصيل، ويسلّمون في الموعد، ويرون في كل ثانية قراراً</p>
   <div class="roles" id="roles"></div>
 
@@ -137,7 +147,7 @@ select{display:none}
     <div class="msg" id="msg" role="status"></div>
   </form>
 
-  <div id="done" class="done glass" hidden><h2>وصل طلبك</h2><p>نراجع الأعمال بهدوء. إن رأينا تقاطعاً، نرسل لك مهمة تجريبية قصيرة مدفوعة، ثم نتحدث</p></div>
+  <div id="done" class="done glass" hidden role="status"><span class="okc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h2>تم استلام طلبك بنجاح</h2><p>أرسلنا رسالة تأكيد إلى بريدك الإلكتروني</p><a class="back" href="/">العودة إلى الموقع</a></div>
 </div>
 <script src="assets/js/flags.js?v=1678e6bc"></script>
 <script>
@@ -161,7 +171,7 @@ select{display:none}
     bsel($('#roleSel'));
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
-  var COPY=Object.assign({"voice":["نبحث عن معلّق صوتي يُصدَّق من أول جملة","إعلانات وأفلام تعريفية بلهجات الخليج والشام والفصحى. أداء طبيعي، ونَفَس مضبوط، وتسجيل نظيف"],"illustrator":["نبحث عن رسّام يرسم ما لا تلتقطه الكاميرا","رسوم للموشن والستوري بورد والحملات. خط واثق، وألوان محسوبة، وقدرة على تبسيط الفكرة"],"social":["نبحث عن مدير سوشال ميديا يعرف ماذا يوقف الإبهام","خطط محتوى، وجدولة، وقراءة أرقام، وتواصل مع الجمهور لعلامات في الخليج. ذوق في الاختيار، ونَفَس طويل"],"subtitles":["نبحث عن مترجم يحفظ المعنى قبل الكلمات","ترجمة وترجمة على الشاشة بين العربية والإنجليزية، بتوقيت دقيق ولغة تناسب كل جمهور"]},{"editor":["نبحث عن مونتير يعرف متى يقطع","إيقاع، وصبر على التفاصيل، وحسّ بالقصة قبل الأدوات. تعمل معنا على إعلانات وأفلام قصيرة ومحتوى سوشال لعلامات في الخليج والمنطقة"],"motion":["نبحث عن موشن ديزاينر يحرّك الفكرة لا الأشكال","توقيت دقيق، ومنحنيات حركة نظيفة، وذوق في التفاصيل الصغيرة. شعارات وإعلانات وشروحات لعلامات في الخليج والمنطقة"],"color":["نبحث عن كولوريست يعرف أين يقع الضوء","لون يخدم المزاج ولا يستعرض. تعمل على إعلانات وأفلام قصيرة من كاميرات مختلفة، وتسلّم صورة متّسقة من لقطة إلى أخرى"],"sound":["نبحث عن مهندس صوت يُسمعنا ما لا يُرى","تصميم صوت، وتنظيف حوار، وميكس نظيف لكل منصة. الصوت عندنا نصف الصورة"],"writer":["نبحث عن كاتب يقول الكثير في سطر","سكريبتات إعلانات، وكابشن، ونصوص على الشاشة، بالعربية أولاً. جمل قصيرة ومحددة، وظُرف حين يلزم"],"shooter":["نبحث عن مصوّر يرى الإطار قبل أن يرفع الكاميرا","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. إضاءة مدروسة، وحركة هادئة، ولقطات تصلح للمونتاج"],"designer":["نبحث عن مصمم يعرف متى يحذف","هويات، وبوسترات، ومواد سوشال بشبكة واحدة ومسافات منتظمة. بساطة محسوبة، لا فراغ"],"producer":["نبحث عن منسّق إنتاج يبقي كل شيء في موعده","متابعة المشاريع بين الفريق والعملاء، وجداول، وتفاصيل لوجستية. هدوء تحت الضغط ودقة في المواعيد"]});
+  var COPY={"editor":["مونتير يعرف متى يترك للصورة أن تتنفس","الإيقاع عندنا قرار قبل أن يكون مهارة: أين تبدأ اللقطة، ومتى تنتهي، وما الذي لا ينبغي أن يظهر أصلاً. نعمل على إعلانات وأفلام قصيرة ومحتوى لعلامات في الخليج والمنطقة"],"motion":["موشن ديزاينر يمنح الفكرة حركة تشبهها","لكل فكرة سرعتها ووزنها. نبحث عمّن يقرأ الفكرة قبل أن يحرّكها، فيختار المنحنى والتوقيت اللذين يقولانها بأوضح صورة"],"color":["كولوريست يصنع للمشهد مزاجه الخاص","اللون عندنا جزء من السرد: دفء لحظة، أو برودة مسافة. نعمل بلقطات من كاميرات مختلفة، ونريدها أن تبدو عالماً واحداً"],"sound":["مهندس صوت يمنح ما لا نراه صوتاً","نصف الإحساس يصل عبر الأذن: تصميم صوتي، وتنظيف للحوار، وميكس يحفظ المسافة بين الصوت والصورة على كل منصة"],"writer":["كاتب يعرف أن الفكرة الكبيرة قد تبدأ بسطر","سكريبتات إعلانات ونصوص على الشاشة، بالعربية أولاً. جملة تعرف مكانها في الإيقاع، ونبرة تشبه العلامة التي تتحدث بها"],"shooter":["مصوّر يرى الحكاية داخل الإطار","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. ضوء يُقرأ، وحركة هادئة، ولقطات تعرف أنها ستُقطع في المونتاج"],"designer":["مصمم يمنح الفكرة شكلاً يليق بها","هويات وبوسترات ومواد للسوشال على شبكة واحدة ومسافات منتظمة. نرى البساطة قراراً، لا فراغاً"],"producer":["منسّق إنتاج يحفظ للعمل إيقاعه خارج الشاشة","جداول، ومواعيد، وتواصل بين الفريق والعملاء. هدوؤك تحت الضغط هو ما يتيح للآخرين أن يبدعوا"],"voice":["معلّق صوتي يُصدَّق من الجملة الأولى","تعليق لإعلانات وأفلام تعريفية بالخليجية والشامية والفصحى. أداء طبيعي يخدم النص ولا يعلو عليه"],"illustrator":["رسّام يرسم ما لا تصل إليه الكاميرا","ستوري بورد، ورسوم للموشن والحملات. خط واثق، وفكرة تُفهم من النظرة الأولى"],"social":["مدير سوشال يعرف ما الذي يستوقف المشاهد","خطط محتوى، وقراءة للأرقام، وحوار مع الجمهور باسم العلامة. ذوق في الاختيار، ونَفَس طويل في المتابعة"],"subtitles":["مترجم يحفظ نبرة الجملة قبل كلماتها","ترجمة على الشاشة بين العربية والإنجليزية، بتوقيت يتبع الإيقاع ولغة تشبه جمهورها"]};
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
     [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
   $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
@@ -195,13 +205,12 @@ select{display:none}
     if(showLinks&&!/^https?:\/\//i.test(d.reel)&&!links.length){ m.textContent='أضف رابط شوريل أو رابط أعمال واحداً على الأقل (يبدأ بـ https://)'; m.className='msg err'; E.reel.focus(); return; }
     var b=f.querySelector('button'); b.disabled=true; m.textContent='';
     fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json()}).then(function(j){
-      if(j.ok){ f.hidden=true; $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); return; }
+      if(j.ok){ document.querySelector('.wrap').classList.add('sent'); $('#done').hidden=false; scrollTo({top:0,behavior:'smooth'}); try{ sessionStorage.setItem('eb-applied','1'); }catch(_){} return; }
       b.disabled=false; m.className='msg err'; m.textContent=({slow:'محاولات كثيرة، جرّب بعد ساعة',closed:'أُغلق باب الانضمام الآن',fields:'تأكد من الاسم والبريد والروابط'})[j.error]||'تعذّر الإرسال، جرّب مرة أخرى';
     }).catch(function(){ b.disabled=false; m.className='msg err'; m.textContent='تعذّر الإرسال، جرّب مرة أخرى'; });
   };
 })();
 </script>
 <script>(function(d){var c=navigator.connection||{},r=d.documentElement,slow=c.saveData||/2g$/.test(c.effectiveType||'');if(slow)r.classList.add('lite');function go(){var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(slow||(n&&n.responseEnd-n.requestStart>2000)){r.classList.add('lite');return}var s=d.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=function(){var b=d.createElement('script');b.src='assets/js/bg.js?v=a4961229';d.body.appendChild(b)};d.body.appendChild(s)}if(d.readyState==='complete')go();else addEventListener('load',go)})(document)</script>
-<script src="assets/js/fa.js?v=b0bc4c19"></script>
 </body>
 </html>

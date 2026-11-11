@@ -324,6 +324,7 @@ function invoiceMail(env, x, kind){ const s = { client_email: x.client_email, re
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
   invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
+const ESSENTIAL = ["deliveries","billing"];   // e-mail for these cannot be switched off
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
 const CONSENT_V = "wa-v1";
 const BACKOFF = [5, 30, 120];   // minutes between retries
@@ -334,7 +335,7 @@ async function prefsOf(D, email){
   const r = await D.prepare("SELECT * FROM notify_prefs WHERE email=?").bind(email).first(); let ec = {}, wc = {}, pc = {}, tc = {};
   try { ec = JSON.parse((r && r.email_cats) || "{}"); } catch {} try { wc = JSON.parse((r && r.wa_cats) || "{}"); } catch {}
   try { pc = JSON.parse((r && r.push_cats) || "{}"); } catch {} try { tc = JSON.parse((r && r.tg_cats) || "{}"); } catch {}
-  return { email_cats: Object.fromEntries(CATS.map(c => [c, ec[c] !== false])), push_cats: Object.fromEntries(CATS.map(c => [c, pc[c] !== false])), tg_cats: Object.fromEntries(CATS.map(c => [c, tc[c] !== false])), wa_cats: Object.fromEntries(CATS.map(c => [c, c in wc ? !!wc[c] : WA_DEFAULT[c]])),
+  return { essential: ESSENTIAL, email_cats: Object.fromEntries(CATS.map(c => [c, ESSENTIAL.includes(c) || ec[c] !== false])), push_cats: Object.fromEntries(CATS.map(c => [c, pc[c] !== false])), tg_cats: Object.fromEntries(CATS.map(c => [c, tc[c] !== false])), wa_cats: Object.fromEntries(CATS.map(c => [c, c in wc ? !!wc[c] : WA_DEFAULT[c]])),
     wa_phone: (r && r.wa_phone) || "", wa_consent_at: (r && r.wa_consent_at) || null, wa_withdrawn_at: (r && r.wa_withdrawn_at) || null,
     consent: !!(r && r.wa_phone && r.wa_consent_at && !r.wa_withdrawn_at) };
 }
@@ -442,7 +443,7 @@ async function tellClient(env, t, kind, extra){
   if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
   const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
   // 2) e-mail — unless the client switched this category off
-  if (!P || P.email_cats[cat]) jobs.push((async () => {
+  if (!P || P.email_cats[cat] || ESSENTIAL.includes(cat)) jobs.push((async () => {
   const T = {
     accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                 : ["قُبلت مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
@@ -656,7 +657,7 @@ export async function onRequestPost(ctx) {
     return json({ ok: true }); }
   if (d.action === "prefs") {
     const cur = await prefsOf(D, u.email), pick = (src, c, dflt) => src && typeof src === "object" && c in src ? !!src[c] : dflt;
-    const ec = Object.fromEntries(CATS.map(c => [c, pick(d.email_cats, c, cur.email_cats[c])])), wc = Object.fromEntries(CATS.map(c => [c, pick(d.wa_cats, c, cur.wa_cats[c])]));
+    const ec = Object.fromEntries(CATS.map(c => [c, ESSENTIAL.includes(c) || pick(d.email_cats, c, cur.email_cats[c])])), wc = Object.fromEntries(CATS.map(c => [c, pick(d.wa_cats, c, cur.wa_cats[c])]));
     const pcs = Object.fromEntries(CATS.map(c => [c, pick(d.push_cats, c, cur.push_cats[c])])), tcs = Object.fromEntries(CATS.map(c => [c, pick(d.tg_cats, c, cur.tg_cats[c])]));
     let phone = cur.wa_phone || null, cAt = cur.wa_consent_at, wAt = cur.wa_withdrawn_at, logKind = null;
     if (d.wa_consent === true) {
