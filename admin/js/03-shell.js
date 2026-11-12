@@ -50,6 +50,9 @@
   document.addEventListener('click',function(e){ var s=e.target.closest('summary'); if(!s||e.target.closest('button,a,input,select,label')) return; var d=s.parentElement; if(!d||d.tagName!=='DETAILS'||d.open||!d.parentElement) return;
     [].forEach.call(d.parentElement.children,function(x){ if(x!==d&&x.tagName==='DETAILS'&&x.open) x.open=false; }); });
   /* ---------- addresses: every section has its own (History API); back, forward and reload keep you where you were ---------- */
+  // night / light: remembered on this device (night is the default)
+  document.addEventListener('click',function(e){ if(!e.target.closest('#themeBtn')) return; var r=document.documentElement, t=r.dataset.theme==='light'?'dark':'light';
+    if(t==='light') r.dataset.theme='light'; else delete r.dataset.theme; try{ localStorage.setItem('eb-admin-theme',t); }catch(_){} });
   var ROUTING=false;
   function route(replace){ if(ROUTING) return; try{
     var p='/admin'+(TAB==='today'?'':'/'+TAB)+(TAB==='tasks'&&WOPEN?'/'+WOPEN:'')+(TAB==='clients'&&PROF&&PROF.email?'/'+encodeURIComponent(PROF.email):'');

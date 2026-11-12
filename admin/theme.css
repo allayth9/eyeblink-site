@@ -1,0 +1,112 @@
+/* Eyeblink admin · the look (phase 4, approved 12 Nov 2026): frosted glass over the eyelid lines and a soft aurora,
+   the brand gradient (cyan → blue → deep navy), one status colour per family, night and light from the same markup.
+   Loaded after admin.css; the theme is <html data-theme="light"> (night is the default). */
+
+:root{
+  color-scheme:dark;
+  --night:#04061A; --panel:#0B1236; --panel2:#111A45; --light:#EEF2F6; --mist:#AEBBD2; --dim:#8FA0C2;
+  --horizon:#3FE0E8; --hour:#2E62FF; --dusk:#8B5CFF; --venus:#E07BE0;
+  /* rgb triplets the old literals now read */
+  --fg:255,255,255; --acc:63,224,232; --bgc:4,6,26; --ln:190,210,255; --ln2:174,187,210; --scr:2,3,14;
+  --line:rgba(255,255,255,.11); --surface:rgba(255,255,255,.05); --surface2:rgba(255,255,255,.08);
+  /* the brand gradient (from the logo artwork) */
+  --grad:linear-gradient(45deg,#2FC4D8 0%,#2A86E6 24%,#1C45E6 52%,#1638C4 76%,#0E1A5C 100%);
+  /* status families: new · info · production · waiting · done · problem · off */
+  --f-new:#5FE6EC; --f-info:#8EB0FF; --f-prod:#B39BFF; --f-wait:#F7C76A; --f-ok:#6EE7B0; --f-bad:#FF8DA3; --f-off:#8FA0C2;
+  --s-new:var(--f-new); --s-discussing:var(--f-info); --s-confirmed:var(--f-info); --s-awaiting:var(--f-wait); --s-paid:var(--f-ok);
+  --s-progress:var(--f-prod); --s-review:var(--f-wait); --s-delivered:var(--f-ok); --s-cancelled:var(--f-off);
+  --a-crit:var(--f-bad); --a-warn:var(--f-wait); --a-info:var(--f-info); --a-good:var(--f-ok);
+  --ok:var(--f-ok); --warn:var(--f-wait); --bad:var(--f-bad);
+  /* glass */
+  --glass:linear-gradient(135deg,rgba(255,255,255,.085) 0%,rgba(255,255,255,.03) 55%,rgba(255,255,255,.018) 100%);
+  --glass-edge:rgba(255,255,255,.22); --glass-blur:blur(30px) saturate(115%); --glass-shadow:0 34px 80px -34px rgba(0,0,0,.7);
+  --input:rgba(4,6,26,.55); --btn-text:#fff;
+  /* background */
+  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.44; --lidOp:1;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --night:#EEF2F6; --panel:#FFFFFF; --panel2:#F4F7FC; --light:#04061A; --mist:#3A4566; --dim:#5B6785;
+  --horizon:#1C45E6; --hour:#1C45E6; --dusk:#6B3FE0; --venus:#B5459F;
+  --fg:4,6,26; --acc:28,69,230; --bgc:255,255,255; --ln:4,6,26; --ln2:4,6,26; --scr:20,30,70;
+  --line:rgba(4,6,26,.09); --surface:rgba(255,255,255,.55); --surface2:rgba(255,255,255,.75);
+  --f-new:#0B8C95; --f-info:#2E62FF; --f-prod:#6B3FE0; --f-wait:#A86200; --f-ok:#11804F; --f-bad:#C92A4A; --f-off:#5B6785;
+  --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
+  --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
+  --input:rgba(255,255,255,.7);
+  --au3:#9DB6F5; --auOp:.25; --lidOp:.75;
+}
+
+/* ---------- the sky: aurora + the logo's two eyelid strokes, fixed behind everything ---------- */
+html,body{background:var(--night)}
+body{background:none;position:relative;isolation:isolate}
+body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none;opacity:var(--auOp);filter:blur(90px);
+  background:radial-gradient(38% 34% at 72% 2%,var(--au1),transparent 70%),radial-gradient(30% 30% at 4% 92%,var(--au2),transparent 70%),radial-gradient(30% 30% at 82% 70%,var(--au3),transparent 70%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:var(--lidOp);background-size:cover;background-position:center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%230E1A5C' stop-opacity='0'/%3E%3Cstop offset='.35' stop-color='%231C45E6'/%3E%3Cstop offset='.72' stop-color='%232FC4D8'/%3E%3Cstop offset='1' stop-color='%232FC4D8' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cfilter id='b' x='-10%25' y='-50%25' width='120%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='14'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)'%3E%3Cpath d='M-80 470C300 210 900 140 1520 270' stroke-width='26' stroke-opacity='.3' filter='url(%23b)'/%3E%3Cpath d='M-80 470C300 210 900 140 1520 270' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M-80 570C420 690 1000 660 1520 430' stroke-width='20' stroke-opacity='.26' filter='url(%23b)'/%3E%3Cpath d='M-80 570C420 690 1000 660 1520 430' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M200 -20C600 210 1050 230 1520 90' stroke-width='1.2' stroke-opacity='.4'/%3E%3C/g%3E%3C/svg%3E")}
+
+/* ---------- glass surfaces ---------- */
+.side,.top,.sec,.login .card,.cmd,#tsheet .dbox,#dsheet .dbox,.toast{
+  background:var(--glass);border:1px solid var(--line);
+  box-shadow:inset 1px 1px 0 var(--glass-edge),inset -1px -1px 0 rgba(var(--fg),.03),var(--glass-shadow);
+  backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
+.app{gap:18px;padding:18px;grid-template-columns:248px 1fr}
+.side{height:calc(100vh - 36px);top:18px;border-radius:24px;border-inline-end:1px solid var(--line)}
+.top{top:18px;border-radius:22px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.panel{padding:18px 0 60px}
+.sec{border-radius:22px}
+.item{background:rgba(var(--fg),.035);border-radius:16px}
+.toast{color:var(--light)}
+.cmd{border-radius:22px}
+#tsheet,#dsheet{background:rgba(var(--scr),.45)}
+#tsheet .dbox,#dsheet .dbox{border-radius:24px}
+:root[data-theme="light"] .side,:root[data-theme="light"] .top,:root[data-theme="light"] .sec,:root[data-theme="light"] .login .card,:root[data-theme="light"] .cmd,
+:root[data-theme="light"] #tsheet .dbox,:root[data-theme="light"] #dsheet .dbox,:root[data-theme="light"] .toast{
+  box-shadow:inset 1.5px 1.5px 0 #fff,inset -1px -1px 0 rgba(28,69,230,.14),inset 0 18px 30px -20px rgba(255,255,255,.9),0 0 0 1px rgba(28,69,230,.05),var(--glass-shadow)}
+:root[data-theme="light"] #tsheet .dbox,:root[data-theme="light"] #dsheet .dbox,:root[data-theme="light"] .cmd{background:rgba(255,255,255,.88)}
+
+/* ---------- navigation ---------- */
+#tabs button{border-radius:12px}
+#tabs button[aria-current="true"]{background:rgba(var(--fg),.07);box-shadow:inset 0 0 0 1px var(--line),inset 1px 1px 0 var(--glass-edge);color:var(--light)}
+#tabs button[aria-current="true"] .ico{color:var(--horizon)}
+
+/* ---------- controls ---------- */
+.btn{background:rgba(var(--fg),.06);color:var(--light)}
+.btn.primary{background:var(--grad);color:var(--btn-text);font-weight:600;box-shadow:0 12px 28px -12px rgba(28,69,230,.85),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn.primary:hover{filter:brightness(1.08)}
+input,textarea,select{background:var(--input);color:var(--light)}
+select option{background:var(--panel);color:var(--light)}
+:root[data-theme="light"] input,:root[data-theme="light"] textarea,:root[data-theme="light"] select{box-shadow:inset 0 0 0 1px rgba(4,6,26,.12)}
+input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon),0 0 0 4px rgba(var(--acc),.14)}
+
+/* ---------- status pills: one colour per family everywhere (billing and member states too) ---------- */
+.bs-pending,.npill.bs-partial,.st-paused{--c:var(--f-wait)}
+.bs-paid,.st-active{--c:var(--f-ok)}
+.bs-overdue{--c:var(--f-bad)}
+.bs-refunded{--c:var(--f-info)}
+.bs-cancelled,.npill.bs-draft,.st-archived{--c:var(--f-off)}
+.bs-pending,.npill.bs-partial,.bs-paid,.bs-overdue,.bs-refunded,.bs-cancelled,.npill.bs-draft,.st-paused,.st-active,.st-archived{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+
+/* ---------- theme switch (top bar) ---------- */
+.themeBtn{width:38px;height:38px;border-radius:12px;border:0;display:inline-grid;place-items:center;cursor:pointer;color:var(--mist);background:rgba(var(--fg),.06);box-shadow:inset 0 0 0 1px var(--line)}
+.themeBtn:hover{color:var(--light)}
+.themeBtn svg{width:18px;height:18px}
+.themeBtn .sun{display:none}
+:root[data-theme="light"] .themeBtn .sun{display:block}
+:root[data-theme="light"] .themeBtn .moon{display:none}
+
+/* ---------- scrollbars in the brand gradient, the same at rest and on hover ---------- */
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb,::-webkit-scrollbar-thumb:hover,::-webkit-scrollbar-thumb:active{background:linear-gradient(180deg,#2FC4D8,#1C45E6);border-radius:9px;border:2px solid transparent;background-clip:padding-box}
+
+/* ---------- phones: no floating frame (full width), lighter glass ---------- */
+@media (max-width:860px){
+  .app{padding:0;gap:0;grid-template-columns:1fr}
+  .top{top:0;border-radius:0;border-width:0 0 1px;margin:0}
+  .side{height:100vh;top:0;border-radius:0}
+  .panel{padding:16px 14px 60px}
+}
+@media (prefers-reduced-transparency:reduce){
+  .side,.top,.sec,.login .card,.cmd,#tsheet .dbox,#dsheet .dbox,.toast{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}
+}
