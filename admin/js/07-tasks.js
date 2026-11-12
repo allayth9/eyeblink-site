@@ -126,25 +126,40 @@
     var fresh=T.filter(function(t){ return t.status==='new'||t.status==='review'; }), dates=T.filter(function(t){ return t.change_request&&t.change_request.status==='pending'; });
     var queued=fresh.concat(dates.filter(function(x){return fresh.indexOf(x)<0}));
     var list=T.filter(function(t){ return queued.indexOf(t)<0&&(!WF.status||(WF.status==='open'?WOPENST.indexOf(t.status)>=0:t.status===WF.status))&&(!WF.client||t.client_email===WF.client)&&(!WF.project||t.project_id===WF.project); });
-    $('#panel').innerHTML=
-      '<section class="sec"><div class="kpis"><div><b>'+cnt(function(t){return t.status==='new'||t.status==='review'})+'</b><span>طلبات جديدة</span></div><div><b>'+cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0})+'</b><span>قيد التنفيذ</span></div>'+
-        '<div><b>'+cnt(function(t){return ['info','feedback','final'].indexOf(t.status)>=0})+'</b><span>بانتظار العميل</span></div><div><b>'+cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0})+'</b><span>متأخرة</span></div>'+
-        '<div><b>'+cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)})+'</b><span>مكتملة هذا الشهر</span></div><div><b>'+(W.projects||[]).filter(function(p){return p.status==='active'}).length+'</b><span>مشاريع نشطة</span></div></div></section>'+
-      (queued.length?'<section class="sec wq"><h3>بانتظار قرارك ('+queued.length+')</h3><p class="hint">حدّد العميل موعداً يرغب فيه، ولا يُعتمد الموعد إلا بعد أن تقبل المهمة وتحدّد «الموعد المؤكد».</p><div class="orders">'+queued.map(wtaskCard).join('')+'</div></section>':'')+
-      '<section class="sec"><h3>كل المهام</h3><div class="wfl"><select data-wf="status"><option value="">كل الحالات</option><option value="open"'+(WF.status==='open'?' selected':'')+'>المفتوحة</option>'+Object.keys(WST).map(function(s){ return '<option value="'+s+'"'+(WF.status===s?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select>'+
+    if(WOPEN) WSUB='tasks';
+    var rows=queued.concat(list), sel=WOPEN&&T.filter(function(x){ return x.ref===WOPEN; })[0];
+    var subs='<div class="subtabs wsubs">'+[['tasks','المهام',T.filter(function(x){ return WOPENST.indexOf(x.status)>=0; }).length],['projects','المشاريع',(W.projects||[]).length],['settings','إعدادات نموذج المهمة',0]].map(function(x){ return '<button type="button" data-wsub="'+x[0]+'"'+(WSUB===x[0]?' aria-current="true"':'')+'>'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</button>'; }).join('')+'</div>';
+    var wfl='<div class="wfl"><select data-wf="status"><option value="">كل الحالات</option><option value="open"'+(WF.status==='open'?' selected':'')+'>المفتوحة</option>'+Object.keys(WST).map(function(s){ return '<option value="'+s+'"'+(WF.status===s?' selected':'')+'>'+WST[s]+'</option>'; }).join('')+'</select>'+
         '<select data-wf="client"><option value="">كل العملاء</option>'+(W.clients||[]).map(function(c){ return '<option value="'+esc(c.email)+'"'+(WF.client===c.email?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('')+'</select>'+
-        '<select data-wf="project"><option value="">كل المشاريع</option>'+(W.projects||[]).map(function(p){ return '<option value="'+esc(p.id)+'"'+(WF.project===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div>'+
-        (list.length?'<div class="orders">'+list.map(wtaskCard).join('')+'</div>':'<div class="empty">'+(queued.length?'المهام الباقية فوق، بـ«بانتظار قرارك».':'لا مهام هنا.')+'</div>')+'</section>'+
-      '<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">يربط المشروع عميلاً متعاقداً بمساحة عمله. يرى العميل مشاريعه فقط، ويرسل المهام من داخلها.</p>'+
+        '<select data-wf="project"><option value="">كل المشاريع</option>'+(W.projects||[]).map(function(p){ return '<option value="'+esc(p.id)+'"'+(WF.project===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div>';
+    var tasksView='<div class="osplit'+(sel?' has-open':'')+'"><ul class="olist">'+
+        (queued.length?'<li class="olh">بانتظار قرارك · '+queued.length+'</li>'+queued.map(wtaskRow).join('')+(list.length?'<li class="olh">كل المهام · '+list.length+'</li>':''):'')+list.map(wtaskRow).join('')+
+        (rows.length?'':'<li class="olh">لا مهام هنا</li>')+'</ul>'+
+        (sel?'<div class="order item odetail wt" data-wref="'+esc(sel.ref)+'"><div class="odh"><button class="btn sm oback" type="button" data-wback>‹ كل المهام</button><span class="code">'+esc(sel.ref)+'</span>'+wpill(sel.status)+'<b>'+esc(sel.title)+'</b><span class="muted small">'+esc(sel.project_name||'')+' · المطلوب '+esc(wd(sel.requested_date))+(sel.confirmed_date?' · المؤكد '+esc(wd(sel.confirmed_date)):'')+'</span></div><div class="body">'+wtaskBody(sel)+'</div></div>'
+          :'<div class="odetail empty-sel">اختار مهمة من القائمة</div>')+'</div>';
+    $('#panel').innerHTML='<section class="sec"><div class="kpis"><div><b>'+cnt(function(t){return t.status==='new'||t.status==='review'})+'</b><span>طلبات جديدة</span></div><div><b>'+cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0})+'</b><span>قيد التنفيذ</span></div>'+
+        '<div><b>'+cnt(function(t){return ['info','feedback','final'].indexOf(t.status)>=0})+'</b><span>بانتظار العميل</span></div><div><b>'+cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0})+'</b><span>متأخرة</span></div>'+
+        '<div><b>'+cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)})+'</b><span>مكتملة هذا الشهر</span></div><div><b>'+(W.projects||[]).filter(function(p){return p.status==='active'}).length+'</b><span>مشاريع نشطة</span></div></div></section>'+'<div class="wbar">'+subs+(WSUB==='tasks'?wfl:'')+'</div>'+
+      (WSUB==='projects'?'<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">يربط المشروع عميلاً متعاقداً بمساحة عمله. يرى العميل مشاريعه فقط، ويرسل المهام من داخلها.</p>'+
         ((W.projects||[]).length?'<div class="clients">'+W.projects.map(function(p){ var cn=(W.clients||[]).filter(function(c){return c.email===p.client_email})[0];
           return '<div class="client"'+(WPEDIT===p.id?' data-editing':'')+'>'+(WPEDIT===p.id?projForm(p):'<div><b>'+esc(p.name)+'</b> <span class="rpill'+(p.status==='active'?' on':'')+'">'+esc(WPS[p.status]||p.status)+'</span> <span class="muted small">'+esc(WPT[p.type]||p.type)+' · '+esc(cn?cn.name:p.client_email)+'</span></div>'+
             '<span class="muted small">'+(p.quota?'الحصة: '+(p.month_tasks||0)+' من '+p.quota+' هذا الشهر · ':'')+p.open_tasks+' مفتوحة من '+p.all_tasks+(p.start_date?' · من '+esc(wd(p.start_date)):'')+(p.end_date?' إلى '+esc(wd(p.end_date)):'')+'</span><div class="actions"><button class="btn sm" type="button" data-wpe="'+esc(p.id)+'">تعديل</button><button class="btn sm" type="button" data-wpt="'+esc(p.id)+'">مهامه</button><button class="btn sm" type="button" data-wsp="'+esc(p.id)+'">النقاش والملفات والجدول</button></div>')+'</div>'; }).join('')+'</div>':'')+
-        '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+wspacePanel()+
-      '<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">تظهر أنواع المهام للعميل على شكل اقتراحات، وأسماء الأولويات قابلة للتعديل. تُحفظ مع «نشر التعديلات».</p>'+
-        field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>';
-    if(WOPEN){ var op=document.querySelector('[data-wref="'+WOPEN+'"]'); if(op){ op.open=true; setTimeout(function(){ op.scrollIntoView({block:'start',behavior:'smooth'}); },80); } }
+        '<div class="small muted" style="margin-top:14px">مشروع جديد</div>'+projForm(null)+'</section>'+wspacePanel():WSUB==='settings'?'<section class="sec"><h3>إعدادات نموذج المهمة</h3><p class="hint">تظهر أنواع المهام للعميل على شكل اقتراحات، وأسماء الأولويات قابلة للتعديل. تُحفظ مع «نشر التعديلات».</p>'+
+        field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>':tasksView);
   }
-  document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.wref||!d.open) return; if(WOPEN!==d.dataset.wref){ WOPEN=d.dataset.wref; route(true); loadWork(); } },true);
+  // one line per task: what, which project and client, the stage, the confirmed date, and what needs you
+  var TFAM={new:'new',review:'awaiting-payment',info:'awaiting-payment',accepted:'confirmed',progress:'in-progress',feedback:'review',revision:'review',final:'review',completed:'delivered',rejected:'cancelled',cancelled:'cancelled'};
+  function wtaskRow(t){ var W=WORK, cn=(W.clients||[]).filter(function(c){ return c.email===t.client_email; })[0], late=t.confirmed_date&&t.confirmed_date<W.today&&WOPENST.indexOf(t.status)>=0, cr=t.change_request&&t.change_request.status==='pending';
+    return '<li><button type="button" class="orow'+(t.ref===WOPEN?' on':'')+'" data-wsel="'+esc(t.ref)+'">'+
+      '<span class="orow-m"><b>'+esc(t.title)+'</b><small dir="ltr">'+esc(t.ref)+'</small></span>'+
+      '<span class="orow-v small">'+(t.confirmed_date?esc(wd(t.confirmed_date)):'')+'</span>'+
+      '<span class="orow-p">'+esc(t.project_name||'')+(cn?' · '+esc(cn.name):'')+'</span>'+
+      '<span class="tag s-'+esc(TFAM[t.status]||'new')+'">'+esc(WST[t.status]||t.status)+'</span>'+
+      '<span class="orow-x">'+(late?'<em class="c-crit">متأخرة</em>':'')+(cr?'<em class="c-warn">طلب تغيير موعد</em>':'')+(t.priority&&t.priority!=='normal'?'<em class="c-warn">'+esc(WPR[t.priority]||t.priority)+'</em>':'')+'</span></button></li>'; }
+  var WSUB='tasks';
+  document.addEventListener('click',function(e){ if(TAB!=='tasks') return; var b=e.target.closest('[data-wsel],[data-wback],[data-wsub]'); if(!b) return;
+    if(b.dataset.wsub){ WSUB=b.dataset.wsub; WOPEN=null; route(); renderWork(); return; }
+    WOPEN=b.dataset.wsel||null; route(); renderWork(); if(WOPEN) loadWork(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); });
   document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks') return;
     if(s.hasAttribute('data-wdfile')&&s.files[0]){ var fb=s.closest('.wsend'), bar=fb.querySelector('.wup'), f0=s.files[0]; bar.hidden=false; bar.querySelector('span').textContent='عم يرفع… 0%'; s.disabled=true;
       vaultUpload(f0,function(p){ bar.querySelector('i').style.width=Math.round(p*100)+'%'; bar.querySelector('span').textContent='عم يرفع… '+Math.round(p*100)+'%'; }).then(function(j){ fb.querySelector('[data-wdu]').value=j.url; bar.querySelector('span').textContent='انرفع ✓ '+f0.name+' — هلق اكبس «أرسل التسليم للعميل»'; s.disabled=false; })
@@ -158,7 +173,7 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
     if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
-    if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; renderWork(); return; }
+    if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; WSUB='tasks'; WOPEN=null; route(); renderWork(); return; }
     if(b.dataset.wsp){ loadSpace(b.dataset.wsp); return; }
     if(b.dataset.radd){ var sp=b.closest('#wspace'), g=function(k){ return sp.querySelector('[data-'+k+']'); }; if(!g('rt').value.trim()){ toast('اكتب عنوان المهمة',true); return; }
       wreq({action:'recurring',project_id:b.dataset.radd,title:g('rt').value.trim(),type:g('rty').value.trim(),description:g('rdesc').value.trim(),every:g('rev').value,dow:g('rdow').value,dom:g('rdom').value,due_days:g('rdue').value,start:g('rstart').value},b,'أُضيفت المهمة الدورية').then(function(){ loadSpace(); }).catch(function(){}); return; }
