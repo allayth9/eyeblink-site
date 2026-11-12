@@ -14,7 +14,11 @@
     contact:'<path d="M4 5h16v11H8l-4 4z"/>',payments:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>',
     layout:'<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
     settings:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',notify:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/>',
-    reports:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',stats:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',backup:'<path d="M4 7h16v13H4zM2 3h20v4H2zM10 12h4"/>'};
+    reports:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',stats:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',backup:'<path d="M4 7h16v13H4zM2 3h20v4H2zM10 12h4"/>',
+    k_play:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/>',k_wait:'<path d="M7 3h10M7 21h10M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/>',
+    k_late:'<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.5"/>',k_done:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',k_folder:'<path d="M3 6.5h6l2 2h10V19H3z"/>'};
+  // a number card: filled with its meaning's gradient; a zero stays plain glass so colour only appears when there is something
+  function kc(n,label,fam,icon){ return '<div class="kc k-'+fam+(n?'':' zero')+'"><i>'+ico(icon)+'</i><span><b>'+n+'</b><small>'+label+'</small></span></div>'; }
   function ico(id){ return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+(ICO[id]||ICO.services)+'</svg>'; }
   function tabCount(id){
     if(id==='orders') return [ORDERS.filter(function(o){return o.status==='new'||o.unread}).length,'hot'];
