@@ -249,6 +249,18 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .secnav button.on{background:rgba(var(--fg),.08);color:var(--light);box-shadow:inset 0 0 0 1px var(--line)}
 .secsite{margin-inline-start:auto;font-size:12.5px;color:var(--horizon);text-decoration:none;padding:6px 10px}
 #panel>.sec[id^="sec-"]{scroll-margin-top:170px}
+/* a content list as rows with a thumbnail + the chosen item in a side panel */
+.rsplit .olist{top:170px;max-height:calc(100vh - 190px)}
+.rsplit{scroll-margin-top:180px}@media (max-width:600px){ .rsplit{scroll-margin-top:140px} }   /* an opened item lands below the sticky index */
+.rrow{grid-template-columns:64px minmax(0,1fr) auto;grid-template-areas:"th m t" "th p t";align-items:center;gap:2px 12px}
+.rth{grid-area:th;width:64px;height:40px;border-radius:9px;overflow:hidden;background:linear-gradient(135deg,#1C45E6,#0E1A5C);box-shadow:inset 0 0 0 1px var(--line)}
+.rth img{width:100%;height:100%;object-fit:cover;display:block}
+.rrow .tag{grid-area:t;align-self:center}.rrow .rtag{color:var(--horizon)}
+.rpanel .odh{flex-wrap:nowrap}.rpanel .odh b{order:0;flex:1 1 auto;flex-basis:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rmore{position:relative;flex:none}
+.rtabs{margin:16px 22px 0;width:auto}
+.radd{margin-top:12px}
+@media (max-width:1000px){ .rpanel .odh{flex-wrap:wrap} }
 /* the publish bar: shows only while something is waiting to go live */
 .pubbar{position:sticky;bottom:16px;z-index:20;display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100% - 8px);margin:18px auto 0;padding:10px 12px 10px 16px;border-radius:18px;background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-wait) 45%,var(--line)),var(--glass-shadow);font-size:13.5px}
 .pubbar>i{width:8px;height:8px;border-radius:50%;background:var(--f-wait);flex:none}

@@ -75,6 +75,13 @@
     TR_BUSY=autoEnglish(b); });
 
   /* ---------------- schema: what can be edited, and how ---------------- */
+  // work projects as a list + panel: the cover as a thumbnail, the service and year under the name, four tabs
+  var WSPLIT={all:'كل المشاريع', addL:'+ مشروع',
+    thumb:function(x){ return x.poster||''; },
+    sub:function(x){ var s=(C.services||[]).filter(function(v){ return v.id===x.service; })[0], cs=['brief','challenge','idea','execution','result'].some(function(k){ return x[k]&&x[k].ar; });
+      return [(s&&s.name&&s.name.ar)||'',x.year||''].filter(Boolean).join(' · ')+(cs?' · دراسة حالة':''); },
+    tag:function(x,i){ return !x.preview&&!x.poster?['بلا معاينة','fix']:i<3?['بالرئيسية']:null; },
+    tabs:[['الأساسي',[0,1,2,3]],['الفيديو',[11,12,13,14]],['دراسة الحالة',[4,5,6,7,8,9]],['الكواليس',[10]]]};
   var SVC=function(){ return (C.services||[]).map(function(s){return [s.id, (s.name&&s.name.ar)||s.id]}); };
   var TABS=[
     {id:'today', title:'اليوم', today:1},
@@ -137,7 +144,7 @@
       {h:'دراسات الحالة', hint:'قصة كل عمل (البريف، التحدي، الفكرة، التنفيذ، النتيجة) وصور الكواليس، تظهر تحت الفيديو عند فتحه. تُكتب داخل كل مشروع بالأسفل.', fields:[
         {p:'settings.casesOff', t:'check', l:'إخفاء كل دراسات الحالة وصور الكواليس من الموقع'} ]},
       {h:'نصوص القسم', fields:[{p:'work.h', t:'bi', l:'العنوان قبل إضافة أعمال'},{p:'work.p', t:'bita', l:'الوصف قبل إضافة أعمال'},{p:'work.filledH', t:'bi', l:'العنوان بعد إضافة أعمال'},{p:'work.filledP', t:'bita', l:'الوصف بعد إضافة أعمال'}]},
-      {h:'المشاريع', hint:'أول 3 مشاريع تظهر في الرئيسية. المعاينة: 6–8 ثوانٍ بدون صوت، حتى 5MB. الفيديو الكامل الأفضل على Vimeo أو YouTube.', rep:{p:'projects',
+      {h:'المشاريع', hint:'أول 3 مشاريع تظهر في الرئيسية. المعاينة: 6–8 ثوانٍ بدون صوت، حتى 5MB. الفيديو الكامل الأفضل على Vimeo أو YouTube.', rep:{p:'projects', split:WSPLIT,
         name:function(x){return (x.title&&x.title.ar)||'مشروع'}, add:function(){return {title:bi('مشروع جديد',''),service:'editing',summary:bi(),client:'',year:String(new Date().getFullYear()),ratio:'16:9',preview:'',poster:'',full:{type:'vimeo',id:''}}},
         fields:[{p:'title', t:'bi', l:'اسم المشروع'},
           {row:[{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'ratio', t:'select', l:'المقاس', opts:function(){return [['16:9','أفقي 16:9'],['9:16','عمودي 9:16'],['1:1','مربع 1:1'],['4:5','4:5']]}},{p:'year', t:'text', l:'السنة', ltr:1}]},
@@ -256,7 +263,8 @@
       if(s.priv==='payments'){ var pm=(P&&P.payments)||{};
         html+=((C.payments&&C.payments.methods)||[]).map(function(m){ return '<div class="field"><label>'+esc(m.name||m.id)+'</label><textarea data-priv="payments.'+esc(m.id)+'" dir="auto" placeholder="مثال: Binance ID / رقم المحفظة / بريد PayPal">'+esc(pm[m.id]||'')+'</textarea></div>'; }).join('');
       }
-      if(s.rep){ var arr=get(C,s.rep.p)||[];
+      if(s.rep&&s.rep.split) html+=repSplit(s,si);
+      else if(s.rep){ var arr=get(C,s.rep.p)||[];
         html+='<div class="rep" data-rep="'+esc(s.rep.p)+'">'+arr.map(function(it,i){
           return '<details class="item"'+(arr.length<=1?' open':'')+'><summary><span class="chev">‹</span><b>'+esc(s.rep.name(it,i))+'</b>'+
             (s.rep.fixed?'':'<button class="btn sm" type="button" data-move="'+si+':'+i+':-1" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-move="'+si+':'+i+':1" aria-label="أسفل">↓</button><button class="btn sm danger" type="button" data-del="'+si+':'+i+'">حذف</button>')+
@@ -267,6 +275,29 @@
     }).join('');
     decorate(); spy();
   }
+  // a list as rows + the chosen item in a side panel (like requests and tasks); ↑ ↓ and delete live in the «⋯» menu
+  var ROPEN={}, RTAB={};
+  function repSplit(s,si){ var r=s.rep, p=r.p, arr=get(C,p)||[], sp=r.split, wide=matchMedia('(min-width:1001px)').matches;
+    var sel=ROPEN[p]; if(sel==null||sel>=arr.length) sel=ROPEN[p]=wide&&arr.length?0:-1;
+    var it=arr[sel], tabs=sp.tabs||[['',r.fields.map(function(_,k){ return k; })]], ti=Math.min(RTAB[p]||0,tabs.length-1);
+    var rows=arr.map(function(x,i){ var tg=sp.tag&&sp.tag(x,i), th=sp.thumb&&sp.thumb(x);
+      return '<li><button type="button" class="orow rrow'+(i===sel?' on':'')+'" data-ropen="'+esc(p)+':'+i+'"><span class="rth">'+(th?'<img alt="" loading="lazy" src="'+esc(abs(th))+'">':'')+'</span>'+
+        '<span class="orow-m"><b>'+esc(r.name(x,i))+'</b></span><span class="orow-p">'+esc(sp.sub?sp.sub(x,i):'')+'</span>'+(tg?'<span class="tag'+(tg[1]?' tf-'+tg[1]:' rtag')+'">'+esc(tg[0])+'</span>':'')+'</button></li>'; }).join('');
+    var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+p+'.'+sel+'.'); };
+    var panel=it?'<div class="order item odetail rpanel"><div class="odh"><button class="btn sm oback" type="button" data-rback="'+esc(p)+'">‹ '+esc(sp.all||'كل العناصر')+'</button><b>'+esc(r.name(it,sel))+'</b>'+
+        (r.fixed?'':'<details class="cp-more rmore"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
+          '<button class="btn sm" type="button" data-move="'+si+':'+sel+':-1"'+(sel?'':' disabled')+'>لفوق ↑</button><button class="btn sm" type="button" data-move="'+si+':'+sel+':1"'+(sel<arr.length-1?'':' disabled')+'>لتحت ↓</button>'+
+          '<button class="btn sm danger" type="button" data-del="'+si+':'+sel+'">حذف</button></div></details>')+'</div>'+
+        (tabs.length>1?'<div class="subtabs rtabs">'+tabs.map(function(t,k){ return '<button type="button" data-rtab="'+esc(p)+':'+k+'"'+(k===ti?' aria-current="true"':'')+'>'+esc(t[0])+'</button>'; }).join('')+'</div>':'')+
+        '<div class="body">'+tabs[ti][1].map(function(k){ return pre(field(it,r.fields[k])); }).join('')+'</div></div>'
+      :'<div class="odetail empty-sel">اختار من القائمة</div>';
+    return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"><ul class="olist">'+rows+'</ul>'+panel+'</div>'+
+      (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button></div>'); }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-ropen],[data-rback],[data-rtab]'); if(!b) return;
+    if(b.dataset.ropen){ var q=b.dataset.ropen.split(':'); ROPEN[q[0]]=+q[1]; render();
+      if(!matchMedia('(min-width:1001px)').matches){ var pn=document.querySelector('.rsplit[data-rep="'+q[0]+'"]'); if(pn) pn.scrollIntoView({block:'start'}); } return; }
+    if(b.dataset.rback){ ROPEN[b.dataset.rback]=-1; render(); return; }
+    var t=b.dataset.rtab.split(':'); RTAB[t[0]]=+t[1]; render(); });
   // where each content section lives on the site
   var SITEPG={home:'/',services:'/services.html',packages:'/pricing.html',work:'/work.html',about:'/about.html',contact:'/contact.html',payments:'/pricing.html'};
   function secNav(tab){ var pg=SITEPG[tab.id];
@@ -328,13 +359,15 @@
       else if(act==='del'){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد؟'; setTimeout(function(){ if(b.isConnected){ b.dataset.armed=''; b.textContent='حذف'; } },3000); return; } fa.splice(fi,1); }
       else { var fj=fi+(act==='up'?-1:1); if(fj<0||fj>=fa.length) return; var ft=fa[fi]; fa[fi]=fa[fj]; fa[fj]=ft; }
       set(C,fp2,fa); render(); keepOpen(fp2); dirty(); saveDraft(); return; }
-    if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr); render(); dirty(); saveDraft();
+    if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr);
+      if(s.rep.split){ ROPEN[s.rep.p]=arr.length-1; RTAB[s.rep.p]=0; render(); dirty(); saveDraft(); var np=document.querySelector('.rsplit[data-rep="'+s.rep.p+'"] .rpanel'); if(np) np.scrollIntoView({block:'nearest'}); return; }
+      render(); dirty(); saveDraft();
       var items=document.querySelectorAll('[data-rep="'+s.rep.p+'"] .item'); var last=items[items.length-1]; if(last){ last.open=true; last.scrollIntoView({block:'center'}); } return; }
     if(b.dataset.del){ e.preventDefault(); var q=b.dataset.del.split(':'), s2=tab.secs[+q[0]], a2=get(C,s2.rep.p);
       if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف؟'; setTimeout(function(){ if(b.isConnected){ b.dataset.armed=''; b.textContent='حذف'; } },3000); return; }
-      a2.splice(+q[1],1); render(); dirty(); saveDraft(); return; }
+      a2.splice(+q[1],1); if(s2.rep.split) ROPEN[s2.rep.p]=a2.length?Math.min(+q[1],a2.length-1):-1; render(); dirty(); saveDraft(); return; }
     if(b.dataset.move){ e.preventDefault(); var m=b.dataset.move.split(':'), s3=tab.secs[+m[0]], a3=get(C,s3.rep.p), i=+m[1], j=i+(+m[2]);
-      if(j<0||j>=a3.length) return; var tmp=a3[i]; a3[i]=a3[j]; a3[j]=tmp; render(); dirty(); saveDraft(); return; }
+      if(j<0||j>=a3.length) return; var tmp=a3[i]; a3[i]=a3[j]; a3[j]=tmp; if(s3.rep.split) ROPEN[s3.rep.p]=j; render(); dirty(); saveDraft(); return; }
   });
   $('#publishBtn').addEventListener('click',publish);
   $('#previewBtn').addEventListener('click',function(){ saveDraft(); try{ localStorage.setItem('eb-preview','1'); }catch(_){} });
