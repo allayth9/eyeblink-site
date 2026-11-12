@@ -94,7 +94,7 @@
     if(b.hasAttribute('data-badd')){ var w=b.closest('.bform').querySelector('.bitems'), d=document.createElement('div'); d.className='bitem'; d.innerHTML='<input name="desc" dir="auto" placeholder="البيان"><input name="qty" type="number" min="0" step="any" value="1"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة"><button type="button" class="linkbtn" data-brm>×</button>'; w.appendChild(d); d.firstChild.focus(); return; }
     if(b.hasAttribute('data-brm')){ var f=b.closest('.bform'); if(f.querySelectorAll('.bitem').length>1) b.closest('.bitem').remove(); bformSync(f); return; }
     if(b.dataset.bopen){ BOPEN=BOPEN===b.dataset.bopen?null:b.dataset.bopen; if(BFORM&&BFORM.id) BFORM=null; renderBilling(); return; }
-    if(b.dataset.bord){ TAB='orders'; render(); setTimeout(function(){ [].some.call(document.querySelectorAll('details.order'),function(d){ var c=d.querySelector('.code'); if(c&&c.textContent.trim()===b.dataset.bord){ d.open=true; d.scrollIntoView({block:'start',behavior:'smooth'}); return true; } }); },60); return; }
+    if(b.dataset.bord){ var ob=ORDERS.filter(function(o){ return o.code===b.dataset.bord; })[0]; if(ob){ OOPEN=ob.key; OPICK=true; } OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     if(b.dataset.bedit){ BFORM={id:b.dataset.bedit}; renderBilling(); return; }
     if(b.dataset.bprev){ var id=b.dataset.bprev; if(BPREV[id]){ delete BPREV[id]; renderBilling(); return; }
       fetch(API+'/work?admin=1&invoiceDoc='+encodeURIComponent(id),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.text(); }).then(function(t){ BPREV[id]=t.replace(/src="\/assets\//g,'src="../assets/'); renderBilling(); }); return; }

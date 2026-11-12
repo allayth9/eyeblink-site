@@ -305,7 +305,7 @@
       if(b.hasAttribute('data-osave')){ var body={key:key}, s2=oc.querySelector('[data-ostat]').value, pj=oc.querySelector('[data-oproj]').value, nt=oc.querySelector('[data-onote]').value;
         if(s2!==o.status) body.status=s2; if(pj!==(o.projectId||'')) body.project=pj; if(nt!==(o.notes||'')) body.notes=nt;
         if(Object.keys(body).length<2){ toast('لا تغييرات'); return; } oreq(body,b,'حُفظ الطلب').then(function(){ loadProfile(PROF.email); }).catch(function(){}); return; }
-      if(b.dataset.ogo){ TAB='orders'; render(); var x=document.querySelector('.order[data-key="'+key+'"]')||document.querySelector('[data-k="'+key+'"]'); if(x&&x.scrollIntoView) x.scrollIntoView({block:'start'}); return; }
+      if(b.dataset.ogo){ OOPEN=key; OPICK=true; OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     }
   });
   function docOpen(src){ var w=window.open('about:blank','_blank'); fetch(src,{headers:headers({})}).then(function(r){ return r.text(); }).then(function(h){ if(w){ w.document.open(); w.document.write(h); w.document.close(); } }).catch(function(){ if(w) w.close(); toast('تعذّر فتح الفاتورة',true); }); }

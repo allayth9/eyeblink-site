@@ -38,10 +38,14 @@
       '<details class="crmset"><summary class="small muted">أسباب الخسارة (لما يتلغى طلب)</summary><textarea id="lostList" dir="auto" rows="6">'+esc(lostReasons().join('\n'))+'</textarea><div class="actions"><span class="small muted">كل سبب بسطر</span><button class="btn sm" type="button" data-lostsave>حفظ</button></div></details>'+
       (!LIVE?'<p class="hint">هذا طلب تجريبي ليظهر لك طريقة العمل. الطلبات الحقيقية تصل هنا بعد نشر الموقع على Cloudflare.</p>':'')+'</section>';
     if(!list.length){ $('#panel').innerHTML=head+'<div class="sec"><div class="empty">لا توجد طلبات هنا.</div></div>'; return; }
-    $('#panel').innerHTML=head+'<div class="orders">'+list.map(function(o){
+    if(OPENCODE){ var oc=ORDERS.filter(function(o){ return o.code===OPENCODE; })[0]; if(oc){ OOPEN=oc.key; OPICK=true; } OPENCODE=null; }
+    var wide=matchMedia('(min-width:1001px)').matches;
+    if(!list.some(function(o){ return o.key===OOPEN; })){ OOPEN=wide&&list[0]?list[0].key:null; OPICK=false; }
+    var sel=list.filter(function(o){ return o.key===OOPEN; })[0];
+    $('#panel').innerHTML=head+'<div class="osplit'+(sel?' has-open':'')+'"><ul class="olist">'+list.map(orderRow).join('')+'</ul>'+(sel?[sel].map(function(o){
       var k=esc(o.key);
-      return '<details class="order item" data-okey="'+k+'"'+(o.status==='new'||o.unread?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+(o.status==='cancelled'&&o.lostReason?' · '+esc(o.lostReason):'')+'</span>'+(o.manual?'<span class="pill src">'+esc(SRC[srcOf(o)]||'')+'</span>':'')+(dueFollow(o)?'<span class="pill due">متابعة'+(o.followUp<todayISO()?' متأخرة':' اليوم')+'</span>':o.followUp&&o.status!=='cancelled'&&o.status!=='delivered'?'<span class="pill">متابعة '+esc(fdate(o.followUp))+'</span>':'')+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
-        '<b>'+esc(o.name)+' · '+esc(o.packageName||o.package)+'</b><span class="muted small">'+esc(new Date(o.createdAt).toLocaleDateString('ar'))+'</span></summary><div class="body">'+
+      return '<div class="order item odetail" data-okey="'+k+'"><div class="odh"><button class="btn sm oback" type="button" data-oback>‹ كل الطلبات</button><span class="chev">‹</span><span class="code">'+esc(o.code)+'</span><span class="pill '+esc(o.status)+'">'+esc(ST[o.status]||o.status)+(o.status==='cancelled'&&o.lostReason?' · '+esc(o.lostReason):'')+'</span>'+(o.manual?'<span class="pill src">'+esc(SRC[srcOf(o)]||'')+'</span>':'')+(dueFollow(o)?'<span class="pill due">متابعة'+(o.followUp<todayISO()?' متأخرة':' اليوم')+'</span>':o.followUp&&o.status!=='cancelled'&&o.status!=='delivered'?'<span class="pill">متابعة '+esc(fdate(o.followUp))+'</span>':'')+(o.paid?'<span class="pill paid">مدفوع</span>':'')+(o.unread?'<span class="pill unread">'+o.unread+' رسالة جديدة</span>':'')+
+        '<b>'+esc(o.name)+' · '+esc(o.packageName||o.package)+'</b><span class="muted small">'+esc(new Date(o.createdAt).toLocaleDateString('ar'))+'</span></div><div class="body">'+
         '<div class="grid2"><div>'+
           '<div class="small muted">الطلب</div><div><b>'+esc(o.packageName||o.package)+'</b>'+(o.total?' · التقدير: <span dir="ltr">'+esc(o.total)+'</span>':'')+(o.qty>1?' · <b>×'+o.qty+'</b>':'')+(o.addons&&o.addons.length?'<br>إضافات: '+esc(o.addons.join('، ')):'')+((o.platforms||[]).length?'<br>المنصات: <span dir="ltr">'+esc(o.platforms.join(', '))+'</span>':'')+(o.payPref?'<br>الدفع المفضّل: '+esc(o.payPref):'')+'</div>'+
           '<div class="small muted" style="margin-top:8px">العميل</div><div>'+esc(o.name)+(o.email?' — <span dir="ltr" style="user-select:all">'+esc(o.email)+'</span>':'')+(o.contact?'<br><span class="muted small">تواصل خارجي:</span> <span dir="ltr" style="user-select:all">'+esc(o.contact)+'</span>':'')+'</div>'+
@@ -63,9 +67,26 @@
           '<div class="actions"><button class="btn primary sm" type="button" data-osave="'+k+'">حفظ الطلب</button><button class="btn sm danger" type="button" data-odel="'+k+'">حذف</button></div>'+
           '<div class="small muted" style="margin-top:6px">رسالة جاهزة</div><div class="actions"><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">رسالة التسليم</button></div>'+
           '<div class="replybox" hidden><textarea class="replytext" dir="auto"></textarea><div class="actions">'+(o.email?'<button class="btn sm primary" type="button" data-sendreply="'+k+'">أرسل في محادثة الموقع</button>':'')+'<button class="btn sm" type="button" data-copyreply>نسخ الرسالة</button><a class="btn sm" data-openreply target="_blank" rel="noopener">افتح المحادثة الخارجية</a></div></div>'+
-        '</div></div></div></details>';
-    }).join('')+'</div>';
+        '</div></div></div></div>';
+    }).join(''):'<div class="odetail empty-sel">اختار طلب من القائمة</div>')+'</div>';
   }
+  // one line per request: who, which package, the stage, the value, and what is waiting (unread messages, a follow-up due)
+  function orderRow(o){ var k=esc(o.key), v=pnum(o.price||o.total), due=dueFollow(o);
+    return '<li><button type="button" class="orow'+(o.key===OOPEN?' on':'')+(o.unread?' unread':'')+'" data-oselect="'+k+'">'+
+      '<span class="orow-m"><b>'+esc(o.name)+'</b><small dir="ltr">'+esc(o.code)+'</small></span>'+
+      '<span class="orow-v" dir="ltr">'+(v?esc(pfmt(v,(C.packages&&C.packages.currency)||'$')):'')+'</span>'+
+      '<span class="orow-p">'+esc(o.packageName||o.package||'')+(o.manual?' · '+esc(SRC[srcOf(o)]||''):'')+'</span>'+
+      '<span class="tag s-'+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span>'+
+      '<span class="orow-x">'+(o.unread?'<i class="ounr">'+o.unread+'</i><span>'+(o.unread>1?'رسائل جديدة':'رسالة جديدة')+'</span>':'')+(due?'<em class="c-warn">متابعة'+(o.followUp<todayISO()?' متأخرة':' اليوم')+'</em>':'')+'</span></button></li>'; }
+  // the chosen request (OPICK: chosen by you or by its address, not the first one shown by default)
+  var OOPEN=null, OPICK=false, OPENCODE=null;
+  function pickOrder(key){ OOPEN=key; OPICK=!!key; route(); renderOrders(); var d=$('#panel .odetail'); if(d&&!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); else if(d) d.scrollTop=0; }
+  document.addEventListener('click',function(e){ if(TAB!=='orders') return; var b=e.target.closest('[data-oselect],[data-oback]'); if(!b) return;
+    pickOrder(b.dataset.oselect||null); });
+  // ↑ ↓ walk the list, like a mail app (not while typing)
+  document.addEventListener('keydown',function(e){ if(TAB!=='orders'||(e.key!=='ArrowDown'&&e.key!=='ArrowUp')||e.target.closest('input,textarea,select,[contenteditable]')||$('#cmdk')) return;
+    var rows=[].slice.call(document.querySelectorAll('#panel .orow')); if(!rows.length) return; var i=rows.findIndex(function(r){ return r.classList.contains('on'); });
+    var n=rows[Math.max(0,Math.min(rows.length-1,i+(e.key==='ArrowDown'?1:-1)))]; if(n&&n.dataset.oselect!==OOPEN){ e.preventDefault(); pickOrder(n.dataset.oselect); var r2=document.querySelector('#panel .orow.on'); if(r2) r2.scrollIntoView({block:'nearest'}); } });
   function thread(o){
     var m=o.messages||[]; if(!m.length) return '<div class="muted small">لا رسائل بعد. العميل يرى رسالة ترحيب تلقائية بأنكم سترسلون السعر خلال 24 ساعة.</div>';
     return m.map(function(x){ return '<div class="amsg '+(x.from==='client'?'c':'s')+(x.kind?' k-'+x.kind:'')+'">'+(x.text?'<div>'+esc(x.text).replace(/\n/g,'<br>').replace(/\[(\d{1,2}:\d{2})\]/g,'<b class="tcode">⏱ $1</b>')+'</div>':'')+

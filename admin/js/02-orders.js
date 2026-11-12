@@ -143,7 +143,7 @@
     var d={action:'manual'}; [].forEach.call(f.elements,function(el){ if(el.name) d[el.name]=el.value.trim(); });
     if(!d.name){ toast('اكتب الاسم',true); f.elements.name.focus(); return; }
     if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ toast('الإيميل مش صحيح',true); f.elements.email.focus(); return; }
-    var add=function(o){ ORDERS.unshift(o); NEWOPP=false; OFILTER='all'; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd){ dd.open=true; dd.scrollIntoView({block:'center'}); } toast('انضافت الفرصة '+o.code); };
+    var add=function(o){ ORDERS.unshift(o); NEWOPP=false; OFILTER='all'; OOPEN=o.key; OPICK=true; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd){ dd.open=true; dd.scrollIntoView({block:'center'}); } toast('انضافت الفرصة '+o.code); };
     if(!LIVE){ var now=new Date().toISOString(); add({key:'order:demo-'+Date.now(),code:'EB-DEMO'+(ORDERS.length+1),status:'new',createdAt:now,name:d.name,contact:d.contact,email:d.email,details:d.details||'—',packageName:d.title||'فرصة',total:d.value,source:d.source,manual:true,nextStep:d.nextStep,followUp:d.followUp,touches:[],messages:[],history:[{at:now,status:'new'}],demo:true}); return; }
     var b=f.querySelector('[type=submit]'); b.disabled=true;
     api('/orders','POST',d).then(function(j){ if(!j.ok) throw new Error(j.error); add(j.order); }).catch(function(err){ b.disabled=false; toast(err.message==='email'?'الإيميل مش صحيح':'ما انحفظت، جرّب مرة تانية',true); }); });
