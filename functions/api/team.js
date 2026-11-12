@@ -9,11 +9,15 @@
 //          POST /api/team { action:"start"|"decline"|"submit"|"comment", id, … }
 // admin    GET  /api/team?admin=1                        → applications, members, tasks, settings
 //          POST /api/team { action:"settings"|"app"|"appDelete"|"memberCreate"|"memberUpdate"|"memberReset"|"taskSave"|"taskReview"|"taskPaid"|"taskDelete", … }
-const ROLES = ["editor", "motion", "color", "sound", "writer", "shooter", "designer", "producer", "voice", "illustrator", "social", "subtitles"];
+const ROLES = ["editor", "motion", "color", "sound", "writer", "shooter", "designer", "producer", "voice", "illustrator", "social", "subtitles", "support", "marketing"];
+// roles that are jobs (a monthly salary), not task-by-task work; the studio can still change a member's type
+const STAFF_ROLES = ["support", "marketing"];
+const TYPES = ["freelance", "staff"];
+const cleanSalary = s => s && +s.amount > 0 ? { amount: Math.round(+s.amount * 100) / 100, cur: C_(s.cur, 8) || "$" } : null;
 // the application fields the studio can show as optional, require, or hide (name and e-mail are always asked)
 const FIELDS = ["gender", "phone", "city", "langs", "reel", "links", "tools", "about"];
 const cleanFields = x => Object.fromEntries(FIELDS.map(k => [k, ["hidden", "optional", "required"].includes((x || {})[k]) ? x[k] : "optional"]));
-const ROLE_AR = { editor: "مونتير", motion: "موشن ديزاينر", color: "كولوريست", sound: "مهندس صوت", writer: "كاتب محتوى", shooter: "مصوّر", designer: "مصمم", producer: "منسّق إنتاج", voice: "معلّق صوتي", illustrator: "رسّام", social: "مدير سوشال ميديا", subtitles: "مترجم ومحرّر نصوص" };
+const ROLE_AR = { editor: "مونتير", motion: "موشن ديزاينر", color: "كولوريست", sound: "مهندس صوت", writer: "كاتب محتوى", shooter: "مصوّر", designer: "مصمم", producer: "منسّق إنتاج", voice: "معلّق صوتي", illustrator: "رسّام", social: "مدير سوشال ميديا", subtitles: "مترجم ومحرّر نصوص", support: "دعم العملاء", marketing: "مدير تسويق" };
 // how a member's fee is paid, as agreed with them (studio only; it also goes into their agreement)
 const cleanPay = p => p && ["usdt", "wu", "bank", "wise", "payoneer", "shamcash", "local", "other"].includes(p.method) ? { method: p.method, details: C_(p.details, 200) } : null;
 const APP_ST = ["new", "trial", "interview", "accepted", "rejected"];
@@ -42,14 +46,14 @@ function memberTask(t){ return { id: t.id, title: t.title, alias: t.alias, brief
   status: t.status, versions: t.versions || [], comments: (t.comments || []).map(c => ({ from: c.from === "studio" ? "studio" : "me", text: c.text, at: c.at })),
   paid: !!(t.payout && t.payout.paid), paidAt: t.payout && t.payout.at || null, createdAt: t.createdAt, offeredAt: t.offeredAt || t.createdAt, updatedAt: t.updatedAt,
   canDecline: t.status === "assigned" && Date.now() - Date.parse(t.offeredAt || t.createdAt) < DECLINE_MS }; }
-function publicMember(u){ return { email: u.email, name: u.name, role: u.role, roleAr: ROLE_AR[u.role] || u.role, status: u.status, lang: u.lang || "ar", mustChange: !!u.mustChange,
+function publicMember(u){ return { email: u.email, name: u.name, role: u.role, roleAr: ROLE_AR[u.role] || u.role, status: u.status, lang: u.lang || "ar", type: u.type || "freelance", salary: u.salary || null, mustChange: !!u.mustChange,
   contract: u.contract ? { no: u.contract.no, signedAt: u.contract.signedAt || null, url: u.contract.token ? SITE + "/team-agreement/" + u.contract.token : null } : null }; }
 async function sessionCookie(env, email, remember = true){ const t = randHex(24); await env.EB.put("tsess:" + t, email, { expirationTtl: remember ? TSESS_DAYS * 86400 : 86400 });
   return "eb_t=" + t + "; Path=/; HttpOnly; Secure; SameSite=Lax" + (remember ? "; Max-Age=" + TSESS_DAYS * 86400 : ""); }
 
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
-  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields) }); }
+  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], staff: STAFF_ROLES, intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields) }); }
   if (q.get("me")) {
     const u = await member(request, env); if (!u) return json({ ok: false }, 401);
     // shortcut: reads every task to find this member’s (one KV read each), fine up to a few hundred tasks; past that keep task ids on the member record
@@ -93,7 +97,7 @@ export async function onRequestPost(ctx) {
 const IV_TZ = { dxb: "بتوقيت الإمارات", ruh: "بتوقيت السعودية", dam: "بتوقيت دمشق", cai: "بتوقيت القاهرة" };
 const IV_PF = { meet: "Google Meet", zoom: "Zoom", whatsapp: "WhatsApp (مكالمة فيديو)" };
 const IV_TZ_EN = { dxb: "UAE time", ruh: "Saudi time", dam: "Damascus time", cai: "Cairo time" };
-const ROLE_EN = { editor: "video editor", motion: "motion designer", color: "colorist", sound: "sound engineer", writer: "writer", shooter: "photographer", designer: "designer", producer: "production coordinator", voice: "voice-over artist", illustrator: "illustrator", social: "social media manager", subtitles: "translator" };
+const ROLE_EN = { editor: "video editor", motion: "motion designer", color: "colorist", sound: "sound engineer", writer: "writer", shooter: "photographer", designer: "designer", producer: "production coordinator", voice: "voice-over artist", illustrator: "illustrator", social: "social media manager", subtitles: "translator", support: "customer support specialist", marketing: "marketing manager" };
 function ivWhenEn(iv){ const [d, t] = iv.at.split("T"), dt = new Date(d + "T12:00:00Z");
   const day = dt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   let [hh, mm] = t.split(":").map(Number); const pm = hh >= 12; hh = hh % 12 || 12;
@@ -228,7 +232,7 @@ async function adminAction(ctx, d){
     if (await env.EB.get("member:" + email)) return json({ ok: false, error: "exists" }, 409);
     const pw = tempPass(), salt = randHex(16);
     const u = { email, name: C_(d.name, 120) || email, role: ROLES.includes(d.role) ? d.role : "editor", status: "active", lang: d.lang === "en" ? "en" : "ar",
-      phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), pay: cleanPay(d.pay), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
+      phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), pay: cleanPay(d.pay), type: TYPES.includes(d.type) ? d.type : STAFF_ROLES.includes(d.role) ? "staff" : "freelance", salary: cleanSalary(d.salary), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
     await env.EB.put("member:" + email, JSON.stringify(u));
     if (u.app) { const a = await kvJSON(env, "teamapp:" + u.app); if (a) { if (a.status !== "accepted") { a.history.push({ at: now, status: "accepted" }); a.status = "accepted"; } a.member = email; await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); } }
     const fromApp = u.app ? await kvJSON(env, "teamapp:" + u.app) : null; if (fromApp && fromApp.lang === "en") { u.lang = "en"; await env.EB.put("member:" + email, JSON.stringify(u)); }
@@ -250,6 +254,8 @@ async function adminAction(ctx, d){
     if (d.status && ["active", "paused", "removed"].includes(d.status)) u.status = d.status;
     if (d.rate !== undefined) u.rate = C_(d.rate, 120);
     if (d.pay !== undefined) u.pay = cleanPay(d.pay);
+    if (TYPES.includes(d.type)) u.type = d.type;
+    if (d.salary !== undefined) u.salary = cleanSalary(d.salary);
     if (d.notes !== undefined) u.notes = C_(d.notes, 4000);
     if (d.phone !== undefined) u.phone = C_(d.phone, 40);
     await env.EB.put("member:" + u.email, JSON.stringify(u)); const x = { ...u }; delete x.salt; delete x.hash; return json({ ok: true, member: x });

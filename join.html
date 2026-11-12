@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#04061A">
 <title>انضم إلى الفريق — Eyeblink Studio</title>
-<meta name="description" content="Eyeblink Studio يبحث عن متعاونين في المونتاج والموشن والصوت والتلوين">
+<meta name="description" content="Eyeblink Studio يبحث عن مواهب تنضم إلى فريقه في المونتاج والموشن والصوت والتلوين">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <style>
+.rtype{margin:0 0 6px;font-size:13px;letter-spacing:.02em;color:var(--horizon)}
 *,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
 @font-face{font-family:"EYEN Ammon";src:url(assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
@@ -129,7 +130,7 @@ select{display:none}
   <div class="top"><a href="/"><img src="assets/img/favicon.svg" alt="">EYEBLINK</a><a class="kick" href="en/join" style="text-decoration:none">English</a></div>
   <div class="kick">انضم إلى الفريق</div>
   <h1 id="headline">مونتير يعرف متى يترك للصورة أن تتنفس</h1>
-  <p class="lead" id="intro">نعمل مع علامات في الخليج والمنطقة على أفلام قصيرة، وإعلانات، وموشن، ومحتوى سوشال. نتعاون مع مستقلين يهتمون بالتفاصيل، ويسلّمون في الموعد، ويرون في كل ثانية قراراً</p>
+  <p class="rtype" id="rtype" hidden></p><p class="lead" id="intro">نعمل مع علامات في الخليج والمنطقة على أفلام قصيرة، وإعلانات، وموشن، ومحتوى سوشال. نتعاون مع مستقلين يهتمون بالتفاصيل، ويسلّمون في الموعد، ويرون في كل ثانية قراراً</p>
 
   <div id="closed" class="closed glass" hidden><h2>لا نستقبل طلبات حالياً</h2><p>تابعنا على إنستغرام <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a>، ونعلن هناك حين نفتح باب الانضمام</p></div>
 
@@ -161,11 +162,12 @@ select{display:none}
 <script src="assets/js/flags.js?v=1678e6bc"></script>
 <script>
 (function(){
-  var RA={voice:'معلّق صوتي',illustrator:'رسّام',social:'مدير سوشال ميديا',subtitles:'مترجم ومحرّر نصوص',editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
+  var RA={support:'دعم العملاء',marketing:'مدير تسويق',voice:'معلّق صوتي',illustrator:'رسّام',social:'مدير سوشال ميديا',subtitles:'مترجم ومحرّر نصوص',editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
   var $=function(s){return document.querySelector(s)}, f=$('#apply'), m=$('#msg');
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
     
+    STAFF=j.staff||[];
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
     // the admin decides which fields show and which must be filled
@@ -179,8 +181,9 @@ select{display:none}
     bsel($('#roleSel'));
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
-  var COPY={"editor":["مونتير يعرف متى يترك للصورة أن تتنفس","الإيقاع عندنا قرار قبل أن يكون مهارة: أين تبدأ اللقطة، ومتى تنتهي، وما الذي لا ينبغي أن يظهر أصلاً. نعمل على إعلانات وأفلام قصيرة ومحتوى لعلامات في الخليج والمنطقة"],"motion":["موشن ديزاينر يمنح الفكرة حركة تشبهها","لكل فكرة سرعتها ووزنها. نبحث عمّن يقرأ الفكرة قبل أن يحرّكها، فيختار المنحنى والتوقيت اللذين يقولانها بأوضح صورة"],"color":["كولوريست يصنع للمشهد مزاجه الخاص","اللون عندنا جزء من السرد: دفء لحظة، أو برودة مسافة. نعمل بلقطات من كاميرات مختلفة، ونريدها أن تبدو عالماً واحداً"],"sound":["مهندس صوت يمنح ما لا نراه صوتاً","نصف الإحساس يصل عبر الأذن: تصميم صوتي، وتنظيف للحوار، وميكس يحفظ المسافة بين الصوت والصورة على كل منصة"],"writer":["كاتب يعرف أن الفكرة الكبيرة قد تبدأ بسطر","سكريبتات إعلانات ونصوص على الشاشة، بالعربية أولاً. جملة تعرف مكانها في الإيقاع، ونبرة تشبه العلامة التي تتحدث بها"],"shooter":["مصوّر يرى الحكاية داخل الإطار","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. ضوء يُقرأ، وحركة هادئة، ولقطات تعرف أنها ستُقطع في المونتاج"],"designer":["مصمم يمنح الفكرة شكلاً يليق بها","هويات وبوسترات ومواد للسوشال على شبكة واحدة ومسافات منتظمة. نرى البساطة قراراً، لا فراغاً"],"producer":["منسّق إنتاج يحفظ للعمل إيقاعه خارج الشاشة","جداول، ومواعيد، وتواصل بين الفريق والعملاء. هدوؤك تحت الضغط هو ما يتيح للآخرين أن يبدعوا"],"voice":["معلّق صوتي يُصدَّق من الجملة الأولى","تعليق لإعلانات وأفلام تعريفية بالخليجية والشامية والفصحى. أداء طبيعي يخدم النص ولا يعلو عليه"],"illustrator":["رسّام يرسم ما لا تصل إليه الكاميرا","ستوري بورد، ورسوم للموشن والحملات. خط واثق، وفكرة تُفهم من النظرة الأولى"],"social":["مدير سوشال يعرف ما الذي يستوقف المشاهد","خطط محتوى، وقراءة للأرقام، وحوار مع الجمهور باسم العلامة. ذوق في الاختيار، ونَفَس طويل في المتابعة"],"subtitles":["مترجم يحفظ نبرة الجملة قبل كلماتها","ترجمة على الشاشة بين العربية والإنجليزية، بتوقيت يتبع الإيقاع ولغة تشبه جمهورها"]};
-  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r; }
+  var COPY={"editor":["مونتير يعرف متى يترك للصورة أن تتنفس","الإيقاع عندنا قرار قبل أن يكون مهارة: أين تبدأ اللقطة، ومتى تنتهي، وما الذي لا ينبغي أن يظهر أصلاً. نعمل على إعلانات وأفلام قصيرة ومحتوى لعلامات في الخليج والمنطقة"],"motion":["موشن ديزاينر يمنح الفكرة حركة تشبهها","لكل فكرة سرعتها ووزنها. نبحث عمّن يقرأ الفكرة قبل أن يحرّكها، فيختار المنحنى والتوقيت اللذين يقولانها بأوضح صورة"],"color":["كولوريست يصنع للمشهد مزاجه الخاص","اللون عندنا جزء من السرد: دفء لحظة، أو برودة مسافة. نعمل بلقطات من كاميرات مختلفة، ونريدها أن تبدو عالماً واحداً"],"sound":["مهندس صوت يمنح ما لا نراه صوتاً","نصف الإحساس يصل عبر الأذن: تصميم صوتي، وتنظيف للحوار، وميكس يحفظ المسافة بين الصوت والصورة على كل منصة"],"writer":["كاتب يعرف أن الفكرة الكبيرة قد تبدأ بسطر","سكريبتات إعلانات ونصوص على الشاشة، بالعربية أولاً. جملة تعرف مكانها في الإيقاع، ونبرة تشبه العلامة التي تتحدث بها"],"shooter":["مصوّر يرى الحكاية داخل الإطار","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. ضوء يُقرأ، وحركة هادئة، ولقطات تعرف أنها ستُقطع في المونتاج"],"designer":["مصمم يمنح الفكرة شكلاً يليق بها","هويات وبوسترات ومواد للسوشال على شبكة واحدة ومسافات منتظمة. نرى البساطة قراراً، لا فراغاً"],"producer":["منسّق إنتاج يحفظ للعمل إيقاعه خارج الشاشة","جداول، ومواعيد، وتواصل بين الفريق والعملاء. هدوؤك تحت الضغط هو ما يتيح للآخرين أن يبدعوا"],"voice":["معلّق صوتي يُصدَّق من الجملة الأولى","تعليق لإعلانات وأفلام تعريفية بالخليجية والشامية والفصحى. أداء طبيعي يخدم النص ولا يعلو عليه"],"illustrator":["رسّام يرسم ما لا تصل إليه الكاميرا","ستوري بورد، ورسوم للموشن والحملات. خط واثق، وفكرة تُفهم من النظرة الأولى"],"social":["مدير سوشال يعرف ما الذي يستوقف المشاهد","خطط محتوى، وقراءة للأرقام، وحوار مع الجمهور باسم العلامة. ذوق في الاختيار، ونَفَس طويل في المتابعة"],"subtitles":["مترجم يحفظ نبرة الجملة قبل كلماتها","ترجمة على الشاشة بين العربية والإنجليزية، بتوقيت يتبع الإيقاع ولغة تشبه جمهورها"],"support":["دعم يجعل كل مشكلة أبسط مما بدت","ترد على عملائنا وزوارنا بلغة واضحة وهادئة، وتتابع كل طلب حتى يُحل، وتنقل للفريق ما يحتاج إليه بدقة. أول من يسمع صوت العميل، وآخر من يطمئن عليه"],"marketing":["مدير تسويق يعرف أين تُروى الحكاية","تبني طريق Eyeblink إلى العلامات في الخليج والمنطقة: تقرأ السوق والأرقام، وتختار القنوات والرسائل، وتحوّل أعمالنا إلى حضور يجذب العملاء المناسبين"]};
+  var STAFF=[];
+  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } var rt=$('#rtype'); rt.textContent=STAFF.indexOf(r)>=0?'وظيفة · راتب شهري':'تعاون مستقل · أجر لكل مهمة'; rt.hidden=false; $('#roleSel').value=r; }
   $('#roleSel').onchange=function(){ pick(this.value); };
   // a glass dropdown in place of the browser's grey one; the real <select> stays for the form
   function bsel(sel,icon,short,find){ icon=icon||function(){ return ''; }; var w=sel._b; if(!w){ w=document.createElement('div'); w.className='bsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel._b=w;

@@ -162,7 +162,7 @@ async function forwardToTeam(env, t, label, points, note){
     if (mm && mm.status === "active") await sendMail(env, mm.email, (mm.lang === "en" ? "Changes requested: " : "تعديلات مطلوبة: ") + x.title,
       mail(mm.lang === "en" ? "en" : "ar", mm.lang === "en" ? "The client asked for changes" : "طلب العميل تعديلات", `<p style="margin:0;white-space:pre-wrap">${h(text)}</p>`, mm.lang === "en" ? "Open the task" : "افتح المهمة", SITE + "/team/", null)); }
   // the studio hears when something was taken out, so it can check the original
-  if (sent && cut) await telegram(env, "🛡️ حذفت " + cut + " من معلومات التواصل من ملاحظات العميل على " + t.ref + " قبل ما توصل للمتعاون. راجع الأصل باللوحة: " + SITE + "/admin/#tasks/" + t.ref);
+  if (sent && cut) await telegram(env, "🛡️ حذفت " + cut + " من معلومات التواصل من ملاحظات العميل على " + t.ref + " قبل ما توصل لعضو الفريق. راجع الأصل باللوحة: " + SITE + "/admin/#tasks/" + t.ref);
   return sent;
 }
 function cleanPoints(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(x => ({ t: TC.test(clip(x && x.t, 8)) ? clip(x.t, 8) : "", text: clip(x && x.text, 600), kind: PT_KIND.includes(x && x.kind) ? x.kind : "edit", status: "open", done: false })).filter(x => x.text); }
