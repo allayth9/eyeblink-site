@@ -22,7 +22,7 @@
   --glass-edge:rgba(255,255,255,.22); --glass-blur:blur(30px) saturate(115%); --glass-shadow:0 34px 80px -34px rgba(0,0,0,.7);
   --input:rgba(4,6,26,.55); --btn-text:#fff;
   /* background */
-  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --skyOp:.42;
+  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --lidOp:1; --met:#CFF8FF;
 }
 :root[data-theme="light"]{
   color-scheme:light;
@@ -34,11 +34,20 @@
   --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
   --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
   --input:rgba(255,255,255,.7);
-  --au3:#9DB6F5; --auOp:.22; --skyOp:.38;
+  --au3:#9DB6F5; --auOp:.22; --lidOp:.75; --met:#1C45E6;
 }
 
-/* ---------- the sky: a soft aurora + the sphere of points (admin/sky.js), fixed behind everything ---------- */
-#sky{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:var(--skyOp)}
+/* ---------- the sky: a soft aurora + the eyelid strokes with meteors of light (admin/sky.js), fixed behind everything ---------- */
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:var(--lidOp)}
+#sky .l1,#sky .l2{animation:skyBreath 9s ease-in-out infinite}#sky .l2{animation-delay:-4.5s}
+@keyframes skyBreath{0%,100%{stroke-opacity:.7}50%{stroke-opacity:1}}
+/* a meteor runs the curve in the first third of its cycle, then rests: dash 90 of a 3000 cycle on a 1000-long path */
+#sky .mc,#sky .mg{stroke:var(--met);stroke-dasharray:90 2910;animation:skyMet var(--d,16s) linear infinite;animation-delay:var(--dl,0s)}
+#sky .mc{stroke-width:2.4}
+#sky .mg{stroke-width:12;stroke-opacity:.16}
+#sky .m1{--d:14s;--dl:-2s}#sky .m2{--d:19s;--dl:-9s}#sky .m3{--d:24s;--dl:-15s}#sky .m4{--d:33s;--dl:-24s}
+@keyframes skyMet{from{stroke-dashoffset:90}to{stroke-dashoffset:-2910}}
+@media (prefers-reduced-motion:reduce){#sky .mets{display:none}#sky .l1,#sky .l2{animation:none}}
 html,body{background:var(--night)}
 body{background:none;position:relative;isolation:isolate}
 body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none;opacity:var(--auOp);filter:blur(90px);
@@ -57,7 +66,9 @@ body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none
 .item{background:rgba(var(--fg),.035);border-radius:16px}
 .toast{color:var(--light)}
 .cmd{border-radius:22px}
-#tsheet,#dsheet{background:rgba(var(--scr),.45)}
+/* whatever opens on top (a window, the search, the phone menu) frosts everything under it */
+#tsheet,#dsheet,#cmdk,.scrim{background:rgba(var(--scr),.4);backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%)}
+:root[data-theme="light"] #tsheet,:root[data-theme="light"] #dsheet,:root[data-theme="light"] #cmdk,:root[data-theme="light"] .scrim{background:rgba(238,242,246,.45)}
 #tsheet .dbox,#dsheet .dbox{border-radius:24px}
 :root[data-theme="light"] .side,:root[data-theme="light"] .top,:root[data-theme="light"] .sec,:root[data-theme="light"] .login .card,:root[data-theme="light"] .cmd,
 :root[data-theme="light"] #tsheet .dbox,:root[data-theme="light"] #dsheet .dbox,:root[data-theme="light"] .toast{
