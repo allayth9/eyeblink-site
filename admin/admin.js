@@ -1,13 +1,13 @@
 /* Eyeblink admin — edits content.json through /api (Cloudflare) or, without a server, as a local draft. */
 (function(){
-  var API='../api', PW='', LIVE=false, C=null, SAVED='', TAB='today', ORDERS=[], P=null, PSAVED='', OFILTER='all', USERS=null;
+  var API='/api', PW='', LIVE=false, C=null, SAVED='', TAB='today', ORDERS=[], P=null, PSAVED='', OFILTER='all', USERS=null;
   var $=function(s,r){return (r||document).querySelector(s)};
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function toast(t,bad){ var d=$('#toast'); d.textContent=t; d.className='toast'+(bad?' bad':''); d.hidden=false; clearTimeout(d._t); d._t=setTimeout(function(){d.hidden=true},2600); }
   function get(o,p){ return p.split('.').reduce(function(a,k){return a==null?a:a[k]},o); }
   function set(o,p,v){ var ks=p.split('.'), last=ks.pop(); var t=ks.reduce(function(a,k){ if(a[k]==null) a[k]=/^\d+$/.test(k)?[]:{}; return a[k]; },o); t[last]=v; }
   function bi(a,e){ return {ar:a||'',en:e||''}; }
-  function headers(extra){ var h={'authorization':'Bearer '+PW}; for(var k in extra) h[k]=extra[k]; return h; }
+  function headers(extra){ var h={}; for(var k in extra) h[k]=extra[k]; return h; }   // the session cookie (HttpOnly, /api/ only) carries the sign-in
   var onHttp=/^https?:/.test(location.protocol);
 
   /* ---------------- automatic English ----------------
@@ -879,7 +879,27 @@
   // one open at a time: opening a card closes its open siblings (works, packages, orders, tasks, applications…)
   document.addEventListener('click',function(e){ var s=e.target.closest('summary'); if(!s||e.target.closest('button,a,input,select,label')) return; var d=s.parentElement; if(!d||d.tagName!=='DETAILS'||d.open||!d.parentElement) return;
     [].forEach.call(d.parentElement.children,function(x){ if(x!==d&&x.tagName==='DETAILS'&&x.open) x.open=false; }); });
-  function go(tab){ TAB=tab; render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
+  /* ---------- addresses: every section has its own (History API); back, forward and reload keep you where you were ---------- */
+  var ROUTING=false;
+  function route(replace){ if(ROUTING) return; try{
+    var p='/admin'+(TAB==='today'?'':'/'+TAB)+(TAB==='tasks'&&WOPEN?'/'+WOPEN:'')+(TAB==='clients'&&PROF&&PROF.email?'/'+encodeURIComponent(PROF.email):'');
+    if(location.pathname!==p||location.hash) history[replace?'replaceState':'pushState'](null,'',p);
+  }catch(_){} }
+  // the address → {tab, sub}; old links (#tasks/T-…, #clients/…, #support) still open the right place
+  function readRoute(){
+    var h=location.hash, tab='today', sub=null, m;
+    if((m=/^#(?:work|tasks)\/(T-[A-Z0-9]+)$/.exec(h))){ tab='tasks'; sub=m[1]; }
+    else if((m=/^#([a-z]+)(?:\/(.+))?$/.exec(h))){ tab=m[1]; sub=m[2]||null; }
+    else if((m=/^\/admin(?:\/([a-z]+)(?:\/(.+?))?)?\/?$/.exec(location.pathname))&&m[1]){ tab=m[1]; sub=m[2]||null; }
+    var known=TABS.some(function(t){ return t.id===tab; });
+    if(!known){ tab='today'; sub=null; }
+    try{ sub=sub&&decodeURIComponent(sub); }catch(_){ sub=null; }
+    return {tab:tab, sub:sub, unknown:!known};
+  }
+  addEventListener('popstate',function(){ if(!LIVE&&!C) return; var r=readRoute(); ROUTING=true;
+    if(r.tab==='tasks') WOPEN=r.sub; if(r.tab==='clients'&&!r.sub) PROF=null;
+    go(r.tab); if(r.tab==='clients'&&r.sub) loadProfile(r.sub); ROUTING=false; });
+  function go(tab){ TAB=tab; route(); render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
   function goOrder(key){ TAB='orders'; OFILTER='all'; render(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; setTimeout(function(){ d.scrollIntoView({block:'start',behavior:'smooth'}); },40); d.classList.add('flash'); setTimeout(function(){ d.classList.remove('flash'); },1600); } }
 
   /* ---------- «Today»: what needs you, ranked; the week ahead; where the pipeline stands ---------- */
@@ -1537,7 +1557,7 @@
         field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>';
     if(WOPEN){ var op=document.querySelector('[data-wref="'+WOPEN+'"]'); if(op){ op.open=true; setTimeout(function(){ op.scrollIntoView({block:'start',behavior:'smooth'}); },80); } }
   }
-  document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.wref||!d.open) return; if(WOPEN!==d.dataset.wref){ WOPEN=d.dataset.wref; try{ history.replaceState(null,'','#tasks/'+WOPEN); }catch(_){} loadWork(); } },true);
+  document.addEventListener('toggle',function(e){ var d=e.target; if(!d.dataset||!d.dataset.wref||!d.open) return; if(WOPEN!==d.dataset.wref){ WOPEN=d.dataset.wref; route(true); loadWork(); } },true);
   document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks') return;
     if(s.hasAttribute('data-wdfile')&&s.files[0]){ var fb=s.closest('.wsend'), bar=fb.querySelector('.wup'), f0=s.files[0]; bar.hidden=false; bar.querySelector('span').textContent='عم يرفع… 0%'; s.disabled=true;
       vaultUpload(f0,function(p){ bar.querySelector('i').style.width=Math.round(p*100)+'%'; bar.querySelector('span').textContent='عم يرفع… '+Math.round(p*100)+'%'; }).then(function(j){ fb.querySelector('[data-wdu]').value=j.url; bar.querySelector('span').textContent='انرفع ✓ '+f0.name+' — هلق اكبس «أرسل التسليم للعميل»'; s.disabled=false; })
@@ -1638,7 +1658,7 @@
   document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='notify'||!s.dataset.nf) return; NF[s.dataset.nf]=s.value; loadNotify(); });
   document.addEventListener('click',function(e){ if(TAB!=='notify') return;
     var a=e.target.closest('a[data-ni]'); if(a){ e.preventDefault(); npost({action:'studioRead',ids:[+a.dataset.ni]}).then(function(){ loadNotify(); });
-      var m=/^#tasks\/(T-[A-Z0-9]+)/.exec(a.getAttribute('href')||''); TAB='tasks'; WOPEN=m?m[1]:null; try{ history.replaceState(null,'',a.getAttribute('href')); }catch(_){} render(); loadWork(); scrollTo(0,0); return; }
+      var m=/^#tasks\/(T-[A-Z0-9]+)/.exec(a.getAttribute('href')||''); TAB='tasks'; WOPEN=m?m[1]:null; route(); render(); loadWork(); scrollTo(0,0); return; }
     var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-nall')){ npost({action:'studioRead',all:true},b).then(function(){ loadNotify(); }); return; }
     if(b.hasAttribute('data-tgset')||b.hasAttribute('data-tgoff')){ var off=b.hasAttribute('data-tgoff'); if(off&&b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد؟ تتوقف رسائل العملاء'; return; }
@@ -1872,11 +1892,11 @@
     fetch(API+'/work?admin=1&view=clients',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); })
       .then(function(j){ CL=j.ok?j:{err:j.error||'fail'}; if(TAB==='clients') renderClients(); }).catch(function(){ CL={err:'net'}; if(TAB==='clients') renderClients(); }); }
   function loadProfile(email,sec){ if(sec) PSEC=sec; PROF={email:email,loading:1,d:PROF&&PROF.email===email?PROF.d:null}; PEDIT=false; renderClients();
-    try{ history.replaceState(null,'','#clients/'+encodeURIComponent(email)); }catch(_){}
+    route();
     fetch(API+'/work?admin=1&profile='+encodeURIComponent(email),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); })
       .then(function(j){ PROF=j.ok?{email:email,d:j}:{email:email,err:j.error||(LIVE?'fail':'live')}; renderClients(); })
       .catch(function(){ PROF={email:email,err:'net'}; renderClients(); }); }
-  function closeProfile(){ PROF=null; try{ history.replaceState(null,'','#clients'); }catch(_){} renderClients(); scrollTo(0,0); }
+  function closeProfile(){ PROF=null; route(); renderClients(); scrollTo(0,0); }
   // every change made from a profile goes through here, then the profile and the list reload
   function creq(body,btn,ok){ if(!LIVE){ toast('يعمل على الموقع المنشور',true); return Promise.reject(); } if(btn) btn.disabled=true;
     return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.ok) throw new Error(j.error||'fail'); return j; }); })
@@ -2132,7 +2152,7 @@
     if(b.dataset.ptf){ PTF=b.dataset.ptf; renderClients(); return; }
     if(b.dataset.pfc){ PFC=b.dataset.pfc; renderClients(); return; }
     if(b.dataset.pspace){ TAB='tasks'; WF={status:'',client:PROF.email,project:''}; render(); loadWork(); loadSpace(b.dataset.pspace); scrollTo(0,0); return; }
-    if(b.dataset.topen){ TAB='tasks'; WOPEN=b.dataset.topen; try{ history.replaceState(null,'','#tasks/'+WOPEN); }catch(_){} render(); loadWork(); scrollTo(0,0); return; }
+    if(b.dataset.topen){ TAB='tasks'; WOPEN=b.dataset.topen; route(); render(); loadWork(); scrollTo(0,0); return; }
     if(b.dataset.pinv){ TAB='billing'; BFORM={email:b.dataset.pinv}; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
     if(b.hasAttribute('data-iedit')){ TAB='billing'; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
     if(b.hasAttribute('data-ipay')){ var fpay=b.closest('[data-iid]').querySelector('.cl-pay'); fpay.hidden=!fpay.hidden; if(!fpay.hidden) fpay.querySelector('input').focus(); return; }
@@ -2210,7 +2230,7 @@
       '<section class="sec"><h3>رسائل الرد الجاهزة</h3><p class="hint">تُستخدم في صندوق الطلبات. المتغيرات: {name} {code} {package} {price} {method} {details} — و{details} تُملأ من «تفاصيل الدفع الخاصة».</p>'+
         ['confirm','paid','delivered'].map(function(k){ var lab={confirm:'تأكيد + تفاصيل الدفع',paid:'وصل الدفع',delivered:'تم التسليم'}[k];
           return '<div class="field"><label>'+lab+'</label><div class="bi"><div><small>عربي</small><textarea data-tpl="ar.'+k+'">'+esc((T.ar||{})[k]||'')+'</textarea></div><div><small>ENGLISH</small><textarea data-tpl="en.'+k+'" dir="ltr">'+esc((T.en||{})[k]||'')+'</textarea></div></div></div>'; }).join('')+'</section>'+
-      '<section class="sec"><h3>كلمة سر اللوحة</h3>'+(LIVE?'<p class="hint">10 أحرف على الأقل. ستُطلب منك عند الدخول القادم.</p><div class="row"><div class="field"><label>كلمة السر الجديدة</label><input type="password" id="np1" autocomplete="new-password"></div><div class="field"><label>أعد كتابتها</label><input type="password" id="np2" autocomplete="new-password"></div></div><div><button class="btn primary" type="button" id="pwChange">تغيير كلمة السر</button></div>'
+      '<section class="sec"><h3>كلمة سر اللوحة</h3>'+(LIVE?'<p class="hint">10 أحرف على الأقل. ستُطلب منك عند الدخول القادم.</p><div class="field"><label>كلمة السر الحالية</label><input type="password" id="np0" autocomplete="current-password"></div><div class="row"><div class="field"><label>كلمة السر الجديدة</label><input type="password" id="np1" autocomplete="new-password"></div><div class="field"><label>أعد كتابتها</label><input type="password" id="np2" autocomplete="new-password"></div></div><div><button class="btn primary" type="button" id="pwChange">تغيير كلمة السر</button></div>'
         :'<p class="hint">تغيير كلمة السر يعمل بعد نشر الموقع على Cloudflare. الدخول الأول يكون بكلمة السر التي تضعها في إعدادات Cloudflare (ADMIN_PASSWORD).</p>')+'</section>';
     var nt=$('#notifyTest'); if(nt) nt.onclick=function(){ var out=$('#notifyOut'); out.hidden=false;
       if(!LIVE){ out.textContent='يعمل على الموقع المنشور فقط.'; return; } out.textContent='…';
@@ -2221,8 +2241,8 @@
     var pc=$('#pwChange'); if(pc) pc.onclick=function(){
       var a=$('#np1').value, b2=$('#np2').value;
       if(a.length<10){ toast('10 أحرف على الأقل',true); return; } if(a!==b2){ toast('الكلمتان غير متطابقتين',true); return; }
-      fetch(API+'/auth',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({newPassword:a})})
-        .then(function(r){ if(!r.ok) throw 0; PW=a; try{ sessionStorage.setItem('eb-pw',a); }catch(_){} $('#np1').value=$('#np2').value=''; toast('تغيّرت كلمة السر'); })
+      fetch(API+'/auth',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({current:$('#np0').value,newPassword:a})})
+        .then(function(r){ if(r.status===403){ toast('كلمة السر الحالية غير صحيحة',true); return; } if(!r.ok) throw 0; $('#np0').value=$('#np1').value=$('#np2').value=''; toast('تغيّرت كلمة السر'); })
         .catch(function(){ toast('تعذّر التغيير',true); });
     };
   }
@@ -2263,9 +2283,9 @@
       var loadPriv= LIVE? fetch(API+'/private',{headers:headers({})}).then(function(r){return r.ok?r.json():{data:null}}).then(function(j){ return j.data; }).catch(function(){return null;})
                          : Promise.resolve((function(){ try{ return JSON.parse(localStorage.getItem('eb-private')||'null'); }catch(_){ return null; } })());
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
-        var wm=/^#(?:work|tasks)\/(T-[A-Z0-9]+)$|^#tasks$/.exec(location.hash); if(wm){ TAB='tasks'; WOPEN=wm[1]||null; }
-        var cm=/^#clients(?:\/(.+))?$/.exec(location.hash); if(cm) TAB='clients'; if(location.hash==='#team') TAB='team'; if(location.hash==='#support') TAB='support';
-        render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); loadSupport(); if(cm&&cm[1]) loadProfile(decodeURIComponent(cm[1])); });
+        var rt=readRoute(); TAB=rt.tab; if(rt.tab==='tasks') WOPEN=rt.sub;
+        ROUTING=true; render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); loadSupport(); if(rt.tab==='clients'&&rt.sub) loadProfile(rt.sub);
+        ROUTING=false; route(true); if(rt.unknown) toast('هالصفحة مش موجودة، رجّعناك لليوم',true); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });
   }
   $('#loginForm').addEventListener('submit',function(e){
@@ -2275,14 +2295,13 @@
       // only trust replies that come from our own function (JSON with an "ok" field); anything else = no server here
       return r.text().then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(_){}
         if(!j || typeof j.ok!=='boolean'){ LIVE=false; return loadContent(); }
-        if(r.status===200 && j.ok){ PW=pw; LIVE=true; try{ sessionStorage.setItem('eb-pw',pw); }catch(_){} return loadContent(); }
+        if(r.status===200 && j.ok){ $('#pw').value=''; LIVE=true; return loadContent(); }
         if(r.status===500){ msg.textContent='لم تُضبط كلمة السر على Cloudflare بعد (ADMIN_PASSWORD).'; return; }
         msg.textContent='كلمة السر غير صحيحة.';
       });
     }).catch(function(){ LIVE=false; loadContent(); });
   });
-  var saved=null; try{ saved=sessionStorage.getItem('eb-pw'); }catch(_){}
-  if(saved){ $('#pw').value=saved; $('#loginForm').requestSubmit(); }
-  else if(onHttp){ fetch(API+'/auth',{cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(r.status===200&&j.ok&&j.session){ PW=''; LIVE=true; loadContent(); } }); }).catch(function(){}); }
-  $('#logoutBtn').addEventListener('click',function(){ fetch(API+'/auth',{method:'DELETE'}).catch(function(){}).then(function(){ try{ sessionStorage.removeItem('eb-pw'); }catch(_){} location.reload(); }); });
+  try{ sessionStorage.removeItem('eb-pw'); }catch(_){}   // older panels kept the password here
+  if(onHttp){ fetch(API+'/auth',{cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(r.status===200&&j.ok&&j.session){ PW=''; LIVE=true; loadContent(); } }); }).catch(function(){}); }
+  $('#logoutBtn').addEventListener('click',function(){ fetch(API+'/auth',{method:'DELETE'}).catch(function(){}).then(function(){ location.reload(); }); });
 })();

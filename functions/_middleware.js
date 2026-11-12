@@ -26,6 +26,10 @@ export async function onRequest(ctx) {
   // the repo is published as it is: its developer files (dev/, dot-files) are not part of the site
   // (tools/ and the old readme were removed on 12 Nov 2026; the edge cache may still hold them for a week)
   if (/^\/(dev(\/|$)|tools(\/|$)|\.|%D8%A7%D9%82%D8%B1%D8%A3%D9%86%D9%8A-README)/i.test(new URL(ctx.request.url).pathname)) return secure(new Response("Not found", { status: 404 }));
+  // the panel is one page: /admin/orders, /admin/clients/<email>… all open /admin/ (its own files keep their paths)
+  const p = new URL(ctx.request.url).pathname;
+  if (ctx.request.method === "GET" && /^\/admin\/./.test(p) && !/\.(js|css|webmanifest|png|svg|ico|json|map|woff2?)$/i.test(p))
+    return secure(await ctx.env.ASSETS.fetch(new Request(new URL("/admin/", ctx.request.url), ctx.request)));
   return secure(await withTitles(ctx));
 }
 async function withTitles(ctx) {

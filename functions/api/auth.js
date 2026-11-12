@@ -20,7 +20,10 @@ export async function onRequestDelete({ request, env }) {
 }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
-  const { newPassword } = await request.json().catch(() => ({}));
+  const { newPassword, current } = await request.json().catch(() => ({}));
+  // a signed-in session alone cannot change the password: the current one is checked too (same lockout as signing in)
+  const check = new Request(request.url, { headers: { authorization: "Bearer " + String(current || ""), "cf-connecting-ip": request.headers.get("cf-connecting-ip") || "x" } });
+  if (!current || !(await isAdmin(check, env))) return json({ ok: false, error: "current" }, 403);
   if (!newPassword || newPassword.length < 10) return json({ ok: false, error: "min 10 characters" }, 400);
   await env.EB.put("auth:hash", await adminPwHash(newPassword));
   // sign out every open panel session: from now on only the new password gets in
