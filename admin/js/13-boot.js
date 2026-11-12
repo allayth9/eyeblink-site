@@ -18,7 +18,7 @@
       var loadPriv= LIVE? fetch(API+'/private',{headers:headers({})}).then(function(r){return r.ok?r.json():{data:null}}).then(function(j){ return j.data; }).catch(function(){return null;})
                          : Promise.resolve((function(){ try{ return JSON.parse(localStorage.getItem('eb-private')||'null'); }catch(_){ return null; } })());
       return loadPriv.then(function(pd){ P=pd||{payments:{},templates:JSON.parse(JSON.stringify(DEFAULT_TPL))}; PSAVED=JSON.stringify(P);
-        var rt=readRoute(); TAB=rt.tab; if(rt.tab==='tasks'){ var ts=!!rt.sub&&/^T-/.test(rt.sub); WOPEN=ts?rt.sub:null; WSUB=ts||!rt.sub?'tasks':rt.sub; } if(rt.tab==='orders') OPENCODE=rt.sub;
+        var rt=readRoute(); TAB=rt.tab; if(rt.tab==='tasks'){ var ts=!!rt.sub&&/^T-/.test(rt.sub); WOPEN=ts?rt.sub:null; WSUB=ts||!rt.sub?'tasks':rt.sub; } if(rt.tab==='orders') OPENCODE=rt.sub; if(rt.tab==='billing') BOPEN=rt.sub;
         ROUTING=true; render(); dirty(); loadOrders(); loadUsers(); loadWork(); loadNotify(); loadBilling(); loadTeam(); loadFx(); loadSupport(); if(rt.tab==='clients'&&rt.sub) loadProfile(rt.sub);
         ROUTING=false; route(true); if(rt.unknown) toast('هالصفحة مش موجودة، رجّعناك لليوم',true); });
     }).catch(function(){ $('#loginMsg').textContent='تعذّر تحميل محتوى الموقع. افتح اللوحة من نفس مجلد الموقع.'; });

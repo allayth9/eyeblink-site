@@ -57,6 +57,15 @@
         (!x.sent_at&&!x.paid?'<button class="btn sm danger" type="button" data-bdel="'+esc(x.id)+'">حذف المسودة</button>':'')+
       '</div><div class="small muted">'+(x.sent_at?'أُرسلت '+esc(new Date(x.sent_at).toLocaleString('ar')):'مسودة — لم تُرسل للعميل ولا تظهر له')+(x.reminded_at?' · أُرسل تذكير الاستحقاق':'')+'</div>'+
       (BPREV[x.id]?'<iframe class="bprev" title="معاينة" srcdoc="'+esc(BPREV[x.id])+'"></iframe>':'')+'</div></div></div>'; }
+  // a billing state → its colour family (the panel's colour language)
+  var BFAM={pending:'wait',partial:'fix',paid:'ok',overdue:'bad',cancelled:'off',refunded:'off',draft:'off'};
+  function billRow(r,td){ var fam=BFAM[r.state]||'off', open=['pending','partial'].indexOf(r.state)>=0, soon=open&&r.due&&r.due>=td&&(new Date(r.due)-new Date(td))/864e5<=3;
+    return '<li><button type="button" class="orow st tf-'+fam+(BOPEN===r.src+':'+r.id?' on':'')+'" data-bopen="'+esc(r.src+':'+r.id)+'">'+
+      '<span class="orow-m"><b>'+esc(r.name||r.email)+'</b><small dir="ltr">'+esc(r.no)+'</small></span>'+
+      '<span class="orow-v" dir="ltr">'+esc(mny(r.total,r.currency))+'</span>'+
+      '<span class="orow-p">'+esc(r.title||'')+(r.project?' · '+esc(r.project):'')+(r.src==='order'?' · طلب '+esc(r.code):'')+'</span>'+
+      '<span class="tag">'+esc(BST[r.state]||r.state)+'</span>'+
+      '<span class="orow-x">'+(r.due&&open?'<span class="'+(soon?'c-soon':'')+'">يستحق '+esc(wd(r.due))+'</span>':r.state==='overdue'&&r.due?'<em class="lt">استحقت '+esc(wd(r.due))+'</em>':'')+(r.balance&&r.balance!==r.total?'<span>متبقٍ <span dir="ltr">'+esc(mny(r.balance,r.currency))+'</span></span>':'')+'</span></button></li>'; }
   function renderBilling(){ var B=BILL;
     if(!B){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; loadBilling(); return; }
     if(B.err){ $('#panel').innerHTML='<section class="sec"><h3>الفوترة</h3><div class="empty">'+(B.err==='db'?'قاعدة البيانات غير مربوطة.':B.err==='live'?'يعمل هذا القسم على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
@@ -67,19 +76,23 @@
     var fmtMap=function(o){ var k=Object.keys(o); return k.length?k.map(function(c){ return '<span dir="ltr">'+esc(mny(o[c],c))+'</span>'; }).join(' · '):'0'; };
     var list=rows.filter(function(r){ return (!BF.status||r.state===BF.status)&&(!BF.source||r.src===BF.source)&&(!BF.client||r.email===BF.client); });
     var emails={}; rows.forEach(function(r){ emails[r.email]=r.name; });
-    $('#panel').innerHTML=
-      '<section class="sec"><div class="kpis"><div><b>'+fmtMap(out)+'</b><span>مستحق غير مدفوع</span></div><div><b>'+fmtMap(paidM)+'</b><span>دفعات هذا الشهر</span></div><div><b>'+nOver+'</b><span>فواتير متأخرة</span></div>'+
-        '<div><b>'+rows.filter(function(r){return r.state==='paid'}).length+'</b><span>مدفوعة</span></div><div><b>'+nDraft+'</b><span>مسودات</span></div></div>'+
-        '<p class="hint">الفوترة يدوية: لا بوابة دفع. تُصدر فاتورة للعميل المتعاقد، وتسجّل كل دفعة عند وصولها، فتتغيّر الحالة تلقائياً: بانتظار الدفع ← مدفوعة جزئياً ← مدفوعة، وتصبح «متأخرة» بعد تاريخ الاستحقاق ويصل العميلَ تذكير واحد. طلبات الموقع تظهر هنا للاطلاع فقط، ودفعاتها من تبويب الطلبات كما هي.</p></section>'+
-      '<section class="sec"><div class="ph"><h3>الفواتير ('+list.length+')</h3><button class="btn sm primary" type="button" data-bnew>+ فاتورة جديدة</button></div>'+
-        (BFORM&&!BFORM.id?'<div class="bnew">'+bform(null)+'</div>':'')+
-        '<div class="wfl"><select data-bf="status"><option value="">كل الحالات</option>'+['pending','partial','paid','overdue','cancelled','refunded','draft'].map(function(k){ return '<option value="'+k+'"'+(BF.status===k?' selected':'')+'>'+BST[k]+'</option>'; }).join('')+'</select>'+
+    var sum=function(o){ return Object.keys(o).reduce(function(s,k){ return s+o[k]; },0); };
+    var sel=BOPEN&&rows.filter(function(r){ return r.src+':'+r.id===BOPEN; })[0], isNew=BFORM&&!BFORM.id, td=B.today;
+    var panel=isNew?'<div class="order item odetail"><div class="odh"><button class="btn sm oback" type="button" data-bx>‹ كل الفواتير</button><b>فاتورة جديدة</b></div><div class="body">'+bform(null)+'</div></div>'
+      :sel?(function(r){ var fam=BFAM[r.state]||'off';
+        return '<div class="order item odetail tf-'+fam+'"><div class="odh"><button class="btn sm oback" type="button" data-bback>‹ كل الفواتير</button><span class="code" dir="ltr">'+esc(r.no)+'</span><span class="tag">'+esc(BST[r.state]||r.state)+'</span><b>'+esc(r.name||r.email)+'</b>'+
+          '<span class="muted small">'+esc(r.title||'')+(r.project?' · '+esc(r.project):'')+(r.src==='order'?' · طلب '+esc(r.code):'')+' · <span dir="ltr">'+esc(mny(r.total,r.currency))+'</span>'+(r.balance&&r.balance!==r.total?' · متبقٍ <span dir="ltr">'+esc(mny(r.balance,r.currency))+'</span>':'')+'</span></div>'+
+          '<div class="body">'+(BFORM&&BFORM.id===r.id?bform(r.x):bdetail(r))+'</div></div>'; })(sel)
+      :'<div class="odetail empty-sel">اختار فاتورة من القائمة</div>';
+    $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+
+        kc(fmtMap(out),'مستحق غير مدفوع','wait','k_wait',sum(out)>0)+kc(fmtMap(paidM),'دفعات هذا الشهر','ok','payments',sum(paidM)>0)+kc(nOver,'فواتير متأخرة','bad','k_late')+
+        kc(rows.filter(function(r){return r.state==='paid'}).length,'مدفوعة','ok','k_done')+kc(nDraft,'مسودات','off','services')+'</div></section>'+
+      '<div class="wbar"><div class="wfl"><select data-bf="status"><option value="">كل الحالات</option>'+['pending','partial','paid','overdue','cancelled','refunded','draft'].map(function(k){ return '<option value="'+k+'"'+(BF.status===k?' selected':'')+'>'+BST[k]+'</option>'; }).join('')+'</select>'+
         '<select data-bf="source"><option value="">كل المصادر</option><option value="ws"'+(BF.source==='ws'?' selected':'')+'>فواتير العملاء المتعاقدين</option><option value="order"'+(BF.source==='order'?' selected':'')+'>طلبات الموقع</option></select>'+
         '<select data-bf="client"><option value="">كل العملاء</option>'+Object.keys(emails).map(function(e){ return '<option value="'+esc(e)+'"'+(BF.client===e?' selected':'')+'>'+esc(emails[e]||e)+'</option>'; }).join('')+'</select></div>'+
-        (list.length?'<div class="blist">'+list.map(function(r){ var open=BOPEN===r.src+':'+r.id;
-          return '<div class="brow'+(open?' open':'')+'"><button type="button" class="bsum" data-bopen="'+esc(r.src+':'+r.id)+'"><span class="bno" dir="ltr">'+esc(r.no)+'</span><span class="bnm"><b>'+esc(r.name||r.email)+'</b><small class="muted">'+esc(r.title||'')+(r.project?' · '+esc(r.project):'')+(r.src==='order'?' · طلب '+esc(r.code):'')+'</small></span>'+
-            '<span class="bdt small muted">'+esc(r.issue||'')+(r.due?'<br>يستحق '+esc(r.due):'')+'</span><span class="bam" dir="ltr">'+esc(mny(r.total,r.currency))+(r.balance&&r.balance!==r.total?'<small>متبقٍ '+esc(mny(r.balance,r.currency))+'</small>':'')+'</span><span class="npill bs-'+esc(r.state)+'">'+esc(BST[r.state]||r.state)+'</span></button>'+
-            (open?(BFORM&&BFORM.id===r.id?'<div class="bdet">'+bform(r.x)+'</div>':bdetail(r)):'')+'</div>'; }).join('')+'</div>':'<div class="empty">لا توجد فواتير هنا.</div>')+'</section>';
+        '<button class="btn sm primary" type="button" data-bnew>+ فاتورة جديدة</button></div>'+
+      '<div class="osplit'+(sel||isNew?' has-open':'')+'"><ul class="olist">'+(list.length?'<li class="olh">الفواتير · '+list.length+'</li>'+list.map(function(r){ return billRow(r,td); }).join(''):'<li class="olh">لا توجد فواتير هنا</li>')+'</ul>'+panel+'</div>'+
+      '<p class="hint bhint">الفوترة يدوية: لا بوابة دفع. تُصدر فاتورة للعميل المتعاقد، وتسجّل كل دفعة عند وصولها، فتتغيّر الحالة تلقائياً: بانتظار الدفع ← مدفوعة جزئياً ← مدفوعة، وتصبح «متأخرة» بعد تاريخ الاستحقاق ويصل العميلَ تذكير واحد. طلبات الموقع تظهر هنا للاطلاع فقط، ودفعاتها من تبويب الطلبات كما هي.</p>';
     var f=$('#panel').querySelector('.bform'); if(f){ var sel=f.elements.project; sel.dataset.v=(BFORM&&BFORM.id&&(BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]||{}).project_id)||(BFORM&&BFORM.project)||''; bformSync(f); }
   }
   document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f) bformSync(f); });
@@ -87,13 +100,14 @@
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;
     var items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:nn(r.children[1].value)||1,unit:nn(r.children[2].value)}; }).filter(function(i){ return i.desc; });
     bpost({action:'invoice',id:f.dataset.bid||undefined,client_email:E.email.value,project_id:E.project.value||null,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,note:E.note.value.trim(),send:E.send.checked},
-      f.querySelector('button[type=submit]'),E.send.checked?'حُفظت الفاتورة وأُرسلت إلى العميل':'حُفظت الفاتورة').then(function(j){ if(j.ok){ BFORM=null; BOPEN='ws:'+j.id; } }); });
+      f.querySelector('button[type=submit]'),E.send.checked?'حُفظت الفاتورة وأُرسلت إلى العميل':'حُفظت الفاتورة').then(function(j){ if(j.ok){ BFORM=null; BOPEN='ws:'+j.id; route(true); } }); });
   document.addEventListener('click',function(e){ if(TAB!=='billing') return; var b=e.target.closest('button'); if(!b) return;
-    if(b.hasAttribute('data-bnew')){ BFORM=BFORM&&!BFORM.id?null:{}; renderBilling(); return; }
+    if(b.hasAttribute('data-bnew')){ BFORM={}; BOPEN=null; route(); renderBilling(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.hasAttribute('data-bx')){ BFORM=null; renderBilling(); return; }
+    if(b.hasAttribute('data-bback')){ BOPEN=null; BFORM=null; route(); renderBilling(); return; }
     if(b.hasAttribute('data-badd')){ var w=b.closest('.bform').querySelector('.bitems'), d=document.createElement('div'); d.className='bitem'; d.innerHTML='<input name="desc" dir="auto" placeholder="البيان"><input name="qty" type="number" min="0" step="any" value="1"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة"><button type="button" class="linkbtn" data-brm>×</button>'; w.appendChild(d); d.firstChild.focus(); return; }
     if(b.hasAttribute('data-brm')){ var f=b.closest('.bform'); if(f.querySelectorAll('.bitem').length>1) b.closest('.bitem').remove(); bformSync(f); return; }
-    if(b.dataset.bopen){ BOPEN=BOPEN===b.dataset.bopen?null:b.dataset.bopen; if(BFORM&&BFORM.id) BFORM=null; renderBilling(); return; }
+    if(b.dataset.bopen){ BOPEN=b.dataset.bopen; BFORM=null; route(); renderBilling(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.dataset.bord){ var ob=ORDERS.filter(function(o){ return o.code===b.dataset.bord; })[0]; if(ob){ OOPEN=ob.key; OPICK=true; } OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     if(b.dataset.bedit){ BFORM={id:b.dataset.bedit}; renderBilling(); return; }
     if(b.dataset.bprev){ var id=b.dataset.bprev; if(BPREV[id]){ delete BPREV[id]; renderBilling(); return; }
