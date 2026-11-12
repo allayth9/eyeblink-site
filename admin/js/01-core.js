@@ -294,7 +294,8 @@
       :'<div class="odetail empty-sel">اختار من القائمة</div>';
     var hint=!r.fixed&&arr.length>1?'<li class="olh rhint">'+arr.length+' · اضغط مطوّلاً واسحب لتغيير الترتيب</li>':'';
     return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"'+(r.fixed?' data-fixed="1"':'')+'><ul class="olist">'+hint+rows+'</ul>'+panel+'</div>'+
-      (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button></div>'); }
+      (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button>'+
+        (function(n){ return sp.share&&n?'<button class="btn" type="button" data-rslugall="'+esc(p)+'">جهّز روابط مشاركة لكل الأعمال ('+n+')</button>':''; })(arr.filter(function(x){ return !x.slug; }).length)+'</div>'); }
   /* share a work: its short link (made once from the English name), copy / WhatsApp / e-mail / open, «private» (opens
      from the link only), and how often the link was opened. A new link works once it is published. */
   var SHARES=null, SHOPEN=false;
@@ -310,6 +311,9 @@
       '<label class="check rpriv"><input type="checkbox" data-p="'+esc(p)+'.'+sel+'.private" data-t="check"'+(it.private?' checked':'')+'> عمل خاص: بيفتح بالرابط بس، وما بيبين بقائمة الأعمال</label>'+
       (u?'<p class="small muted">'+(o&&o.n?'الرابط انفتح '+o.n+(o.n===1?' مرة':' مرات')+' · آخر مرة '+esc(new Date(o.last).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):'الرابط لسا ما انفتح')+'</p>':'')+'</div></details>'; }
   document.addEventListener('toggle',function(e){ if(e.target.classList&&e.target.classList.contains('rshare')) SHOPEN=e.target.open; },true);
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-rslugall]'); if(!b) return; var arr=get(C,b.dataset.rslugall)||[], n=0;
+    arr.forEach(function(it){ if(!it.slug){ it.slug=slugOf(it,arr); n++; } }); if(!n) return;
+    render(); dirty(); saveDraft(); toast((n===1?'تجهّز رابط واحد':n===2?'تجهّز رابطين':'تجهّز '+n+(n<=10?' روابط':' رابط'))+' · انشر التعديلات حتى '+(n===1?'يشتغل':'يشتغلوا')); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-rslug],[data-rcopy]'); if(!b) return;
     if(b.dataset.rcopy){ var u=b.dataset.rcopy; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ toast('انتسخ الرابط'); },function(){ b.previousSibling.select(); }); return; }
     var q=b.dataset.rslug.split(':'), arr=get(C,q[0]), it=arr[+q[1]]; it.slug=slugOf(it,arr); SHOPEN=true; render(); dirty(); saveDraft(); });

@@ -265,7 +265,7 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .rshare-b{display:flex;gap:6px;flex-wrap:wrap}
 .rpriv{font-size:12.5px;border-top:1px solid var(--line);padding-top:10px}
 .rwarn{color:var(--f-wait);margin:0}
-.radd{margin-top:12px}
+.radd{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
 /* reorder: the held row sinks a touch, lifts into glass when it comes free, the others slide aside, then it settles */
 .rsplit .rrow{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .35s cubic-bezier(.2,.8,.2,1),background .2s}
 .rsplit .rrow.pressing{transform:scale(.975)}
