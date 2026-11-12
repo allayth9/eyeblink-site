@@ -81,6 +81,15 @@ button:active{transform:scale(.98)}
 button:disabled{opacity:.5;cursor:default;transform:none}
 .msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
 .done,.closed{margin:48px 0 0;padding:30px}
+.done[hidden]{display:none!important}
+.rolef{margin-bottom:4px}
+.lbl{display:grid;gap:7px;font-size:13.5px;color:var(--mist)}.lbl[hidden]{display:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:14px;background:rgba(4,6,26,.38);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.seg label{display:block;position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:9px 10px;border-radius:10px;font-size:14.5px;color:var(--light);transition:background .2s,box-shadow .2s}
+.seg input:checked+span{background:rgba(63,224,232,.14);box-shadow:inset 0 0 0 1px rgba(63,224,232,.45)}
+.seg input:focus-visible+span{outline:2px solid var(--horizon);outline-offset:2px}
 .done{text-align:center;display:grid;justify-items:center;gap:6px;padding:40px 24px}
 .okc{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:8px;background:rgba(94,240,176,.1);box-shadow:inset 0 0 0 1px rgba(94,240,176,.45)}
 .okc svg{width:30px;height:30px;fill:none;stroke:#5EF0B0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30}
@@ -121,14 +130,14 @@ select{display:none}
   <div class="kick">Join the team</div>
   <h1 id="headline">An editor who knows when to let an image breathe</h1>
   <p class="lead" id="intro">We work with brands across the Gulf and the region on short films, ads, motion and social content. We collaborate with freelancers who care about detail, deliver on time, and treat every second as a decision</p>
-  <div class="roles" id="roles"></div>
 
   <div id="closed" class="closed glass" hidden><h2>We are not hiring right now</h2><p>Follow us on Instagram <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a> — we announce it there when we open applications</p></div>
 
   <form id="apply" hidden novalidate>
     <fieldset class="glass"><legend>About you</legend>
+      <label class="rolef">Role<select name="role" id="roleSel"></select></label>
       <div class="row"><label>Full name<input name="name" autocomplete="name" required maxlength="120"></label>
-        <label>Role<select name="role" id="roleSel"></select></label></div>
+        <div class="lbl" data-f="gender"><span class="lab">Gender</span><div class="seg" role="radiogroup" aria-label="Gender"><label><input type="radio" name="gender" value="male"><span>Male</span></label><label><input type="radio" name="gender" value="female"><span>Female</span></label></div></div></div>
       <div class="row"><label>Email<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
         <label data-f="phone"><span class="lab">WhatsApp</span><span class="tel"><select name="dial" id="dialSel" aria-label="Country code"></select><input name="phone" type="tel" dir="ltr" autocomplete="tel-national" inputmode="tel" placeholder="50 123 4567"></span></label></div>
       <div class="row"><label data-f="city"><span class="lab">City and country</span><input name="city" maxlength="120"></label>
@@ -157,7 +166,6 @@ select{display:none}
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
     
-    $('#roles').innerHTML=j.roles.map(function(r){return '<button type="button" data-r="'+r+'">'+(RA[r]||r)+'</button>'}).join('');
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
     // the admin decides which fields show and which must be filled
@@ -172,9 +180,7 @@ select{display:none}
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
   var COPY={"editor":["An editor who knows when to let an image breathe","Rhythm is a decision before it is a skill: where a shot begins, when it ends, and what should never appear at all. We work on ads, short films and content for brands across the Gulf and the region"],"motion":["A motion designer who gives an idea the movement it deserves","Every idea has its own speed and weight. We look for someone who reads the idea before animating it, and picks the curve and timing that say it most clearly"],"color":["A colorist who gives each scene its own mood","Color is part of the story for us: the warmth of a moment, the cold of a distance. Footage comes from different cameras, and we want it to feel like one world"],"sound":["A sound engineer who gives a voice to what we cannot see","Half of what we feel arrives through the ear: sound design, clean dialogue, and a mix that keeps sound and picture together on every platform"],"writer":["A writer who knows a big idea can start with one line","Ad scripts and on-screen text, Arabic first. Lines that know their place in the rhythm, in a voice that sounds like the brand"],"shooter":["A photographer who sees the story inside the frame","Shoots across Gulf cities for ads and brand content. Readable light, calm movement, and shots that know they will be cut"],"designer":["A designer who gives an idea the shape it deserves","Identities, posters and social material on one grid with steady spacing. Simplicity, for us, is a decision, not emptiness"],"producer":["A production coordinator who keeps the work's rhythm off screen","Schedules, deadlines, and the line between the team and clients. Your calm under pressure is what lets everyone else create"],"voice":["A voice that is believed from the first line","Voice-over for ads and brand films in Gulf, Levantine and Standard Arabic. Natural delivery that serves the script and never rises above it"],"illustrator":["An illustrator who draws what the camera cannot reach","Storyboards and illustration for motion and campaigns. A confident line, and an idea understood at first glance"],"social":["A social media manager who knows what makes people stop","Content plans, reading the numbers, and talking with the audience in the brand's voice. Taste in choosing, and stamina in following through"],"subtitles":["A translator who keeps a sentence's tone before its words","On-screen translation between Arabic and English, timed to the rhythm, in language that sounds like its audience"]};
-  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
-    [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
-  $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
+  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r; }
   $('#roleSel').onchange=function(){ pick(this.value); };
   // a glass dropdown in place of the browser's grey one; the real <select> stays for the form
   function bsel(sel,icon,short,find){ icon=icon||function(){ return ''; }; var w=sel._b; if(!w){ w=document.createElement('div'); w.className='bsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel._b=w;
@@ -194,10 +200,10 @@ select{display:none}
         l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+o.value+'" data-k="'+(o.value+' '+o.textContent).toLowerCase().replace(/\+/g,'').replace(/"/g,'')+'" data-d="'+((sel._dial||{})[o.value]||'').replace(/\D/g,'')+'"'+' aria-selected="'+o.selected+'"'+(o.dataset.sep?' class="sep"':'')+'>'+icon(o.value)+'<span>'+o.innerHTML+'</span></li>'; }).join(''); }; }
     w._draw(); }
   f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
-    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); }); var gc=f.querySelector('input[name=gender]:checked'); d.gender=gc?gc.value:'';
     if(d.phone) d.phone=($('#dialSel')._dial||{})[E.dial.value]+' '+d.phone.replace(/^0+/,'');
-    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&!el.value.trim(); })[0];
-    if(miss){ m.textContent="Fill in {f}".replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
+    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&(el.type==='radio'?!l.querySelector('input:checked'):!el.value.trim()); })[0];
+    if(miss){ m.textContent=(miss.querySelector("input[type=radio]")?"Choose {f}":"Fill in {f}").replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
     var links=d.links.split('\n').filter(function(x){return /^https?:\/\//i.test(x.trim())});
     if(d.name.length<2){ m.textContent='Enter your full name'; m.className='msg err'; E.name.focus(); return; }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ m.textContent='Enter a valid email'; m.className='msg err'; E.email.focus(); return; }

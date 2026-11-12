@@ -81,6 +81,15 @@ button:active{transform:scale(.98)}
 button:disabled{opacity:.5;cursor:default;transform:none}
 .msg{min-height:1em;font-size:14px}.msg.err{color:#ffaaaa}
 .done,.closed{margin:48px 0 0;padding:30px}
+.done[hidden]{display:none!important}
+.rolef{margin-bottom:4px}
+.lbl{display:grid;gap:7px;font-size:13.5px;color:var(--mist)}.lbl[hidden]{display:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:14px;background:rgba(4,6,26,.38);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.seg label{display:block;position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:9px 10px;border-radius:10px;font-size:14.5px;color:var(--light);transition:background .2s,box-shadow .2s}
+.seg input:checked+span{background:rgba(63,224,232,.14);box-shadow:inset 0 0 0 1px rgba(63,224,232,.45)}
+.seg input:focus-visible+span{outline:2px solid var(--horizon);outline-offset:2px}
 .done{text-align:center;display:grid;justify-items:center;gap:6px;padding:40px 24px}
 .okc{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:8px;background:rgba(94,240,176,.1);box-shadow:inset 0 0 0 1px rgba(94,240,176,.45)}
 .okc svg{width:30px;height:30px;fill:none;stroke:#5EF0B0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30}
@@ -121,14 +130,14 @@ select{display:none}
   <div class="kick">انضم إلى الفريق</div>
   <h1 id="headline">مونتير يعرف متى يترك للصورة أن تتنفس</h1>
   <p class="lead" id="intro">نعمل مع علامات في الخليج والمنطقة على أفلام قصيرة، وإعلانات، وموشن، ومحتوى سوشال. نتعاون مع مستقلين يهتمون بالتفاصيل، ويسلّمون في الموعد، ويرون في كل ثانية قراراً</p>
-  <div class="roles" id="roles"></div>
 
   <div id="closed" class="closed glass" hidden><h2>لا نستقبل طلبات حالياً</h2><p>تابعنا على إنستغرام <a href="https://instagram.com/eyeblnk" style="color:var(--horizon)">@eyeblnk</a>، ونعلن هناك حين نفتح باب الانضمام</p></div>
 
   <form id="apply" hidden novalidate>
     <fieldset class="glass"><legend>عنك</legend>
+      <label class="rolef">الدور<select name="role" id="roleSel"></select></label>
       <div class="row"><label>الاسم الكامل<input name="name" autocomplete="name" required maxlength="120"></label>
-        <label>الدور<select name="role" id="roleSel"></select></label></div>
+        <div class="lbl" data-f="gender"><span class="lab">الجنس</span><div class="seg" role="radiogroup" aria-label="الجنس"><label><input type="radio" name="gender" value="male"><span>ذكر</span></label><label><input type="radio" name="gender" value="female"><span>أنثى</span></label></div></div></div>
       <div class="row"><label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" required></label>
         <label data-f="phone"><span class="lab">واتساب</span><span class="tel"><select name="dial" id="dialSel" aria-label="مفتاح الدولة"></select><input name="phone" type="tel" dir="ltr" autocomplete="tel-national" inputmode="tel" placeholder="50 123 4567"></span></label></div>
       <div class="row"><label data-f="city"><span class="lab">المدينة والدولة</span><input name="city" maxlength="120"></label>
@@ -157,7 +166,6 @@ select{display:none}
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
     
-    $('#roles').innerHTML=j.roles.map(function(r){return '<button type="button" data-r="'+r+'">'+(RA[r]||r)+'</button>'}).join('');
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
     // the admin decides which fields show and which must be filled
@@ -172,9 +180,7 @@ select{display:none}
     var want=(location.search.match(/[?&]role=(\w+)/)||[])[1]; pick(j.roles.indexOf(want)>=0?want:j.roles[0]);
   }).catch(function(){ $('#closed').hidden=false; });
   var COPY={"editor":["مونتير يعرف متى يترك للصورة أن تتنفس","الإيقاع عندنا قرار قبل أن يكون مهارة: أين تبدأ اللقطة، ومتى تنتهي، وما الذي لا ينبغي أن يظهر أصلاً. نعمل على إعلانات وأفلام قصيرة ومحتوى لعلامات في الخليج والمنطقة"],"motion":["موشن ديزاينر يمنح الفكرة حركة تشبهها","لكل فكرة سرعتها ووزنها. نبحث عمّن يقرأ الفكرة قبل أن يحرّكها، فيختار المنحنى والتوقيت اللذين يقولانها بأوضح صورة"],"color":["كولوريست يصنع للمشهد مزاجه الخاص","اللون عندنا جزء من السرد: دفء لحظة، أو برودة مسافة. نعمل بلقطات من كاميرات مختلفة، ونريدها أن تبدو عالماً واحداً"],"sound":["مهندس صوت يمنح ما لا نراه صوتاً","نصف الإحساس يصل عبر الأذن: تصميم صوتي، وتنظيف للحوار، وميكس يحفظ المسافة بين الصوت والصورة على كل منصة"],"writer":["كاتب يعرف أن الفكرة الكبيرة قد تبدأ بسطر","سكريبتات إعلانات ونصوص على الشاشة، بالعربية أولاً. جملة تعرف مكانها في الإيقاع، ونبرة تشبه العلامة التي تتحدث بها"],"shooter":["مصوّر يرى الحكاية داخل الإطار","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. ضوء يُقرأ، وحركة هادئة، ولقطات تعرف أنها ستُقطع في المونتاج"],"designer":["مصمم يمنح الفكرة شكلاً يليق بها","هويات وبوسترات ومواد للسوشال على شبكة واحدة ومسافات منتظمة. نرى البساطة قراراً، لا فراغاً"],"producer":["منسّق إنتاج يحفظ للعمل إيقاعه خارج الشاشة","جداول، ومواعيد، وتواصل بين الفريق والعملاء. هدوؤك تحت الضغط هو ما يتيح للآخرين أن يبدعوا"],"voice":["معلّق صوتي يُصدَّق من الجملة الأولى","تعليق لإعلانات وأفلام تعريفية بالخليجية والشامية والفصحى. أداء طبيعي يخدم النص ولا يعلو عليه"],"illustrator":["رسّام يرسم ما لا تصل إليه الكاميرا","ستوري بورد، ورسوم للموشن والحملات. خط واثق، وفكرة تُفهم من النظرة الأولى"],"social":["مدير سوشال يعرف ما الذي يستوقف المشاهد","خطط محتوى، وقراءة للأرقام، وحوار مع الجمهور باسم العلامة. ذوق في الاختيار، ونَفَس طويل في المتابعة"],"subtitles":["مترجم يحفظ نبرة الجملة قبل كلماتها","ترجمة على الشاشة بين العربية والإنجليزية، بتوقيت يتبع الإيقاع ولغة تشبه جمهورها"]};
-  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r;
-    [].forEach.call(document.querySelectorAll('#roles button'),function(b){ b.setAttribute('aria-pressed',b.dataset.r===r?'true':'false'); }); }
-  $('#roles').onclick=function(e){ var b=e.target.closest('button'); if(b) pick(b.dataset.r); };
+  function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r; }
   $('#roleSel').onchange=function(){ pick(this.value); };
   // a glass dropdown in place of the browser's grey one; the real <select> stays for the form
   function bsel(sel,icon,short,find){ icon=icon||function(){ return ''; }; var w=sel._b; if(!w){ w=document.createElement('div'); w.className='bsel'; sel.parentNode.insertBefore(w,sel); w.appendChild(sel); sel.tabIndex=-1; sel._b=w;
@@ -194,10 +200,10 @@ select{display:none}
         l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+o.value+'" data-k="'+(o.value+' '+o.textContent).toLowerCase().replace(/\+/g,'').replace(/"/g,'')+'" data-d="'+((sel._dial||{})[o.value]||'').replace(/\D/g,'')+'"'+' aria-selected="'+o.selected+'"'+(o.dataset.sep?' class="sep"':'')+'>'+icon(o.value)+'<span>'+o.innerHTML+'</span></li>'; }).join(''); }; }
     w._draw(); }
   f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
-    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); });
+    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); }); var gc=f.querySelector('input[name=gender]:checked'); d.gender=gc?gc.value:'';
     if(d.phone) d.phone=($('#dialSel')._dial||{})[E.dial.value]+' '+d.phone.replace(/^0+/,'');
-    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&!el.value.trim(); })[0];
-    if(miss){ m.textContent="اكتب {f}".replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
+    var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&(el.type==='radio'?!l.querySelector('input:checked'):!el.value.trim()); })[0];
+    if(miss){ m.textContent=(miss.querySelector("input[type=radio]")?"اختر {f}":"اكتب {f}").replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }
     var links=d.links.split('\n').filter(function(x){return /^https?:\/\//i.test(x.trim())});
     if(d.name.length<2){ m.textContent='اكتب اسمك الكامل'; m.className='msg err'; E.name.focus(); return; }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)){ m.textContent='اكتب بريداً صحيحاً'; m.className='msg err'; E.email.focus(); return; }

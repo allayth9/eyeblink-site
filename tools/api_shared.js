@@ -20,22 +20,22 @@ async function telegram(env, text){
 function greet(o){ const f = String((o && o.name) || "").trim().split(/\s+/)[0]; return o && o.lang === "en" ? "Hi" + (f ? " " + f : "") + "," : "أهلاً" + (f ? " " + f : "") + "،"; }
 // one layout for every e-mail: logo centred on top → the greeting on its own line → title → details → button → logo in the footer
 function mail(lang, title, bodyHtml, cta, link, hi){
-  const rtl = lang !== "en", al = rtl ? "right" : "left";
+  const rtl = lang !== "en", al = rtl ? "right" : "left", dr = rtl ? "rtl" : "ltr", D = `dir="${dr}"`, DS = `direction:${dr};unicode-bidi:embed;`;
   return `<!doctype html><html dir="${rtl?"rtl":"ltr"}" lang="${rtl?"ar":"en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="dark light"></head>
-<body style="margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif;-webkit-text-size-adjust:100%">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#0b1236;border-radius:20px;border:1px solid #1d2758">
+<body ${D} style="${DS}margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif;-webkit-text-size-adjust:100%">
+<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:560px;margin:0 auto;background:#0b1236;border-radius:20px;border:1px solid #1d2758">
 <tr><td align="center" style="padding:30px 24px 22px"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="190" alt="EYEBLINK STUDIO" style="display:block;width:190px;max-width:70%;height:auto;border:0;margin:0 auto"></a></td></tr>
 <tr><td style="padding:0 28px"><div style="height:2px;line-height:2px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:2px">&nbsp;</div></td></tr>
-<tr><td style="padding:26px 28px 30px;color:#EEF2F6;text-align:${al}">
-${hi?`<p style="margin:0 0 18px;font-size:17px;line-height:1.6;color:#ffffff">${h(hi)}</p>`:""}
-<h1 style="font-size:20px;line-height:1.5;margin:0 0 12px;color:#ffffff">${h(title)}</h1>
-<div style="font-size:15px;line-height:1.8;color:#C3CEE2">${bodyHtml}</div>
-${cta?`<div style="margin-top:24px"><a href="${link}" style="display:inline-block;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;font-size:15px;padding:13px 26px;border-radius:999px">${h(cta)}</a></div>`:""}
+<tr><td ${D} align="${al}" style="${DS}padding:26px 28px 30px;color:#EEF2F6;text-align:${al}">
+${hi?`<p ${D} style="${DS}margin:0 0 18px;font-size:17px;line-height:1.6;color:#ffffff">${h(hi)}</p>`:""}
+<h1 ${D} style="${DS}font-size:20px;line-height:1.5;margin:0 0 12px;color:#ffffff">${h(title)}</h1>
+<div ${D} style="${DS}font-size:15px;line-height:1.8;color:#C3CEE2;text-align:${al}">${bodyHtml}</div>
+${cta?`<div ${D} style="${DS}margin-top:24px"><a href="${link}" style="display:inline-block;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;font-size:15px;padding:13px 26px;border-radius:999px">${h(cta)}</a></div>`:""}
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto"><tr><td align="center" style="padding:22px 12px 6px">
 <a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/apple-touch-icon.png" width="38" height="38" alt="Eyeblink" style="display:block;width:38px;height:38px;border-radius:10px;border:0;margin:0 auto"></a>
 <p style="margin:10px 0 0;color:#8E9BB8;font-size:12px;line-height:1.7;direction:ltr">Eyeblink Studio · <a href="${SITE}" style="color:#8E9BB8">eyeblinkstudio.com</a> · <a href="https://instagram.com/eyeblnk" style="color:#8E9BB8">@eyeblnk</a></p>
-<p style="margin:6px 0 0;color:#6F7FA0;font-size:11.5px;line-height:1.7">${rtl?"مشكلة تقنية أو استفسار عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#8E9BB8">support@eyeblinkstudio.com</a></p>
+<p ${D} style="${DS}margin:6px 0 0;color:#6F7FA0;font-size:11.5px;line-height:1.7">${rtl?"مشكلة تقنية أو استفسار عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#8E9BB8">support@eyeblinkstudio.com</a></p>
 </td></tr></table></body></html>`;
 }
 // to the studio: e-mail (to the address in the site settings) + Telegram
