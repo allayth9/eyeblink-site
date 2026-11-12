@@ -154,9 +154,7 @@
           {p:'full.src', t:'media', l:'ملف MP4 كامل (فقط إذا اخترت MP4)', accept:'video/mp4'} ]}} ]},
     {id:'about', title:'من نحن', secs:[
       {h:'المقدمة', fields:[{p:'about.h1', t:'bi', l:'العنوان'},{p:'about.lead', t:'bita', l:'الوصف'}]},
-      {h:'نبذة عنّا', fields:[{p:'about.bioH', t:'bi', l:'العنوان'},{p:'about.bio', t:'bilist', l:'الفقرات', hint:'كل فقرة بسطر'},{p:'about.values', t:'bilist', l:'القيم', hint:'كل قيمة بسطر'}]},
-      {h:'الأفكار', fields:[{p:'about.principlesH', t:'bi', l:'عنوان القسم'}], rep:{p:'about.principles', name:function(x){return (x.h&&x.h.ar)||''}, add:function(){return {k:'IDEA',h:bi(),p:bi()}},
-        fields:[{p:'k', t:'text', l:'التسمية اللاتينية', ltr:1},{p:'h', t:'bi', l:'العنوان'},{p:'p', t:'bita', l:'النص'}]}} ]},
+      {h:'نبذة عنّا', fields:[{p:'about.bioH', t:'bi', l:'العنوان'},{p:'about.bio', t:'bilist', l:'الفقرات', hint:'كل فقرة بسطر'},{p:'about.values', t:'bilist', l:'القيم', hint:'كل قيمة بسطر'}]} ]},
     {id:'contact', title:'التواصل والمراحل', secs:[
       {h:'التواصل', fields:[{p:'site.instagram', t:'text', l:'حساب إنستغرام (بدون @)', ltr:1},{p:'contact.h', t:'bi', l:'العنوان'},{p:'contact.p', t:'bita', l:'الوصف'},{p:'contact.briefH', t:'bi', l:'عنوان «ماذا ترسل لنا»'}],
         rep:{p:'contact.brief', name:function(x){return (x.h&&x.h.ar)||''}, add:function(){return {k:'ITEM',h:bi(),p:bi()}}, fields:[{p:'k', t:'text', l:'التسمية', ltr:1},{p:'h', t:'bi', l:'العنوان'},{p:'p', t:'bi', l:'التوضيح'}]}},
@@ -1365,7 +1363,6 @@
   var NAVN={services:'الخدمات',work:'أعمالنا',pricing:'الباقات',about:'من نحن',contact:'تواصل'};
   var ACCENTS=[['cyan','سماوي (الأساسي)','#3FE0E8','#8B5CFF'],['violet','بنفسجي','#A78BFA','#5B7CFF'],['gold','ذهبي','#F5C66B','#E0833F'],['rose','وردي','#FF7AB6','#8B5CFF'],['mint','نعناعي','#5EF0B0','#2E9BFF']];
   function LY(){ var d=(window.EB_SEED&&EB_SEED.layout)||{home:[],nav:[]}; C.layout=C.layout||JSON.parse(JSON.stringify(d)); C.layout.home=C.layout.home||[]; C.layout.nav=C.layout.nav||[];
-    if((C.layout.v||0)<2){ C.layout.home.forEach(function(s){ if(/^(services|work|packages|reviews)$/.test(s.id)) s.show=false; }); C.layout.v=2; }
     d.home.forEach(function(s){ if(!C.layout.home.some(function(x){return x.id===s.id})) C.layout.home.push({id:s.id,show:true}); });
     d.nav.forEach(function(s){ if(!C.layout.nav.some(function(x){return x.id===s.id})) C.layout.nav.push({id:s.id,show:true,label:{ar:'',en:''}}); }); return C.layout; }
   function renderLayout(){
@@ -2247,8 +2244,6 @@
     $('#resetDraft').onclick=function(){ try{ localStorage.removeItem('eb-draft'); localStorage.removeItem('eb-preview'); }catch(_){} C=JSON.parse(SAVED); dirty(); toast('عادت اللوحة للنسخة المنشورة'); };
   }
 
-  var MIG=/*MIG*/{"نراجع طلبك ونرد عليك بحسابك خلال 24 ساعة": "نراجع طلبك ونرد عليك في حسابك خلال 24 ساعة", "نتفق على التفاصيل والموعد، وبعدها توصلك تفاصيل الدفع": "نتفق على التفاصيل والموعد، ثم تصلك تفاصيل الدفع", "نبدأ التنفيذ، وتتابع كل مرحلة وتحكي معنا لحد التسليم": "نبدأ التنفيذ، وتتابع كل مرحلة وتتواصل معنا حتى التسليم", "شو بيصير بعد الإرسال؟": "ماذا يحدث بعد الإرسال؟", "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالإيميل أو Google، لتتابع طلبك وتتحدث معنا من حسابك.": "بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.", "حسب البريف": "حسب المتطلبات"}/*/MIG*/;
-  function reword(x){ if(typeof x==='string') return MIG.hasOwnProperty(x)?MIG[x]:x; if(Array.isArray(x)) return x.map(reword); if(x&&typeof x==='object'){ for(var k in x) x[k]=reword(x[k]); } return x; }
   /* ---------------- boot ---------------- */
   function loadContent(){
     var fromFile=function(){
@@ -2259,7 +2254,6 @@
     var p= LIVE? fetch(API+'/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json() : fromFile(); }).catch(fromFile) : fromFile();
     return p.then(function(j){
       if(window.EB_SEED) for(var sk in EB_SEED) if(!(sk in j)) j[sk]=JSON.parse(JSON.stringify(EB_SEED[sk]));   // sections added since the last publish
-      j=reword(j);   // retired default wording → current
       SAVED=JSON.stringify(j);
       var draft=null; try{ draft=JSON.parse(localStorage.getItem('eb-draft')||'null'); }catch(_){}
       C= (draft && JSON.stringify(draft)!==SAVED && !LIVE)? draft : j;

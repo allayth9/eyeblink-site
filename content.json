@@ -8,38 +8,33 @@
  "hero": {
   "eyebrow": "EYEBLINK STUDIO • VISUAL PRODUCTION",
   "h1": {
-   "ar": "نُحوِّل أفكارك إلى <span class=\"grad\">مشاهد لا تُنسى</span>",
+   "ar": "نُحوِّل الأفكار إلى <span class=\"grad\">مشاهد لا تُنسى</span>",
    "en": "We turn your ideas into <span class=\"grad\">scenes no one forgets.</span>"
   },
   "lead": {
    "ar": "استوديو إبداعي مستقل متخصص في المونتاج الاحترافي والموشن غرافيك والإنتاج السينمائي. نمنح قصّتك الإيقاع والحركة والهوية البصرية التي تستحقها، بدقة في التفاصيل، وبساطة في الأسلوب، والتزام كامل بالمواعيد.",
    "en": "An independent creative studio for professional editing, motion graphics and film production. We give your story the rhythm, motion and visual identity it deserves: precise in detail, simple in style, and fully committed to deadlines."
-  },
-  "reel": {
-   "type": "vimeo",
-   "id": ""
-  },
-  "reelPreview": ""
+  }
  },
  "stats": [
   {
    "value": "+100",
    "label": {
-    "ar": "عميل راضٍ",
+    "ar": "عميل راضي",
     "en": "happy clients"
    }
   },
   {
-   "value": "5",
+   "value": "7",
    "label": {
-    "ar": "دول عربية وخليجية",
-    "en": "countries across the Gulf & Levant"
+    "ar": "دول عربية ",
+    "en": "Arab countries"
    }
   },
   {
-   "value": "4",
+   "value": "+500",
    "label": {
-    "ar": "خدمات تحت سقف واحد",
+    "ar": "فيديو",
     "en": "services under one roof"
    }
   }
@@ -50,8 +45,8 @@
    "en": "Four services, one rhythm."
   },
   "p": {
-   "ar": "كل خدمة تبدأ من نفس السؤال: أين يقع القطع الذي يجعل المشاهد يكمل؟",
-   "en": "Every service starts from the same question: where is the cut that keeps the viewer watching?"
+   "ar": "كل خدمة تبدأ من نفس السؤال: ماهي اللحظة التي تجعل المشاهد يكمل؟",
+   "en": "Every service starts from the same question: What is the moment that compels a viewer to keep watching?"
   }
  },
  "services": [
@@ -334,7 +329,326 @@
    "en": "Open any piece to watch it in full."
   }
  },
- "projects": [],
+ "projects": [
+  {
+   "title": {
+    "ar": "أبيان المالية",
+    "en": "Abian"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة أبيان المالية في المملكة العربية السعودية",
+    "en": "Marketing campaign for Abian Financial Company in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qa8rc-4-preview.mp4",
+   "poster": "/api/media/mvymd9fg-screenshot-2026-11-02-050747.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1242183201?share=copy&fl=sv&fe=ci"
+   },
+   "id": "w1wwps6u"
+  },
+  {
+   "title": {
+    "ar": "عساف",
+    "en": "Assaf"
+   },
+   "service": "films",
+   "summary": {
+    "ar": "فيديو سينمائي لحملة تسويقية لصالح منتج جديد لشركة (عساف) في المملكة العربية السعودية",
+    "en": "Cinematic video for a marketing campaign for a new product of Assaf Company in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "16:9",
+   "preview": "/api/media/mw3qbhd6-assaf-preview.mp4",
+   "poster": "/api/media/mvyms5pp-hf_20260724_212053_32e0d443-cbf7-4909-88cc-fee0a50e16e7.png",
+   "full": {
+    "type": "vimeo",
+    "id": "",
+    "src": "https://vimeo.com/1242193564?share=copy&fl=sv&fe=ci"
+   },
+   "id": "wz5pp91"
+  },
+  {
+   "title": {
+    "ar": "أبيان تداول",
+    "en": "Abian Tadawul"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة أبيان المالية في المملكة العربية السعودية",
+    "en": "Marketing campaign for Abian Financial Company in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qd669-wlskfc2-preview.mp4",
+   "poster": "/api/media/mvymu25l-1080x1920--1-.png",
+   "full": {
+    "type": "vimeo",
+    "id": "",
+    "src": "https://vimeo.com/1242193639?share=copy&fl=sv&fe=ci"
+   },
+   "id": "wlskfc2"
+  },
+  {
+   "title": {
+    "ar": "منصة MISSION",
+    "en": "MISSION"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "فيديو تسويقي لصالح منصة مشـن MIISSION للخدمات الرقمية والعمل الحر في المملكة العربية السعودية",
+    "en": "Promotional video for MIISSION platform for digital services and freelancing in the Kingdom of Saudi Arabia"
+   },
+   "client": "MISSION",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qew39-mission-preview.mp4",
+   "poster": "/api/media/mvymy8xv-screenshot-2026-11-02-052409.png",
+   "full": {
+    "type": "vimeo",
+    "id": "",
+    "src": "https://vimeo.com/1242193677?share=copy&fl=sv&fe=ci"
+   },
+   "id": "w1toihm0"
+  },
+  {
+   "title": {
+    "ar": "بداية جديدة",
+    "en": "New Beginning"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "فيديو شخصي استخدمنا فيه 3D موشن جرافك بشكل سينمائي",
+    "en": "Personal video using 3D motion graphics in a cinematic style"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qe4x2-w1w3fh74-preview.mp4",
+   "poster": "/api/media/mw3j0bnu-screenshot-2026-11-05-151130.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243689060?fl=tl&fe=ec"
+   },
+   "id": "w1w3fh74"
+  },
+  {
+   "title": {
+    "ar": "عقيق",
+    "en": "Akik"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "مشروع عقاري في المملكة العربية السعودية",
+    "en": "Real estate project in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2025",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qfttj-akik-preview.mp4",
+   "poster": "/api/media/mw3ibtaz-screenshot-2026-11-05-151334.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243691363?fl=tl&fe=ec"
+   },
+   "id": "w11o1dsh"
+  },
+  {
+   "title": {
+    "ar": "Dream",
+    "en": "Dream"
+   },
+   "service": "films",
+   "summary": {
+    "ar": "فيلم سينمائي قصير ( تم توليد اللقطات بشكل كامل AI )",
+    "en": "Short cinematic film (fully generated using AI)"
+   },
+   "client": "",
+   "year": "2025",
+   "ratio": "16:9",
+   "preview": "/api/media/mw3qh2pt-dream-thunder-final-preview.mp4",
+   "poster": "/api/media/mw3iearm-91c9c3e8-4a00-4e22-9c85-c56e4cd152b9.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243690300?fl=tl&fe=ec"
+   },
+   "id": "w1e3f2xm"
+  },
+  {
+   "title": {
+    "ar": "صندوق التقاعد",
+    "en": "Retirement Fund"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "ريل تسويقي موشن جرافك لصالح المؤثر المالي في الإمارات العربية المتحدة ",
+    "en": "Marketing motion graphics reel for a financial influencer in the United Arab Emirates"
+   },
+   "client": "علي الحامد",
+   "year": "2025",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qhkw6-wev5vvh-preview.mp4",
+   "poster": "/api/media/mw3j4492-screenshot-2026-11-05-153539.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243697782?fl=tl&fe=ec"
+   },
+   "id": "wev5vvh"
+  },
+  {
+   "title": {
+    "ar": "مخاوف زبون",
+    "en": "Customer Fears"
+   },
+   "service": "editing",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة مختصة في تطوير نظام الاشتراكات ونظام المغاسل في سلطنة عمان",
+    "en": "Marketing campaign for a company specialized in developing subscription and laundry systems in the Sultanate of Oman"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qig5p-wjcxht9-preview.mp4",
+   "poster": "/api/media/mw3j90c8-screenshot-2026-11-05-153925.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243684442?fl=tl&fe=ec"
+   },
+   "id": "wjcxht9"
+  },
+  {
+   "title": {
+    "ar": "Team 26",
+    "en": "Team 26"
+   },
+   "service": "editing",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة مختصة في تطوير نظام الاشتراكات ونظام المغاسل في سلطنة عمان",
+    "en": "Marketing campaign for a company specialized in developing subscription and laundry systems in the Sultanate of Oman"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qj321-26-preview.mp4",
+   "poster": "/api/media/mw3jd2ch-screenshot-2026-11-05-154237.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243683934?fl=tl&fe=ec"
+   },
+   "id": "wbly3bb"
+  },
+  {
+   "title": {
+    "ar": "Team 26",
+    "en": "Team 26"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة مختصة في تطوير نظام الاشتراكات ونظام المغاسل",
+    "en": "Marketing campaign for a company specialized in developing subscription and laundry systems"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qlljk-team-26-2-preview.mp4",
+   "poster": "/api/media/mw3jfis3-screenshot-2026-11-05-154400.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243685590?fl=tl&fe=ec"
+   },
+   "id": "wzxub8z"
+  },
+  {
+   "title": {
+    "ar": "IMMA",
+    "en": "IMMA"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "فيديو تسويقي لصالح شركة IMMA للعطور في المملكة العربية السعودية",
+    "en": "Promotional video for IMMA Perfumes in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qmgc8-imaa-ddd-preview.mp4",
+   "poster": "/api/media/mw3jk78s-screenshot-2026-11-05-154812.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243688309?fl=tl&fe=ec"
+   },
+   "id": "w1lw42r6"
+  },
+  {
+   "title": {
+    "ar": "أبيان المالية",
+    "en": "Abian Financial"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة أبيان المالية في المملكة العربية السعودية",
+    "en": "Marketing campaign for Abian Financial in the Kingdom of Saudi Arabia"
+   },
+   "client": "",
+   "year": "2025",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qmzto-d-preview.mp4",
+   "poster": "/api/media/mw3jm77k-screenshot-2026-11-05-154946.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243688817?fl=tl&fe=ec"
+   },
+   "id": "w10p6jwz"
+  },
+  {
+   "title": {
+    "ar": "مؤثر مالي",
+    "en": "Mouther Financial"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "ريل تسويقي موشن جرافك لصالح المؤثر المالي في الإمارات العربية المتحدة ",
+    "en": "Marketing motion graphics reel for Mouther Financial in the United Arab Emirates"
+   },
+   "client": "علي الحامد",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qnnv6-before_after_color_grading_and_editing_o-preview.mp4",
+   "poster": "/api/media/mw3jpcoq-screenshot-2026-11-05-155213.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243697845?fl=tl&fe=ec"
+   },
+   "id": "wemnoac"
+  },
+  {
+   "title": {
+    "ar": "مسابقة Team 26",
+    "en": "Team 26 Competition"
+   },
+   "service": "motion",
+   "summary": {
+    "ar": "حملة تسويقية لصالح شركة مختصة في تطوير نظام الاشتراكات ونظام المغاسل في سلطنة عمان",
+    "en": "Marketing campaign for a company specialized in developing subscription and laundry systems in the Sultanate of Oman"
+   },
+   "client": "",
+   "year": "2026",
+   "ratio": "9:16",
+   "preview": "/api/media/mw3qosz9-w2u3yhy-preview.mp4",
+   "poster": "/api/media/mw3jsjkz-screenshot-2026-11-05-155441.png",
+   "full": {
+    "type": "vimeo",
+    "id": "https://vimeo.com/1243693964?fl=tl&fe=ec"
+   },
+   "id": "w2u3yhy"
+  }
+ ],
  "packages": {
   "h": {
    "ar": "باقات واضحة، بدون مفاجآت",
@@ -383,8 +697,8 @@
    {
     "id": "motion",
     "service": "motion",
-    "featured": true,
-    "price": 70,
+    "featured": false,
+    "price": 50,
     "unit": {
      "ar": "للفيديو",
      "en": "per video"
@@ -394,7 +708,7 @@
      "en": "Motion Graphics Video"
     },
     "desc": {
-     "ar": "فيديو موشن 30 إلى 60 ثانية انطلاقاً من التعليق الصوتي.",
+     "ar": "فيديو موشن 30 إلى 50 ثانية انطلاقاً من التعليق الصوتي.",
      "en": "A 30 to 60 second motion piece built from your voiceover."
     },
     "features": {
@@ -403,7 +717,7 @@
       "عناصر مصمَّمة من الصفر",
       "تحريك ومؤثرات صوتية",
       "ثلاث جولات تعديل",
-      "تسليم خلال 5 أيام"
+      "تسليم خلال 3 أيام"
      ],
      "en": [
       "Storyboard and visual style",
@@ -412,7 +726,8 @@
       "Three revision rounds",
       "Delivery in 5 days"
      ]
-    }
+    },
+    "oldPrice": 75
    },
    {
     "id": "monthly",
@@ -433,14 +748,13 @@
     },
     "features": {
      "ar": [
-      "8 فيديوهات قصيرة",
+      "8 فيديوهات قصيرة (30-50 ثانية)",
       "موشن خفيف وهوية موحّدة",
-      "خطة محتوى مشتركة",
       "أولوية في التسليم",
-      "جولتا تعديل لكل فيديو"
+      "جولة تعديل مجانية لكل فيديو"
      ],
      "en": [
-      "8 short videos",
+      "8 short videos (30-50 Sec)",
       "Light motion and a unified look",
       "Shared content plan",
       "Priority delivery",
@@ -545,7 +859,7 @@
    "en": "An eye that sees the idea before it's seen."
   },
   "lead": {
-   "ar": "Eyeblink Studio استوديو إبداعي مستقل للمونتاج والموشن غرافيك والإنتاج السينمائي. نعمل بعقلية الاستوديو: معايير عالية، وتواصل واضح من أول رسالة إلى آخر تسليم.",
+   "ar": "Eyeblink Studio استوديو إبداعي مستقل في الإنتاج البصري والمونتاج والموشن غرافيك والإنتاج السينمائي. نعمل بعقلية الاستوديو: معايير عالية، وتواصل واضح من أول رسالة إلى آخر تسليم.",
    "en": "Eyeblink Studio is an independent creative studio for editing, motion graphics and film production. We work with a studio mindset: high standards and clear communication from the first message to the final delivery."
   },
   "bioH": {
@@ -554,53 +868,21 @@
   },
   "bio": {
    "ar": [
-    "بدأ Eyeblink Studio من شغف بالصورة والإيقاع، ومن خبرة عملية في المونتاج والموشن غرافيك مع عملاء في الخليج والمنطقة العربية.",
-    "اكتب هنا نبذتك من لوحة التحكم: كيف بدأت، ماذا يميّز طريقتك، ومع من عملت."
+    "قبل غرفة المونتاج، كانت الخشبة. هناك تعلّمنا أن للجملة توقيتاً، وأن للصمت معنى، وأن الجمهور يشعر بالإيقاع قبل أن يفهمه.",
+    "من هذه الخبرة وُلد Eyeblink: استوديو للمونتاج والموشن غرافيك والأفلام القصيرة، يعمل مع علامات في الخليج والمنطقة العربية. نبدأ كل مشروع بسؤال واحد: ما الذي يجب أن يبقى مع المشاهد بعد أن ينتهي الفيديو؟ ثم نبني الصورة والحركة والصوت حول الإجابة.",
+    "نرافق كل عمل من الفكرة الأولى إلى آخر إطار، بعين تعرف ما تريد، وفريق يعمل على تفاصيل لا يلاحظها أحد، لكن الجميع يشعر بها."
    ],
    "en": [
-    "Eyeblink Studio grew out of a love for image and rhythm, and hands-on experience in editing and motion graphics for clients across the Gulf and the Arab region.",
-    "Write your story here from the admin panel: how you started, what sets your approach apart, and who you've worked with."
+    "Before the editing room, there was the stage. That's where we learned that a sentence has timing, silence has meaning, and the audience feels the rhythm before they understand it.",
+    "From this experience, Eyeblink was born: a studio for video editing, motion graphics, and short films, working with brands in the Gulf and the Arab region. We start every project with one question: what should stay with the viewer after the video ends? Then we build the image, motion, and sound around the answer.",
+    "We accompany every project from the first idea to the last frame, with an eye that knows what it wants, and a team that works on details that no one notices, but everyone feels."
    ]
   },
   "principlesH": {
-   "ar": "ثلاث أفكار نعمل بها",
-   "en": "Three ideas we work by"
+   "ar": "",
+   "en": ""
   },
-  "principles": [
-   {
-    "k": "THE BLINK",
-    "h": {
-     "ar": "القطع في لحظته",
-     "en": "The cut on time"
-    },
-    "p": {
-     "ar": "يرمش الإنسان حين تتغيّر فكرته. نضع القطع في هذه اللحظة بالذات، فيمرّ المونتاج دون أن يُلاحَظ، وتبقى القصة.",
-     "en": "People blink when a thought changes. We place the cut on that exact moment, so the edit passes unnoticed and the story stays."
-    }
-   },
-   {
-    "k": "CATCHLIGHT",
-    "h": {
-     "ar": "اللمعة",
-     "en": "Catchlight"
-    },
-    "p": {
-     "ar": "في السينما تُضاء عين الممثل بضوء صغير يجعلها حيّة على الشاشة. هذا ما نبحث عنه في كل عمل: التفصيلة التي تمنح الصورة روحها.",
-     "en": "In film, a small light is placed in an actor's eye to make it come alive on screen. It's what we look for in every piece: the detail that gives the image its soul."
-    }
-   },
-   {
-    "k": "STORY FIRST",
-    "h": {
-     "ar": "القصة أولاً",
-     "en": "Story first"
-    },
-    "p": {
-     "ar": "المؤثرات تخدم القصة ولا تسبقها. نبدأ من الرسالة التي تريد إيصالها، ثم نختار الحركة واللون والصوت الذي يحملها.",
-     "en": "Effects serve the story, never lead it. We start from the message you want to land, then choose the motion, colour and sound that carry it."
-    }
-   }
-  ],
+  "principles": [],
   "values": {
    "ar": [
     "دقة",
@@ -627,38 +909,34 @@
    {
     "id": "paypal",
     "name": "PayPal",
-    "logo": "",
+    "logo": "/api/media/mvyjvad0-paypal-monogram-fullcolor-rgb.png",
     "enabled": true
    },
    {
     "id": "binance",
-    "name": "Binance Pay · USDT",
-    "logo": "",
+    "name": "Binance · USDT",
+    "logo": "/api/media/mvyjvooy-binance_idhnilazr2_4.png",
     "enabled": true
    },
    {
     "id": "westernunion",
     "name": "Western Union",
-    "logo": "",
+    "logo": "/api/media/mvyjzyu9-western_union_idr6-1-khc_19.png",
     "enabled": true
    },
    {
     "id": "visa",
     "name": "Visa",
-    "logo": "",
+    "logo": "/api/media/mvyjweuz-visa_inc-_iddum8tcn7_1.png",
     "enabled": true
    },
    {
     "id": "mastercard",
     "name": "Mastercard",
-    "logo": "",
+    "logo": "/api/media/mvyjwv1c-ma_symbol_opt_73_2x.png",
     "enabled": true
    }
-  ],
-  "defaultPlan": "full",
-  "depositPct": 50,
-  "reminders": true,
-  "reminderHours": 48
+  ]
  },
  "settings": {
   "showStats": true,
@@ -666,8 +944,9 @@
   "showPackagesTeaser": true,
   "showPayments": true,
   "ordersOpen": true,
-  "whatsapp": "",
-  "email": "info@eyeblinkstudio.com"
+  "whatsapp": "+963992779858",
+  "email": "info@eyeblinkstudio.com",
+  "googleClientId": "504114974547-pkdhrkgj6o1qjecv6ta84am02bkd66tj.apps.googleusercontent.com"
  },
  "contact": {
   "h": {
@@ -717,6 +996,12 @@
     }
    }
   ]
+ },
+ "titles": {
+  "index": {
+   "ar": "Eyeblink Studio",
+   "en": "Eyeblink Studio"
+  }
  },
  "reviews": {
   "h": {
@@ -865,10 +1150,9 @@
   "intro": true,
   "particles": true,
   "v": 2,
-  "cta": "aurora",
-  "cursor": "glass",
-  "countUp": true
+  "cursor": "system"
  },
+ "toolLogos": [],
  "order": {
   "askPlatform": true,
   "askQty": true,
@@ -946,21 +1230,13 @@
    }
   }
  },
- "toolLogos": [
-  {
-   "name": "Higgsfield",
-   "logo": ""
-  }
- ],
  "workspace": {
   "taskTypes": {
    "ar": [
     "ريل / فيديو قصير",
-    "فيديو إعلاني",
     "موشن غرافيك",
     "مونتاج فيديو طويل",
     "تصميم بوست",
-    "قصة / ستوري",
     "تعديل على عمل سابق"
    ],
    "en": [
@@ -987,5 +1263,31 @@
     "en": "Urgent"
    }
   }
+ },
+ "_auto": {
+  "1xsraab:ljrp4i": 1,
+  "p3ekpf:184q6n4": 1,
+  "1w80rpb:vngpwa": 1,
+  "3me1bi:3me1bi": 1,
+  "1jy3t5e:j6x286": 1,
+  "p34jpb:ht52b5": 1,
+  "3wttao:sih1vs": 1,
+  "fou6no:fou6no": 1,
+  "sz2uad:s15vph": 1,
+  "k9se84:16cai5q": 1,
+  "nuhh0m:1teha73": 1,
+  "clpqhq:1uol3v2": 1,
+  "5dp09q:1wpom5f": 1
+ },
+ "launch": {
+  "show": true,
+  "text": {
+   "ar": "إطلاق Eyeblink Studio · نستقبل عدداً محدوداً من المشاريع بشروط الإطلاق",
+   "en": "launch of Eyeblink Studio · we are accepting a limited number of projects under launch terms"
+  },
+  "total": 50,
+  "taken": 38,
+  "counter": true,
+  "until": "2026-11-30"
  }
 }

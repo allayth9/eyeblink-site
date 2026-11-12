@@ -14,6 +14,8 @@ const SECURITY = {
   "X-Frame-Options": "SAMEORIGIN",
   "Content-Security-Policy": "frame-ancestors 'self'",
   "Strict-Transport-Security": "max-age=31536000",
+  "X-Content-Type-Options": "nosniff",                       // a file is only ever what its type says (no guessing an upload into a page)
+  "Referrer-Policy": "strict-origin-when-cross-origin",      // private links (/d/…, workspace) never leak to other sites in full
 };
 function secure(res) {
   const r = new Response(res.body, res);
@@ -21,6 +23,8 @@ function secure(res) {
   return r;
 }
 export async function onRequest(ctx) {
+  // the repo is published as it is: its developer files (dev/, dot-files) are not part of the site
+  if (/^\/(dev(\/|$)|\.)/i.test(new URL(ctx.request.url).pathname)) return secure(new Response("Not found", { status: 404 }));
   return secure(await withTitles(ctx));
 }
 async function withTitles(ctx) {
