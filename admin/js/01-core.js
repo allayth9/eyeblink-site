@@ -41,7 +41,8 @@
   function pairAt(p){ return biPairs(C,'').filter(function(y){return y.p===p})[0]; }
   function showEn(x){ [].forEach.call(enInputs(x.p),function(el){ el.value=enText(x.o); }); decorate(); }
   function decorate(){ if(!C) return; var auto=C._auto||{};
-    [].forEach.call(document.querySelectorAll('[data-p$=".en"]'),function(el){ var x=pairAt(el.dataset.p.slice(0,-3)); el.parentNode.classList.toggle('is-auto',!!(x&&!enEmpty(x.o)&&auto[pk(x.o)])); }); }
+    [].forEach.call(document.querySelectorAll('[data-p$=".en"]'),function(el){ var x=pairAt(el.dataset.p.slice(0,-3)); var isA=!!(x&&!enEmpty(x.o)&&auto[pk(x.o)]); el.parentNode.classList.toggle('is-auto',isA);
+      var fl=el.closest('.field'), sp=fl&&fl.querySelector('.enl>span'); if(sp){ sp.textContent=enPrev(el.value); if(el.value) sp.dir='ltr'; else sp.removeAttribute('dir'); fl.querySelector('.enauto').hidden=!isA; } }); }
   // keep only the marks of texts that still exist
   function pruneMarks(){ var live={}; biPairs(C,'').forEach(function(x){ live[pk(x.o)]=1; });
     ['_auto','_ok'].forEach(function(m){ if(C[m]) Object.keys(C[m]).forEach(function(k){ if(!live[k]) delete C[m][k]; }); }); }
@@ -215,7 +216,8 @@
         var a=list?(v.ar||[]).join('\n'):v.ar||'', e=list?(v.en||[]).join('\n'):v.en||'';
         var inp=function(lang,val){ return ta? '<textarea data-p="'+esc(f.p)+'.'+lang+'" data-t="'+(list?'list':'text')+'"'+(lang==='en'?' dir="ltr"':'')+' aria-label="'+esc(f.l)+' '+lang+'">'+esc(val)+'</textarea>'
                                           : '<input data-p="'+esc(f.p)+'.'+lang+'" data-t="text"'+(lang==='en'?' dir="ltr"':'')+' aria-label="'+esc(f.l)+' '+lang+'" value="'+esc(val)+'">'; };
-        return '<div class="field"><label>'+esc(f.l)+'</label><div class="bi"><div><small>عربي</small>'+inp('ar',a)+'</div><div><small>ENGLISH</small>'+inp('en',e)+'</div></div>'+hint+'</div>';
+        return '<div class="field"><label>'+esc(f.l)+'</label><div class="bi1">'+inp('ar',a)+'</div>'+
+          '<div class="enl"><span'+(e?' dir="ltr"':'')+'>'+esc(enPrev(e))+'</span><em class="enauto" hidden>تلقائي</em><button type="button" class="linkbtn small" data-enx>تعديل الإنجليزي</button></div><div class="enw" hidden>'+inp('en',e)+'</div>'+hint+'</div>';
       case 'media':
         var isV=/video/.test(f.accept||''), prev=v? (isV?'<video class="thumb" src="'+esc(abs(v))+'" muted></video>':'<img class="thumb" alt="" src="'+esc(abs(v))+'">') : '';
         return '<div class="field">'+lab+'<div class="media">'+prev+'<input id="'+id+'"'+d+' dir="ltr" placeholder="رابط أو ارفع ملفاً" value="'+esc(v)+'"><label class="btn sm">رفع<input type="file" accept="'+esc(f.accept||'*/*')+'" data-upload="'+esc(f.p)+'" hidden></label>'+
@@ -223,6 +225,10 @@
     }
     return '';
   }
+  // the folded English: one quiet line under the Arabic
+  function enPrev(e){ e=String(e||'').replace(/\n/g,' · '); return e?'EN · '+(e.length>120?e.slice(0,120)+'…':e):'الإنجليزي بيتولّد لحاله'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-enx]'); if(!b) return; var w=b.closest('.field').querySelector('.enw'); w.hidden=!w.hidden;
+    b.textContent=w.hidden?'تعديل الإنجليزي':'إخفاء الإنجليزي'; if(w.hidden) decorate(); else { var i=w.querySelector('input,textarea'); if(i) i.focus(); } });
   function abs(u){ return /^(https?:|data:|blob:|\/)/.test(u)? u : '../'+u; }
 
   /* ---------------- render ---------------- */
@@ -230,7 +236,7 @@
     route();   // every way into a section (shortcuts from «Today», profiles, billing links) keeps the address in step
     renderTabs();
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
-    $('#tabTitle').textContent=tab.title;
+    $('#tabTitle').textContent=tab.title; $('#previewBtn').href=SITEPG[tab.id]||'/';
     if(tab.today) return renderToday();
     if(tab.team) return renderTeam();
     if(tab.support) return renderSupport();
@@ -244,8 +250,8 @@
     if(tab.layout) return renderLayout();
     if(tab.backup) return renderBackup();
     if(tab.settings) return renderSettings();
-    $('#panel').innerHTML=tab.secs.map(function(s,si){
-      var html='<section class="sec"><h3>'+esc(s.h)+'</h3>'+(s.hint?'<p class="hint">'+esc(s.hint)+'</p>':'');
+    $('#panel').innerHTML=secNav(tab)+tab.secs.map(function(s,si){
+      var html='<section class="sec" id="sec-'+si+'"><h3>'+esc(s.h)+'</h3>'+(s.hint?'<p class="hint">'+esc(s.hint)+'</p>':'');
       if(s.fields) html+=s.fields.map(function(f){return field(C,f)}).join('');
       if(s.priv==='payments'){ var pm=(P&&P.payments)||{};
         html+=((C.payments&&C.payments.methods)||[]).map(function(m){ return '<div class="field"><label>'+esc(m.name||m.id)+'</label><textarea data-priv="payments.'+esc(m.id)+'" dir="auto" placeholder="مثال: Binance ID / رقم المحفظة / بريد PayPal">'+esc(pm[m.id]||'')+'</textarea></div>'; }).join('');
@@ -259,9 +265,39 @@
       }
       return html+'</section>';
     }).join('');
-    decorate();
+    decorate(); spy();
   }
-  function dirty(){ var d=JSON.stringify(C)!==SAVED || JSON.stringify(P)!==PSAVED; $('#state').textContent=d?'تعديلات غير منشورة':'محفوظ'; $('#state').classList.toggle('dirty',d); }
+  // where each content section lives on the site
+  var SITEPG={home:'/',services:'/services.html',packages:'/pricing.html',work:'/work.html',about:'/about.html',contact:'/contact.html',payments:'/pricing.html'};
+  function secNav(tab){ var pg=SITEPG[tab.id];
+    return '<nav class="secnav" aria-label="أقسام الصفحة">'+(tab.secs.length>1?tab.secs.map(function(s,i){ var n=s.rep?(get(C,s.rep.p)||[]).length:0;
+      return '<button type="button" data-secgo="'+i+'">'+esc(s.h)+(n?' <small>'+n+'</small>':'')+'</button>'; }).join(''):'')+
+      (pg?'<a class="secsite" href="'+pg+'" target="_blank" rel="noopener" data-pvw>الصفحة بالموقع ↗</a>':'')+'</nav>'; }
+  var SPY=null;
+  function spy(){ if(SPY) SPY.disconnect(); var chips=document.querySelectorAll('.secnav [data-secgo]'); if(!chips.length||!window.IntersectionObserver) return;
+    SPY=new IntersectionObserver(function(es){ es.forEach(function(en){ if(!en.isIntersecting) return; var i=en.target.id.slice(4); [].forEach.call(chips,function(c){ c.classList.toggle('on',c.dataset.secgo===i); }); }); },{rootMargin:'-180px 0px -55% 0px'});
+    [].forEach.call(document.querySelectorAll('#panel>.sec[id^="sec-"]'),function(s){ SPY.observe(s); }); }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-secgo]'); if(!b) return; var s=document.getElementById('sec-'+b.dataset.secgo); if(!s) return; s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    setTimeout(function(){ if(Math.abs(s.getBoundingClientRect().top-170)>60) s.scrollIntoView({block:'start'}); },700); });   // a browser that skips smooth scrolling still gets there
+  // any preview link shows the unpublished draft on the site
+  document.addEventListener('click',function(e){ if(!e.target.closest('[data-pvw]')) return; saveDraft(); try{ localStorage.setItem('eb-preview','1'); }catch(_){} });
+  function dirty(){ var d=JSON.stringify(C)!==SAVED || JSON.stringify(P)!==PSAVED; $('#state').textContent=d?'تعديلات غير منشورة':'محفوظ'; $('#state').classList.toggle('dirty',d); pubBar(d); }
+  // the number of texts and settings that differ from what is published (translator marks don't count)
+  function changes(){ var n=0;
+    try{ (function walk(x,y,k){ if(k==='_auto'||k==='_ok') return;
+      if(x&&y&&typeof x==='object'&&typeof y==='object'&&Array.isArray(x)===Array.isArray(y)){ var ks={}; Object.keys(x).concat(Object.keys(y)).forEach(function(q){ ks[q]=1; }); Object.keys(ks).forEach(function(q){ walk(x[q],y[q],q); }); }
+      else if(JSON.stringify(x)!==JSON.stringify(y)) n++; })(JSON.parse(SAVED||'{}'),C,''); }catch(_){}
+    return n+(JSON.stringify(P)!==PSAVED?1:0); }
+  function pubBar(d){ var b=$('#pubbar');
+    if(!b){ if(!d) return; document.querySelector('.main').insertAdjacentHTML('beforeend','<div id="pubbar" class="pubbar" role="status"><i></i><span data-pbn></span><span class="pbacts"><button class="btn sm" type="button" data-pbundo>تراجع</button><a class="btn sm" data-pvw target="_blank" rel="noopener" href="/">معاينة</a><button class="btn sm primary" type="button" data-pbpub>نشر</button></span></div>'); b=$('#pubbar'); }
+    b.hidden=!d; if(!d) return; var n=changes(), u=b.querySelector('[data-pbundo]');
+    b.querySelector('[data-pbn]').textContent=n<=1?'تعديل واحد ما انتشر':n===2?'تعديلين ما انتشروا':n+' تعديلات ما انتشرت';
+    b.querySelector('[data-pvw]').href=SITEPG[TAB]||'/'; b.querySelector('[data-pbpub]').disabled=false; u.dataset.armed=''; u.textContent='تراجع'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-pbundo],[data-pbpub]'); if(!b) return;
+    if(b.hasAttribute('data-pbpub')){ b.disabled=true; $('#publishBtn').click(); return; }
+    if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ رجوع لآخر نسخة منشورة'; return; }
+    C=JSON.parse(SAVED); if(PSAVED) P=JSON.parse(PSAVED); saveDraft(); savePrivDraft(); try{ localStorage.removeItem('eb-preview'); }catch(_){}
+    render(); dirty(); toast('رجعت لآخر نسخة منشورة'); });
 
   /* ---------------- events ---------------- */
   document.addEventListener('input',function(e){
