@@ -18,13 +18,16 @@
     var na=TEAM.apps.filter(function(a){return a.status==='new'}).length, qc=TEAM.tasks.filter(function(t){return t.status==='qc'}).length;
     var subs=[['tasks','المهام',qc],['members','الأعضاء',0],['apps','طلبات الانضمام',na],['settings','التوظيف',0]];
     var head='<div class="subtabs">'+subs.map(function(s){ return '<button type="button" data-tsub="'+s[0]+'"'+(TSUB===s[0]?' aria-current="true"':'')+'>'+s[1]+(s[2]?'<span class="count hot">'+s[2]+'</span>':'')+'</button>'; }).join('')+'</div>';
-    $('#panel').innerHTML=head+({tasks:teamTasks,members:teamMembers,apps:teamApps,settings:teamSettings})[TSUB]();
+    var t0=todayISO(), T=TEAM.tasks, live=function(x){ return ['assigned','progress','changes'].indexOf(x.status)>=0; };
+    var owed=T.filter(function(x){ return x.status==='approved'&&!(x.payout&&x.payout.paid); }).reduce(function(s,x){ return s+(+x.fee||0); },0);
+    var kpis='<section class="sec kcsec"><div class="kcs">'+kc(T.filter(live).length,'مهام عند الفريق','prod','k_play')+kc(qc,'بانتظار مراجعتك','sign','k_done')+
+      kc(T.filter(function(x){ return live(x)&&x.due&&x.due<t0; }).length,'متأخرة','bad','k_late')+kc('<span dir="ltr">'+esc(pfmt(owed,'$'))+'</span>','أجور مستحقة','fix','payments',owed>0)+kc(na,'طلبات انضمام جديدة','new','team')+'</div></section>';
+    $('#panel').innerHTML=kpis+head+({tasks:teamTasks,members:teamMembers,apps:teamApps,settings:teamSettings})[TSUB]();
   }
   function teamTasks(){
     var cols=[['assigned','جديدة',['assigned']],['progress','قيد العمل',['progress','changes']],['qc','بانتظار مراجعتك',['qc']],['approved','معتمدة',['approved']]], t0=todayISO();
     var due=TEAM.tasks.filter(function(t){ return t.status==='approved'&&!(t.payout&&t.payout.paid); }).reduce(function(a,t){ return a+(+t.fee||0); },0);
-    return '<div class="kpi4 sm3"><div><span>مهام مفتوحة</span><b>'+TEAM.tasks.filter(function(t){return t.status!=='approved'}).length+'</b></div><div><span>بانتظار مراجعتك</span><b class="'+(TEAM.tasks.some(function(t){return t.status==='qc'})?'c-warn':'')+'">'+TEAM.tasks.filter(function(t){return t.status==='qc'}).length+'</b></div><div><span>أجور مستحقة</span><b dir="ltr">'+esc(pfmt(due,'$'))+'</b></div></div>'+
-      '<div class="board-h"><span class="muted small">عضو الفريق بيشوف مهمته وأجره بس. اسم العميل وأسعاره ما بيوصلوله</span><button class="btn primary sm" type="button" data-tnew>+ مهمة</button></div>'+
+    return '<div class="board-h"><span class="muted small">عضو الفريق بيشوف مهمته وأجره بس. اسم العميل وأسعاره ما بيوصلوله</span><button class="btn primary sm" type="button" data-tnew>+ مهمة</button></div>'+
       '<div class="board">'+cols.map(function(c){ var l=TEAM.tasks.filter(function(t){ return c[2].indexOf(t.status)>=0; });
         return '<div class="bcol st-'+c[0]+'"><h4><i></i>'+c[1]+'<small>'+l.length+'</small></h4>'+(l.length?l.map(function(t){ var late=t.due&&t.due<t0&&t.status!=='approved'&&t.status!=='qc';
           return '<button type="button" class="bcard st-'+t.status+'" data-ttask="'+esc(t.id)+'"><b>'+esc(t.title)+'</b><span class="muted small">'+esc(memName(t.member))+(t.alias?' · '+esc(t.alias):'')+'</span><div class="bmeta"><span class="'+(late?'c-crit':'')+'">'+(t.due?esc(fdate(t.due)):'بلا موعد')+'</span><span dir="ltr">'+esc(pfmt(+t.fee||0,t.cur||'$'))+'</span></div>'+
@@ -48,8 +51,20 @@
   function tAddForm(prefill){ prefill=prefill||{}; return '<form class="sec tadd" id="tAdd" hidden><h3>عضو جديد بالفريق</h3><div class="row"><div class="field"><label>الاسم</label><input name="name" value="'+esc(prefill.name||'')+'"></div><div class="field"><label>الإيميل</label><input name="email" type="email" dir="ltr" value="'+esc(prefill.email||'')+'"></div><div class="field"><label>الدور</label><select name="role">'+Object.keys(TROLE).map(function(r){ return '<option value="'+r+'"'+(prefill.role===r?' selected':'')+'>'+TROLE[r]+'</option>'; }).join('')+'</select></div></div><div class="row"><div class="field"><label>واتساب</label><input name="phone" dir="ltr" value="'+esc(prefill.phone||'')+'"></div><div class="field"><label>الأجر المتفق (ملاحظة)</label><input name="rate" value="'+esc(prefill.rate||'')+'"></div></div>'+payFields()+'<div class="row"><div class="field"><label>نوع العلاقة</label><select name="mtype" data-mtype>'+Object.keys(TTYPE).map(function(k){ return '<option value="'+k+'"'+((STAFF_ROLES.indexOf(prefill.role)>=0?'staff':'freelance')===k?' selected':'')+'>'+TTYPE[k]+(k==='staff'?' (راتب شهري)':' (أجر لكل مهمة)')+'</option>'; }).join('')+'</select></div><div class="field" data-salary'+(STAFF_ROLES.indexOf(prefill.role)>=0?'':' hidden')+'><label>الراتب الشهري</label><input name="salary" dir="ltr" placeholder="600"></div>'+staffFields({},STAFF_ROLES.indexOf(prefill.role)>=0)+'<div class="field" data-salary'+(STAFF_ROLES.indexOf(prefill.role)>=0?'':' hidden')+' style="max-width:200px"><label>العملة</label>'+curSel('name="salaryCur"','$')+'</div></div><input type="hidden" name="app" value="'+esc(prefill.app||'')+'"><div class="actions"><button class="btn primary" type="submit">إنشاء الحساب</button></div></form>'; }
   function teamApps(){
     if(!TEAM.apps.length) return '<div class="sec"><div class="empty">ما في طلبات انضمام. فعّل التوظيف من «التوظيف»، وصفحة التقديم هي <a href="/join" target="_blank" dir="ltr">/join</a></div></div>';
-    return '<div class="apps">'+TEAM.apps.map(function(a){ var tr=a.trial||{};
-      return '<details class="item app st-a'+a.status+'"'+(a.status==='new'?' open':'')+'><summary><span class="chev">‹</span><span class="pill a-'+a.status+'">'+esc(TAPP[a.status])+'</span><b>'+esc(a.name)+'</b><span class="muted small">'+esc(TROLE[a.role]||a.role)+(a.city?' · '+esc(a.city):'')+' · '+esc(new Date(a.at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}))+'</span></summary><div class="body"><div class="grid2"><div>'+
+    var sel=TAOPEN&&TEAM.apps.filter(function(x){ return x.id===TAOPEN; })[0];
+    return '<div class="osplit'+(sel?' has-open':'')+'"><ul class="olist"><li class="olh">طلبات الانضمام · '+TEAM.apps.length+'</li>'+TEAM.apps.map(appRow).join('')+'</ul>'+
+      (sel?'<div class="order item odetail tf-'+(AFAM[sel.status]||'new')+'"><div class="odh"><button class="btn sm oback" type="button" data-aback>‹ كل الطلبات</button><span class="tag">'+esc(TAPP[sel.status])+'</span><b>'+esc(sel.name)+'</b><span class="muted small">'+esc(TROLE[sel.role]||sel.role)+(sel.city?' · '+esc(sel.city):'')+' · '+esc(adate(sel.at))+'</span></div>'+appBody(sel)+'</div>'
+        :'<div class="odetail empty-sel">اختار طلب من القائمة</div>')+'</div>';
+  }
+  // a join request's state → its colour family
+  var AFAM={new:'new',trial:'prod',interview:'sign',accepted:'ok',rejected:'off'}, TAOPEN=null;
+  function adate(at){ return new Date(at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}); }
+  function appRow(a){ return '<li><button type="button" class="orow st tf-'+(AFAM[a.status]||'new')+(a.id===TAOPEN?' on':'')+'" data-aopen="'+esc(a.id)+'">'+
+      '<span class="orow-m"><b>'+esc(a.name)+'</b></span><span class="orow-v small">'+esc(adate(a.at))+'</span>'+
+      '<span class="orow-p">'+esc(TROLE[a.role]||a.role)+(a.city?' · '+esc(a.city):'')+'</span><span class="tag">'+esc(TAPP[a.status])+'</span>'+
+      '<span class="orow-x">'+(a.trial&&a.trial.due&&a.status==='trial'?'<span>تسليم التجربة '+esc(fdate(a.trial.due))+'</span>':'')+'</span></button></li>'; }
+  function appBody(a){ var tr=a.trial||{};
+      return '<div class="body"><div class="grid2"><div>'+
         '<div class="small muted">الأعمال</div><div class="links">'+(a.reel?'<a href="'+esc(a.reel)+'" target="_blank" rel="noopener" dir="ltr">'+esc(a.reel)+'</a>':'')+(a.links||[]).map(function(l){ return '<a href="'+esc(l)+'" target="_blank" rel="noopener" dir="ltr">'+esc(l)+'</a>'; }).join('')+'</div>'+
         '<div class="small muted" style="margin-top:10px">التفاصيل</div><div class="small">'+[a.tools&&'الأدوات: '+esc(a.tools),a.hours&&'ساعات أسبوعياً: '+a.hours,a.rate&&'الأجر المتوقع: '+esc(a.rate),a.gender&&'الجنس: '+(a.gender==='female'?'أنثى':'ذكر'),a.langs&&'اللغات: '+esc(a.langs),'<span dir="ltr">'+esc(a.email)+'</span>'+(a.phone?' · <span dir="ltr">'+esc(a.phone)+'</span>':'')].filter(Boolean).join('<br>')+'</div>'+
         (a.about?'<div class="small muted" style="margin-top:10px">عنه</div><pre>'+esc(a.about)+'</pre>':'')+'</div>'+
@@ -61,7 +76,7 @@
             '<div class="row"><div class="field"><label>المنصة</label><select data-af="iv.platform"><option value="">اختر</option>'+[['meet','Google Meet'],['zoom','Zoom'],['whatsapp','WhatsApp']].map(function(o){ return '<option value="'+o[0]+'"'+(iv.platform===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div><div class="field"><label>الرابط أو الرقم</label><input data-af="iv.link" dir="ltr" value="'+esc(iv.link||'')+'"></div></div>'+
             (iv.sentAt?'<span class="tag c-good">انبعتت الدعوة · '+esc(new Date(iv.sentAt).toLocaleString('ar-u-nu-latn',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+'</span>':iv.mailFailed?'<span class="tag c-bad">ما زبط إرسال الدعوة، جرّب احفظ كمان مرة</span>':'')+'</div>'; })()+
           '<div class="field"><label>ملاحظاتك</label><textarea data-af="notes">'+esc(a.notes||'')+'</textarea></div>'+
-          '<div class="actions"><button class="btn sm primary" type="button" data-asave="'+esc(a.id)+'">حفظ</button>'+(a.status==='rejected'?(a.rejectMailAt?'<span class="tag">انبعتت رسالة الاعتذار</span>':'<button class="btn sm" type="button" data-areject="'+esc(a.id)+'">أرسل رسالة الاعتذار</button>'):'')+(a.member?'<span class="tag c-good">صار بالفريق</span>':'<button class="btn sm" type="button" data-aaccept="'+esc(a.id)+'">اقبله وجهّز حسابه</button>')+'<button class="btn sm danger" type="button" data-adel="'+esc(a.id)+'">حذف</button></div></div></div></div></details>'; }).join('')+'</div>';
+          '<div class="actions"><button class="btn sm primary" type="button" data-asave="'+esc(a.id)+'">حفظ</button>'+(a.status==='rejected'?(a.rejectMailAt?'<span class="tag">انبعتت رسالة الاعتذار</span>':'<button class="btn sm" type="button" data-areject="'+esc(a.id)+'">أرسل رسالة الاعتذار</button>'):'')+(a.member?'<span class="tag c-good">صار بالفريق</span>':'<button class="btn sm" type="button" data-aaccept="'+esc(a.id)+'">اقبله وجهّز حسابه</button>')+'<button class="btn sm danger" type="button" data-adel="'+esc(a.id)+'">حذف</button></div></div></div></div>';
   }
   function teamSettings(){ var s=TEAM.settings||{}, roles=s.roles||[];
     return '<form class="sec" id="tSet"><h3>التوظيف</h3><p class="hint">لما يكون مفعّل، صفحة <a href="/join" target="_blank" dir="ltr">eyeblinkstudio.com/join</a> بتستقبل طلبات. لما يكون مطفي، بتقول «لا نستقبل طلبات حالياً»</p>'+
@@ -201,7 +216,7 @@
   document.addEventListener('change',function(e){ var el=e.target; if(el.closest('#tSet')&&el.name==='roles') el.closest('.dchip').classList.toggle('on',el.checked); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-tsub],[data-tnew],[data-ttask],[data-tclose],[data-tcopy],[data-treview],[data-tpaid],[data-tcomment],[data-tdel],[data-tmadd],[data-tcontract],[data-treset],[data-tpause],[data-tpayall],[data-asave],[data-aaccept],[data-adel],[data-areject]'); if(!b) return;
     var D=b.dataset;
-    if(D.tsub){ TSUB=D.tsub; renderTeam(); return; }
+    if(D.tsub){ TSUB=D.tsub; TAOPEN=null; route(); renderTeam(); return; }
     if(b.hasAttribute('data-tclose')){ closeT(); return; }
     if(b.hasAttribute('data-tcopy')){ var tm=$('#tmsg'); try{ navigator.clipboard.writeText(tm.value).then(function(){ toast('انتسخت'); }); }catch(_){ tm.select(); } return; }
     if(b.hasAttribute('data-tnew')){ if(!TEAM.members.some(function(m){return m.status==='active'})){ toast('ضيف عضو للفريق أول',true); TSUB='members'; renderTeam(); return; } TNEWFOR=D.for||null; openTTask(null); return; }
@@ -234,3 +249,5 @@
     f.elements.title.value=w.title||''; if(!f.elements.alias.value) f.elements.alias.value=w.ref;
     f.elements.brief.value=[w.description,w.details,w.notes].filter(function(x){ return x&&String(x).trim(); }).join('\n\n');
     f.elements.links.value=links.join('\n'); if(due) f.elements.due.value=due; toast('تعبّت تفاصيل المهمة '+w.ref); });
+  document.addEventListener('click',function(e){ if(TAB!=='team') return; var b=e.target.closest('[data-aopen],[data-aback]'); if(!b) return;
+    TAOPEN=b.dataset.aopen||null; route(); renderTeam(); if(TAOPEN&&!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); });
