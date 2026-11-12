@@ -22,8 +22,10 @@
     <img src="../assets/img/favicon.svg" alt="" width="56" height="56">
     <h1>لوحة تحكم Eyeblink</h1>
     <p class="muted">أدخل كلمة السر لتعديل الموقع.</p>
+    <input type="text" name="username" value="Eyeblink admin" autocomplete="username" hidden aria-hidden="true">
     <label for="pw">كلمة السر</label>
     <input id="pw" type="password" autocomplete="current-password" required>
+    <label class="check" style="justify-content:center"><input type="checkbox" id="remember" checked> تذكّرني على هذا الجهاز (30 يوماً)</label>
     <button class="btn primary" type="submit">دخول</button>
     <p class="muted small" id="loginMsg"></p>
   </form>
@@ -35,6 +37,7 @@
     <div class="brand"><img src="../assets/img/favicon.svg" alt="" width="34" height="34"><b>EYEBLINK</b><span>لوحة التحكم</span></div>
     <nav id="tabs"></nav>
     <div class="mode" id="mode"></div>
+    <button class="btn sm" id="logoutBtn" type="button">تسجيل الخروج</button>
   </aside>
   <main class="main">
     <header class="top">
@@ -51,6 +54,6 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 <script src="../content.js"></script>
-<script src="admin.js?v=aca78f8e"></script>
+<script src="admin.js?v=7cb229fc"></script>
 </body>
 </html>

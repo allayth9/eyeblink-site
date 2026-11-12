@@ -1090,13 +1090,14 @@
       {h:'إنهاء التعاون',p:'لكل طرف إنهاء التعاون بإشعار كتابي، مع إتمام المهام القائمة أو تسليم ما أُنجز منها، ويُصرف أجر ما اعتُمد. وتبقى بنود السرية والملكية وعدم التواصل سارية بعد الإنهاء'},
       {h:'أحكام عامة',p:'تُعدّ المراسلات عبر بوابة الفريق والبريد الإلكتروني وتطبيقات المراسلة المعتمدة جزءاً مكمّلاً لهذه الاتفاقية، ولا يُعتدّ بأي تعديل عليها إلا كتابياً من الطرفين'}];
   }
-  function issueContract(m,b){ var S=dset(), lang=m.lang==='en'?'en':'ar', role=lang==='en'?m.role:(TROLE[m.role]||m.role);
+  function issueContract(m,b,quiet){ var S=dset(), lang=m.lang==='en'?'en':'ar', role=lang==='en'?m.role:(TROLE[m.role]||m.role);
     var body={lang:lang,title:(lang==='en'?'Independent collaboration · ':'تعاون مستقل · ')+role,summary:'',client:{name:m.name,company:'',place:'',contact:m.phone||'',email:m.email},studio:{name:S.studioName,place:S.studioPlace,contact:S.studioContact},items:[],cur:'$',
       includes:[],excludes:[],payMethods:'',notes:'',clauses:teamClauses(lang,{member:m.name,studio:S.studioName,role:role,payDays:7,months:12,payMethods:S.payMethods})};
     b.disabled=true; return api('/docs','POST',{action:'issue',type:'team',key:'member:'+m.email,doc:body}).then(function(j){ if(!j.ok) throw new Error(j.error);
       m.contract={token:j.doc.token,no:j.doc.no,signedAt:null}; var url=location.origin+'/team-agreement/'+j.doc.token;
+      if(quiet) return url;
       showCreds({title:'اتفاقية التعاون جاهزة',lines:[['الرابط',url]],msg:'مرحباً '+m.name+'، هذه اتفاقية التعاون مع Eyeblink Studio. اقرأها ووقّعها من الرابط، وبعدها تنفتح لك مهامك في بوابة الفريق:\n'+url,phone:m.phone,open:url}); renderTeam(); })
-      .catch(function(){ b.disabled=false; toast('ما انعملت الاتفاقية',true); }); }
+      .catch(function(e){ b.disabled=false; toast('ما انعملت الاتفاقية',true); if(quiet) throw e; }); }
   // a small sheet with what to send (login details, agreement link): copy, WhatsApp
   function showCreds(o){ var el=document.createElement('div'); el.id='tsheet';
     el.innerHTML='<div class="dbox"><div class="dtop"><b>'+esc(o.title)+'</b><button class="btn sm" type="button" data-tclose>إغلاق</button></div><div class="dres">'+o.lines.map(function(l){ return '<div class="field"><label>'+esc(l[0])+'</label><div class="dlink" dir="ltr">'+esc(l[1])+'</div></div>'; }).join('')+
@@ -1110,6 +1111,9 @@
     el.innerHTML='<div class="dbox"><div class="dtop"><div><b>'+(t?esc(t.title):'مهمة جديدة للفريق')+'</b>'+(t?' <span class="pill tt-'+t.status+'">'+TTST[t.status]+'</span>':'')+'</div><button class="btn sm" type="button" data-tclose>إغلاق</button></div>'+
       '<form id="tTask" class="dsec"><div class="row"><div class="field"><label>المتعاون</label><select name="member">'+act.concat(t&&!act.some(function(m){return m.email===t.member})?[{email:t.member,name:memName(t.member)}]:[]).map(function(m){ return '<option value="'+esc(m.email)+'"'+(m.email===x.member?' selected':'')+'>'+esc(m.name)+'</option>'; }).join('')+'</select></div>'+
         '<div class="field"><label>عنوان المهمة</label><input name="title" dir="auto" value="'+esc(x.title||'')+'" placeholder="مثال: مونتاج ريل 30 ثانية"></div></div>'+
+        (function(){ var open=((WORK&&WORK.tasks)||[]).filter(function(w){ return ['accepted','progress','revision','feedback','review','new'].indexOf(w.status)>=0; });
+          if(!open.length&&!x.workTask) return '<input type="hidden" name="workTask" value="">';
+          return '<div class="field"><label>من مهام العملاء (اختياري)</label><select name="workTask" data-wtpick><option value="">— مهمة مستقلة —</option>'+open.map(function(w){ return '<option value="'+esc(w.ref)+'"'+(w.ref===x.workTask?' selected':'')+'>'+esc(w.ref+' · '+w.title+(w.project_name?' · '+w.project_name:''))+'</option>'; }).join('')+'</select><p class="hint" style="margin:4px 0 0">بتعبّى التفاصيل لحالها: العنوان، والبريف، والروابط، والموعد. اسم العميل وإيميله والسعر ما بيوصلوا للمتعاون. راجع البريف قبل الإرسال إذا العميل كاتب فيه شي خاص</p></div>'; })()+
         '<div class="row"><div class="field"><label>اسم رمزي للمشروع (هاد يلي بيشوفه)</label><input name="alias" dir="auto" value="'+esc(x.alias||'')+'" placeholder="مثال: Project Amber"></div><div class="field"><label>التسليم</label><input name="due" type="date" value="'+esc(x.due||'')+'"></div><div class="field"><label>أجره</label><input name="fee" dir="ltr" value="'+esc(x.fee==null?'':x.fee)+'" placeholder="40"></div><div class="field" style="max-width:200px"><label>العملة</label>'+curSel('name="cur" data-tcur data-prev="'+esc(x.cur||'$')+'"',x.cur||'$')+'</div></div>'+
         '<div class="field"><label>البريف</label><textarea name="brief" dir="auto" rows="5" placeholder="شو المطلوب، المدة، الإحساس، المقاسات، المراجع">'+esc(x.brief||'')+'</textarea></div>'+
         '<div class="field"><label>روابط الملفات والمراجع (كل رابط بسطر)</label><textarea name="links" dir="ltr" rows="3">'+esc((x.links||[]).join('\n'))+'</textarea></div>'+
@@ -1126,13 +1130,17 @@
   var TNEWFOR=null;
   function closeT(){ var el=$('#tsheet'); if(el) el.remove(); TOPEN=null; document.documentElement.classList.remove('dlock'); }
   document.addEventListener('submit',function(e){ var f=e.target;
-    if(f.id==='tTask'){ e.preventDefault(); var E=f.elements, t=TOPEN; var task={id:t||'',member:E.member.value,title:E.title.value.trim(),alias:E.alias.value.trim(),due:E.due.value,fee:E.fee.value,cur:E.cur.value.trim()||'$',brief:E.brief.value,links:E.links.value.split('\n'),orderKey:E.orderKey.value,internal:E.internal.value};
+    if(f.id==='tTask'){ e.preventDefault(); var E=f.elements, t=TOPEN; var task={id:t||'',workTask:E.workTask?E.workTask.value:'',member:E.member.value,title:E.title.value.trim(),alias:E.alias.value.trim(),due:E.due.value,fee:E.fee.value,cur:E.cur.value.trim()||'$',brief:E.brief.value,links:E.links.value.split('\n'),orderKey:E.orderKey.value,internal:E.internal.value};
       if(!task.member){ toast('ضيف متعاون أول',true); return; } if(!task.title){ toast('اكتب عنوان المهمة',true); E.title.focus(); return; }
       treq({action:'taskSave',task:task},f.querySelector('[type=submit]'),t?'انحفظت المهمة':'وصلت المهمة للمتعاون').then(function(j){ TOPEN=j.task.id; loadTeam(); }); return; }
     if(f.id==='tAdd'){ e.preventDefault(); var E2=f.elements;
-      treq({action:'memberCreate',name:E2.name.value.trim(),email:E2.email.value.trim(),role:E2.role.value,phone:E2.phone.value.trim(),rate:E2.rate.value.trim(),app:E2.app.value},f.querySelector('[type=submit]')).then(function(j){
-        showCreds({title:'حساب '+j.member.name+' جاهز',lines:[['الرابط',j.link],['الإيميل',j.member.email],['كلمة السر المؤقتة',j.password]],note:'كلمة السر بتظهر هون مرة وحدة بس. أول ما يدخل بيختار كلمة سر خاصة فيه. الخطوة الجاية: «جهّز الاتفاقية»',
-          msg:'أهلاً '+j.member.name+'، صار عندك حساب ببوابة فريق Eyeblink:\n'+j.link+'\nالإيميل: '+j.member.email+'\nكلمة السر المؤقتة: '+j.password+'\nأول دخول بتختار كلمة سرك، وبتلاقي اتفاقية التعاون لتوقّعها',phone:E2.phone.value.trim()});
+      var sb=f.querySelector('[type=submit]');
+      treq({action:'memberCreate',deferWelcome:true,name:E2.name.value.trim(),email:E2.email.value.trim(),role:E2.role.value,phone:E2.phone.value.trim(),rate:E2.rate.value.trim(),app:E2.app.value},sb).then(function(j){
+        // the agreement first, then one e-mail: sign it, then sign in
+        return issueContract(j.member,sb,true).then(function(url){ return api('/team','POST',{action:'welcome',email:j.member.email,password:j.password,agreement:url}).then(function(w){ return {j:j,url:url,mailed:!!(w&&w.ok)}; }); }).catch(function(){ return {j:j,url:'',mailed:false}; });
+      }).then(function(r){ if(!r) return; var j=r.j;
+        showCreds({title:'حساب '+j.member.name+' جاهز',lines:[['الاتفاقية',r.url||'—'],['الرابط',j.link],['الإيميل',j.member.email],['كلمة السر المؤقتة',j.password]],note:(r.mailed?'انبعتله إيميل ترحيب فيه الاتفاقية ليوقّعها، وبعدها بيانات الدخول. ':'ما زبط إرسال الإيميل، ابعتله الرسالة تحت. ')+'كلمة السر بتظهر هون مرة وحدة بس، وأول ما يدخل بيختار كلمة سر خاصة فيه',
+          msg:'أهلاً '+j.member.name+'، أهلاً بك في فريق Eyeblink.\n1. اقرأ اتفاقية التعاون ووقّعها:\n'+(r.url||'')+'\n2. ادخل إلى مساحة الفريق:\n'+j.link+'\nالإيميل: '+j.member.email+'\nكلمة السر المؤقتة: '+j.password,phone:E2.phone.value.trim()});
         TSUB='members'; loadTeam(); }).catch(function(){}); return; }
     if(f.id==='tSet'){ e.preventDefault(); var roles=[].map.call(f.querySelectorAll('[name=roles]:checked'),function(i){ return i.value; });
       var fields={}; TFIELDS.forEach(function(x){ fields[x[0]]=f.elements['f_'+x[0]].value; });
@@ -1165,6 +1173,12 @@
     if(D.aaccept){ TSUB='members'; renderTeam(); var host=$('#tAdd'); if(host){ host.outerHTML=tAddForm({name:a.name,email:a.email,role:a.role,phone:a.phone,rate:a.rate,app:a.id}); var nf=$('#tAdd'); nf.hidden=false; nf.scrollIntoView({block:'center'}); } }
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&$('#tsheet')) closeT(); });
+  document.addEventListener('change',function(e){ var s=e.target; if(!s.matches||!s.matches('[data-wtpick]')||!s.value) return; var f=s.form, w=((WORK&&WORK.tasks)||[]).filter(function(x){ return x.ref===s.value; })[0]; if(!w) return;
+    var links=[]; try{ links=(typeof w.links==='string'?JSON.parse(w.links||'[]'):(w.links||[])).map(function(l){ return l&&l.url||l; }).filter(function(u){ return /^https?:\/\//.test(u); }); }catch(_){}
+    var due=w.confirmed_date||w.requested_date||''; if(due){ var dd=new Date(due+'T12:00:00Z'); dd.setUTCDate(dd.getUTCDate()-1); due=dd.toISOString().slice(0,10); }   // a day before the client's date, for the studio's review
+    f.elements.title.value=w.title||''; if(!f.elements.alias.value) f.elements.alias.value=w.ref;
+    f.elements.brief.value=[w.description,w.details,w.notes].filter(function(x){ return x&&String(x).trim(); }).join('\n\n');
+    f.elements.links.value=links.join('\n'); if(due) f.elements.due.value=due; toast('تعبّت تفاصيل المهمة '+w.ref); });
 
   /* ---------- support: tickets from the site's «هل يوجد مشكلة؟» window; replies also go out by e-mail ---------- */
   var SUPA=null, SOPEN=null, SFILT='open';
@@ -2213,7 +2227,7 @@
   $('#loginForm').addEventListener('submit',function(e){
     e.preventDefault(); var pw=$('#pw').value; var msg=$('#loginMsg'); msg.textContent='…';
     if(!onHttp){ LIVE=false; loadContent(); return; }
-    fetch(API+'/auth',{headers:{'authorization':'Bearer '+pw},cache:'no-store'}).then(function(r){
+    fetch(API+'/auth'+(($('#remember')||{}).checked?'?remember=1':''),{headers:{'authorization':'Bearer '+pw},cache:'no-store'}).then(function(r){
       // only trust replies that come from our own function (JSON with an "ok" field); anything else = no server here
       return r.text().then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(_){}
         if(!j || typeof j.ok!=='boolean'){ LIVE=false; return loadContent(); }
@@ -2223,5 +2237,8 @@
       });
     }).catch(function(){ LIVE=false; loadContent(); });
   });
-  try{ var saved=sessionStorage.getItem('eb-pw'); if(saved){ $('#pw').value=saved; $('#loginForm').requestSubmit(); } }catch(_){}
+  var saved=null; try{ saved=sessionStorage.getItem('eb-pw'); }catch(_){}
+  if(saved){ $('#pw').value=saved; $('#loginForm').requestSubmit(); }
+  else if(onHttp){ fetch(API+'/auth',{cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(r.status===200&&j.ok&&j.session){ PW=''; LIVE=true; loadContent(); } }); }).catch(function(){}); }
+  $('#logoutBtn').addEventListener('click',function(){ fetch(API+'/auth',{method:'DELETE'}).catch(function(){}).then(function(){ try{ sessionStorage.removeItem('eb-pw'); }catch(_){} location.reload(); }); });
 })();

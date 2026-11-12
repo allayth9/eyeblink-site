@@ -8,6 +8,7 @@
 <title>بوابة الفريق — Eyeblink</title>
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
 <style>
+.rem{display:flex!important;align-items:center;gap:8px;flex-direction:row!important;font-size:13.5px;color:var(--mist,#AEBBD2);cursor:pointer}.rem input{width:auto!important;margin:0}
 *,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
 @font-face{font-family:"EYEN Ammon";src:url(../assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:Hayyakum;src:url(../assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400;font-display:swap}
@@ -110,9 +111,10 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
   function drawLogin(){
     root.innerHTML='<div class="center"><form class="card" id="lf">'+logo()+'<h1>بوابة الفريق</h1><p>مهامك، ونسخك، وأجورك، بمكان واحد</p>'+
       '<label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="username" required></label><label>كلمة السر<input name="password" type="password" dir="ltr" autocomplete="current-password" required></label>'+
+      '<label class="rem"><input type="checkbox" name="remember" checked> تذكّرني على هذا الجهاز</label>'+
       '<button class="btn primary" type="submit">دخول</button><div class="msg" id="m"></div></form></div>';
     document.getElementById('lf').onsubmit=function(e){ e.preventDefault(); var f=e.target, b=f.querySelector('button'); b.disabled=true;
-      api({action:'login',email:f.email.value.trim(),password:f.password.value}).then(function(j){ if(j.ok) return load(); b.disabled=false; var m=document.getElementById('m'); m.className='msg err'; m.textContent=j.error==='slow'?'محاولات كثيرة، جرّب بعد ساعة':'البريد أو كلمة السر غير صحيحة'; }); };
+      api({action:'login',email:f.email.value.trim(),password:f.password.value,remember:f.remember.checked}).then(function(j){ if(j.ok) return load(); b.disabled=false; var m=document.getElementById('m'); m.className='msg err'; m.textContent=j.error==='slow'?'محاولات كثيرة، جرّب بعد ساعة':'البريد أو كلمة السر غير صحيحة'; }); };
   }
   function drawPassword(first){
     root.innerHTML='<div class="center"><form class="card" id="pf">'+logo()+'<h1>'+(first?'اختر كلمة سرك':'تغيير كلمة السر')+'</h1><p>'+(first?'كلمة السر المؤقتة تُستخدم مرة واحدة. اختر كلمة سر خاصة بك (10 أحرف على الأقل)':'')+'</p>'+

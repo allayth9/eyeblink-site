@@ -40,8 +40,8 @@ function memberTask(t){ return { id: t.id, title: t.title, alias: t.alias, brief
   paid: !!(t.payout && t.payout.paid), paidAt: t.payout && t.payout.at || null, createdAt: t.createdAt, updatedAt: t.updatedAt }; }
 function publicMember(u){ return { email: u.email, name: u.name, role: u.role, roleAr: ROLE_AR[u.role] || u.role, status: u.status, lang: u.lang || "ar", mustChange: !!u.mustChange,
   contract: u.contract ? { no: u.contract.no, signedAt: u.contract.signedAt || null, url: u.contract.token ? SITE + "/team-agreement/" + u.contract.token : null } : null }; }
-async function sessionCookie(env, email){ const t = randHex(24); await env.EB.put("tsess:" + t, email, { expirationTtl: TSESS_DAYS * 86400 });
-  return "eb_t=" + t + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + TSESS_DAYS * 86400; }
+async function sessionCookie(env, email, remember = true){ const t = randHex(24); await env.EB.put("tsess:" + t, email, { expirationTtl: remember ? TSESS_DAYS * 86400 : 86400 });
+  return "eb_t=" + t + "; Path=/; HttpOnly; Secure; SameSite=Lax" + (remember ? "; Max-Age=" + TSESS_DAYS * 86400 : ""); }
 
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
@@ -73,7 +73,7 @@ export async function onRequestPost(ctx) {
     const email = C_(d.email, 254).toLowerCase(), u = await kvJSON(env, "member:" + email);
     if (!u || u.status !== "active" || !u.hash || (await pbkdf2(String(d.password || ""), u.salt)) !== u.hash) return json({ ok: false, error: "wrong" }, 401);
     u.lastLogin = new Date().toISOString(); await env.EB.put("member:" + email, JSON.stringify(u));
-    return json({ ok: true, me: publicMember(u) }, 200, { "set-cookie": await sessionCookie(env, email) });
+    return json({ ok: true, me: publicMember(u) }, 200, { "set-cookie": await sessionCookie(env, email, d.remember !== false) });
   }
   if (d.action === "logout") { const m = (request.headers.get("cookie") || "").match(/(?:^|;\s*)eb_t=([a-f0-9]{48})/); if (m) await env.EB.delete("tsess:" + m[1]);
     return json({ ok: true }, 200, { "set-cookie": "eb_t=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" }); }
@@ -98,8 +98,8 @@ function ivWhen(iv){ const [d, t] = iv.at.split("T"), dt = new Date(d + "T12:00:
   const day = dt.toLocaleDateString("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   let [hh, mm] = t.split(":").map(Number); const pm = hh >= 12; hh = hh % 12 || 12;
   return day + "، الساعة " + hh + ":" + String(mm).padStart(2, "0") + (pm ? " مساءً " : " صباحاً ") + IV_TZ[iv.tz]; }
-async function appMail(env, a, kind, pw){
-  if (a.lang === "en") return appMailEn(env, a, kind, pw);
+async function appMail(env, a, kind, pw, ag){
+  if (a.lang === "en") return appMailEn(env, a, kind, pw, ag);
   const hi = "أهلاً " + (String(a.name || "").trim().split(/\s+/)[0] || "") + "،", role = ROLE_AR[a.role] || "";
   const box = rows => '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#0f1a4a;border:1px solid #1d2758;line-height:1.9">' + rows.map(r => '<b style="color:#ffffff">' + h(r[0]) + ':</b> ' + h(r[1])).join("<br>") + "</div>";
   let subject, title, body, cta = null, link = null;
@@ -112,14 +112,16 @@ async function appMail(env, a, kind, pw){
   else if (kind === "reject") { subject = "بخصوص طلب انضمامك · Eyeblink Studio"; title = "شكراً لوقتك واهتمامك";
     body = "<p style=\"margin:0\">راجعنا طلبك وأعمالك بعناية. لا يتوافق ما نحتاجه في هذه المرحلة مع ما تقدّمه، وهذا لا ينتقص من قيمة عملك.</p><p style=\"margin:12px 0 0\">نحتفظ بطلبك، وسنتواصل معك إن فُتح دور أقرب إلى اختصاصك.</p>"; }
   else if (kind === "welcome") { subject = "أهلاً بك في فريق Eyeblink Studio"; title = "أصبحت من فريق Eyeblink";
-    body = "<p style=\"margin:0\">يسعدنا أن نعمل معاً. جهّزنا حسابك في مساحة الفريق، وهذه خطواتك الأولى:</p>" + box([["البريد", a.email], ["كلمة السر المؤقتة", pw]]) +
-      "<p style=\"margin:14px 0 0\">1. ادخل وغيّر كلمة السر.<br>2. اقرأ اتفاقية التعاون ووقّعها إلكترونياً.<br>3. تصلك المهام في المساحة نفسها، ومعها البريف والموعد وأجرك.</p>";
-    cta = "افتح مساحة الفريق"; link = SITE + "/team/"; }
+    body = "<p style=\"margin:0\">يسعدنا أن نعمل معاً. أمامك خطوتان قبل أول مهمة:</p>" +
+      (ag ? "<p style=\"margin:14px 0 0\"><b style=\"color:#ffffff\">1. اتفاقية التعاون</b><br>اقرأ بنودها بعناية ووقّعها إلكترونياً من الزر أدناه.</p>" : "") +
+      "<p style=\"margin:14px 0 0\"><b style=\"color:#ffffff\">" + (ag ? "2. " : "") + "مساحة الفريق</b><br>ادخل من <a href=\"" + SITE + "/team/\" style=\"color:#3FE0E8\">" + SITE.replace("https://", "") + "/team</a> بهذه البيانات، واختر كلمة سرك عند أول دخول:</p>" + box([["البريد", a.email], ["كلمة السر المؤقتة", pw]]) +
+      "<p style=\"margin:14px 0 0\">تُفتح لك المهام بعد توقيع الاتفاقية، ومع كل مهمة البريف والموعد وأجرك.</p>";
+    cta = ag ? "اقرأ الاتفاقية ووقّعها" : "افتح مساحة الفريق"; link = ag || SITE + "/team/"; }
   else return false;
   return sendMail(env, a.email, subject, mail("ar", title, body, cta, link, hi));
 }
 
-async function appMailEn(env, a, kind, pw){
+async function appMailEn(env, a, kind, pw, ag){
   const hi = "Hi " + (String(a.name || "").trim().split(/\s+/)[0] || "") + ",", role = ROLE_EN[a.role] || "";
   const box = rows => '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#0f1a4a;border:1px solid #1d2758;line-height:1.9">' + rows.map(r => '<b style="color:#ffffff">' + h(r[0]) + ':</b> ' + h(r[1])).join("<br>") + "</div>";
   const P = (s, top) => '<p style="margin:' + (top ? "12px" : "0") + ' 0 0">' + s + "</p>";
@@ -133,9 +135,11 @@ async function appMailEn(env, a, kind, pw){
   else if (kind === "reject") { subject = "About your application · Eyeblink Studio"; title = "Thank you for your time";
     body = P("We reviewed your application and your work carefully. What we need at this stage does not match what you offer, and that says nothing against the quality of your work.") + P("We will keep your application and write to you if a closer role opens.", 1); }
   else if (kind === "welcome") { subject = "Welcome to the Eyeblink Studio team"; title = "You are now part of Eyeblink";
-    body = P("We are glad to work together. Your account in the team space is ready, and these are your first steps:") + box([["Email", a.email], ["Temporary password", pw]]) +
-      P("1. Sign in and change your password.<br>2. Read the collaboration agreement and sign it online.<br>3. Your tasks arrive in the same space, with the brief, the deadline and your fee.", 1);
-    cta = "Open the team space"; link = SITE + "/team/"; }
+    body = P("We are glad to work together. Two steps before your first task:") +
+      (ag ? P('<b style="color:#ffffff">1. The collaboration agreement</b><br>Read it carefully and sign it online with the button below.', 1) : "") +
+      P('<b style="color:#ffffff">' + (ag ? "2. " : "") + 'The team space</b><br>Sign in at <a href="' + SITE + '/team/" style="color:#3FE0E8">' + SITE.replace("https://", "") + '/team</a> with these details, and choose your own password the first time:', 1) + box([["Email", a.email], ["Temporary password", pw]]) +
+      P("Your tasks open once the agreement is signed, each with its brief, deadline and fee.", 1);
+    cta = ag ? "Read and sign the agreement" : "Open the team space"; link = ag || SITE + "/team/"; }
   else return false;
   return sendMail(env, a.email, subject, mail("en", title, body, cta, link, hi));
 }
@@ -219,8 +223,14 @@ async function adminAction(ctx, d){
     await env.EB.put("member:" + email, JSON.stringify(u));
     if (u.app) { const a = await kvJSON(env, "teamapp:" + u.app); if (a) { if (a.status !== "accepted") { a.history.push({ at: now, status: "accepted" }); a.status = "accepted"; } a.member = email; await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); } }
     const fromApp = u.app ? await kvJSON(env, "teamapp:" + u.app) : null; if (fromApp && fromApp.lang === "en") { u.lang = "en"; await env.EB.put("member:" + email, JSON.stringify(u)); }
-    const welcomed = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang }, "welcome", pw);
+    const welcomed = d.deferWelcome ? false : await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang }, "welcome", pw);
     return json({ ok: true, member: publicMember(u), password: pw, link: SITE + "/team/", welcomed });
+  }
+  if (d.action === "welcome") {
+    const u = await kvJSON(env, "member:" + C_(d.email, 254).toLowerCase()); if (!u) return json({ ok: false }, 404);
+    const ag = /^https:\/\/[^\s]+\/team-agreement\/[a-f0-9]+$/i.test(C_(d.agreement, 300)) ? C_(d.agreement, 300) : "";
+    const sent = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang }, "welcome", C_(d.password, 80), ag);
+    return json({ ok: !!sent, error: sent ? undefined : "mail" });
   }
   if (d.action === "memberUpdate" || d.action === "memberReset") {
     const u = await kvJSON(env, "member:" + C_(d.email, 254).toLowerCase()); if (!u) return json({ ok: false }, 404);
@@ -240,7 +250,7 @@ async function adminAction(ctx, d){
     const t = Object.assign(old || { id: "t_" + randHex(6), createdAt: now, status: "assigned", versions: [], comments: [], log: [] }, {
       member: m.email, title: C_(x.title, 160), alias: C_(x.alias, 80), brief: C_(x.brief, 6000), links: L_(x.links, 12, 600).filter(l => URL_OK.test(l)),
       due: /^\d{4}-\d{2}-\d{2}$/.test(x.due || "") ? x.due : "", fee: Math.max(0, num(x.fee)), cur: C_(x.cur, 8) || "$",
-      orderKey: C_(x.orderKey, 120), projectId: C_(x.projectId, 40), internal: C_(x.internal, 2000), updatedAt: now });
+      orderKey: C_(x.orderKey, 120), projectId: C_(x.projectId, 40), workTask: C_(x.workTask, 12), internal: C_(x.internal, 2000), updatedAt: now });
     if (!t.title) return json({ ok: false, error: "title" }, 400);
     await env.EB.put("ttask:" + t.id, JSON.stringify(t));
     if (!old && m.status === "active") ctx.waitUntil(sendMail(env, m.email, (m.lang === "en" ? "New task: " : "مهمة جديدة: ") + t.title,
