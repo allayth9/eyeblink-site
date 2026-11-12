@@ -83,7 +83,7 @@
         return '<button type="button" class="cl-row'+(c.status==='archived'?' arch':'')+'" data-copen="'+esc(c.email)+'">'+avatar(c)+
           '<span class="cl-id"><b>'+esc(c.name||c.email)+'</b>'+(c.company?'<small>'+esc(c.company)+'</small>':'')+'<span class="small muted" dir="ltr">'+esc(c.email)+(c.phone?' · '+esc(c.phone):'')+'</span></span>'+
           '<span class="cl-st">'+acctChip(c)+(c.status!=='active'?'<span class="rpill st-'+esc(c.status)+'">'+esc(CST[c.status])+'</span>':'')+'</span>'+
-          '<span class="cl-n"><span><b>'+(c.projects||0)+'</b>مشاريع</span><span><b>'+c._orders+'</b>طلبات</span><span><b>'+(c.open_tasks||0)+'</b>مهام مفتوحة</span></span>'+
+          '<span class="cl-n">'+(c.projects?'<span><b>'+c.projects+'</b> '+(c.projects>1?'مشاريع':'مشروع')+'</span>':'')+(c._orders?'<span><b>'+c._orders+'</b> '+(c._orders>1?'طلبات':'طلب')+'</span>':'')+(c.open_tasks?'<span><b>'+c.open_tasks+'</b> '+(c.open_tasks>1?'مهام مفتوحة':'مهمة مفتوحة')+'</span>':'')+'</span>'+
           '<span class="cl-f">'+(c._new?'<i class="fl new">'+c._new+' جديد</i>':'')+(c._late?'<i class="fl late">متأخر '+c._late+'</i>':'')+(c.due_invoices?'<i class="fl due">'+c.due_invoices+' فاتورة مستحقة</i>':'')+'</span>'+
           '<span class="cl-t small muted">'+esc(ago2(c.last_activity))+'</span></button>'; }).join('')+'</div>'
         :'<div class="empty">'+(all.length?'لا يوجد عملاء يطابقون هذا البحث.':'لا يوجد عملاء بعد. أضف أول عميل من زر «عميل جديد».')+'</div>')+'</section>'+
@@ -105,14 +105,18 @@
     if(!P.d){ $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="skel"><i></i><i></i><i></i></div></section>'; return; }
     var D=P.d, c=D.client||{}, u=D.user, email=P.email, isCl=u.role==='client', ords=ordersOf(email), listC=(CL&&CL.clients||[]).filter(function(x){ return x.email===email; })[0]||{};
     var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,log:D.activity.length};
-    var head='<section class="sec cp-head"><div class="cp-top"><button class="btn sm" type="button" data-pclose>← كل العملاء</button>'+(P.loading?'<span class="small muted">يُحدَّث…</span>':'')+'</div>'+
+    var head='<section class="sec cp-head"><div class="cp-top"><button class="btn sm" type="button" data-pclose>‹ كل العملاء</button>'+(P.loading?'<span class="small muted">يُحدَّث…</span>':'')+'</div>'+
       '<div class="cph2">'+avatar({name:c.name||u.name,email:email,logo_url:c.logo_url},true)+'<div class="cp-id"><h2>'+esc(c.name||u.name||email)+'</h2>'+(c.company?'<div>'+esc(c.company)+'</div>':'')+
         '<div class="small muted"><span dir="ltr" style="user-select:all">'+esc(email)+'</span>'+(c.phone?' · <span dir="ltr">'+esc(c.phone)+'</span>':'')+(c.id?' · <span class="code">'+esc(c.id)+'</span>':'')+'</div>'+
         '<div class="cp-chips">'+acctChip({account:D.account?{role:u.role}:null})+'<span class="rpill st-'+esc(c.status||'active')+'">'+esc(CST[c.status||'active'])+'</span>'+(isCl&&u.clientSince?'<span class="small muted">متعاقد منذ '+esc(new Date(u.clientSince).toLocaleDateString('ar'))+'</span>':'')+'</div></div>'+
         '<div class="actions client cp-acts">'+'<button class="btn sm" type="button" data-cedit>'+(PEDIT?'إغلاق التعديل':'تعديل البيانات')+'</button>'+
-          (c.status==='archived'?'<button class="btn sm" type="button" data-carch="0">استعادة العميل</button>':'<button class="btn sm" type="button" data-carch="1">أرشفة</button>')+
-          (D.account?(isCl?'<button class="btn sm" type="button" data-urole="'+esc(email)+'" data-to="customer">إلغاء مساحة العمل</button>':'<button class="btn sm primary" type="button" data-urole="'+esc(email)+'" data-to="client">ترقية إلى عميل متعاقد</button>')+
-            '<button class="btn sm" type="button" data-ctemp>بيانات دخول جديدة</button><button class="btn sm danger" type="button" data-udel="'+esc(email)+'">حذف الحساب</button>':'<button class="btn sm primary" type="button" data-cready>تجهيز حسابه وإصدار بيانات الدخول</button><button class="btn sm" type="button" data-cinvite>إرسال دعوة بدلاً من ذلك</button>')+
+          (D.account?(isCl?'':'<button class="btn sm primary" type="button" data-urole="'+esc(email)+'" data-to="client">ترقية إلى عميل متعاقد</button>'):'<button class="btn sm primary" type="button" data-cready>تجهيز حسابه وإصدار بيانات الدخول</button>')+
+          '<details class="cp-more"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
+            (D.account?'<button class="btn sm" type="button" data-ctemp>بيانات دخول جديدة</button>':'<button class="btn sm" type="button" data-cinvite>إرسال دعوة بدلاً من التجهيز</button>')+
+            (D.account&&isCl?'<button class="btn sm" type="button" data-urole="'+esc(email)+'" data-to="customer">إلغاء مساحة العمل</button>':'')+
+            (c.status==='archived'?'<button class="btn sm" type="button" data-carch="0">استعادة العميل</button>':'<button class="btn sm" type="button" data-carch="1">أرشفة</button>')+
+            (D.account?'<button class="btn sm danger" type="button" data-udel="'+esc(email)+'">حذف الحساب</button>':'')+
+          '</div></details>'+
           '<div class="newpw small" hidden></div></div></div>'+
       (PEDIT?'<form class="cl-edit" id="clEdit" novalidate><div class="row"><div class="field"><label>الاسم</label><input name="name" dir="auto" value="'+esc(c.name||u.name||'')+'"></div><div class="field"><label>الشركة أو العلامة</label><input name="company" dir="auto" value="'+esc(c.company||'')+'"></div></div>'+
         '<div class="row"><div class="field"><label>الهاتف أو واتساب</label><input name="phone" dir="ltr" value="'+esc(c.phone||'')+'"></div><div class="field"><label>رابط الشعار أو الصورة</label><input name="logo_url" dir="ltr" placeholder="https://" value="'+esc(c.logo_url||'')+'"></div>'+
@@ -122,7 +126,7 @@
       '<nav class="cp-tabs" role="tablist">'+PSECS.map(function(x){ return '<button type="button" role="tab" class="t-'+x[0]+'" aria-selected="'+(PSEC===x[0])+'" data-psec="'+x[0]+'">'+x[1]+(cnt[x[0]]?' <small>'+cnt[x[0]]+'</small>':'')+'</button>'; }).join('')+'</nav></section>';
     $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
   }
-  function kpi(n,l,k){ return '<div class="ck" style="--k:'+k+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
+  function kpi(n,l,k){ var fam={'#F5C66B':' ck-wait','#7DD3FC':' ck-ok'}[k]||''; return '<div class="ck'+fam+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
   function due2(D){ var due={},paid={}; D.invoices.forEach(function(x){ if(x.status!=='cancelled') paid[x.currency]=(paid[x.currency]||0)+x.paid-(x.refunded||0); if(x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0) due[x.currency]=(due[x.currency]||0)+x.balance; });
     orderBills().filter(function(o){ return o.email===PROF.email; }).forEach(function(o){ paid[o.currency]=(paid[o.currency]||0)+o.paid; if(['pending','partial'].indexOf(o.state)>=0) due[o.currency]=(due[o.currency]||0)+o.balance; }); return {due:due,paid:paid}; }
   var OPENS=['new','review','info','accepted','progress','feedback','revision','final'];
@@ -341,3 +345,5 @@
       if(!LIVE){ rm(); return; }
       fetch(API+'/users?email='+encodeURIComponent(em),{method:'DELETE',headers:headers({})}).then(function(r){ if(!r.ok) throw 0; rm(); }).catch(function(){ toast('تعذّر الحذف',true); }); }
   });
+  // the «⋯» menu on a profile closes when you click anywhere else
+  document.addEventListener('click',function(e){ [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });

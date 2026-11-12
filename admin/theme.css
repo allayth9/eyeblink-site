@@ -227,3 +227,18 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 html{font-synthesis:none}
 .btn,.btn.primary,button{font-weight:500}
 b,strong,th{font-weight:500}
+
+/* ---------- clients (phase 6): brand avatars, quiet counts, one main action + a «⋯» menu, one colour per meaning ---------- */
+.cl-av{background:var(--grad)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.cl-n{gap:6px;flex-wrap:wrap}
+.cl-n span{display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;padding:2px 10px;border-radius:999px;background:rgba(var(--fg),.06);font-size:12px;color:var(--mist)}
+.cl-n b{font:400 12.5px Oswald,sans-serif;color:var(--light)}
+.ck{background:rgba(var(--fg),.04)!important;box-shadow:inset 0 0 0 1px var(--line)!important}
+.ck b{color:var(--light)!important}.ck-wait b{color:var(--f-wait)!important}.ck-ok b{color:var(--f-ok)!important}
+.cp-tabs button[aria-selected="true"]{background:var(--grad);color:#fff;font-weight:500;box-shadow:0 8px 20px -10px rgba(28,69,230,.8)}
+.cp-more{position:relative}
+.cp-more>summary{list-style:none;cursor:pointer;min-width:38px;justify-content:center}
+.cp-more>summary::-webkit-details-marker{display:none}
+.cp-menu{position:absolute;inset-inline-end:0;top:calc(100% + 6px);z-index:20;min-width:230px;display:grid;gap:4px;padding:8px;border-radius:16px;background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--line),inset 1px 1px 0 var(--glass-edge),0 24px 60px -20px rgba(0,0,0,.6)}
+.cp-menu .btn{justify-content:flex-start;width:100%}
