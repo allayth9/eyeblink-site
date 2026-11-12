@@ -1,3 +1,4 @@
+import { isAdmin } from "../_lib/shared.js";
 // View counts for the works in the gallery (D1, binding "DB").
 // GET  /api/views         — public: { ok, views: { "<work id>": n } } for every work on the site
 // POST /api/views { id }  — public: one real view of a work (a visitor opened it to watch it).
@@ -33,7 +34,13 @@ async function seedMissing(D, ids){
   await D.batch(ids.map(id => { const n = seedN(); return D.prepare("INSERT OR IGNORE INTO work_views (id, n, seed, updated_at) VALUES (?, ?, ?, ?)").bind(id, n, n, at); }));
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
+  // the panel: how often each shared link (/w/<slug>) was opened
+  if (new URL(request.url).searchParams.get("shares") === "1") {
+    if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+    const shares = {}; try { const r = (await env.DB.prepare("SELECT slug, n, last FROM share_opens").all()).results || []; for (const x of r) shares[x.slug] = { n: x.n, last: x.last }; } catch {}
+    return json({ ok: true, shares }, 200, { "cache-control": "no-store" });
+  }
   const D = await db(env); if (!D) return json({ ok: true, views: {} });
   const ids = await workIds(env); if (!ids.length) return json({ ok: true, views: {} });
   await seedMissing(D, ids);

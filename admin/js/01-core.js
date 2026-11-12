@@ -80,7 +80,9 @@
     thumb:function(x){ return x.poster||''; },
     sub:function(x){ var s=(C.services||[]).filter(function(v){ return v.id===x.service; })[0], cs=['brief','challenge','idea','execution','result'].some(function(k){ return x[k]&&x[k].ar; });
       return [(s&&s.name&&s.name.ar)||'',x.year||''].filter(Boolean).join(' · ')+(cs?' · دراسة حالة':''); },
-    tag:function(x,i){ return !x.preview&&!x.poster?['بلا معاينة','fix']:i<3?['بالرئيسية']:null; },
+    tag:function(x,i){ var shown=(C.projects||[]).slice(0,i+1).filter(function(y){ return !y.private; }).length;
+      return x.private?['خاص · بالرابط','off']:!x.preview&&!x.poster?['بلا معاينة','fix']:shown<=3?['بالرئيسية']:null; },
+    share:true,
     tabs:[['الأساسي',[0,1,2,3]],['الفيديو',[11,12,13,14]],['دراسة الحالة',[4,5,6,7,8,9]],['الكواليس',[10]]]};
   var SVC=function(){ return (C.services||[]).map(function(s){return [s.id, (s.name&&s.name.ar)||s.id]}); };
   var TABS=[
@@ -285,7 +287,7 @@
         '<span class="orow-m"><b>'+esc(r.name(x,i))+'</b></span><span class="orow-p">'+esc(sp.sub?sp.sub(x,i):'')+'</span>'+(tg?'<span class="tag'+(tg[1]?' tf-'+tg[1]:' rtag')+'">'+esc(tg[0])+'</span>':'')+'</button></li>'; }).join('');
     var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+p+'.'+sel+'.'); };
     var panel=it?'<div class="order item odetail rpanel"><div class="odh"><button class="btn sm oback" type="button" data-rback="'+esc(p)+'">‹ '+esc(sp.all||'كل العناصر')+'</button><b>'+esc(r.name(it,sel))+'</b>'+
-        (r.fixed?'':'<details class="cp-more rmore"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
+        (sp.share?shareBox(it,sel,p):'')+(r.fixed?'':'<details class="cp-more rmore"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
           '<button class="btn sm danger" type="button" data-del="'+si+':'+sel+'">حذف</button></div></details>')+'</div>'+
         (tabs.length>1?'<div class="subtabs rtabs">'+tabs.map(function(t,k){ return '<button type="button" data-rtab="'+esc(p)+':'+k+'"'+(k===ti?' aria-current="true"':'')+'>'+esc(t[0])+'</button>'; }).join('')+'</div>':'')+
         '<div class="body">'+tabs[ti][1].map(function(k){ return pre(field(it,r.fields[k])); }).join('')+'</div></div>'
@@ -293,8 +295,28 @@
     var hint=!r.fixed&&arr.length>1?'<li class="olh rhint">'+arr.length+' · اضغط مطوّلاً واسحب لتغيير الترتيب</li>':'';
     return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"'+(r.fixed?' data-fixed="1"':'')+'><ul class="olist">'+hint+rows+'</ul>'+panel+'</div>'+
       (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button></div>'); }
+  /* share a work: its short link (made once from the English name), copy / WhatsApp / e-mail / open, «private» (opens
+     from the link only), and how often the link was opened. A new link works once it is published. */
+  var SHARES=null, SHOPEN=false;
+  function slugOf(it,arr){ var b=String((it.title&&(it.title.en||''))||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48)||('work-'+Math.random().toString(36).slice(2,7)), s=b, n=2;
+    while(arr.some(function(x){ return x!==it&&x.slug===s; })) s=b+'-'+(n++); return s; }
+  function shareBox(it,sel,p){ var u=it.slug?'https://eyeblinkstudio.com/w/'+it.slug:'', t=(it.title&&it.title.ar)||'', live=it.slug&&SAVED.indexOf('"slug":"'+it.slug+'"')>=0, o=SHARES&&it.slug&&SHARES[it.slug];
+    if(SHARES===null&&LIVE){ SHARES={}; fetch(API+'/views?shares=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(j.ok){ SHARES=j.shares; if(TAB==='work') render(); } }).catch(function(){}); }
+    return '<details class="cp-more rshare"'+(SHOPEN?' open':'')+'><summary class="btn sm primary">مشاركة</summary><div class="cp-menu rshare-m">'+
+      (!u?'<p class="small muted">ما إله رابط لسا</p><button class="btn sm primary" type="button" data-rslug="'+esc(p)+':'+sel+'">جهّز رابط</button>':
+        '<div class="rlink"><input readonly dir="ltr" value="'+esc(u)+'" aria-label="رابط العمل"><button class="btn sm" type="button" data-rcopy="'+esc(u)+'">نسخ</button></div>'+
+        '<div class="rshare-b"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(t+' · '+u)+'">واتساب</a><a class="btn sm" href="mailto:?subject='+encodeURIComponent(t+' · Eyeblink Studio')+'&body='+encodeURIComponent(u)+'">إيميل</a><a class="btn sm" target="_blank" rel="noopener" href="'+esc(u)+'">فتح ↗</a></div>'+
+        (live?'':'<p class="small rwarn">انشر التعديلات حتى يشتغل الرابط</p>'))+
+      '<label class="check rpriv"><input type="checkbox" data-p="'+esc(p)+'.'+sel+'.private" data-t="check"'+(it.private?' checked':'')+'> عمل خاص: بيفتح بالرابط بس، وما بيبين بقائمة الأعمال</label>'+
+      (u?'<p class="small muted">'+(o&&o.n?'الرابط انفتح '+o.n+(o.n===1?' مرة':' مرات')+' · آخر مرة '+esc(new Date(o.last).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):'الرابط لسا ما انفتح')+'</p>':'')+'</div></details>'; }
+  document.addEventListener('toggle',function(e){ if(e.target.classList&&e.target.classList.contains('rshare')) SHOPEN=e.target.open; },true);
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-rslug],[data-rcopy]'); if(!b) return;
+    if(b.dataset.rcopy){ var u=b.dataset.rcopy; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ toast('انتسخ الرابط'); },function(){ b.previousSibling.select(); }); return; }
+    var q=b.dataset.rslug.split(':'), arr=get(C,q[0]), it=arr[+q[1]]; it.slug=slugOf(it,arr); SHOPEN=true; render(); dirty(); saveDraft(); });
+  // a ticked «private» moves the work's tag right away
+  document.addEventListener('change',function(e){ if(/\.private$/.test(e.target.dataset&&e.target.dataset.p||'')) setTimeout(render,0); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-ropen],[data-rback],[data-rtab]'); if(!b) return;
-    if(b.dataset.ropen){ var q=b.dataset.ropen.split(':'); ROPEN[q[0]]=+q[1]; render();
+    if(b.dataset.ropen){ var q=b.dataset.ropen.split(':'); ROPEN[q[0]]=+q[1]; SHOPEN=false; render();
       if(!matchMedia('(min-width:1001px)').matches){ var pn=document.querySelector('.rsplit[data-rep="'+q[0]+'"]'); if(pn) pn.scrollIntoView({block:'start'}); } return; }
     if(b.dataset.rback){ ROPEN[b.dataset.rback]=-1; render(); return; }
     var t=b.dataset.rtab.split(':'); RTAB[t[0]]=+t[1]; render(); });

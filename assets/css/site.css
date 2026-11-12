@@ -1962,3 +1962,10 @@ html{-webkit-tap-highlight-color:transparent}
 .wpt{grid-template-columns:84px 110px minmax(0,1fr)}
 .wpt select{min-width:0}
 @media (max-width:620px){ .wpt{grid-template-columns:84px 1fr} .wpt input[name=x]{grid-column:1/-1} }
+/* share the open work (player bar): an icon; on a computer it says «link copied» for a moment */
+.lightbox #lbShare{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:auto;min-width:46px;padding:0 14px;border-radius:99px;margin-inline-start:auto}
+.lightbox #lbShare[hidden]{display:none}
+.lightbox .bar2 .lbshare+.close{margin-inline-start:8px}
+.lbshare svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lbshare span{font-size:13px;max-width:0;overflow:hidden;white-space:nowrap;transition:max-width .35s ease}
+.lbshare.done span{max-width:140px}

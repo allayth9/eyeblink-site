@@ -346,4 +346,5 @@
       fetch(API+'/users?email='+encodeURIComponent(em),{method:'DELETE',headers:headers({})}).then(function(r){ if(!r.ok) throw 0; rm(); }).catch(function(){ toast('تعذّر الحذف',true); }); }
   });
   // the «⋯» menu on a profile closes when you click anywhere else
-  document.addEventListener('click',function(e){ [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });
+  document.addEventListener('click',function(e){ if(!e.target.isConnected) return;   // a click that redrew the page is not a click outside
+    [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });
