@@ -38,23 +38,8 @@
   --au3:#9DB6F5; --auOp:.22; --lidOp:.75;
 }
 
-/* ---------- the sky: a soft aurora + the eyelid strokes with meteors of light (admin/sky.js), fixed behind everything ---------- */
+/* ---------- the sky: a soft aurora + a ribbon of light woven from fine threads (admin/sky.js, a canvas), fixed behind everything ---------- */
 #sky{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:var(--lidOp)}
-#sky .l1,#sky .l2{animation:skyBreath 9s ease-in-out infinite}#sky .l2{animation-delay:-4.5s}
-@keyframes skyBreath{0%,100%{stroke-opacity:.7}50%{stroke-opacity:1}}
-/* a pulse of light inside the stroke: the same gradient, brighter, a head and a fading tail moving together.
-   Each length is a dash of a 3000 cycle on a 1000-long path: it crosses in the first third of the cycle, then rests. */
-#sky .pl path{fill:none;stroke:url(#skyg);stroke-linecap:round;animation:var(--k) var(--d,16s) linear infinite;animation-delay:var(--dl,0s)}
-#sky .pl{filter:brightness(1.7) saturate(1.15)}
-#sky .t1{stroke-dasharray:70 2930;--k:skyMet1;stroke-opacity:.95}
-#sky .t2{stroke-dasharray:170 2830;--k:skyMet2;stroke-opacity:.45}
-#sky .t3{stroke-dasharray:340 2660;--k:skyMet3;stroke-opacity:.2}
-#sky .m1{--d:14s;--dl:-2s}#sky .m2{--d:19s;--dl:-9s}#sky .m3{--d:24s;--dl:-15s}#sky .m4{--d:33s;--dl:-24s}
-/* heads together: each length starts with its head at the start of the curve and moves 3000 along */
-@keyframes skyMet1{from{stroke-dashoffset:70}to{stroke-dashoffset:-2930}}
-@keyframes skyMet2{from{stroke-dashoffset:170}to{stroke-dashoffset:-2830}}
-@keyframes skyMet3{from{stroke-dashoffset:340}to{stroke-dashoffset:-2660}}
-@media (prefers-reduced-motion:reduce){#sky .mets{display:none}#sky .l1,#sky .l2{animation:none}}
 html,body{background:var(--night)}
 body{background:none;position:relative;isolation:isolate}
 body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none;opacity:var(--auOp);filter:blur(90px);
