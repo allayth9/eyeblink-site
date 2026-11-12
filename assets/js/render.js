@@ -341,15 +341,17 @@
       var media='<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>'+
         (p.preview?'<video class="hov" muted loop playsinline preload="none" data-src="'+esc(url(p.preview))+'" aria-hidden="true"></video>':'');
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
-      return '<button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
+      return '<div class="pw" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
         '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
           '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
           '<span class="cap">'+esc(lab+(p.year?' · '+p.year:''))+'</span></div>'+PROPS[PROPS[p.service]?p.service:'films']+'</div>'+
         '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+
-        '<span class="views" data-views="'+esc(workKey(p))+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span></div></button>';
+        '<span class="views" data-views="'+esc(workKey(p))+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span></div></button>'+
+        (p.slug?'<button type="button" class="pshare glass" data-share="'+i+'" aria-label="'+esc((AR?'مشاركة: ':'Share: ')+L(p.title))+'">'+SHARE_ICO+'</button>':'')+'</div>';
     }).join('');
     loadViews();
+    [].forEach.call(grid.querySelectorAll('.pshare'),function(b){ b.addEventListener('click',function(){ shareWork(list[+b.dataset.share],b); }); });
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     // preview on hover (mouse) or keyboard focus; it fades in once it is really playing, and back to the cover on leave
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -480,28 +482,26 @@
     fetch(BASE+'api/views',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:k}),keepalive:true})
       .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&typeof j.n==='number'){ VIEWS=VIEWS||{}; VIEWS[k]=j.n; paintViews(); } }).catch(function(){});
   }
-  var lb,lbFrame,lbTitle,lastFocus,lbWork=null,DEEP=false;
+  var lb,lbFrame,lbTitle,lastFocus,DEEP=false;
   // a shared link (/w/<slug> → work.html?w=<slug>) opens that work by itself, once
   // the page draws first from its saved copy, then from the live content: wait until the work is there
   function deepWork(){ if(DEEP) return; var w=new URLSearchParams(location.search).get('w'); if(!w) return;
     var p=(C.projects||[]).filter(function(x){ return x&&x.slug===w; })[0]; if(!p) return; DEEP=true; try{ history.replaceState(null,'',location.pathname+location.hash); }catch(_){}
     setTimeout(function(){ bindLB(); if(lb) openLB(p); },350); }
   // share the open work: the phone's share sheet, or the link copied on a computer
-  function shareWork(){ var p=lbWork; if(!p||!p.slug) return; var u=location.origin+'/w/'+encodeURIComponent(p.slug)+(AR?'':'?l=en'), t=L(p.title)+' · Eyeblink Studio', b=document.getElementById('lbShare');
+  var SHARE_ICO='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 13.3l7.4 4.4M15.7 6.3l-7.4 4.4"/></svg>';
+  function shareWork(p,b){ if(!p||!p.slug) return; var u=location.origin+'/w/'+encodeURIComponent(p.slug)+(AR?'':'?l=en'), t=L(p.title)+' · Eyeblink Studio';
     if(navigator.share){ navigator.share({title:t,url:u}).catch(function(){}); return; }
-    var done=function(){ b.classList.add('done'); b.querySelector('span').textContent=AR?'انتسخ الرابط':'Link copied'; setTimeout(function(){ b.classList.remove('done'); },1800); };
+    var done=function(){ var t=b.querySelector('.ptip')||b.appendChild(document.createElement('span')); t.className='ptip'; t.setAttribute('role','status'); t.textContent=AR?'انتسخ الرابط':'Link copied'; b.classList.add('done'); clearTimeout(b._t); b._t=setTimeout(function(){ b.classList.remove('done'); },1800); };
     if(navigator.clipboard) navigator.clipboard.writeText(u).then(done,function(){ prompt('',u); }); else prompt('',u); }
   function bindLB(){
     if(lbBound) return; lb=document.getElementById('lb'); if(!lb) return; lbBound=true;
     lbFrame=document.getElementById('lbFrame'); lbTitle=document.getElementById('lbTitle');
     document.getElementById('lbClose').addEventListener('click',closeLB);
-    document.getElementById('lbClose').insertAdjacentHTML('beforebegin','<button type="button" class="close glass lbshare" id="lbShare" aria-label="'+(AR?'مشاركة العمل':'Share this work')+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg><span></span></button>');
-    document.getElementById('lbShare').addEventListener('click',shareWork);
     lb.addEventListener('click',function(e){ if(e.target===lb) closeLB(); });
     addEventListener('keydown',function(e){ if(e.key==='Escape'&&!lb.hidden) closeLB(); });
   }
   function openLB(p){
-    lbWork=p; var sb=document.getElementById('lbShare'); if(sb){ sb.hidden=!p.slug; sb.classList.remove('done'); }
     countView(p); if(CP.on) play(null);
     var f=p.full||{}, src='', html='', title=L(p.title);
     var v=vid(f);
