@@ -24,7 +24,8 @@ function secure(res) {
 }
 export async function onRequest(ctx) {
   // the repo is published as it is: its developer files (dev/, dot-files) are not part of the site
-  if (/^\/(dev(\/|$)|\.)/i.test(new URL(ctx.request.url).pathname)) return secure(new Response("Not found", { status: 404 }));
+  // (tools/ and the old readme were removed on 12 Nov 2026; the edge cache may still hold them for a week)
+  if (/^\/(dev(\/|$)|tools(\/|$)|\.|%D8%A7%D9%82%D8%B1%D8%A3%D9%86%D9%8A-README)/i.test(new URL(ctx.request.url).pathname)) return secure(new Response("Not found", { status: 404 }));
   return secure(await withTitles(ctx));
 }
 async function withTitles(ctx) {
