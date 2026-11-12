@@ -4,7 +4,7 @@
 
 :root{
   color-scheme:dark;
-  --night:#04061A; --panel:#0B1236; --panel2:#111A45; --light:#EEF2F6; --mist:#AEBBD2; --dim:#8FA0C2;
+  --night:#04061A; --panel:#0B1236; --panel2:#111A45; --light:#EEF2F6; --mist:#AEBBD2; --dim:#9AA9C8;
   --horizon:#3FE0E8; --hour:#2E62FF; --dusk:#8B5CFF; --venus:#E07BE0;
   /* rgb triplets the old literals now read */
   --fg:255,255,255; --acc:63,224,232; --bgc:4,6,26; --ln:190,210,255; --ln2:174,187,210; --scr:2,3,14;
@@ -22,11 +22,11 @@
   --glass-edge:rgba(255,255,255,.22); --glass-blur:blur(30px) saturate(115%); --glass-shadow:0 34px 80px -34px rgba(0,0,0,.7);
   --input:rgba(4,6,26,.55); --btn-text:#fff;
   /* background */
-  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --lidOp:1; --met:#CFF8FF;
+  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --lidOp:1;
 }
 :root[data-theme="light"]{
   color-scheme:light;
-  --night:#EEF2F6; --panel:#FFFFFF; --panel2:#F4F7FC; --light:#04061A; --mist:#3A4566; --dim:#5B6785;
+  --night:#EEF2F6; --panel:#FFFFFF; --panel2:#F4F7FC; --light:#04061A; --mist:#3A4566; --dim:#4F5B78;
   --horizon:#1C45E6; --hour:#1C45E6; --dusk:#6B3FE0; --venus:#B5459F;
   --fg:4,6,26; --acc:28,69,230; --bgc:255,255,255; --ln:4,6,26; --ln2:4,6,26; --scr:20,30,70;
   --line:rgba(4,6,26,.09); --surface:rgba(255,255,255,.55); --surface2:rgba(255,255,255,.75);
@@ -34,19 +34,25 @@
   --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
   --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
   --input:rgba(255,255,255,.7);
-  --au3:#9DB6F5; --auOp:.22; --lidOp:.75; --met:#1C45E6;
+  --au3:#9DB6F5; --auOp:.22; --lidOp:.75;
 }
 
 /* ---------- the sky: a soft aurora + the eyelid strokes with meteors of light (admin/sky.js), fixed behind everything ---------- */
 #sky{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:var(--lidOp)}
 #sky .l1,#sky .l2{animation:skyBreath 9s ease-in-out infinite}#sky .l2{animation-delay:-4.5s}
 @keyframes skyBreath{0%,100%{stroke-opacity:.7}50%{stroke-opacity:1}}
-/* a meteor runs the curve in the first third of its cycle, then rests: dash 90 of a 3000 cycle on a 1000-long path */
-#sky .mc,#sky .mg{stroke:var(--met);stroke-dasharray:90 2910;animation:skyMet var(--d,16s) linear infinite;animation-delay:var(--dl,0s)}
-#sky .mc{stroke-width:2.4}
-#sky .mg{stroke-width:12;stroke-opacity:.16}
+/* a pulse of light inside the stroke: the same gradient, brighter, a head and a fading tail moving together.
+   Each length is a dash of a 3000 cycle on a 1000-long path: it crosses in the first third of the cycle, then rests. */
+#sky .pl path{fill:none;stroke:url(#skyg);stroke-linecap:round;animation:var(--k) var(--d,16s) linear infinite;animation-delay:var(--dl,0s)}
+#sky .pl{filter:brightness(1.7) saturate(1.15)}
+#sky .t1{stroke-dasharray:70 2930;--k:skyMet1;stroke-opacity:.95}
+#sky .t2{stroke-dasharray:170 2830;--k:skyMet2;stroke-opacity:.45}
+#sky .t3{stroke-dasharray:340 2660;--k:skyMet3;stroke-opacity:.2}
 #sky .m1{--d:14s;--dl:-2s}#sky .m2{--d:19s;--dl:-9s}#sky .m3{--d:24s;--dl:-15s}#sky .m4{--d:33s;--dl:-24s}
-@keyframes skyMet{from{stroke-dashoffset:90}to{stroke-dashoffset:-2910}}
+/* heads together: each length starts with its head at the start of the curve and moves 3000 along */
+@keyframes skyMet1{from{stroke-dashoffset:70}to{stroke-dashoffset:-2930}}
+@keyframes skyMet2{from{stroke-dashoffset:170}to{stroke-dashoffset:-2830}}
+@keyframes skyMet3{from{stroke-dashoffset:340}to{stroke-dashoffset:-2660}}
 @media (prefers-reduced-motion:reduce){#sky .mets{display:none}#sky .l1,#sky .l2{animation:none}}
 html,body{background:var(--night)}
 body{background:none;position:relative;isolation:isolate}
@@ -174,3 +180,10 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .td2-feed li>span:first-child{width:76px;flex-shrink:0}.td2-feed li>span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:1200px){.td2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:600px){.td2-kpis{grid-template-columns:1fr}.td2-list em{display:none}.td2-feed li>span:first-child{width:58px}}
+
+/* ---------- text straight on the sky: never thin grey over a moving line (rule kept for every page head) ---------- */
+.tdy-head{position:relative;isolation:isolate}
+.tdy-head>div{position:relative}
+.tdy-head>div::before{content:"";position:absolute;inset:-18px -30px;z-index:-1;pointer-events:none;border-radius:40px;
+  background:radial-gradient(closest-side,rgba(var(--bgc),.78),rgba(var(--bgc),.5) 60%,transparent);filter:blur(6px)}
+.tdy-head .eyebrow{font:500 12px Oswald,sans-serif;letter-spacing:.22em;color:var(--mist)}
