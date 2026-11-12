@@ -68,6 +68,7 @@ function clean(type, d){
   };
   if (type !== "quote") b.clauses = (Array.isArray(d.clauses) ? d.clauses : []).slice(0, 40)
     .map(x => ({ h: S(x && x.h, 140), p: S(x && x.p, 4000) })).filter(x => x.h || x.p);
+  if (type === "team") b.kind = d.kind === "staff" ? "staff" : "freelance";   // a staff contract or a freelance agreement (same signing flow)
   return b;
 }
 function summaryOf(doc){ return { token: doc.token, type: doc.type, no: doc.no, ver: doc.ver, at: doc.updatedAt, status: doc.status,

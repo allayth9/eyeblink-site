@@ -73,8 +73,10 @@ function dateOf(iso, en, time){ const d = new Date(iso);
     (time ? " · " + d.toLocaleTimeString(en ? "en-GB" : "ar-u-nu-latn", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Damascus" }) + (en ? " (Damascus)" : " (بتوقيت دمشق)") : ""); }
 
 function page(status, lang, title, main, doc){
-  const en = lang === "en", L = T[en ? "en" : "ar"];
+  const en = lang === "en"; let L = T[en ? "en" : "ar"];
   let head = title, body = main, og = "";
+  if (doc && doc.type === "team" && doc.body && doc.body.kind === "staff") { const k = en ? "Employment Contract" : "عقد عمل";
+    L = { ...L, team: k, latin: { ...L.latin, team: "Employment Contract" }, btn: { ...L.btn, team: en ? "Sign contract" : "أوقّع العقد" } }; }
   if (doc) {
     const b = doc.body, type = doc.type, q = type === "quote", tm = type === "team";
     const expired = q && !doc.accepted && Date.now() > Date.parse(doc.updatedAt) + b.valid * 864e5;

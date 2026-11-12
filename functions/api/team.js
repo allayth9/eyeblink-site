@@ -13,6 +13,7 @@ const ROLES = ["editor", "motion", "color", "sound", "writer", "shooter", "desig
 // roles that are jobs (a monthly salary), not task-by-task work; the studio can still change a member's type
 const STAFF_ROLES = ["support", "marketing"];
 const TYPES = ["freelance", "staff"];
+const cleanProb = p => [1, 2, 3].includes(+p) ? +p : null, cleanHours = n => +n >= 5 && +n <= 60 ? Math.round(+n) : null;
 const cleanSalary = s => s && +s.amount > 0 ? { amount: Math.round(+s.amount * 100) / 100, cur: C_(s.cur, 8) || "$" } : null;
 // the application fields the studio can show as optional, require, or hide (name and e-mail are always asked)
 const FIELDS = ["gender", "phone", "city", "langs", "reel", "links", "tools", "about"];
@@ -46,7 +47,7 @@ function memberTask(t){ return { id: t.id, title: t.title, alias: t.alias, brief
   status: t.status, versions: t.versions || [], comments: (t.comments || []).map(c => ({ from: c.from === "studio" ? "studio" : "me", text: c.text, at: c.at })),
   paid: !!(t.payout && t.payout.paid), paidAt: t.payout && t.payout.at || null, createdAt: t.createdAt, offeredAt: t.offeredAt || t.createdAt, updatedAt: t.updatedAt,
   canDecline: t.status === "assigned" && Date.now() - Date.parse(t.offeredAt || t.createdAt) < DECLINE_MS }; }
-function publicMember(u){ return { email: u.email, name: u.name, role: u.role, roleAr: ROLE_AR[u.role] || u.role, status: u.status, lang: u.lang || "ar", type: u.type || "freelance", salary: u.salary || null, mustChange: !!u.mustChange,
+function publicMember(u){ return { email: u.email, name: u.name, role: u.role, roleAr: ROLE_AR[u.role] || u.role, status: u.status, lang: u.lang || "ar", type: u.type || "freelance", salary: u.salary || null, probation: u.probation || null, hours: u.hours || null, mustChange: !!u.mustChange,
   contract: u.contract ? { no: u.contract.no, signedAt: u.contract.signedAt || null, url: u.contract.token ? SITE + "/team-agreement/" + u.contract.token : null } : null }; }
 async function sessionCookie(env, email, remember = true){ const t = randHex(24); await env.EB.put("tsess:" + t, email, { expirationTtl: remember ? TSESS_DAYS * 86400 : 86400 });
   return "eb_t=" + t + "; Path=/; HttpOnly; Secure; SameSite=Lax" + (remember ? "; Max-Age=" + TSESS_DAYS * 86400 : ""); }
@@ -121,10 +122,10 @@ async function appMail(env, a, kind, pw, ag){
     body = "<p style=\"margin:0\">راجعنا طلبك وأعمالك بعناية. لا يتوافق ما نحتاجه في هذه المرحلة مع ما تقدّمه، وهذا لا ينتقص من قيمة عملك.</p><p style=\"margin:12px 0 0\">نحتفظ بطلبك، وسنتواصل معك إن فُتح دور أقرب إلى اختصاصك.</p>"; }
   else if (kind === "welcome") { subject = "أهلاً بك في فريق Eyeblink Studio"; title = "أصبحت من فريق Eyeblink";
     body = "<p style=\"margin:0\">يسعدنا أن نعمل معاً. أمامك خطوتان قبل أول مهمة:</p>" +
-      (ag ? "<p style=\"margin:14px 0 0\"><b style=\"color:#ffffff\">1. اتفاقية التعاون</b><br>اقرأ بنودها بعناية ووقّعها إلكترونياً من الزر أدناه.</p>" : "") +
+      (ag ? "<p style=\"margin:14px 0 0\"><b style=\"color:#ffffff\">1. " + (a.type === "staff" ? "عقد العمل" : "اتفاقية التعاون") + "</b><br>اقرأ بنودها بعناية ووقّعها إلكترونياً من الزر أدناه.</p>" : "") +
       "<p style=\"margin:14px 0 0\"><b style=\"color:#ffffff\">" + (ag ? "2. " : "") + "مساحة الفريق</b><br>ادخل من <a href=\"" + SITE + "/team/\" style=\"color:#3FE0E8\">" + SITE.replace("https://", "") + "/team</a> بهذه البيانات، واختر كلمة سرك عند أول دخول:</p>" + box([["البريد", a.email], ["كلمة السر المؤقتة", pw]]) +
       "<p style=\"margin:14px 0 0\">تُفتح لك المهام بعد توقيع الاتفاقية، ومع كل مهمة البريف والموعد وأجرك.</p>";
-    cta = ag ? "اقرأ الاتفاقية ووقّعها" : "افتح مساحة الفريق"; link = ag || SITE + "/team/"; }
+    cta = ag ? (a.type === "staff" ? "اقرأ العقد ووقّعه" : "اقرأ الاتفاقية ووقّعها") : "افتح مساحة الفريق"; link = ag || SITE + "/team/"; }
   else return false;
   return sendMail(env, a.email, subject, mail("ar", title, body, cta, link, hi));
 }
@@ -144,10 +145,10 @@ async function appMailEn(env, a, kind, pw, ag){
     body = P("We reviewed your application and your work carefully. What we need at this stage does not match what you offer, and that says nothing against the quality of your work.") + P("We will keep your application and write to you if a closer role opens.", 1); }
   else if (kind === "welcome") { subject = "Welcome to the Eyeblink Studio team"; title = "You are now part of Eyeblink";
     body = P("We are glad to work together. Two steps before your first task:") +
-      (ag ? P('<b style="color:#ffffff">1. The collaboration agreement</b><br>Read it carefully and sign it online with the button below.', 1) : "") +
+      (ag ? P('<b style="color:#ffffff">1. ' + (a.type === 'staff' ? 'Your employment contract' : 'The collaboration agreement') + '</b><br>Read it carefully and sign it online with the button below.', 1) : "") +
       P('<b style="color:#ffffff">' + (ag ? "2. " : "") + 'The team space</b><br>Sign in at <a href="' + SITE + '/team/" style="color:#3FE0E8">' + SITE.replace("https://", "") + '/team</a> with these details, and choose your own password the first time:', 1) + box([["Email", a.email], ["Temporary password", pw]]) +
       P("Your tasks open once the agreement is signed, each with its brief, deadline and fee.", 1);
-    cta = ag ? "Read and sign the agreement" : "Open the team space"; link = ag || SITE + "/team/"; }
+    cta = ag ? (a.type === "staff" ? "Read and sign the contract" : "Read and sign the agreement") : "Open the team space"; link = ag || SITE + "/team/"; }
   else return false;
   return sendMail(env, a.email, subject, mail("en", title, body, cta, link, hi));
 }
@@ -232,7 +233,7 @@ async function adminAction(ctx, d){
     if (await env.EB.get("member:" + email)) return json({ ok: false, error: "exists" }, 409);
     const pw = tempPass(), salt = randHex(16);
     const u = { email, name: C_(d.name, 120) || email, role: ROLES.includes(d.role) ? d.role : "editor", status: "active", lang: d.lang === "en" ? "en" : "ar",
-      phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), pay: cleanPay(d.pay), type: TYPES.includes(d.type) ? d.type : STAFF_ROLES.includes(d.role) ? "staff" : "freelance", salary: cleanSalary(d.salary), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
+      phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), pay: cleanPay(d.pay), type: TYPES.includes(d.type) ? d.type : STAFF_ROLES.includes(d.role) ? "staff" : "freelance", salary: cleanSalary(d.salary), probation: cleanProb(d.probation), hours: cleanHours(d.hours), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
     await env.EB.put("member:" + email, JSON.stringify(u));
     if (u.app) { const a = await kvJSON(env, "teamapp:" + u.app); if (a) { if (a.status !== "accepted") { a.history.push({ at: now, status: "accepted" }); a.status = "accepted"; } a.member = email; await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); } }
     const fromApp = u.app ? await kvJSON(env, "teamapp:" + u.app) : null; if (fromApp && fromApp.lang === "en") { u.lang = "en"; await env.EB.put("member:" + email, JSON.stringify(u)); }
@@ -242,7 +243,7 @@ async function adminAction(ctx, d){
   if (d.action === "welcome") {
     const u = await kvJSON(env, "member:" + C_(d.email, 254).toLowerCase()); if (!u) return json({ ok: false }, 404);
     const ag = /^https:\/\/[^\s]+\/team-agreement\/[a-f0-9]+$/i.test(C_(d.agreement, 300)) ? C_(d.agreement, 300) : "";
-    const sent = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang }, "welcome", C_(d.password, 80), ag);
+    const sent = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang, type: u.type }, "welcome", C_(d.password, 80), ag);
     return json({ ok: !!sent, error: sent ? undefined : "mail" });
   }
   if (d.action === "memberUpdate" || d.action === "memberReset") {
@@ -256,6 +257,8 @@ async function adminAction(ctx, d){
     if (d.pay !== undefined) u.pay = cleanPay(d.pay);
     if (TYPES.includes(d.type)) u.type = d.type;
     if (d.salary !== undefined) u.salary = cleanSalary(d.salary);
+    if (d.probation !== undefined) u.probation = cleanProb(d.probation);
+    if (d.hours !== undefined) u.hours = cleanHours(d.hours);
     if (d.notes !== undefined) u.notes = C_(d.notes, 4000);
     if (d.phone !== undefined) u.phone = C_(d.phone, 40);
     await env.EB.put("member:" + u.email, JSON.stringify(u)); const x = { ...u }; delete x.salt; delete x.hash; return json({ ok: true, member: x });
