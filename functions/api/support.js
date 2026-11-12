@@ -40,10 +40,10 @@ export async function onRequestPost(ctx) {
     if (d.website) return json({ ok: true });                                   // honeypot
     if (await limited(env, "supo:" + ip, 5, 3600)) return json({ ok: false, error: "slow" }, 429);
     const u = await currentUser(request, env), text = T_(d.text, 3000), lang = d.lang === "en" ? "en" : "ar";
-    const email = u ? u.email : T_(d.email, 254).toLowerCase(), name = u ? T_(u.name, 120) || email.split("@")[0] : email.split("@")[0];
+    const email = u ? u.email : T_(d.email, 254).toLowerCase(), name = u ? T_(u.name, 120) || email.split("@")[0] : T_(d.name, 120) || email.split("@")[0];
     if (!MAIL_RE2.test(email) || text.length < 2) return json({ ok: false, error: "fields" }, 400);
     let id; do { id = "S-" + randHex(3).toUpperCase().slice(0, 5); } while (await env.EB.get("sup:" + id));
-    const s = { id, token: randHex(16), name, email, acct: u ? 1 : 0, lang, page: T_(d.page, 300), ua: T_(request.headers.get("user-agent"), 200), status: "open", unread: 1, at: now,
+    const s = { id, token: randHex(16), name, email, acct: u ? 1 : 0, src: !u && d.src === "team" ? "team" : "", lang, page: T_(d.page, 300), ua: T_(request.headers.get("user-agent"), 200), status: "open", unread: 1, at: now,
       messages: [{ from: "client", text, at: now }, { from: "bot", text: autoReply(text, lang, id), at: now }] };
     await save(env, s);
     later(ctx, telegram(env, "🛟 تذكرة دعم جديدة " + id + " — " + name + "\n" + text.slice(0, 300) + "\n" + SITE + "/admin/#support"));

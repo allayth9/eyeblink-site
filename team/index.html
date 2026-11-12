@@ -8,6 +8,7 @@
 <title>بوابة الفريق — Eyeblink</title>
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
 <style>
+.accept{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.accept .hint{flex-basis:100%;font-size:12.5px;color:var(--dim)}.hint{font-size:13px;color:var(--dim);margin:0}
 .rem{display:flex!important;align-items:center;gap:8px;flex-direction:row!important;font-size:13.5px;color:var(--mist,#AEBBD2);cursor:pointer}.rem input{width:auto!important;margin:0}
 *,*::before,*::after{font-variant-ligatures:no-common-ligatures!important}
 @font-face{font-family:"EYEN Ammon";src:url(../assets/fonts/eyen-ammon-bold.woff2) format("woff2");font-weight:700;font-display:swap}
@@ -136,9 +137,11 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
           var isLate=t.due&&t.due<t0&&t.status!=='approved'&&t.status!=='qc';
           return '<button type="button" class="t st-'+t.status+'" data-open="'+esc(t.id)+'"><b>'+esc(t.title)+'</b>'+(t.alias?'<span style="font-size:12px;color:var(--mist)">'+esc(t.alias)+'</span>':'')+
             '<div class="meta"><span class="'+(isLate?'late':'')+'">'+(t.due?'التسليم '+day(t.due):'بدون موعد')+'</span><span class="num">'+money(t.fee,t.cur)+'</span></div>'+(t.status==='changes'?'<span class="pill" style="--c:var(--warn)">تعديلات مطلوبة</span>':'')+'</button>'; }).join(''):'<div class="empty">—</div>')+'</div>'; }).join('')+'</section>'+
-      '<p style="color:var(--dim);font-size:12.5px;margin:0">بتشوف هون مهامك وأجرك عن كل مهمة. تفاصيل العملاء وأسعارهم بتضل عند الاستوديو · <a href="#" id="pw" style="color:var(--mist)">تغيير كلمة السر</a> · مشكلة تقنية؟ <a href="mailto:support@eyeblinkstudio.com" style="color:var(--mist)" dir="ltr">support@eyeblinkstudio.com</a></p>'+
+      '<p style="color:var(--dim);font-size:12.5px;margin:0"><a href="#" id="pw" style="color:var(--mist)">تغيير كلمة السر</a> · <a href="#support" id="supLink" style="color:var(--mist)">مشكلة تقنية؟</a></p>'+
     '</main>';
     document.getElementById('out').onclick=function(){ api({action:'logout'}).then(drawLogin); };
+    // «technical problem?» opens the site's own support window, already knowing who writes
+    var sl=document.getElementById('supLink'); if(sl) sl.onclick=function(e){ e.preventDefault(); if(window.EBSupport) EBSupport.open({email:ME.email,name:ME.name,src:'team'}); };
     document.getElementById('pw').onclick=function(e){ e.preventDefault(); drawPassword(false); };
   }
   function drawTask(t){
@@ -149,7 +152,9 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
       '<div class="facts"><div><span>التسليم</span><b>'+day(t.due)+'</b></div><div><span>أجرك</span><b class="num">'+money(t.fee,t.cur)+'</b></div><div><span>الصرف</span><b>'+(t.paid?'انصرف '+day(t.paidAt.slice(0,10)):t.status==='approved'?'مستحق':'بعد الاعتماد')+'</b></div></div>'+
       '<div class="sec"><h4>البريف</h4><div class="brief">'+esc(t.brief||'—')+'</div></div>'+
       (t.links.length?'<div class="sec"><h4>الملفات والمراجع</h4><div class="links">'+t.links.map(function(l){ return '<a href="'+esc(l)+'" target="_blank" rel="noopener" dir="ltr">'+esc(l)+'</a>'; }).join('')+'</div></div>':'')+
-      (t.status==='assigned'&&canWork?'<button class="btn primary" type="button" data-start style="justify-self:start">ابدأ المهمة</button>':'')+
+      (t.status==='assigned'&&canWork?'<div class="accept"><button class="btn primary" type="button" data-start>استلمت المهمة وبدأت التنفيذ</button>'+(t.canDecline?'<button class="btn" type="button" data-decline>أعتذر عن المهمة</button><span class="hint">الاعتذار متاح خلال ساعة من وصول المهمة. بعدها تُعدّ مقبولة</span>':'')+'</div>':'')+
+      (t.status==='changes'&&canWork?'<button class="btn primary" type="button" data-start style="justify-self:start">استلمت التعديلات وبدأت</button>':'')+
+      (t.status==='declined'?'<p class="hint">اعتذرت عن هذه المهمة</p>':'')+
       '<div class="sec"><h4>النسخ</h4><div class="vers">'+(t.versions.length?t.versions.slice().reverse().map(function(v){ return '<div><b class="num">v'+v.n+'</b><a href="'+esc(v.url)+'" target="_blank" rel="noopener">افتح النسخة</a><small>'+day(v.at.slice(0,10))+'</small>'+(v.note?'<span style="color:var(--mist);font-size:13px;flex-basis:100%">'+esc(v.note)+'</span>':'')+'</div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في نسخ بعد</span>')+'</div></div>'+
       (canWork?'<form class="sec" id="sub"><h4>سلّم نسخة للمراجعة الداخلية</h4><div style="display:grid;gap:8px"><input name="url" type="url" dir="ltr" placeholder="رابط النسخة: Drive، Frame.io، Vimeo…" required><textarea name="note" placeholder="ملاحظة (اختياري)"></textarea><button class="btn primary" type="submit" style="justify-self:start">تسليم</button></div><p style="color:var(--dim);font-size:12px;margin:6px 0 0">النسخة بتوصل للاستوديو أول، وهو بيراجعها قبل العميل</p></form>':'')+
       '<div class="sec"><h4>المحادثة مع الاستوديو</h4><div class="thread">'+(t.comments.length?t.comments.map(function(c){ return '<div class="c '+c.from+'">'+esc(c.text)+'<small>'+(c.from==='me'?'أنت':'الاستوديو')+' · '+day(c.at.slice(0,10))+'</small></div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في رسائل</span>')+'</div>'+
@@ -158,6 +163,7 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
     document.body.appendChild(el);
     el.onclick=function(e){ if(e.target===el||e.target.closest('[data-close]')){ el.remove(); OPEN=null; } };
     var st=el.querySelector('[data-start]'); if(st) st.onclick=function(){ st.disabled=true; api({action:'start',id:t.id}).then(after); };
+    var dc=el.querySelector('[data-decline]'); if(dc) dc.onclick=function(){ if(dc.dataset.armed!=='1'){ dc.dataset.armed='1'; dc.textContent='تأكيد الاعتذار'; return; } dc.disabled=true; api({action:'decline',id:t.id}).then(function(j){ if(!j.ok){ toast('انتهت مهلة الاعتذار، المهمة صارت مقبولة'); } after(j); }); };
     var s=el.querySelector('#sub'); if(s) s.onsubmit=function(e){ e.preventDefault(); var b=s.querySelector('button'); b.disabled=true; api({action:'submit',id:t.id,url:s.url.value.trim(),note:s.note.value.trim()}).then(function(j){ if(!j.ok){ b.disabled=false; toast(j.error==='url'?'الرابط لازم يبدأ بـ https://':'ما زبط'); return; } toast('وصلت النسخة للمراجعة'); after(j); }); };
     var c=el.querySelector('#cm'); c.onsubmit=function(e){ e.preventDefault(); if(!c.text.value.trim()) return; api({action:'comment',id:t.id,text:c.text.value.trim()}).then(after); };
   }
@@ -167,5 +173,6 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
   load();
 })();
 </script>
+<script src="../assets/js/support.js?v=b5111ded"></script>
 </body>
 </html>

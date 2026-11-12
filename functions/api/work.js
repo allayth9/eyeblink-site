@@ -144,6 +144,27 @@ function parseA(a){ try { a.data = JSON.parse(a.data || "{}"); } catch { a.data 
 function parseD(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } try { x.points = JSON.parse(x.points || "[]"); } catch { x.points = []; } x.is_final = !!x.is_final; return x; }
 function parseC(x){ try { x.links = JSON.parse(x.links || "[]"); } catch { x.links = []; } return x; }
 const PT_KIND = ["edit", "ask", "note", "love"], PT_ST = ["open", "progress", "resolved", "na"];
+// client notes on their way to a team member: anything that reaches the client (e-mail, phone, handle, social or chat link) is cut out
+const SCRUB = [/[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/gi, /https?:\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com|t\.me|telegram\.me|instagram\.com|facebook\.com|fb\.com|m\.me|linkedin\.com|tiktok\.com|snapchat\.com|x\.com|twitter\.com|threads\.net)\S*/gi,
+  /(?:^|(?<=\s))@[A-Za-z0-9_.]{3,}/g, /(?:\+|00)?\d[\d\s\-().]{6,}\d/g];
+function scrubContact(s){ let cut = 0, out = String(s || ""); for (const re of SCRUB) out = out.replace(re, m => { if (/^\d{1,2}:\d{2}$/.test(m.trim()) || m.replace(/\D/g, "").length < 8 && !/@|https?:/.test(m)) return m; cut++; return "[محذوف]"; }); return { text: out, cut }; }
+async function forwardToTeam(env, t, label, points, note){
+  const keys = []; let cursor; do { const r = await env.EB.list({ prefix: "ttask:", cursor }); keys.push(...r.keys.map(k => k.name)); cursor = r.list_complete ? null : r.cursor; } while (cursor);
+  const KN = { edit: "تعديل", ask: "سؤال", note: "ملاحظة", love: "أعجبني" }, at = new Date().toISOString(); let cut = 0;
+  const lines = points.map((p, i) => { const s = scrubContact(p.text); cut += s.cut; return (i + 1) + ". " + (p.t ? "[" + p.t + "] " : "") + (KN[p.kind] ? KN[p.kind] + ": " : "") + s.text; });
+  const n = note ? scrubContact(note) : null; if (n) cut += n.cut;
+  const text = "ملاحظات العميل على " + label + ":\n" + lines.join("\n") + (n && n.text ? "\n\n" + n.text : "");
+  let sent = 0;
+  for (const k of keys) { const v = await env.EB.get(k); if (!v) continue; const x = JSON.parse(v); if (x.workTask !== t.ref || x.status === "declined") continue;
+    (x.comments ||= []).push({ from: "studio", text, at, client: true }); x.status = "changes"; (x.log ||= []).push({ at, what: "client_changes", label }); x.updatedAt = at;
+    await env.EB.put(k, JSON.stringify(x)); sent++;
+    const m = await env.EB.get("member:" + x.member); const mm = m && JSON.parse(m);
+    if (mm && mm.status === "active") await sendMail(env, mm.email, (mm.lang === "en" ? "Changes requested: " : "تعديلات مطلوبة: ") + x.title,
+      mail(mm.lang === "en" ? "en" : "ar", mm.lang === "en" ? "The client asked for changes" : "طلب العميل تعديلات", `<p style="margin:0;white-space:pre-wrap">${h(text)}</p>`, mm.lang === "en" ? "Open the task" : "افتح المهمة", SITE + "/team/", null)); }
+  // the studio hears when something was taken out, so it can check the original
+  if (sent && cut) await telegram(env, "🛡️ حذفت " + cut + " من معلومات التواصل من ملاحظات العميل على " + t.ref + " قبل ما توصل للمتعاون. راجع الأصل باللوحة: " + SITE + "/admin/#tasks/" + t.ref);
+  return sent;
+}
 function cleanPoints(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(x => ({ t: TC.test(clip(x && x.t, 8)) ? clip(x.t, 8) : "", text: clip(x && x.text, 600), kind: PT_KIND.includes(x && x.kind) ? x.kind : "edit", status: "open", done: false })).filter(x => x.text); }
 // what the client sees of a version: everything but the studio's internal notes
 const forClient = list => list.map(d => ({ ...d, points: (d.points || []).filter(p => !p.internal) }));
@@ -747,6 +768,7 @@ export async function onRequestPost(ctx) {
       const round = (await D.prepare("SELECT COUNT(*) AS n FROM deliverables WHERE task_id=? AND status='changes'").bind(t.id).first()).n;
       await act(D, { ...tw, kind: "changes_requested", data: { label: dl.label, points: points.length, round, note: note || undefined } });
       await act(D, { ...tw, kind: "status", data: { from: t.status, to: "revision" } });
+      later(ctx, forwardToTeam(env, t, dl.label, points, note));
       toStudio(ctx, env, "تعديلات مطلوبة على " + dl.label + " · " + t.ref + " (جولة " + round + ")", u.name + " · " + t.title + "\n\n" + points.map((x, i) => (i + 1) + ". " + (x.t ? "[" + x.t + "] " : "") + x.text).join("\n") + (note ? "\n\n" + note : "") + "\n\n" + adminLink(t.ref));
       return json({ ok: true, status: "revision", round });
     }
