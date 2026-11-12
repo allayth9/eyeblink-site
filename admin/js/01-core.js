@@ -227,6 +227,7 @@
 
   /* ---------------- render ---------------- */
   function render(){
+    route();   // every way into a section (shortcuts from «Today», profiles, billing links) keeps the address in step
     renderTabs();
     var tab=TABS.filter(function(t){return t.id===TAB})[0];
     $('#tabTitle').textContent=tab.title;
