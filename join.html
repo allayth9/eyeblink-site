@@ -200,7 +200,7 @@ select{display:none}
         l.innerHTML=[].map.call(sel.options,function(o){ return '<li role="option" tabindex="-1" data-v="'+o.value+'" data-k="'+(o.value+' '+o.textContent).toLowerCase().replace(/\+/g,'').replace(/"/g,'')+'" data-d="'+((sel._dial||{})[o.value]||'').replace(/\D/g,'')+'"'+' aria-selected="'+o.selected+'"'+(o.dataset.sep?' class="sep"':'')+'>'+icon(o.value)+'<span>'+o.innerHTML+'</span></li>'; }).join(''); }; }
     w._draw(); }
   f.onsubmit=function(e){ e.preventDefault(); var E=f.elements, d={action:'apply'};
-    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); }); var gc=f.querySelector('input[name=gender]:checked'); d.gender=gc?gc.value:'';
+    ['name','role','email','phone','city','langs','reel','links','tools','about','website'].forEach(function(k){ d[k]=E[k].value.trim(); }); var gc=f.querySelector('input[name=gender]:checked'); d.gender=gc?gc.value:''; d.lang=document.documentElement.lang==='en'?'en':'ar';
     if(d.phone) d.phone=($('#dialSel')._dial||{})[E.dial.value]+' '+d.phone.replace(/^0+/,'');
     var miss=[].filter.call(f.querySelectorAll('[data-f]'),function(l){ var el=l.querySelector('input:not([type=hidden]),textarea'); return !l.hidden&&el&&el.required&&(el.type==='radio'?!l.querySelector('input:checked'):!el.value.trim()); })[0];
     if(miss){ m.textContent=(miss.querySelector("input[type=radio]")?"اختر {f}":"اكتب {f}").replace('{f}',miss.querySelector('.lab').firstChild.textContent.trim()); m.className='msg err'; miss.querySelector('input,textarea').focus(); return; }

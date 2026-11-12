@@ -88,11 +88,18 @@ export async function onRequestPost(ctx) {
 // ---- e-mails to applicants: Modern Standard Arabic, the site's own template ----
 const IV_TZ = { dxb: "بتوقيت الإمارات", ruh: "بتوقيت السعودية", dam: "بتوقيت دمشق", cai: "بتوقيت القاهرة" };
 const IV_PF = { meet: "Google Meet", zoom: "Zoom", whatsapp: "WhatsApp (مكالمة فيديو)" };
+const IV_TZ_EN = { dxb: "UAE time", ruh: "Saudi time", dam: "Damascus time", cai: "Cairo time" };
+const ROLE_EN = { editor: "video editor", motion: "motion designer", color: "colorist", sound: "sound engineer", writer: "writer", shooter: "photographer", designer: "designer", producer: "production coordinator", voice: "voice-over artist", illustrator: "illustrator", social: "social media manager", subtitles: "translator" };
+function ivWhenEn(iv){ const [d, t] = iv.at.split("T"), dt = new Date(d + "T12:00:00Z");
+  const day = dt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  let [hh, mm] = t.split(":").map(Number); const pm = hh >= 12; hh = hh % 12 || 12;
+  return day + ", " + hh + ":" + String(mm).padStart(2, "0") + (pm ? " pm " : " am ") + "(" + IV_TZ_EN[iv.tz] + ")"; }
 function ivWhen(iv){ const [d, t] = iv.at.split("T"), dt = new Date(d + "T12:00:00Z");
   const day = dt.toLocaleDateString("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   let [hh, mm] = t.split(":").map(Number); const pm = hh >= 12; hh = hh % 12 || 12;
   return day + "، الساعة " + hh + ":" + String(mm).padStart(2, "0") + (pm ? " مساءً " : " صباحاً ") + IV_TZ[iv.tz]; }
 async function appMail(env, a, kind, pw){
+  if (a.lang === "en") return appMailEn(env, a, kind, pw);
   const hi = "أهلاً " + (String(a.name || "").trim().split(/\s+/)[0] || "") + "،", role = ROLE_AR[a.role] || "";
   const box = rows => '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#0f1a4a;border:1px solid #1d2758;line-height:1.9">' + rows.map(r => '<b style="color:#ffffff">' + h(r[0]) + ':</b> ' + h(r[1])).join("<br>") + "</div>";
   let subject, title, body, cta = null, link = null;
@@ -112,6 +119,27 @@ async function appMail(env, a, kind, pw){
   return sendMail(env, a.email, subject, mail("ar", title, body, cta, link, hi));
 }
 
+async function appMailEn(env, a, kind, pw){
+  const hi = "Hi " + (String(a.name || "").trim().split(/\s+/)[0] || "") + ",", role = ROLE_EN[a.role] || "";
+  const box = rows => '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#0f1a4a;border:1px solid #1d2758;line-height:1.9">' + rows.map(r => '<b style="color:#ffffff">' + h(r[0]) + ':</b> ' + h(r[1])).join("<br>") + "</div>";
+  const P = (s, top) => '<p style="margin:' + (top ? "12px" : "0") + ' 0 0">' + s + "</p>";
+  let subject, title, body, cta = null, link = null;
+  if (kind === "received") { subject = "We received your application · Eyeblink Studio"; title = "Your application was received";
+    body = P("Thank you for your interest in joining Eyeblink Studio" + (role ? " as a " + h(role) : "") + ". We review every application carefully, and we always start with the work.") + P("If there is a next step, we will write to you at this address.", 1); }
+  else if (kind === "interview") { const iv = a.interview; subject = "Your interview · Eyeblink Studio"; title = "We would like to talk with you";
+    body = P("We liked what we saw in your work, and we have set a time for a short conversation about how you work.") + box([["When", ivWhenEn(iv)], ["Where", IV_PF[iv.platform].replace(" (مكالمة فيديو)", " (video call)")]].concat(iv.link && !/^https?:/i.test(iv.link) ? [["Details", iv.link]] : [])) +
+      P("If this time does not suit you, reply to this email with another one.", 1);
+    if (/^https?:\/\//i.test(iv.link || "")) { cta = "Interview link"; link = iv.link; } }
+  else if (kind === "reject") { subject = "About your application · Eyeblink Studio"; title = "Thank you for your time";
+    body = P("We reviewed your application and your work carefully. What we need at this stage does not match what you offer, and that says nothing against the quality of your work.") + P("We will keep your application and write to you if a closer role opens.", 1); }
+  else if (kind === "welcome") { subject = "Welcome to the Eyeblink Studio team"; title = "You are now part of Eyeblink";
+    body = P("We are glad to work together. Your account in the team space is ready, and these are your first steps:") + box([["Email", a.email], ["Temporary password", pw]]) +
+      P("1. Sign in and change your password.<br>2. Read the collaboration agreement and sign it online.<br>3. Your tasks arrive in the same space, with the brief, the deadline and your fee.", 1);
+    cta = "Open the team space"; link = SITE + "/team/"; }
+  else return false;
+  return sendMail(env, a.email, subject, mail("en", title, body, cta, link, hi));
+}
+
 async function apply(ctx, d, ip){
   const { env } = ctx;
   if (d.website) return json({ ok: true });                                   // honeypot: bots fill every field
@@ -120,7 +148,7 @@ async function apply(ctx, d, ip){
   const a = { id: "a_" + randHex(6), at: new Date().toISOString(), status: "new",
     name: C_(d.name, 120), email: C_(d.email, 254).toLowerCase(), phone: C_(d.phone, 40), role: ROLES.includes(d.role) ? d.role : "editor",
     city: C_(d.city, 120), tz: C_(d.tz, 60), links: L_(d.links, 6, 400).filter(x => URL_OK.test(x)), reel: URL_OK.test(C_(d.reel, 600)) ? C_(d.reel, 600) : "",
-    tools: C_(d.tools, 300), langs: C_(d.langs, 120), about: C_(d.about, 2000), gender: ["male", "female"].includes(d.gender) ? d.gender : "",
+    tools: C_(d.tools, 300), langs: C_(d.langs, 120), about: C_(d.about, 2000), gender: ["male", "female"].includes(d.gender) ? d.gender : "", lang: d.lang === "en" ? "en" : "ar",
     notes: "", history: [] };
   const fl = cleanFields(s.fields), linksShown = fl.reel !== "hidden" || fl.links !== "hidden";
   const missing = FIELDS.filter(k => fl[k] === "required" && !(Array.isArray(a[k]) ? a[k].length : a[k]));
@@ -190,7 +218,8 @@ async function adminAction(ctx, d){
       phone: C_(d.phone, 40), rate: C_(d.rate, 120), app: C_(d.app, 40), salt, hash: await pbkdf2(pw, salt), mustChange: true, createdAt: now, contract: null, notes: "" };
     await env.EB.put("member:" + email, JSON.stringify(u));
     if (u.app) { const a = await kvJSON(env, "teamapp:" + u.app); if (a) { if (a.status !== "accepted") { a.history.push({ at: now, status: "accepted" }); a.status = "accepted"; } a.member = email; await env.EB.put("teamapp:" + a.id, JSON.stringify(a)); } }
-    const welcomed = await appMail(env, { name: u.name, email: u.email, role: u.role }, "welcome", pw);
+    const fromApp = u.app ? await kvJSON(env, "teamapp:" + u.app) : null; if (fromApp && fromApp.lang === "en") { u.lang = "en"; await env.EB.put("member:" + email, JSON.stringify(u)); }
+    const welcomed = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang }, "welcome", pw);
     return json({ ok: true, member: publicMember(u), password: pw, link: SITE + "/team/", welcomed });
   }
   if (d.action === "memberUpdate" || d.action === "memberReset") {
