@@ -72,7 +72,7 @@
   }
   // one line per request: who, which package, the stage, the value, and what is waiting (unread messages, a follow-up due)
   function orderRow(o){ var k=esc(o.key), v=pnum(o.price||o.total), due=dueFollow(o);
-    return '<li><button type="button" class="orow'+(o.key===OOPEN?' on':'')+(o.unread?' unread':'')+'" data-oselect="'+k+'">'+
+    return '<li><button type="button" class="orow st s-'+esc(o.status)+(o.key===OOPEN?' on':'')+(o.unread?' unread':'')+'" data-oselect="'+k+'">'+
       '<span class="orow-m"><b>'+esc(o.name)+'</b><small dir="ltr">'+esc(o.code)+'</small></span>'+
       '<span class="orow-v" dir="ltr">'+(v?esc(pfmt(v,(C.packages&&C.packages.currency)||'$')):'')+'</span>'+
       '<span class="orow-p">'+esc(o.packageName||o.package||'')+(o.manual?' · '+esc(SRC[srcOf(o)]||''):'')+'</span>'+

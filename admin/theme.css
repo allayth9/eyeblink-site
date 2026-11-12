@@ -11,10 +11,11 @@
   --line:rgba(255,255,255,.11); --surface:rgba(255,255,255,.05); --surface2:rgba(255,255,255,.08);
   /* the brand gradient (from the logo artwork) */
   --grad:linear-gradient(45deg,#2FC4D8 0%,#2A86E6 24%,#1C45E6 52%,#1638C4 76%,#0E1A5C 100%);
-  /* status families: new · info · production · waiting · done · problem · off */
-  --f-new:#5FE6EC; --f-info:#8EB0FF; --f-prod:#B39BFF; --f-wait:#F7C76A; --f-ok:#6EE7B0; --f-bad:#FF8DA3; --f-off:#8FA0C2;
+  /* status families, by who has to move next: new (you decide) · info (agreed) · prod (we are working) · fix (changes, back to us)
+     · wait (the client or a payment) · sign (an approval, the last step) · ok (done or paid) · bad (late, a problem) · off (closed) */
+  --f-new:#5FE6EC; --f-info:#8EB0FF; --f-prod:#B39BFF; --f-fix:#FF9F6B; --f-wait:#F7C76A; --f-sign:#E98BE9; --f-ok:#6EE7B0; --f-bad:#FF6F8E; --f-off:#8FA0C2;
   --s-new:var(--f-new); --s-discussing:var(--f-info); --s-confirmed:var(--f-info); --s-awaiting:var(--f-wait); --s-paid:var(--f-ok);
-  --s-progress:var(--f-prod); --s-review:var(--f-wait); --s-delivered:var(--f-ok); --s-cancelled:var(--f-off);
+  --s-progress:var(--f-prod); --s-review:var(--f-sign); --s-delivered:var(--f-ok); --s-cancelled:var(--f-off);
   --a-crit:var(--f-bad); --a-warn:var(--f-wait); --a-info:var(--f-info); --a-good:var(--f-ok);
   --ok:var(--f-ok); --warn:var(--f-wait); --bad:var(--f-bad);
   /* glass */
@@ -30,7 +31,7 @@
   --horizon:#1C45E6; --hour:#1C45E6; --dusk:#6B3FE0; --venus:#B5459F;
   --fg:4,6,26; --acc:28,69,230; --bgc:255,255,255; --ln:4,6,26; --ln2:4,6,26; --scr:20,30,70;
   --line:rgba(4,6,26,.09); --surface:rgba(255,255,255,.55); --surface2:rgba(255,255,255,.75);
-  --f-new:#0B8C95; --f-info:#2E62FF; --f-prod:#6B3FE0; --f-wait:#A86200; --f-ok:#11804F; --f-bad:#C92A4A; --f-off:#5B6785;
+  --f-new:#0B8C95; --f-info:#2E62FF; --f-prod:#6B3FE0; --f-fix:#C2410C; --f-wait:#A86200; --f-sign:#A3369F; --f-ok:#11804F; --f-bad:#C92A4A; --f-off:#5B6785;
   --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
   --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
   --input:rgba(255,255,255,.7);
@@ -96,10 +97,11 @@ select option{background:var(--panel);color:var(--light)}
 input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon),0 0 0 4px rgba(var(--acc),.14)}
 
 /* ---------- status pills: one colour per family everywhere (billing and member states too) ---------- */
-.bs-pending,.npill.bs-partial,.st-paused{--c:var(--f-wait)}
+.bs-pending,.st-paused{--c:var(--f-wait)}.npill.bs-partial{--c:var(--f-fix)}
 .bs-paid,.st-active{--c:var(--f-ok)}
 .bs-overdue{--c:var(--f-bad)}
-.bs-refunded{--c:var(--f-info)}
+.bs-refunded{--c:var(--f-off)}
+.st-changes,.tt-changes{--c:var(--f-fix)}.st-declined,.tt-declined{--c:var(--f-off)}.a-trial{--c:var(--f-prod)}.a-interview{--c:var(--f-sign)}
 .bs-cancelled,.npill.bs-draft,.st-archived{--c:var(--f-off)}
 .bs-pending,.npill.bs-partial,.bs-paid,.bs-overdue,.bs-refunded,.bs-cancelled,.npill.bs-draft,.st-paused,.st-active,.st-archived{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
 
@@ -231,7 +233,11 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .kc.zero{background:var(--glass);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 .kc.zero i{background:rgba(var(--fg),.06)}
 @media (max-width:600px){ .kcs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} .kc{padding:10px 12px;gap:10px;border-radius:15px} .kc i{width:32px;height:32px} .kc .ico{width:17px;height:17px} .kc b{font-size:23px} .kc small{font-size:11.5px} }
-.tf-new{--c:var(--f-new)}.tf-prod{--c:var(--f-prod)}.tf-wait{--c:var(--f-wait)}.tf-ok{--c:var(--f-ok)}.tf-off{--c:var(--f-off)}
+.tf-new{--c:var(--f-new)}.tf-info{--c:var(--f-info)}.tf-prod{--c:var(--f-prod)}.tf-fix{--c:var(--f-fix)}.tf-wait{--c:var(--f-wait)}.tf-sign{--c:var(--f-sign)}.tf-ok{--c:var(--f-ok)}.tf-bad{--c:var(--f-bad)}.tf-off{--c:var(--f-off)}
+.wpill[class*="tf-"],.tag[class*="tf-"]{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.ostat{background:color-mix(in srgb,var(--c,var(--f-off)) 15%,transparent)!important;color:var(--c,var(--mist))!important}
+.cp-task[class*="tf-"]{box-shadow:inset 0 0 0 1px var(--line),inset -3px 0 0 color-mix(in srgb,var(--c) 75%,transparent)}
+.k-fix{--g:linear-gradient(45deg,#D9541C,#F08A4B);--gs:#E86F3C}.k-sign{--g:linear-gradient(45deg,#A3369F,#E07BE0);--gs:#C95FD0}
 .orow.st{box-shadow:inset -3px 0 0 color-mix(in srgb,var(--c) 75%,transparent)}
 .orow.st.on{box-shadow:inset 0 0 0 1px var(--line),inset -3px 0 0 var(--c)}
 .orow .c-bad{color:var(--f-bad)}.orow .c-soon{color:var(--f-wait)}

@@ -18,7 +18,9 @@
     k_play:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/>',k_wait:'<path d="M7 3h10M7 21h10M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/>',
     k_late:'<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.5"/>',k_done:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',k_folder:'<path d="M3 6.5h6l2 2h10V19H3z"/>'};
   // a number card: filled with its meaning's gradient; a zero stays plain glass so colour only appears when there is something
-  function kc(n,label,fam,icon){ return '<div class="kc k-'+fam+(n?'':' zero')+'"><i>'+ico(icon)+'</i><span><b>'+n+'</b><small>'+label+'</small></span></div>'; }
+  // a task state → its colour family (the panel's one colour language, theme.css «status families»)
+  var TFAM={new:'new',review:'new',info:'wait',accepted:'info',progress:'prod',feedback:'wait',revision:'fix',final:'sign',completed:'ok',rejected:'off',cancelled:'off'};
+  function kc(n,label,fam,icon,on){ return '<div class="kc k-'+fam+((arguments.length>4?on:n)?'':' zero')+'"><i>'+ico(icon)+'</i><span><b>'+n+'</b><small>'+label+'</small></span></div>'; }
   function ico(id){ return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+(ICO[id]||ICO.services)+'</svg>'; }
   function tabCount(id){
     if(id==='orders') return [ORDERS.filter(function(o){return o.status==='new'||o.unread}).length,'hot'];
@@ -155,7 +157,7 @@
     live.forEach(function(o){ (o.history||[]).forEach(function(x){ if(x.at&&ST[x.status]) feed.push({at:x.at,t:(x.status==='new'?'طلب جديد':ST[x.status])+' · '+esc(o.name),s:x.status}); }); });
     wt.forEach(function(t){ if(t.updated_at) feed.push({at:t.updated_at,t:esc(t.title)+' · '+esc(t.project_name||''),s:'w-'+t.status,l:(WST&&WST[t.status])||t.status}); });
     feed.sort(function(a,b){ return a.at<b.at?1:-1; }); feed=feed.slice(0,6);
-    var WFAM={new:'new',review:'awaiting-payment',info:'awaiting-payment',accepted:'confirmed',progress:'in-progress',feedback:'review',revision:'review',final:'review',completed:'delivered',rejected:'cancelled',cancelled:'cancelled'};
+
     var ACT={orders:'افتح',tasks:'افتح المهمة',billing:'الفوترة',team:'راجع',support:'رد',clients:'افتح'};
     var LV={crit:'عاجل',warn:'انتباه',info:'للعلم'};
     var card=function(cls,body){ return '<section class="td2-c '+cls+'">'+body+'</section>'; };
@@ -172,7 +174,7 @@
           '<div class="td2-fun">'+FUN.map(function(s,i){ return '<button type="button" class="s-'+s+'" data-gostage="'+s+'"><span>'+esc(ST[s])+'</span><em><i style="width:'+Math.round(fc[i]/fmax*100)+'%"></i></em><b>'+fc[i]+'</b></button>'; }).join('')+'</div>'+
           '<small class="muted">التحويل آخر 30 يوم: '+(rec.length?won.length+' من '+rec.length:'—')+'</small>')+
         card('td2-prodc', '<div class="td2-prod"><div><h3>الإنتاج هالشهر</h3><b class="td2-big">'+done+'<small> / '+tot+'</small></b><small class="muted">مهمة عميل خلصت</small>'+
-          '<div class="td2-chips">'+(prod?'<span class="tag s-in-progress">'+prod+' بالإنتاج</span>':'')+(wait?'<span class="tag s-review">'+wait+' بانتظار</span>':'')+(late?'<span class="tag c-crit">'+late+' متأخرة</span>':'')+(teamOpen?'<span class="tag s-confirmed">'+teamOpen+' عند الفريق</span>':'')+'</div></div>'+
+          '<div class="td2-chips">'+(prod?'<span class="tag s-in-progress">'+prod+' بالإنتاج</span>':'')+(wait?'<span class="tag tf-wait">'+wait+' بانتظار</span>':'')+(late?'<span class="tag c-crit">'+late+' متأخرة</span>':'')+(teamOpen?'<span class="tag s-confirmed">'+teamOpen+' عند الفريق</span>':'')+'</div></div>'+
           '<svg class="td2-ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40"/><circle class="on" cx="50" cy="50" r="40" stroke-dasharray="'+Math.round(pct*2.513)+' 252"/><text x="50" y="57">'+pct+'%</text></svg></div>')+
       '</div>'+
       '<div class="tdy-grid">'+
@@ -188,7 +190,7 @@
         '<section class="panelx"><div class="px-h"><h3>الطلبات الجديدة · آخر 8 أسابيع</h3><span class="muted small">هالأسبوع: '+wk[7]+'</span></div>'+
           '<svg class="td2-line" viewBox="0 0 700 160" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="tdlf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2FC4D8" stop-opacity=".32"/><stop offset="1" stop-color="#2FC4D8" stop-opacity="0"/></linearGradient><linearGradient id="tdls" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1C45E6"/><stop offset="1" stop-color="#2FC4D8"/></linearGradient></defs><path class="grid" d="M0 30H700M0 85H700M0 140H700"/><path d="'+area+'" fill="url(#tdlf)"/><path d="'+line+'" fill="none" stroke="url(#tdls)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg></section>'+
         '<section class="panelx"><div class="px-h"><h3>آخر الحركة</h3></div>'+
-          (feed.length?'<ul class="td2-feed">'+feed.map(function(x){ var fam=x.s.indexOf('w-')===0?WFAM[x.s.slice(2)]:x.s; return '<li><span class="muted small">'+esc(ago(x.at))+'</span><span>'+x.t+'</span><em class="tag s-'+esc(fam||'new')+'">'+esc(x.l||ST[x.s]||'')+'</em></li>'; }).join('')+'</ul>':'<p class="muted small" style="margin:0">ما في حركة لسا</p>')+'</section>'+
+          (feed.length?'<ul class="td2-feed">'+feed.map(function(x){ var cls=x.s.indexOf('w-')===0?'tf-'+(TFAM[x.s.slice(2)]||'new'):'s-'+esc(x.s); return '<li><span class="muted small">'+esc(ago(x.at))+'</span><span>'+x.t+'</span><em class="tag '+cls+'">'+esc(x.l||ST[x.s]||'')+'</em></li>'; }).join('')+'</ul>':'<p class="muted small" style="margin:0">ما في حركة لسا</p>')+'</section>'+
       '</div>'+
     '</div>';
   }

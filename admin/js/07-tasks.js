@@ -27,7 +27,7 @@
   function wdelivs(t){ var L=WORK.deliverables||[], can=['accepted','progress','revision','feedback','final'].indexOf(t.status)>=0, next=(L.length?L[0].version:0)+1;
     var rounds=L.filter(function(d){return d.status==='changes'}).length;
     return '<div class="wdv"><div class="ph"><b>التسليمات'+(rounds?' · جولة التعديل '+rounds:'')+'</b></div>'+
-      (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b> · <span class="wpill s-'+(d.status==='sent'?'feedback':d.status==='approved'?'completed':d.status==='changes'?'revision':'cancelled')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
+      (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b> · <span class="wpill tf-'+(d.status==='sent'?'wait':d.status==='approved'?'ok':d.status==='changes'?'fix':'off')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
         '<div>'+wlinks([{url:d.url,label:'افتح الملف'}].concat(d.links||[]))+'</div>'+(d.note?'<div class="small muted">ملاحظتك مع التسليم: '+esc(d.note)+'</div>':'')+
         (isVault(d.url)?'<video class="wrv-a" src="'+esc(d.url.replace(/^https?:\/\/[^\/]+/,''))+'" controls preload="metadata" playsinline></video>':'')+
         ((d.points||[]).length?'<div class="small muted" style="margin-top:6px">الملاحظات على هالنسخة:</div><ol class="wpts-a">'+d.points.map(function(p,k){ var st=p.status||(p.done?'resolved':'open');
@@ -76,7 +76,7 @@
   }
   function wd(s){ if(!s) return '—'; try{ return new Date(s.length===10?s+'T12:00:00Z':s).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short',year:'numeric'}); }catch(_){ return s; } }
   function wlinks(ls){ return (ls||[]).map(function(l){ return '<a class="adoc" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">↗ '+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,50))+'</a>'; }).join(' '); }
-  function wpill(s){ return '<span class="wpill s-'+esc(s)+'">'+esc(WST[s]||s)+'</span>'; }
+  function wpill(s){ return '<span class="wpill tf-'+(TFAM[s]||'new')+'">'+esc(WST[s]||s)+'</span>'; }
   function wtaskBody(t){
     var cr=t.change_request, cn=(WORK.clients||[]).filter(function(c){return c.email===t.client_email})[0];
     return '<div class="wtb"><div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
@@ -138,8 +138,8 @@
         (sel?'<div class="order item odetail wt tf-'+(TFAM[sel.status]||'new')+'" data-wref="'+esc(sel.ref)+'"><div class="odh"><button class="btn sm oback" type="button" data-wback>‹ كل المهام</button><span class="code">'+esc(sel.ref)+'</span><span class="tag">'+esc(WST[sel.status]||sel.status)+'</span><b>'+esc(sel.title)+'</b><span class="muted small">'+esc(sel.project_name||'')+' · المطلوب '+esc(wd(sel.requested_date))+(sel.confirmed_date?' · المؤكد '+esc(wd(sel.confirmed_date)):'')+'</span></div><div class="body">'+wtaskBody(sel)+'</div></div>'
           :'<div class="odetail empty-sel">اختار مهمة من القائمة</div>')+'</div>';
     $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+
-        kc(cnt(function(t){return TFAM[t.status]==='new'}),'طلبات جديدة','new','orders')+kc(cnt(function(t){return TFAM[t.status]==='prod'}),'قيد التنفيذ','prod','k_play')+
-        kc(cnt(function(t){return TFAM[t.status]==='wait'}),'بانتظار العميل','wait','k_wait')+kc(cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0}),'متأخرة','bad','k_late')+
+        kc(cnt(function(t){return t.status==='new'||t.status==='review'}),'طلبات جديدة','new','orders')+kc(cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0}),'قيد التنفيذ','prod','k_play')+
+        kc(cnt(function(t){return ['info','feedback','final'].indexOf(t.status)>=0}),'بانتظار العميل','wait','k_wait')+kc(cnt(function(t){return t.confirmed_date&&t.confirmed_date<td&&WOPENST.indexOf(t.status)>=0}),'متأخرة','bad','k_late')+
         kc(cnt(function(t){return t.status==='completed'&&(t.completed_at||'').slice(0,7)===td.slice(0,7)}),'مكتملة هذا الشهر','ok','k_done')+kc((W.projects||[]).filter(function(p){return p.status==='active'}).length,'مشاريع نشطة','info','k_folder')+'</div></section>'+'<div class="wbar">'+subs+(WSUB==='tasks'?wfl:'')+'</div>'+
       (WSUB==='projects'?'<section class="sec"><h3>المشاريع ('+(W.projects||[]).length+')</h3><p class="hint">يربط المشروع عميلاً متعاقداً بمساحة عمله. يرى العميل مشاريعه فقط، ويرسل المهام من داخلها.</p>'+
         ((W.projects||[]).length?'<div class="clients">'+W.projects.map(function(p){ var cn=(W.clients||[]).filter(function(c){return c.email===p.client_email})[0];
@@ -149,7 +149,6 @@
         field(C,{p:'workspace.taskTypes',t:'bilist',l:'أنواع المهام',hint:'كل نوع بسطر'})+'<div class="row">'+['normal','high','urgent'].map(function(k){ return field(C,{p:'workspace.priorities.'+k,t:'bi',l:'اسم الأولوية: '+WPR[k]}); }).join('')+'</div></section>':tasksView);
   }
   // one line per task: what, which project and client, the stage, the confirmed date, and what needs you
-  var TFAM={new:'new',review:'new',accepted:'prod',progress:'prod',revision:'prod',info:'wait',feedback:'wait',final:'wait',completed:'ok',rejected:'off',cancelled:'off'};
   function wtaskRow(t){ var W=WORK, cn=(W.clients||[]).filter(function(c){ return c.email===t.client_email; })[0], late=t.confirmed_date&&t.confirmed_date<W.today&&WOPENST.indexOf(t.status)>=0, soon=!late&&t.confirmed_date&&WOPENST.indexOf(t.status)>=0&&(new Date(t.confirmed_date)-new Date(W.today))/864e5<=3, cr=t.change_request&&t.change_request.status==='pending';
     return '<li><button type="button" class="orow st tf-'+(TFAM[t.status]||'new')+(t.ref===WOPEN?' on':'')+'" data-wsel="'+esc(t.ref)+'">'+
       '<span class="orow-m"><b>'+esc(t.title)+'</b><small dir="ltr">'+esc(t.ref)+'</small></span>'+

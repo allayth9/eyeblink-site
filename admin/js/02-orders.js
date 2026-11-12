@@ -94,10 +94,11 @@
     var since=Date.now()-30*864e5, recent=ORDERS.filter(function(o){ return Date.parse(o.createdAt)>=since; }), won=recent.filter(function(o){ return o.paid||WON_ST.indexOf(o.status)>=0; });
     var paidSum=ORDERS.filter(function(o){return o.paid}).reduce(function(a,o){ return a+(parseFloat(o.paidAmount||o.price)||0); },0);
     var srcs=topOf(ORDERS.map(srcOf)), lost=topOf(ORDERS.filter(function(o){ return o.status==='cancelled'; }).map(function(o){ return o.lostReason; }));
-    return '<div class="kpis"><div><b>'+open.length+'</b><span>فرص مفتوحة'+(val?' · <span dir="ltr">'+esc(pfmt(val,(C.packages&&C.packages.currency)||'$'))+'</span>':'')+'</span></div>'+
-      '<div><b>'+ORDERS.filter(dueFollow).length+'</b><span>بحاجة متابعة اليوم</span></div>'+
-      '<div><b>'+(recent.length?Math.round(won.length*100/recent.length)+'%':'—')+'</b><span>تحوّلت لشغل (آخر 30 يوم'+(recent.length?' · '+won.length+' من '+recent.length:'')+')</span></div>'+
-      '<div><b dir="ltr">'+paidSum+'</b><span>مجموع المدفوع</span></div></div>'+
+    var due=ORDERS.filter(dueFollow).length;
+    return '<div class="kcs">'+kc(open.length,'فرص مفتوحة'+(val?' · <span dir="ltr">'+esc(pfmt(val,(C.packages&&C.packages.currency)||'$'))+'</span>':''),'new','orders')+
+      kc(due,'بحاجة متابعة اليوم','fix','k_wait')+
+      kc(recent.length?Math.round(won.length*100/recent.length)+'%':'—','تحوّلت لشغل (آخر 30 يوم'+(recent.length?' · '+won.length+' من '+recent.length:'')+')','info','reports',won.length)+
+      kc('<span dir="ltr">'+paidSum+'</span>','مجموع المدفوع','ok','payments',paidSum>0)+'</div>'+
       (srcs.length||lost.length?'<p class="small muted crm-line">'+(srcs.length?'من وين بيجوا: '+srcs.slice(0,4).map(function(x){ return esc(SRC[x[0]]||x[0])+' <b>'+x[1]+'</b>'; }).join(' · '):'')+(lost.length?(srcs.length?'<span class="sep">|</span>':'')+'أكتر سبب خسارة: '+esc(lost[0][0])+' <b>'+lost[0][1]+'</b>':'')+'</p>':'');
   }
   function oppForm(){
