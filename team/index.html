@@ -63,14 +63,45 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
 .t .late{color:var(--bad)}
 .empty{padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px dashed var(--line);color:var(--dim);font-size:13px;text-align:center}
 .st-assigned{--c:var(--hour)}.st-progress{--c:var(--horizon)}.st-changes{--c:var(--warn)}.st-qc{--c:var(--dusk)}.st-approved{--c:var(--ok)}
-.sheet{position:fixed;inset:0;z-index:20;background:rgba(2,3,14,.7);backdrop-filter:blur(6px);display:flex;justify-content:flex-start}
-.drawer{width:min(620px,100%);height:100%;overflow:auto;background:var(--panel);box-shadow:0 0 80px rgba(0,0,0,.6);padding:24px;display:grid;gap:18px;align-content:start;animation:in .28s cubic-bezier(.2,.8,.2,1)}
-@keyframes in{from{transform:translateX(-24px);opacity:0}to{transform:none;opacity:1}}
-.dh{display:flex;align-items:flex-start;gap:12px}
-.dh h2{margin:0;font:700 22px/1.4 "EYEN Ammon",Hayyakum,sans-serif;flex:1}
+/* the task window: centred, its own scroll, the page behind stays put */
+.sheet{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(2,3,14,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fade .22s ease-out}
+.sheet.out{animation:fade .18s ease-in reverse forwards}
+.drawer{width:min(760px,100%);max-height:min(860px,calc(100vh - 48px));display:flex;flex-direction:column;border-radius:24px;background:linear-gradient(180deg,#0d1438,#0a0f2e 40%);box-shadow:inset 0 0 0 1px var(--line),0 50px 120px -30px rgba(0,0,0,.85);overflow:hidden;animation:pop .32s cubic-bezier(.2,.9,.25,1)}
+.sheet.out .drawer{animation:pop .18s ease-in reverse forwards}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.975)}}
+.dh{display:flex;align-items:flex-start;gap:14px;padding:22px 26px 18px;border-bottom:1px solid var(--line)}
+.dh>div{flex:1;min-width:0;display:grid;gap:6px}
+.dh .k{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--mist)}
+.dh h2{margin:0;font:700 22px/1.4 "EYEN Ammon",Hayyakum,sans-serif}
+.x{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line);color:var(--mist);cursor:pointer}
+.x:hover{background:rgba(255,255,255,.12);color:var(--light)}.x svg{width:16px;height:16px}
+.db{overflow:auto;overscroll-behavior:contain;padding:22px 26px 26px;display:grid;gap:22px;align-content:start;scrollbar-width:thin;scrollbar-color:rgba(190,210,255,.2) transparent}
+.db::-webkit-scrollbar{width:8px}.db::-webkit-scrollbar-thumb{background:rgba(190,210,255,.18);border-radius:8px;border:2px solid transparent;background-clip:padding-box}.db::-webkit-scrollbar-track{background:transparent}
+.act{padding:16px 18px;border-radius:16px;background:rgba(63,224,232,.05);box-shadow:inset 0 0 0 1px rgba(63,224,232,.2);display:grid;gap:10px}
+.act b{font-weight:500}
+/* stages: the same track as the client's task page */
+.track{list-style:none;margin:0;padding:4px 0 0;display:grid;grid-template-columns:repeat(var(--n),1fr);position:relative;--p:0}
+.track::before,.track::after{content:"";position:absolute;top:14px;inset-inline:calc(100% / var(--n) / 2);height:2px;border-radius:2px;background:var(--line)}
+.track::after{background:linear-gradient(270deg,var(--horizon),var(--dusk));inset-inline-end:auto;width:calc((100% - 100% / var(--n)) * var(--p));box-shadow:0 0 12px rgba(63,224,232,.6)}
+.track li{position:relative;z-index:1;display:grid;justify-items:center;align-content:start;gap:7px;text-align:center}
+.track i{position:relative;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--night);box-shadow:inset 0 0 0 2px var(--line)}
+.track li.done i{background:var(--horizon);box-shadow:0 0 0 4px rgba(63,224,232,.15)}
+.track li.done i::before{content:"";width:9px;height:4.5px;border-left:2.2px solid var(--night);border-bottom:2.2px solid var(--night);transform:translateY(-1px) rotate(-45deg)}
+.track li.now i{background:#ff3b5c;box-shadow:0 0 0 3px rgba(255,59,92,.25),0 0 14px rgba(255,59,92,.8)}
+.track li.now i::before,.track li.now i::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 2px rgba(255,59,92,.7);animation:wave 2.4s cubic-bezier(.2,.6,.3,1) infinite}
+.track li.now i::after{animation-delay:1.2s}
+.track b{font-size:12.5px;font-weight:500;color:var(--mist);line-height:1.35}
+.track li.done b,.track li.now b{color:var(--light)}
+.track small{font-size:11px;color:var(--dim)}
+.track li.now.warn i{background:var(--warn);box-shadow:0 0 0 3px rgba(245,185,74,.25),0 0 14px rgba(245,185,74,.7)}
+.track li.now.warn i::before,.track li.now.warn i::after{box-shadow:0 0 0 2px rgba(245,185,74,.7)}
+@keyframes wave{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.8);opacity:0}}
+@media (prefers-reduced-motion:reduce){.track li.now i::before,.track li.now i::after{animation:none;opacity:0}.drawer,.sheet{animation:none}}
+html.lock{overflow:hidden}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c)}
 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.facts b{display:block;margin-top:2px}
 .facts div{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--line)}
 .facts span{display:block;font-size:11.5px;color:var(--dim)}.facts b{font-weight:500}
 .sec h4{margin:0 0 8px;font:500 12.5px Hayyakum,sans-serif;color:var(--dim);letter-spacing:.02em}
@@ -87,7 +118,11 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
 .notice{padding:18px 20px;border-radius:16px;background:linear-gradient(135deg,rgba(46,98,255,.18),rgba(139,92,255,.1));box-shadow:inset 0 0 0 1px rgba(46,98,255,.35);display:grid;gap:8px;justify-items:start}
 .notice b{font-size:16px}
 @media (max-width:900px){.cols{grid-template-columns:1fr 1fr}}
-@media (max-width:560px){.cols{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}.money div:first-child{grid-column:1/-1}.facts{grid-template-columns:1fr 1fr}.drawer{padding:18px}}
+@media (max-width:560px){.cols{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}.money div:first-child{grid-column:1/-1}.facts{gap:8px}.facts div{padding:10px 11px}.facts b{font-size:13px}
+  .sheet{padding:0;place-items:end stretch}
+  .drawer{width:100%;max-height:92vh;border-radius:24px 24px 0 0;animation-name:up}.sheet.out .drawer{animation-name:up}
+  .dh{padding:18px 18px 14px}.db{padding:18px 18px calc(22px + env(safe-area-inset-bottom))}.track b{font-size:10.5px}}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
 </style>
 </head>
 <body>
@@ -96,7 +131,7 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
 <script>
 (function(){
   var root=document.getElementById('root'), ME=null, TASKS=[], EARN=null, OPEN=null;
-  var ST={assigned:'جديدة',progress:'قيد العمل',changes:'تعديلات مطلوبة',qc:'عند المراجعة',approved:'معتمدة'};
+  var ST={assigned:'جديدة',progress:'قيد العمل',changes:'تعديلات مطلوبة',qc:'عند المراجعة',approved:'معتمدة',declined:'اعتذرت عنها'};
   var COLS=[['assigned','لازم تنعمل',['assigned']],['progress','قيد العمل',['progress','changes']],['qc','عند المراجعة',['qc']],['approved','معتمدة',['approved']]];
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
   function money(n,c){ n=+n||0; var v=(Math.round(n*100)/100).toString(); return c==='$'||!c?'$'+v:v+' '+c; }
@@ -107,7 +142,7 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
   function load(){ return fetch('/api/team?me=1',{credentials:'same-origin',cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
     if(!j.ok){ ME=null; return drawLogin(); } ME=j.me; TASKS=j.tasks; EARN=j.earnings;
     if(ME.mustChange) return drawPassword(true);
-    drawHome(); if(OPEN){ var t=TASKS.filter(function(x){return x.id===OPEN})[0]; if(t) drawTask(t); } }); }
+    drawHome(); if(OPEN){ var t=TASKS.filter(function(x){return x.id===OPEN})[0]; if(t) drawTask(t); else closeTask(); } }); }
   function logo(){ return '<div class="logo"><img src="../assets/img/favicon.svg" alt="">EYEBLINK · TEAM</div>'; }
   function drawLogin(){
     root.innerHTML='<div class="center"><form class="card" id="lf">'+logo()+'<h1>بوابة الفريق</h1><p>مهامك، ونسخك، وأجورك، بمكان واحد</p>'+
@@ -144,32 +179,64 @@ html[dir=rtl] .t::before{inset:0 0 0 auto}
     var sl=document.getElementById('supLink'); if(sl) sl.onclick=function(e){ e.preventDefault(); if(window.EBSupport) EBSupport.open({email:ME.email,name:ME.name,src:'team'}); };
     document.getElementById('pw').onclick=function(e){ e.preventDefault(); drawPassword(false); };
   }
+  // the task's stages, the same track the client sees on their task page; freelancers have one more stop: the fee paid
+  function stages(t){
+    var P=[['assigned','وصلتك'],['progress','قيد العمل'],['qc','عند المراجعة'],['approved','معتمدة']];
+    if(ME.type!=='staff') P.push(['paid','انصرف الأجر']);
+    var key=t.status==='changes'?'progress':(t.status==='approved'&&t.paid?'paid':t.status), at=0;
+    P.forEach(function(s,i){ if(s[0]===key) at=i; });
+    var all=t.status==='approved'&&(t.paid||ME.type==='staff');
+    return '<ol class="track" style="--n:'+P.length+';--p:'+(at/(P.length-1))+'">'+P.map(function(s,i){
+      var cls=i<at||all?'done':i===at?'now':'', lab=s[1], sub='';
+      if(i===at&&t.status==='changes'){ cls+=' warn'; lab='تعديلات مطلوبة'; }
+      if(s[0]==='assigned'&&t.offeredAt) sub=day(t.offeredAt.slice(0,10));
+      if(s[0]==='paid'&&t.paidAt) sub=day(t.paidAt.slice(0,10));
+      if(s[0]==='qc'&&t.versions.length) sub='v'+t.versions[t.versions.length-1].n;
+      return '<li class="'+cls+'"><i></i><b>'+lab+'</b><small class="num">'+sub+'</small></li>'; }).join('')+'</ol>';
+  }
+  // what the member does next: one clear block at the top of the window
+  function nextStep(t, canWork){
+    if(t.status==='declined') return '<p class="hint">اعتذرت عن هذه المهمة</p>';
+    if(!canWork) return t.status==='approved'?'':'<div class="act"><b>وقّع اتفاقية التعاون لتبدأ</b><span class="hint">المهام تنفتح بعد التوقيع</span></div>';
+    if(t.status==='assigned') return '<div class="act"><b>مهمة جديدة وصلتك</b><div class="accept"><button class="btn primary" type="button" data-start>استلمت المهمة وبدأت التنفيذ</button>'+(t.canDecline?'<button class="btn" type="button" data-decline>أعتذر عن المهمة</button><span class="hint">الاعتذار متاح خلال ساعة من وصول المهمة. بعدها تُعدّ مقبولة</span>':'')+'</div></div>';
+    if(t.status==='changes') return '<div class="act" style="background:rgba(245,185,74,.06);box-shadow:inset 0 0 0 1px rgba(245,185,74,.28)"><b>الاستوديو طلب تعديلات</b>'+(function(){ var s=t.comments.filter(function(c){ return c.from==='studio'; }).pop(); return s?'<div class="brief" style="font-size:14px">'+esc(s.text)+'</div>':'<span class="hint">التفاصيل بالمحادثة تحت</span>'; })()+'<button class="btn primary" type="button" data-start style="justify-self:start">استلمت التعديلات وبدأت</button></div>';
+    if(t.status==='progress') return '<form class="act" id="sub"><b>سلّم نسخة للمراجعة الداخلية</b><input name="url" type="url" dir="ltr" placeholder="رابط النسخة: Drive، Frame.io، Vimeo…" required><textarea name="note" placeholder="ملاحظة (اختياري)"></textarea><button class="btn primary" type="submit" style="justify-self:start">تسليم</button><span class="hint">النسخة بتوصل للاستوديو أول، وهو بيراجعها قبل العميل</span></form>';
+    if(t.status==='qc') return '<div class="act"><b>نسختك عند الاستوديو</b><span class="hint">رح توصلك الملاحظات هون أو الاعتماد</span></div>';
+    return '';
+  }
   function drawTask(t){
-    OPEN=t.id; var old=document.querySelector('.sheet'); if(old) old.remove();
-    var el=document.createElement('div'); el.className='sheet'; var canWork=ME.contract&&ME.contract.signedAt&&t.status!=='approved';
-    el.innerHTML='<div class="drawer st-'+t.status+'"><div class="dh"><h2>'+esc(t.title)+'</h2><button class="btn" type="button" data-close>إغلاق</button></div>'+
-      '<div><span class="pill">'+ST[t.status]+'</span>'+(t.alias?' <span style="color:var(--mist);font-size:13px">'+esc(t.alias)+'</span>':'')+'</div>'+
+    OPEN=t.id; var canWork=ME.contract&&ME.contract.signedAt&&t.status!=='approved';
+    var el=document.querySelector('.sheet'), fresh=!el;
+    if(fresh){ el=document.createElement('div'); el.className='sheet'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); }
+    var keep=!fresh&&el.querySelector('.db')?el.querySelector('.db').scrollTop:0;
+    el.innerHTML='<div class="drawer st-'+t.status+'"><div class="dh"><div><div class="k"><span class="pill">'+ST[t.status]+'</span>'+(t.alias?'<span>'+esc(t.alias)+'</span>':'')+'</div><h2>'+esc(t.title)+'</h2></div>'+
+      '<button class="x" type="button" data-close aria-label="إغلاق"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'+
+      '<div class="db">'+(t.status==='declined'?'':stages(t))+
       '<div class="facts"><div><span>التسليم</span><b>'+day(t.due)+'</b></div><div><span>أجرك</span><b class="num">'+money(t.fee,t.cur)+'</b></div><div><span>الصرف</span><b>'+(t.paid?'انصرف '+day(t.paidAt.slice(0,10)):t.status==='approved'?'مستحق':'بعد الاعتماد')+'</b></div></div>'+
-      '<div class="sec"><h4>البريف</h4><div class="brief">'+esc(t.brief||'—')+'</div></div>'+
+      nextStep(t,canWork)+
+      '<div class="sec"><h4>البريف</h4><div class="brief">'+(t.brief?esc(t.brief):'<span class="hint">ما في بريف مكتوب، اسأل الاستوديو بالمحادثة</span>')+'</div></div>'+
       (t.links.length?'<div class="sec"><h4>الملفات والمراجع</h4><div class="links">'+t.links.map(function(l){ return '<a href="'+esc(l)+'" target="_blank" rel="noopener" dir="ltr">'+esc(l)+'</a>'; }).join('')+'</div></div>':'')+
-      (t.status==='assigned'&&canWork?'<div class="accept"><button class="btn primary" type="button" data-start>استلمت المهمة وبدأت التنفيذ</button>'+(t.canDecline?'<button class="btn" type="button" data-decline>أعتذر عن المهمة</button><span class="hint">الاعتذار متاح خلال ساعة من وصول المهمة. بعدها تُعدّ مقبولة</span>':'')+'</div>':'')+
-      (t.status==='changes'&&canWork?'<button class="btn primary" type="button" data-start style="justify-self:start">استلمت التعديلات وبدأت</button>':'')+
-      (t.status==='declined'?'<p class="hint">اعتذرت عن هذه المهمة</p>':'')+
-      '<div class="sec"><h4>النسخ</h4><div class="vers">'+(t.versions.length?t.versions.slice().reverse().map(function(v){ return '<div><b class="num">v'+v.n+'</b><a href="'+esc(v.url)+'" target="_blank" rel="noopener">افتح النسخة</a><small>'+day(v.at.slice(0,10))+'</small>'+(v.note?'<span style="color:var(--mist);font-size:13px;flex-basis:100%">'+esc(v.note)+'</span>':'')+'</div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في نسخ بعد</span>')+'</div></div>'+
-      (canWork?'<form class="sec" id="sub"><h4>سلّم نسخة للمراجعة الداخلية</h4><div style="display:grid;gap:8px"><input name="url" type="url" dir="ltr" placeholder="رابط النسخة: Drive، Frame.io، Vimeo…" required><textarea name="note" placeholder="ملاحظة (اختياري)"></textarea><button class="btn primary" type="submit" style="justify-self:start">تسليم</button></div><p style="color:var(--dim);font-size:12px;margin:6px 0 0">النسخة بتوصل للاستوديو أول، وهو بيراجعها قبل العميل</p></form>':'')+
-      '<div class="sec"><h4>المحادثة مع الاستوديو</h4><div class="thread">'+(t.comments.length?t.comments.map(function(c){ return '<div class="c '+c.from+'">'+esc(c.text)+'<small>'+(c.from==='me'?'أنت':'الاستوديو')+' · '+day(c.at.slice(0,10))+'</small></div>'; }).join(''):'<span style="color:var(--dim);font-size:13px">ما في رسائل</span>')+'</div>'+
+      '<div class="sec"><h4>النسخ</h4><div class="vers">'+(t.versions.length?t.versions.slice().reverse().map(function(v){ return '<div><b class="num">v'+v.n+'</b><a href="'+esc(v.url)+'" target="_blank" rel="noopener">افتح النسخة</a><small>'+day(v.at.slice(0,10))+'</small>'+(v.note?'<span style="color:var(--mist);font-size:13px;flex-basis:100%">'+esc(v.note)+'</span>':'')+'</div>'; }).join(''):'<span class="hint">ما في نسخ بعد</span>')+'</div></div>'+
+      '<div class="sec"><h4>المحادثة مع الاستوديو</h4><div class="thread">'+(t.comments.length?t.comments.map(function(c){ return '<div class="c '+c.from+'">'+esc(c.text)+'<small>'+(c.from==='me'?'أنت':'الاستوديو')+' · '+day(c.at.slice(0,10))+'</small></div>'; }).join(''):'<span class="hint">ما في رسائل</span>')+'</div>'+
         '<form class="row" id="cm" style="margin-top:10px"><input name="text" placeholder="اكتب سؤال أو ملاحظة…" dir="auto"><button class="btn" type="submit">إرسال</button></form></div>'+
-    '</div>';
-    document.body.appendChild(el);
-    el.onclick=function(e){ if(e.target===el||e.target.closest('[data-close]')){ el.remove(); OPEN=null; } };
+    '</div></div>';
+    if(fresh){ document.body.appendChild(el); document.documentElement.classList.add('lock'); el.querySelector('.x').focus({preventScroll:true}); }
+    else el.querySelector('.db').scrollTop=keep;
+    el.onclick=function(e){ if(e.target===el||e.target.closest('[data-close]')) closeTask(); };
     var st=el.querySelector('[data-start]'); if(st) st.onclick=function(){ st.disabled=true; api({action:'start',id:t.id}).then(after); };
     var dc=el.querySelector('[data-decline]'); if(dc) dc.onclick=function(){ if(dc.dataset.armed!=='1'){ dc.dataset.armed='1'; dc.textContent='تأكيد الاعتذار'; return; } dc.disabled=true; api({action:'decline',id:t.id}).then(function(j){ if(!j.ok){ toast('انتهت مهلة الاعتذار، المهمة صارت مقبولة'); } after(j); }); };
     var s=el.querySelector('#sub'); if(s) s.onsubmit=function(e){ e.preventDefault(); var b=s.querySelector('button'); b.disabled=true; api({action:'submit',id:t.id,url:s.url.value.trim(),note:s.note.value.trim()}).then(function(j){ if(!j.ok){ b.disabled=false; toast(j.error==='url'?'الرابط لازم يبدأ بـ https://':'ما زبط'); return; } toast('وصلت النسخة للمراجعة'); after(j); }); };
     var c=el.querySelector('#cm'); c.onsubmit=function(e){ e.preventDefault(); if(!c.text.value.trim()) return; api({action:'comment',id:t.id,text:c.text.value.trim()}).then(after); };
   }
+  function closeTask(){
+    var el=document.querySelector('.sheet'); OPEN=null; if(!el||el.classList.contains('out')) return;
+    var gone=function(){ el.remove(); document.documentElement.classList.remove('lock'); };
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return gone();
+    el.classList.add('out'); setTimeout(gone,190);
+  }
   function after(j){ if(j&&j.ok===false&&j.error==='contract'){ toast('وقّع الاتفاقية أول'); } load(); }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-open]'); if(!b) return; var t=TASKS.filter(function(x){return x.id===b.dataset.open})[0]; if(t) drawTask(t); });
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ var s=document.querySelector('.sheet'); if(s){ s.remove(); OPEN=null; } } });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeTask(); } });
   load();
 })();
 </script>
