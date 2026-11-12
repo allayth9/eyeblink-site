@@ -286,18 +286,50 @@
     var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+p+'.'+sel+'.'); };
     var panel=it?'<div class="order item odetail rpanel"><div class="odh"><button class="btn sm oback" type="button" data-rback="'+esc(p)+'">‹ '+esc(sp.all||'كل العناصر')+'</button><b>'+esc(r.name(it,sel))+'</b>'+
         (r.fixed?'':'<details class="cp-more rmore"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
-          '<button class="btn sm" type="button" data-move="'+si+':'+sel+':-1"'+(sel?'':' disabled')+'>لفوق ↑</button><button class="btn sm" type="button" data-move="'+si+':'+sel+':1"'+(sel<arr.length-1?'':' disabled')+'>لتحت ↓</button>'+
           '<button class="btn sm danger" type="button" data-del="'+si+':'+sel+'">حذف</button></div></details>')+'</div>'+
         (tabs.length>1?'<div class="subtabs rtabs">'+tabs.map(function(t,k){ return '<button type="button" data-rtab="'+esc(p)+':'+k+'"'+(k===ti?' aria-current="true"':'')+'>'+esc(t[0])+'</button>'; }).join('')+'</div>':'')+
         '<div class="body">'+tabs[ti][1].map(function(k){ return pre(field(it,r.fields[k])); }).join('')+'</div></div>'
       :'<div class="odetail empty-sel">اختار من القائمة</div>';
-    return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"><ul class="olist">'+rows+'</ul>'+panel+'</div>'+
+    var hint=!r.fixed&&arr.length>1?'<li class="olh rhint">'+arr.length+' · اضغط مطوّلاً واسحب لتغيير الترتيب</li>':'';
+    return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"'+(r.fixed?' data-fixed="1"':'')+'><ul class="olist">'+hint+rows+'</ul>'+panel+'</div>'+
       (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button></div>'); }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-ropen],[data-rback],[data-rtab]'); if(!b) return;
     if(b.dataset.ropen){ var q=b.dataset.ropen.split(':'); ROPEN[q[0]]=+q[1]; render();
       if(!matchMedia('(min-width:1001px)').matches){ var pn=document.querySelector('.rsplit[data-rep="'+q[0]+'"]'); if(pn) pn.scrollIntoView({block:'start'}); } return; }
     if(b.dataset.rback){ ROPEN[b.dataset.rback]=-1; render(); return; }
     var t=b.dataset.rtab.split(':'); RTAB[t[0]]=+t[1]; render(); });
+  /* reorder by long-press and drag: hold a row (~0.35 s) until it lifts, then drag it; the others slide out of the way
+     and it settles into its new place. A move before it lifts is a scroll or a click, as usual. */
+  var PRESS=null, DRAG=null, SWALLOW=false, RM=matchMedia('(prefers-reduced-motion: reduce)');
+  document.addEventListener('pointerdown',function(e){ var row=e.target.closest('.rsplit .rrow'); if(!row||e.button>0) return; var sp=row.closest('.rsplit'); if(sp.dataset.fixed) return;
+    var st={x:e.clientX,y:e.clientY,li:row.parentNode,ul:row.parentNode.parentNode,p:sp.dataset.rep,id:e.pointerId,row:row};
+    row.classList.add('pressing'); st.timer=setTimeout(function(){ lift(st); },350); PRESS=st; });
+  function lift(st){ PRESS=null; st.row.classList.remove('pressing');
+    var lis=[].filter.call(st.ul.children,function(l){ return l.querySelector('.rrow'); }), from=lis.indexOf(st.li);
+    DRAG={st:st,lis:lis,from:from,to:from,rects:lis.map(function(l){ return l.getBoundingClientRect(); }),s0:st.ul.scrollTop,w0:scrollY};
+    st.ul.classList.add('sorting'); st.li.classList.add('lifted'); st.li.style.transform='scale(1.03)'; try{ st.row.setPointerCapture(st.id); }catch(_){} if(navigator.vibrate) navigator.vibrate(10); }
+  document.addEventListener('pointermove',function(e){
+    if(PRESS&&!DRAG){ if(Math.abs(e.clientX-PRESS.x)+Math.abs(e.clientY-PRESS.y)>8){ clearTimeout(PRESS.timer); PRESS.row.classList.remove('pressing'); PRESS=null; } return; }
+    if(!DRAG) return; var D=DRAG, ul=D.st.ul, inList=ul.scrollHeight>ul.clientHeight+2, ur=ul.getBoundingClientRect();
+    // near an edge: keep scrolling (the list when it scrolls, the page otherwise)
+    var top=inList?ur.top:90, bot=inList?ur.bottom:innerHeight; if(e.clientY<top+48){ if(inList) ul.scrollTop-=10; else scrollBy(0,-10); } else if(e.clientY>bot-48){ if(inList) ul.scrollTop+=10; else scrollBy(0,10); }
+    var ds=(ul.scrollTop-D.s0)+(scrollY-D.w0), dy=e.clientY-D.st.y+ds, f=D.rects[D.from], cy=f.top+f.height/2+dy, to=D.from;
+    D.rects.forEach(function(r,i){ var mid=r.top+r.height/2; if(i<D.from&&cy<mid&&i<to) to=i; if(i>D.from&&cy>mid&&i>to) to=i; });
+    D.to=to; D.st.li.style.transform='translateY('+dy+'px) scale(1.03)'; var gap=f.height+3;
+    D.lis.forEach(function(l,i){ if(i===D.from) return; var t=D.from<to&&i>D.from&&i<=to?-gap:D.from>to&&i>=to&&i<D.from?gap:0; l.style.transform=t?'translateY('+t+'px)':''; }); });
+  function dragEnd(){ if(PRESS){ clearTimeout(PRESS.timer); PRESS.row.classList.remove('pressing'); PRESS=null; } if(!DRAG) return;
+    var D=DRAG; DRAG=null; SWALLOW=true; setTimeout(function(){ SWALLOW=false; },60);
+    var f=D.rects[D.from], t=D.rects[D.to], ty=D.to>D.from?t.bottom-f.bottom:t.top-f.top;
+    D.st.li.classList.add('settle'); D.st.li.style.transform='translateY('+ty+'px)';
+    setTimeout(function(){ D.st.ul.classList.remove('sorting');
+      if(D.to===D.from){ render(); return; }
+      var arr=get(C,D.st.p), it=arr.splice(D.from,1)[0]; arr.splice(D.to,0,it); var o=ROPEN[D.st.p];
+      if(o===D.from) ROPEN[D.st.p]=D.to; else if(D.from<o&&o<=D.to) ROPEN[D.st.p]=o-1; else if(D.to<=o&&o<D.from) ROPEN[D.st.p]=o+1;
+      render(); dirty(); saveDraft(); },RM.matches?0:200); }
+  document.addEventListener('pointerup',dragEnd); document.addEventListener('pointercancel',dragEnd);
+  document.addEventListener('click',function(e){ if(SWALLOW&&e.target.closest('.rsplit .rrow')){ e.stopPropagation(); e.preventDefault(); } },true);   // the drop is not a click
+  document.addEventListener('touchmove',function(e){ if(DRAG) e.preventDefault(); },{passive:false});   // no page scroll while carrying a row
+  document.addEventListener('contextmenu',function(e){ if(e.target.closest('.rsplit .rrow')) e.preventDefault(); });
   // where each content section lives on the site
   var SITEPG={home:'/',services:'/services.html',packages:'/pricing.html',work:'/work.html',about:'/about.html',contact:'/contact.html',payments:'/pricing.html'};
   function secNav(tab){ var pg=SITEPG[tab.id];
