@@ -61,7 +61,7 @@
     if(t==='light') r.dataset.theme='light'; else delete r.dataset.theme; try{ localStorage.setItem('eb-admin-theme',t); }catch(_){} });
   var ROUTING=false;
   function route(replace){ if(ROUTING) return; try{
-    var p='/admin'+(TAB==='today'?'':'/'+TAB)+(TAB==='tasks'?(WOPEN?'/'+WOPEN:WSUB&&WSUB!=='tasks'?'/'+WSUB:''):'')+(TAB==='team'?(TSUB==='apps'&&TAOPEN?'/apps/'+encodeURIComponent(TAOPEN):TSUB&&TSUB!=='tasks'?'/'+TSUB:''):'')+(TAB==='billing'&&BOPEN?'/'+encodeURIComponent(BOPEN).replace('%3A',':'):'')+(TAB==='clients'&&PROF&&PROF.email?'/'+encodeURIComponent(PROF.email):'')+(TAB==='orders'&&OPENCODE?'/'+OPENCODE:TAB==='orders'&&OPICK&&OOPEN?(function(){ var o=ORDERS.filter(function(x){ return x.key===OOPEN; })[0]; return o?'/'+o.code:''; })():'');
+    var p='/admin'+(TAB==='today'?'':'/'+TAB)+(TAB==='tasks'?(WOPEN?'/'+WOPEN:WSUB&&WSUB!=='tasks'?'/'+WSUB:''):'')+(TAB==='team'?(TSUB==='apps'&&TAOPEN?'/apps/'+encodeURIComponent(TAOPEN):TSUB&&TSUB!=='tasks'?'/'+TSUB:''):'')+(TAB==='support'&&SPICK&&SOPEN?'/'+encodeURIComponent(SOPEN):'')+(TAB==='billing'&&BOPEN?'/'+encodeURIComponent(BOPEN).replace('%3A',':'):'')+(TAB==='clients'&&PROF&&PROF.email?'/'+encodeURIComponent(PROF.email):'')+(TAB==='orders'&&OPENCODE?'/'+OPENCODE:TAB==='orders'&&OPICK&&OOPEN?(function(){ var o=ORDERS.filter(function(x){ return x.key===OOPEN; })[0]; return o?'/'+o.code:''; })():'');
     if(location.pathname!==p||location.hash) history[replace?'replaceState':'pushState'](null,'',p);
   }catch(_){} }
   // the address → {tab, sub}; old links (#tasks/T-…, #clients/…, #support) still open the right place
@@ -77,7 +77,7 @@
     return {tab:tab, sub:sub, unknown:!known};
   }
   addEventListener('popstate',function(){ if(!LIVE&&!C) return; var r=readRoute(); ROUTING=true;
-    if(r.tab==='tasks'){ var ts=!!r.sub&&/^T-/.test(r.sub); WOPEN=ts?r.sub:null; WSUB=ts||!r.sub?'tasks':r.sub; } if(r.tab==='billing') BOPEN=r.sub; if(r.tab==='team') teamRoute(r.sub); if(r.tab==='clients'&&!r.sub) PROF=null; if(r.tab==='orders'){ OPENCODE=r.sub; if(!r.sub){ OOPEN=null; OPICK=false; } }
+    if(r.tab==='tasks'){ var ts=!!r.sub&&/^T-/.test(r.sub); WOPEN=ts?r.sub:null; WSUB=ts||!r.sub?'tasks':r.sub; } if(r.tab==='billing') BOPEN=r.sub; if(r.tab==='support'){ SOPEN=r.sub; SPICK=!!r.sub; } if(r.tab==='team') teamRoute(r.sub); if(r.tab==='clients'&&!r.sub) PROF=null; if(r.tab==='orders'){ OPENCODE=r.sub; if(!r.sub){ OOPEN=null; OPICK=false; } }
     go(r.tab); if(r.tab==='clients'&&r.sub) loadProfile(r.sub); ROUTING=false; });
   function go(tab){ TAB=tab; route(); render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
   function goOrder(key){ TAB='orders'; OFILTER='all'; OOPEN=key; OPICK=true; render(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; setTimeout(function(){ d.scrollIntoView({block:'start',behavior:'smooth'}); },40); d.classList.add('flash'); setTimeout(function(){ d.classList.remove('flash'); },1600); } }
