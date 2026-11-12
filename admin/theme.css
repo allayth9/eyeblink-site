@@ -294,7 +294,7 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .cfm-rows span{color:var(--dim)}.cfm-rows b{font-weight:500;text-align:end;overflow-wrap:anywhere}
 .cfm-act{display:flex;gap:8px}
 .cf-bad .cfm-act .primary{background:linear-gradient(45deg,#8E1F3A,#C2405E);box-shadow:none}
-@media (max-width:600px){ .cfm-ov{place-items:end center;padding:0} .cfm{width:100%;border-radius:24px 24px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom));transform:translateY(30px)} .cfm-act .btn{flex:1;justify-content:center} }
+@media (max-width:600px){ .cfm-ov{padding:16px} .cfm-act .btn{flex:1;justify-content:center} }
 @media (prefers-reduced-motion:reduce){ .cfm-ov,.cfm{transition:none} }
 /* the publish bar: shows only while something is waiting to go live */
 .pubbar{position:sticky;bottom:16px;z-index:20;display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100% - 8px);margin:18px auto 0;padding:10px 12px 10px 16px;border-radius:18px;background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-wait) 45%,var(--line)),var(--glass-shadow);font-size:13.5px}

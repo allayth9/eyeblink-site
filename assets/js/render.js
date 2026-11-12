@@ -341,17 +341,19 @@
       var media='<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>'+
         (p.preview?'<video class="hov" muted loop playsinline preload="none" data-src="'+esc(url(p.preview))+'" aria-hidden="true"></video>':'');
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
-      return '<div class="pw'+(p.slug?' sh':'')+'" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
+      return '<div class="pw" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
         '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
           '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
           '<span class="cap">'+esc(lab+(p.year?' · '+p.year:''))+'</span></div>'+PROPS[PROPS[p.service]?p.service:'films']+'</div>'+
-        '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+
-        '<span class="views" data-views="'+esc(workKey(p))+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span></div></button>'+
-        (p.slug?'<button type="button" class="pshare glass" data-share="'+i+'" aria-label="'+esc((AR?'مشاركة: ':'Share: ')+L(p.title))+'">'+SHARE_ICO+'</button>':'')+'</div>';
+        '<div><h3>'+esc(L(p.title))+'</h3>'+(sub?'<span class="soon">'+esc(sub)+'</span>':'')+'</div></button>'+
+        '<div class="pact"><span class="views" data-views="'+esc(workKey(p))+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span>'+
+          '<button type="button" class="plike" data-like="'+esc(workKey(p))+'" aria-pressed="false" aria-label="'+esc((AR?'أعجبني: ':'Like: ')+L(p.title))+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z"/></svg><b></b></button>'+
+          (p.slug?'<button type="button" class="pshare" data-share="'+i+'" aria-label="'+esc((AR?'مشاركة: ':'Share: ')+L(p.title))+'">'+SHARE_ICO+'</button>':'')+'</div></div>';
     }).join('');
     loadViews();
     [].forEach.call(grid.querySelectorAll('.pshare'),function(b){ b.addEventListener('click',function(){ shareWork(list[+b.dataset.share],b); }); });
+    [].forEach.call(grid.querySelectorAll('.plike'),function(b){ b.addEventListener('click',function(){ likeWork(b); }); });
     [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); });
       ['pointerenter','touchstart','focus'].forEach(function(t){ b.addEventListener(t,function(){ warm(list[+b.dataset.i]); },{passive:true,once:true}); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     // preview on hover (mouse) or keyboard focus; it fades in once it is really playing, and back to the cover on leave
@@ -459,7 +461,15 @@
   // the key the server uses for a work (functions/api/views.js): its id, or a fingerprint of its media before it has one
   function fp(s){ var h=5381; s=String(s); for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
   function workKey(p){ return p.id || ('w'+fp(p.poster||p.preview||(p.full&&(p.full.id||p.full.src))||(p.title&&p.title.ar)||'')); }
-  var VIEWS=null, viewsReq=null;
+  var VIEWS=null, LIKES={}, viewsReq=null, MINE={}; try{ MINE=JSON.parse(localStorage.getItem('eb-likes')||'{}')||{}; }catch(_){}
+  function paintLikes(){ [].forEach.call(document.querySelectorAll('[data-like]'),function(b){ var k=b.dataset.like, n=LIKES[k]||0, on=!!MINE[k];
+    b.setAttribute('aria-pressed',on); b.classList.toggle('on',on); b.querySelector('b').textContent=n?n:''; }); }
+  // «أعجبني»: shows at once, then the server's number; tapping again takes it back
+  function likeWork(b){ var k=b.dataset.like, on=!MINE[k]; if(on) MINE[k]=1; else delete MINE[k]; try{ localStorage.setItem('eb-likes',JSON.stringify(MINE)); }catch(_){}
+    LIKES[k]=Math.max(0,(LIKES[k]||0)+(on?1:-1)); paintLikes(); if(on){ b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+    if(!/^https?:/.test(location.protocol)) return;
+    fetch(BASE+'api/views',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:k,like:on}),keepalive:true})
+      .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&typeof j.n==='number'){ LIKES[k]=j.n; paintLikes(); } }).catch(function(){}); }
   function viewsLabel(n){
     if(!AR) return n+(n===1?' view':' views');
     return n+' '+(n===1?'مشاهدة':n===2?'مشاهدتان':n<=10?'مشاهدات':'مشاهدة');
@@ -471,15 +481,14 @@
       el.querySelector('b').textContent=viewsLabel(n); el.setAttribute('aria-label',viewsLabel(n)); el.hidden=false; });
   }
   function loadViews(){
-    if(VIEWS){ paintViews(); return; }
+    if(VIEWS){ paintViews(); paintLikes(); return; }
     if(viewsReq||!/^https?:/.test(location.protocol)) return;
-    viewsReq=fetch(BASE+'api/views').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.views){ VIEWS=j.views; paintViews(); } }).catch(function(){});
+    viewsReq=fetch(BASE+'api/views').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.views){ VIEWS=j.views; LIKES=j.likes||{}; paintViews(); paintLikes(); } }).catch(function(){});
+    paintLikes();
   }
   // a real view: the visitor opened the work to watch it (the server counts one per visitor per work per day)
   function countView(p){
-    var k=workKey(p), seen=''; try{ seen=sessionStorage.getItem('eb-v:'+k); }catch(_){}
-    if(seen||!/^https?:/.test(location.protocol)) return;
-    try{ sessionStorage.setItem('eb-v:'+k,'1'); }catch(_){}
+    var k=workKey(p); if(!/^https?:/.test(location.protocol)) return;
     fetch(BASE+'api/views',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:k}),keepalive:true})
       .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&typeof j.n==='number'){ VIEWS=VIEWS||{}; VIEWS[k]=j.n; paintViews(); } }).catch(function(){});
   }
@@ -528,7 +537,8 @@
       var more=function(){ cs.classList.toggle('more',cs.scrollTop+cs.clientHeight<cs.scrollHeight-4); }; cs.onscroll=more; setTimeout(more,60); setTimeout(more,900);
       var st=cs.querySelector('.lb-strip'); if(st) st.addEventListener('wheel',function(e){ if(st.scrollWidth>st.clientWidth && Math.abs(e.deltaY)>Math.abs(e.deltaX)){ st.scrollLeft+=(AR?-1:1)*e.deltaY; e.preventDefault(); } },{passive:false}); }
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
-    var ve=lbFrame.querySelector('video'); if(ve) ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); });
+    lbFrame._p=p; var ve=lbFrame.querySelector('video'); if(ve){ ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); }); ve.addEventListener('ended',endScreen); }
+    var yf=lbFrame.querySelector('iframe'); if(yf&&/youtube/.test(yf.src)) yf.addEventListener('load',function(){ try{ yf.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'*'); }catch(_){} });
     vimeoAsk(lbFrame.querySelector('iframe')); waves(true); fadeAudio(0,1,1400,0);
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden'; root.classList.add('modal-open');
   }
@@ -551,10 +561,26 @@
     var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
     if(!d) return;
     var f=lbFrame&&lbFrame.querySelector('iframe'); if(!f) return;
-    if(d.event==='ready'){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }); setVol(fa.cur); }
+    if(d.event==='ready'){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }); setVol(fa.cur);
+      f.contentWindow.postMessage(JSON.stringify({method:'addEventListener',value:'ended'}),'*'); }
+    if(d.event==='ended') endScreen();
     if(d.method==='getVideoWidth'){ vw=+d.value; } if(d.method==='getVideoHeight'){ vh=+d.value; }
     if(vw&&vh){ setAR(vw,vh); vw=vh=0; }
   });
+  // YouTube tells us when it ends too (state 0)
+  addEventListener('message',function(e){ if(!/youtube(-nocookie)?\.com$/.test((e.origin||'').replace(/^https?:\/\//,''))) return; var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
+    if(d&&((d.event==='onStateChange'&&d.info===0)||(d.event==='infoDelivery'&&d.info&&d.info.playerState===0))) endScreen(); });
+  /* when the film ends: the poster, softly darkened, and one «إعادة المشاهدة» button over the player, so the platform's
+     own end screen (suggestions, links) never shows. Replay starts from the top in place. */
+  function endScreen(){ if(!lb||lb.hidden||lbFrame.querySelector('.lb-end')) return; var p=lbFrame._p||{};
+    var el=document.createElement('div'); el.className='lb-end'; if(p.poster) el.style.backgroundImage='url("'+url(p.poster).replace(/"/g,'%22')+'")';
+    el.innerHTML='<button type="button" class="lb-replay glass"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/></svg><span>'+(AR?'إعادة المشاهدة':'Watch again')+'</span></button>';
+    lbFrame.appendChild(el); requestAnimationFrame(function(){ el.classList.add('on'); }); el.querySelector('button').focus({preventScroll:true});
+    el.querySelector('button').addEventListener('click',function(){ var f=lbFrame.querySelector('iframe'), v=lbFrame.querySelector('video');
+      try{ if(f&&/vimeo/.test(f.src)){ f.contentWindow.postMessage(JSON.stringify({method:'setCurrentTime',value:0}),'*'); f.contentWindow.postMessage(JSON.stringify({method:'play'}),'*'); }
+        else if(f&&/youtube/.test(f.src)){ f.contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[0,true]}),'*'); f.contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}),'*'); }
+        else if(v){ v.currentTime=0; v.play().catch(function(){}); } }catch(_){}
+      if(lbFrame._p) countView(lbFrame._p); el.classList.remove('on'); setTimeout(function(){ el.remove(); },300); }); }
   function vimeoAsk(f){ if(!f||!/vimeo/.test(f.src)) return; vw=vh=0; f.addEventListener('load',function(){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ try{ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }catch(_){} }); }); }
   // faint radio waves rising from the centre of the player, behind it
   function waves(on,host,tgt){

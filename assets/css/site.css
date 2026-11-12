@@ -1962,12 +1962,32 @@ html{-webkit-tap-highlight-color:transparent}
 .wpt{grid-template-columns:84px 110px minmax(0,1fr)}
 .wpt select{min-width:0}
 @media (max-width:620px){ .wpt{grid-template-columns:84px 1fr} .wpt input[name=x]{grid-column:1/-1} }
-/* share a work: a small glass circle in the card's bottom corner, level with the views; a note when the link is copied */
+/* under each work: views · like · share in one quiet row, outside the card button (a button can't hold buttons) */
 .pw{position:relative;display:flex;min-width:0}.pw>.proj{flex:1;min-width:0;width:100%}
 .pw[hidden]{display:none}
-.pw.sh .proj>div:last-child{padding-inline-end:46px}   /* the text keeps clear of the share button */
-.pshare{position:absolute;bottom:17px;inset-inline-end:18px;z-index:4;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:0;padding:0;color:var(--mist);cursor:pointer;transition:color .2s,transform .2s,box-shadow .2s}
-.pshare svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
-.pshare:hover,.pshare:focus-visible{color:var(--horizon);transform:scale(1.08);box-shadow:inset 0 0 0 1px rgba(63,224,232,.35)}
+.pw .proj>div:last-child{padding-bottom:38px}
+.pact{position:absolute;inset-inline:22px;bottom:18px;z-index:4;display:flex;align-items:center;gap:8px;pointer-events:none}
+.pact>*{pointer-events:auto}
+.pact .views{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px;margin-inline-end:4px;font-size:13px;color:var(--mist);letter-spacing:.02em}
+.pact .views[hidden]{display:none}
+.pact .views svg{width:15px;height:15px;fill:none;stroke:var(--horizon);stroke-width:1.8;stroke-linejoin:round;opacity:.9}
+.pact .views b,.plike b{font-weight:400;font-variant-numeric:tabular-nums}
+.plike,.pshare{position:relative;height:32px;min-width:32px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:0;border-radius:99px;
+  background:rgba(238,242,246,.06);box-shadow:inset 0 0 0 1px rgba(238,242,246,.1);color:var(--mist);font:inherit;font-size:13px;cursor:pointer;transition:color .2s,background .2s,box-shadow .2s,transform .2s}
+.pshare{padding:0;width:32px}
+.plike svg,.pshare svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.plike:hover,.pshare:hover,.plike:focus-visible,.pshare:focus-visible{color:var(--light);background:rgba(238,242,246,.1)}
+.plike.on{color:#E07BE0;box-shadow:inset 0 0 0 1px rgba(224,123,224,.35);background:rgba(224,123,224,.1)}
+.plike.on svg{fill:currentColor}
+.plike.pop svg{animation:likePop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes likePop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
 .pshare .ptip{opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;pointer-events:none;position:absolute;bottom:calc(100% + 8px);inset-inline-end:0;white-space:nowrap;font-size:12px;padding:5px 11px;border-radius:99px;background:rgba(4,6,26,.88);color:var(--light);box-shadow:0 8px 20px -8px rgba(0,0,0,.6)}
 .pshare.done .ptip{opacity:1;transform:none}
+/* the end of the film: our own replay screen over the player */
+.lb-end{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:#04061A center/cover no-repeat;opacity:0;transition:opacity .35s}
+.lb-end::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at center,rgba(4,6,26,.45),rgba(4,6,26,.85))}
+.lb-end.on{opacity:1}
+.lb-replay{position:relative;display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border:0;border-radius:99px;color:var(--light);font:inherit;font-size:15px;cursor:pointer}
+.lb-replay svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lb-replay:hover{color:var(--horizon)}
+@media (prefers-reduced-motion:reduce){ .plike.pop svg{animation:none} .lb-end{transition:none} }
