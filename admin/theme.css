@@ -23,7 +23,7 @@
   --glass-edge:rgba(255,255,255,.22); --glass-blur:blur(30px) saturate(115%); --glass-shadow:0 34px 80px -34px rgba(0,0,0,.7);
   --input:rgba(4,6,26,.55); --btn-text:#fff;
   /* background */
-  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --lidOp:1;
+  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.16; --lidOp:1;
 }
 :root[data-theme="light"]{
   color-scheme:light;
