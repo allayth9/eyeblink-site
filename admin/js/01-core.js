@@ -259,7 +259,8 @@
     if(tab.layout) return renderLayout();
     if(tab.backup) return renderBackup();
     if(tab.settings) return renderSettings();
-    $('#panel').innerHTML=secNav(tab)+tab.secs.map(function(s,si){
+    var cur=Math.min(SECT[tab.id]||0,tab.secs.length-1);
+    $('#panel').innerHTML=secNav(tab)+tab.secs.map(function(s,si){ if(si!==cur) return '';   // one section on screen; the tabs above switch
       var html='<section class="sec" id="sec-'+si+'"><h3>'+esc(s.h)+'</h3>'+(s.hint?'<p class="hint">'+esc(s.hint)+'</p>':'');
       if(s.fields) html+=s.fields.map(function(f){return field(C,f)}).join('');
       if(s.priv==='payments'){ var pm=(P&&P.payments)||{};
@@ -275,8 +276,9 @@
       }
       return html+'</section>';
     }).join('');
-    decorate(); spy();
+    decorate();
   }
+  var SECT={};
   // a list as rows + the chosen item in a side panel (like requests and tasks); ↑ ↓ and delete live in the «⋯» menu
   var ROPEN={}, RTAB={};
   function repSplit(s,si){ var r=s.rep, p=r.p, arr=get(C,p)||[], sp=r.split, wide=matchMedia('(min-width:1001px)').matches;
@@ -360,21 +362,19 @@
   var SITEPG={home:'/',services:'/services.html',packages:'/pricing.html',work:'/work.html',about:'/about.html',contact:'/contact.html',payments:'/pricing.html'};
   function secNav(tab){ var pg=SITEPG[tab.id];
     return '<nav class="secnav" aria-label="أقسام الصفحة">'+(tab.secs.length>1?tab.secs.map(function(s,i){ var n=s.rep?(get(C,s.rep.p)||[]).length:0;
-      return '<button type="button" data-secgo="'+i+'">'+esc(s.h)+(n?' <small>'+n+'</small>':'')+'</button>'; }).join(''):'')+
+      return '<button type="button" data-secgo="'+i+'"'+(i===Math.min(SECT[tab.id]||0,tab.secs.length-1)?' class="on" aria-current="true"':'')+'>'+esc(s.h)+(n?' <small>'+n+'</small>':'')+'</button>'; }).join(''):'')+
       (pg?'<a class="secsite" href="'+pg+'" target="_blank" rel="noopener" data-pvw>الصفحة بالموقع ↗</a>':'')+'</nav>'; }
-  var SPY=null;
-  function spy(){ if(SPY) SPY.disconnect(); var chips=document.querySelectorAll('.secnav [data-secgo]'); if(!chips.length||!window.IntersectionObserver) return;
-    SPY=new IntersectionObserver(function(es){ es.forEach(function(en){ if(!en.isIntersecting) return; var i=en.target.id.slice(4); [].forEach.call(chips,function(c){ c.classList.toggle('on',c.dataset.secgo===i); }); }); },{rootMargin:'-180px 0px -55% 0px'});
-    [].forEach.call(document.querySelectorAll('#panel>.sec[id^="sec-"]'),function(s){ SPY.observe(s); }); }
-  document.addEventListener('click',function(e){ var b=e.target.closest('[data-secgo]'); if(!b) return; var s=document.getElementById('sec-'+b.dataset.secgo); if(!s) return; s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
-    setTimeout(function(){ if(Math.abs(s.getBoundingClientRect().top-170)>60) s.scrollIntoView({block:'start'}); },700); });   // a browser that skips smooth scrolling still gets there
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-secgo]'); if(!b) return; SECT[TAB]=+b.dataset.secgo; render(); if(scrollY>200) scrollTo(0,0); });
   // any preview link shows the unpublished draft on the site
   document.addEventListener('click',function(e){ if(!e.target.closest('[data-pvw]')) return; saveDraft(); try{ localStorage.setItem('eb-preview','1'); }catch(_){} });
   function dirty(){ var d=JSON.stringify(C)!==SAVED || JSON.stringify(P)!==PSAVED; $('#state').textContent=d?'تعديلات غير منشورة':'محفوظ'; $('#state').classList.toggle('dirty',d); pubBar(d); }
   // the number of texts and settings that differ from what is published (translator marks don't count)
   function changes(){ var n=0;
     try{ (function walk(x,y,k){ if(k==='_auto'||k==='_ok') return;
-      if(x&&y&&typeof x==='object'&&typeof y==='object'&&Array.isArray(x)===Array.isArray(y)){ var ks={}; Object.keys(x).concat(Object.keys(y)).forEach(function(q){ ks[q]=1; }); Object.keys(ks).forEach(function(q){ walk(x[q],y[q],q); }); }
+      // a list counts whole items (added, removed or changed), so deleting or moving one is one change, not every item after it
+      if(Array.isArray(x)&&Array.isArray(y)){ var sx=x.map(function(v){ return JSON.stringify(v); }), sy=y.map(function(v){ return JSON.stringify(v); });
+        var add=sy.filter(function(v){ return sx.indexOf(v)<0; }).length, rm=sx.filter(function(v){ return sy.indexOf(v)<0; }).length; n+=Math.max(add,rm)||(sx.join()!==sy.join()?1:0); }
+      else if(x&&y&&typeof x==='object'&&typeof y==='object'&&!Array.isArray(x)&&!Array.isArray(y)){ var ks={}; Object.keys(x).concat(Object.keys(y)).forEach(function(q){ ks[q]=1; }); Object.keys(ks).forEach(function(q){ walk(x[q],y[q],q); }); }
       else if(JSON.stringify(x)!==JSON.stringify(y)) n++; })(JSON.parse(SAVED||'{}'),C,''); }catch(_){}
     return n+(JSON.stringify(P)!==PSAVED?1:0); }
   function pubBar(d){ var b=$('#pubbar');

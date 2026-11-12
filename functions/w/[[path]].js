@@ -10,14 +10,16 @@ export async function onRequestGet({ request, env, params }) {
   const slug = String([].concat(params.path || [])[0] || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 80);
   let c = {}; try { c = JSON.parse(await env.EB.get("content", { cacheTtl: 60 }) || "{}"); } catch {}
   const p = slug && (c.projects || []).find(x => x && x.slug === slug);
-  const dest = (en ? "/en/work.html" : "/work.html") + (p ? "?w=" + encodeURIComponent(slug) : "");
+  const dest = (en ? "/en/work" : "/work") + (p ? "?w=" + encodeURIComponent(slug) : "");
   if (!p) return Response.redirect(new URL(dest, url).toString(), 302);
+  const bot = BOT.test(request.headers.get("user-agent") || "");
 
-  if (env.DB && !BOT.test(request.headers.get("user-agent") || "")) {
-    try {
+  if (!bot) {
+    if (env.DB) try {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS share_opens (slug TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0, last TEXT)").run();
       await env.DB.prepare("INSERT INTO share_opens (slug, n, last) VALUES (?, 1, ?) ON CONFLICT(slug) DO UPDATE SET n = n + 1, last = excluded.last").bind(slug, new Date().toISOString()).run();
     } catch {}
+    return Response.redirect(new URL(dest, url).toString(), 302);
   }
   const pick = o => (o && typeof o === "object") ? ((en ? o.en : o.ar) || o.ar || o.en || "") : String(o || "");
   const title = pick(p.title) + " · Eyeblink Studio", desc = pick(p.summary) || (en ? "A work by Eyeblink Studio" : "عمل من Eyeblink Studio");

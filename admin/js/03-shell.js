@@ -59,6 +59,65 @@
   // night / light: remembered on this device (night is the default)
   document.addEventListener('click',function(e){ if(!e.target.closest('#themeBtn')) return; var r=document.documentElement, t=r.dataset.theme==='light'?'dark':'light';
     if(t==='light') r.dataset.theme='light'; else delete r.dataset.theme; try{ localStorage.setItem('eb-admin-theme',t); }catch(_){} });
+  /* ---------- a small confirm window for the decisions that matter: what will happen, to whom, how much, and whether
+     it can be undone. It sits in front of the existing buttons (a capture listener), so each action keeps its own code. ---------- */
+  var CFICO={bad:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',warn:'<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',go:'<path d="M5 12.5l4.5 4.5L19 7.5"/>'};
+  function ask(o){ return new Promise(function(res){ var last=document.activeElement, ov=document.createElement('div'); ov.className='cfm-ov';
+    var rows=(o.rows||[]).filter(function(r){ return r[1]!=null&&r[1]!==''; });
+    ov.innerHTML='<div class="cfm cf-'+(o.tone||'go')+'" role="alertdialog" aria-modal="true" aria-labelledby="cfmT"'+(o.text?' aria-describedby="cfmD"':'')+'><span class="cfm-ic"><svg viewBox="0 0 24 24" aria-hidden="true">'+CFICO[o.tone||'go']+'</svg></span>'+
+      '<h4 id="cfmT">'+esc(o.title)+'</h4>'+(o.text?'<p id="cfmD">'+esc(o.text)+'</p>':'')+
+      (rows.length?'<div class="cfm-rows">'+rows.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div>':'')+
+      '<div class="cfm-act"><button type="button" class="btn primary" data-cfok>'+esc(o.ok||'تأكيد')+'</button><button type="button" class="btn" data-cfno>إلغاء</button></div></div>';
+    document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('on'); });
+    var bt=ov.querySelectorAll('button');
+    function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
+    function key(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); done(false); }
+      else if(e.key==='Enter'&&document.activeElement!==bt[1]){ e.preventDefault(); done(true); }
+      else if(e.key==='Tab'){ e.preventDefault(); (document.activeElement===bt[0]?bt[1]:bt[0]).focus(); } }
+    ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('[data-cfno]')) done(false); else if(e.target.closest('[data-cfok]')) done(true); });
+    addEventListener('keydown',key,true); bt[0].focus(); }); }
+  // what each confirmed button needs to say (null = no window this time)
+  function cfName(b){ var h=b.closest('.rpanel,.odetail,.item,.mcard,.client,.cp-task,.cp-ord,.wdi,#tsheet'); var t=h&&h.querySelector('.odh b,summary b,.mh b,b'); return t?t.textContent.trim():''; }
+  function cfInv(id){ var x=((BILL&&BILL.invoices)||[]).filter(function(v){ return v.id===id; })[0]; if(!x) return null; var c=((BILL.clients)||[]).filter(function(v){ return v.email===x.client_email; })[0];
+    return {x:x, rows:[['الفاتورة',x.no],['العميل',c?c.name:x.client_email],['المبلغ',mny(x.total,x.currency)],['الاستحقاق',x.due_date&&wd(x.due_date)]]}; }
+  function cfTask(ref){ var t=((WORK&&WORK.tasks)||[]).filter(function(v){ return v.ref===ref; })[0]; if(!t) return null; var c=((WORK.clients)||[]).filter(function(v){ return v.email===t.client_email; })[0];
+    return {t:t, rows:[['المهمة',t.title],['العميل',c?c.name:t.client_email]]}; }
+  var DEL=function(text){ return function(b){ var n=cfName(b); return {tone:'bad',title:n?'حذف «'+n+'»':'تأكيد الحذف',text:text||'ما بيرجع بعد الحذف',ok:'احذف'}; }; };
+  var CONF=[
+    ['[data-del]',DEL('بينشال من الموقع بعد النشر. فيك ترجّعه بـ«تراجع» قبل ما تنشر')],
+    ['#publishBtn,[data-pbpub]',function(){ var n=changes(); return n?{tone:'go',title:'نشر التعديلات على الموقع',text:'بتبين للزوار فوراً',rows:[['عدد التعديلات',n]],ok:'انشر'}:null; }],
+    ['[data-pbundo]',function(){ return {tone:'bad',title:'رجوع لآخر نسخة منشورة',text:'التعديلات اللي ما انتشرت بتنمسح',rows:[['عدد التعديلات',changes()]],ok:'ارجع'}; }],
+    ['[data-bsend]',function(b){ var i=cfInv(b.dataset.bsend); return {tone:'warn',title:i&&i.x.sent_at?'إعادة إرسال الفاتورة':'إرسال الفاتورة للعميل',text:'بتوصله بالإيميل وبإشعار بمساحة عمله',rows:i?i.rows:[],ok:'أرسلها'}; }],
+    ['[data-bpay]',function(b){ var i=cfInv(b.dataset.bpay), bx=b.closest('.bpay'), g=function(k){ var e=bx.querySelector(k); return e?e.value.trim():''; };
+      return {tone:'warn',title:'تسجيل دفعة وصلت',text:'بيوصل العميل إشعار بالدفعة، والحالة بتتغيّر لحالها',rows:[['الفاتورة',i&&i.x.no],['المبلغ',i?mny(nn(g('[data-pamt]')),i.x.currency):g('[data-pamt]')],['الطريقة',g('[data-pmeth]')],['التاريخ',g('[data-pdate]')&&wd(g('[data-pdate]'))]],ok:'سجّلها'}; }],
+    ['[data-bst]',function(b){ var st=b.dataset.bst, i=cfInv(b.dataset.id), ri=b.parentNode.querySelector('[data-ramt]');
+      if(st==='refunded'&&ri&&ri.hidden) return null;   // the first click only shows the amount box
+      return st==='cancelled'?{tone:'bad',title:'إلغاء الفاتورة',text:'بتصير ملغاة وما بتنطلب من العميل',rows:i?i.rows:[],ok:'ألغيها'}:
+        st==='refunded'?{tone:'bad',title:'تسجيل استرداد',rows:(i?i.rows.slice(0,2):[]).concat([['المبلغ المسترد',i?mny(nn(ri.value),i.x.currency):ri.value]]),ok:'سجّل الاسترداد'}:
+        {tone:'go',title:'إعادة فتح الفاتورة',rows:i?i.rows:[],ok:'افتحها'}; }],
+    ['[data-bdel],[data-bunpay]',DEL()],
+    ['[data-wacc]',function(b){ var k=cfTask(b.dataset.wacc), d=(b.closest('.wtb')||document).querySelector('[data-wcd]'); if(!d||!d.value) return null;
+      return {tone:'warn',title:'قبول المهمة',text:'بيوصل العميل إيميل بالموعد المؤكد',rows:(k?k.rows:[]).concat([['الموعد المؤكد',wd(d.value)]]),ok:'اقبلها'}; }],
+    ['[data-wrjt]',function(b){ var k=cfTask(b.dataset.wrjt), r=(b.closest('.wtb')||document).querySelector('[data-wrej]');
+      return {tone:'bad',title:'رفض المهمة',text:'بيوصل العميل إيميل بالرفض'+(r&&r.value.trim()?' وبالسبب':''),rows:(k?k.rows:[]).concat([['السبب',r?r.value.trim():'']]),ok:'ارفضها'}; }],
+    ['[data-wdl]',function(b){ var k=cfTask(b.dataset.wdl), bx=b.closest('.wtb')||document, f=bx.querySelector('[data-wdf]');
+      return {tone:'warn',title:f&&f.checked?'إرسال التسليم النهائي':'إرسال نسخة للعميل',text:'بتوصله بالإيميل وبمساحة عمله ليراجعها',rows:k?k.rows:[],ok:'أرسلها'}; }],
+    ['[data-aaccept]',function(b){ var a=((TEAM&&TEAM.apps)||[]).filter(function(x){ return x.id===b.dataset.aaccept; })[0];
+      return {tone:'warn',title:'قبول '+(a?a.name:'المتقدّم')+' بالفريق',text:'بينعمله حساب بالفريق وبيوصله إيميل ترحيب',rows:a?[['الدور',TROLE[a.role]||a.role],['الإيميل',a.email]]:[],ok:'اقبله'}; }],
+    ['[data-areject]',function(b){ var a=((TEAM&&TEAM.apps)||[]).filter(function(x){ return x.id===b.dataset.areject; })[0];
+      return {tone:'bad',title:'رسالة اعتذار لـ'+(a?a.name:'المتقدّم'),text:'بتوصله بالإيميل، وما بترجع',rows:a?[['الإيميل',a.email]]:[],ok:'أرسلها'}; }],
+    ['[data-tpayall]',function(b){ var em=b.dataset.tpayall, ts=((TEAM&&TEAM.tasks)||[]).filter(function(t){ return t.member===em&&t.status==='approved'&&!(t.payout&&t.payout.paid); });
+      return {tone:'warn',title:'صرف المستحق لـ'+memName(em),text:'بتنسجّل كل مهامه المعتمدة إنها انصرفت',rows:[['عدد المهام',ts.length],['المبلغ',pfmt(ts.reduce(function(a,t){ return a+(+t.fee||0); },0),'$')]],ok:'انصرف'}; }],
+    ['[data-adel],[data-tdel],[data-odel],[data-udel],[data-fdel],[data-rdel],[data-wcmd],[data-wfd]',DEL()],
+    ['[data-ctemp]',function(){ return {tone:'warn',title:'بيانات دخول جديدة للعميل',text:'كلمة السر القديمة بتوقف عن الشغل',ok:'أصدرها'}; }],
+    ['[data-carch="1"]',function(){ return {tone:'bad',title:'أرشفة العميل',text:'بيختفي من قائمة العملاء النشطين، وفيك ترجّعه',ok:'أرشفه'}; }],
+    ['[data-urole][data-to="customer"]',function(){ return {tone:'bad',title:'إلغاء مساحة العمل',text:'العميل ما عاد بيشوف مشاريعه ومهامه بحسابه',ok:'ألغيها'}; }],
+    ['[data-oset="cancelled"]',function(){ return {tone:'bad',title:'إلغاء الطلب',ok:'ألغيه'}; }],
+    ['[data-dregen]',function(){ return {tone:'bad',title:'رابط جديد للمستند',text:'الرابط القديم اللي عند العميل بيوقف',ok:'جدّده'}; }] ];
+  document.addEventListener('click',function(e){ var b=e.target.closest('button,a.btn'); if(!b||b._cfOk||b.disabled||!C) return;
+    for(var i=0;i<CONF.length;i++){ if(!b.matches(CONF[i][0])) continue; var o=CONF[i][1](b); if(!o) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      ask(o).then(function(ok){ if(!ok||!b.isConnected) return; b.dataset.armed='1'; b._cfOk=true; b.click(); b._cfOk=false; }); return; } },true);
   var ROUTING=false;
   function route(replace){ if(ROUTING) return; try{
     var p='/admin'+(TAB==='today'?'':'/'+TAB)+(TAB==='tasks'?(WOPEN?'/'+WOPEN:WSUB&&WSUB!=='tasks'?'/'+WSUB:''):'')+(TAB==='team'?(TSUB==='apps'&&TAOPEN?'/apps/'+encodeURIComponent(TAOPEN):TSUB&&TSUB!=='tasks'?'/'+TSUB:''):'')+(TAB==='support'&&SPICK&&SOPEN?'/'+encodeURIComponent(SOPEN):'')+(TAB==='billing'&&BOPEN?'/'+encodeURIComponent(BOPEN).replace('%3A',':'):'')+(TAB==='clients'&&PROF&&PROF.email?'/'+encodeURIComponent(PROF.email):'')+(TAB==='orders'&&OPENCODE?'/'+OPENCODE:TAB==='orders'&&OPICK&&OOPEN?(function(){ var o=ORDERS.filter(function(x){ return x.key===OOPEN; })[0]; return o?'/'+o.code:''; })():'');

@@ -278,6 +278,24 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .rhint{font-size:11.5px}
 @media (prefers-reduced-motion:reduce){ .rsplit .olist>li,.rsplit .rrow{transition:none} }
 @media (max-width:1000px){ .rpanel .odh{flex-wrap:wrap} }
+/* the confirm window: a small glass card in the middle (a sheet from the bottom on a phone), its colour by meaning */
+.cfm-ov{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:rgba(4,6,26,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .2s}
+:root[data-theme="light"] .cfm-ov{background:rgba(20,30,70,.22)}
+.cfm-ov.on{opacity:1}
+.cfm{--c:var(--horizon);width:min(400px,100%);padding:22px;border-radius:24px;background:var(--glass),var(--panel);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:inset 0 0 0 1px var(--line),0 40px 80px -30px rgba(0,0,0,.7);transform:translateY(10px) scale(.98);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.cfm-ov.on .cfm{transform:none}
+.cf-bad{--c:var(--f-bad)}.cf-warn{--c:var(--f-wait)}.cf-go{--c:var(--f-new)}
+.cfm-ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;margin-bottom:12px;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.cfm-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cfm h4{margin:0 0 6px;font:700 18px/1.4 "EYEN Ammon",Hayyakum,sans-serif}
+.cfm p{margin:0 0 14px;font-size:13.5px;color:var(--mist);line-height:1.7}
+.cfm-rows{display:grid;gap:6px;margin-bottom:16px}
+.cfm-rows div{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;border-radius:12px;background:rgba(var(--fg),.05);font-size:13px}
+.cfm-rows span{color:var(--dim)}.cfm-rows b{font-weight:500;text-align:end;overflow-wrap:anywhere}
+.cfm-act{display:flex;gap:8px}
+.cf-bad .cfm-act .primary{background:linear-gradient(45deg,#8E1F3A,#C2405E);box-shadow:none}
+@media (max-width:600px){ .cfm-ov{place-items:end center;padding:0} .cfm{width:100%;border-radius:24px 24px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom));transform:translateY(30px)} .cfm-act .btn{flex:1;justify-content:center} }
+@media (prefers-reduced-motion:reduce){ .cfm-ov,.cfm{transition:none} }
 /* the publish bar: shows only while something is waiting to go live */
 .pubbar{position:sticky;bottom:16px;z-index:20;display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100% - 8px);margin:18px auto 0;padding:10px 12px 10px 16px;border-radius:18px;background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-wait) 45%,var(--line)),var(--glass-shadow);font-size:13.5px}
 .pubbar>i{width:8px;height:8px;border-radius:50%;background:var(--f-wait);flex:none}

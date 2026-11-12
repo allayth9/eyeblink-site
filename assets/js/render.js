@@ -341,7 +341,7 @@
       var media='<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>'+
         (p.preview?'<video class="hov" muted loop playsinline preload="none" data-src="'+esc(url(p.preview))+'" aria-hidden="true"></video>':'');
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
-      return '<div class="pw" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
+      return '<div class="pw'+(p.slug?' sh':'')+'" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
         '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
           '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
@@ -352,7 +352,8 @@
     }).join('');
     loadViews();
     [].forEach.call(grid.querySelectorAll('.pshare'),function(b){ b.addEventListener('click',function(){ shareWork(list[+b.dataset.share],b); }); });
-    [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
+    [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); });
+      ['pointerenter','touchstart','focus'].forEach(function(t){ b.addEventListener(t,function(){ warm(list[+b.dataset.i]); },{passive:true,once:true}); }); var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     // preview on hover (mouse) or keyboard focus; it fades in once it is really playing, and back to the cover on leave
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
       [].forEach.call(grid.querySelectorAll('.proj'),function(card){
@@ -487,7 +488,7 @@
   // the page draws first from its saved copy, then from the live content: wait until the work is there
   function deepWork(){ if(DEEP) return; var w=new URLSearchParams(location.search).get('w'); if(!w) return;
     var p=(C.projects||[]).filter(function(x){ return x&&x.slug===w; })[0]; if(!p) return; DEEP=true; try{ history.replaceState(null,'',location.pathname+location.hash); }catch(_){}
-    setTimeout(function(){ bindLB(); if(lb) openLB(p); },350); }
+    bindLB(); if(lb) openLB(p); }
   // share the open work: the phone's share sheet, or the link copied on a computer
   var SHARE_ICO='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 13.3l7.4 4.4M15.7 6.3l-7.4 4.4"/></svg>';
   function shareWork(p,b){ if(!p||!p.slug) return; var u=location.origin+'/w/'+encodeURIComponent(p.slug)+(AR?'':'?l=en'), t=L(p.title)+' · Eyeblink Studio';
@@ -501,12 +502,14 @@
     lb.addEventListener('click',function(e){ if(e.target===lb) closeLB(); });
     addEventListener('keydown',function(e){ if(e.key==='Escape'&&!lb.hidden) closeLB(); });
   }
+  function playerSrc(p){ var v=vid(p.full||{});
+    return v&&v.type==='vimeo'?'https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1':
+      v&&v.type==='youtube'?'https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0&enablejsapi=1&playsinline=1':''; }
+  var WARM={};
+  function warm(p){ var s=playerSrc(p); if(!s||WARM[s]) return; WARM[s]=1; var l=document.createElement('link'); l.rel='prefetch'; l.href=s; document.head.appendChild(l); }
   function openLB(p){
     countView(p); if(CP.on) play(null);
-    var f=p.full||{}, src='', html='', title=L(p.title);
-    var v=vid(f);
-    if(v&&v.type==='vimeo') src='https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1';
-    else if(v&&v.type==='youtube') src='https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0&enablejsapi=1&playsinline=1';
+    var f=p.full||{}, html='', title=L(p.title), v=vid(f), src=playerSrc(p);
     html= src? '<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(title)+'"></iframe>'
              : '<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
     var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
