@@ -22,7 +22,7 @@
   --glass-edge:rgba(255,255,255,.22); --glass-blur:blur(30px) saturate(115%); --glass-shadow:0 34px 80px -34px rgba(0,0,0,.7);
   --input:rgba(4,6,26,.55); --btn-text:#fff;
   /* background */
-  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.44; --lidOp:1;
+  --au1:#1C45E6; --au2:#2FC4D8; --au3:#0E1A5C; --auOp:.4; --skyOp:.42;
 }
 :root[data-theme="light"]{
   color-scheme:light;
@@ -34,16 +34,15 @@
   --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
   --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
   --input:rgba(255,255,255,.7);
-  --au3:#9DB6F5; --auOp:.25; --lidOp:.75;
+  --au3:#9DB6F5; --auOp:.22; --skyOp:.38;
 }
 
-/* ---------- the sky: aurora + the logo's two eyelid strokes, fixed behind everything ---------- */
+/* ---------- the sky: a soft aurora + the sphere of points (admin/sky.js), fixed behind everything ---------- */
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:var(--skyOp)}
 html,body{background:var(--night)}
 body{background:none;position:relative;isolation:isolate}
 body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none;opacity:var(--auOp);filter:blur(90px);
   background:radial-gradient(38% 34% at 72% 2%,var(--au1),transparent 70%),radial-gradient(30% 30% at 4% 92%,var(--au2),transparent 70%),radial-gradient(30% 30% at 82% 70%,var(--au3),transparent 70%)}
-body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:var(--lidOp);background-size:cover;background-position:center;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='xMidYMid slice'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%230E1A5C' stop-opacity='0'/%3E%3Cstop offset='.35' stop-color='%231C45E6'/%3E%3Cstop offset='.72' stop-color='%232FC4D8'/%3E%3Cstop offset='1' stop-color='%232FC4D8' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cfilter id='b' x='-10%25' y='-50%25' width='120%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='14'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)'%3E%3Cpath d='M-80 470C300 210 900 140 1520 270' stroke-width='26' stroke-opacity='.3' filter='url(%23b)'/%3E%3Cpath d='M-80 470C300 210 900 140 1520 270' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M-80 570C420 690 1000 660 1520 430' stroke-width='20' stroke-opacity='.26' filter='url(%23b)'/%3E%3Cpath d='M-80 570C420 690 1000 660 1520 430' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M200 -20C600 210 1050 230 1520 90' stroke-width='1.2' stroke-opacity='.4'/%3E%3C/g%3E%3C/svg%3E")}
 
 /* ---------- glass surfaces ---------- */
 .side,.top,.sec,.login .card,.cmd,#tsheet .dbox,#dsheet .dbox,.toast{
