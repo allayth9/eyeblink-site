@@ -2023,3 +2023,9 @@ body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opaci
 .case-player .case-play{z-index:2}
 .case-player.armed>img,.case-player.armed .case-play{pointer-events:none}
 .case-player .gone{opacity:0!important;transition:opacity .35s ease!important}
+/* pricing: the studio's own words in place of a price, a line under a «from» price, «from» before the order total */
+.pkg .price .ask.own{font-size:19px;line-height:1.35;display:block}
+.pkg .price .pnote{display:block;flex-basis:100%;font-size:12.5px;color:var(--mist);margin-top:4px}
+#total[data-pre]::before{content:attr(data-pre);display:inline-block;margin-inline-end:.4em;font-size:.6em;color:var(--mist);font-weight:400}
+#selPrice .pfrom{display:inline-block;font-size:.42em;color:var(--mist);font-weight:400;vertical-align:middle}
+[dir="rtl"] #total[data-pre]::before{content:none}[dir="rtl"] #total[data-pre]::after{content:attr(data-pre);display:inline-block;margin-inline-start:.4em;font-size:.6em;color:var(--mist);font-weight:400}   /* the total is written left to right: in Arabic «يبدأ من» sits on its right */

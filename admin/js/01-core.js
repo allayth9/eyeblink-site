@@ -84,6 +84,9 @@
       return x.private?['خاص · بالرابط','off']:!x.preview&&!x.poster?['بلا معاينة','fix']:shown<=3?['بالرئيسية']:null; },
     share:true,
     tabs:[['الأساسي',[0,1,2,3]],['الفيديو',[11,12,13,14]],['دراسة الحالة',[4,5,6,7,8,9]],['الكواليس',[10]]]};
+  // how a service is priced when the panel has not said: no price = on request, a monthly plan = fixed, else «from»
+  function pmodeA(x){ var has=x.price!=null&&x.price!==''; if(x.pricing==='quote'||!has) return 'quote'; if(x.pricing==='fixed'||x.pricing==='from') return x.pricing;
+    return x.kind==='package'||(!x.kind&&(x.id==='monthly'||/month/i.test((x.unit&&x.unit.en)||'')))?'fixed':'from'; }
   var SVC=function(){ return (C.services||[]).map(function(s){return [s.id, (s.name&&s.name.ar)||s.id]}); };
   var TABS=[
     {id:'today', title:'اليوم', today:1},
@@ -121,14 +124,15 @@
       {h:'نصوص الصفحة', fields:[{p:'packages.h', t:'bi', l:'العنوان'},{p:'packages.p', t:'bita', l:'الوصف'},
         {p:'packages.currency', t:'text', l:'رمز العملة', ltr:1},{p:'packages.note', t:'bita', l:'ملاحظة الأسعار'},{p:'packages.payment', t:'bita', l:'طرق الدفع (تظهر بعد الطلب)'}]},
       {h:'الخدمات والباقة', hint:'«خدمة» تظهر في شبكة «اطلب خدمة». «باقة» (مثل الشهرية) تظهر ببطاقة عريضة تحتها. السعر القديم اختياري: إن كان أعلى من السعر يظهر مشطوباً مع نسبة التوفير.', rep:{p:'packages.items', name:function(x){return (x.name&&x.name.ar)||'باقة'},
-        split:{all:'كل الخدمات والباقات', addL:'+ خدمة أو باقة', tabs:[['الأساسي',[0,1,2,3]],['الوصف والمميزات',[4,5]],['المعرّف',[6]]],
-          sub:function(x){ var cur=(C.packages&&C.packages.currency)||'$', s=(C.services||[]).filter(function(v){ return v.id===x.service; })[0];
-            return [x.price!=null&&x.price!==''?cur+x.price+(+x.oldPrice>+x.price?' (بدل '+cur+x.oldPrice+')':'')+(x.unit&&x.unit.ar?' '+x.unit.ar:''):'عرض سعر', (s&&s.name&&s.name.ar)||''].filter(Boolean).join(' · '); },
+        split:{all:'كل الخدمات والباقات', addL:'+ خدمة أو باقة', tabs:[['الأساسي',[0,1,2,3,4]],['الوصف والمميزات',[5,6]],['المعرّف',[7]]],
+          sub:function(x){ var cur=(C.packages&&C.packages.currency)||'$', s=(C.services||[]).filter(function(v){ return v.id===x.service; })[0], m=pmodeA(x);
+            return [m==='quote'?'حسب الطلب':(m==='from'?'يبدأ من ':'')+cur+x.price+(+x.oldPrice>+x.price?' (بدل '+cur+x.oldPrice+')':'')+(x.unit&&x.unit.ar?' '+x.unit.ar:''), (s&&s.name&&s.name.ar)||''].filter(Boolean).join(' · '); },
           tag:function(x){ return x.featured?['الأكثر طلباً','sign']:x.kind==='package'?['باقة','info']:null; }},
         add:function(){return {id:'pkg-'+Date.now().toString(36),service:'editing',featured:false,price:null,unit:bi('للفيديو','per video'),name:bi('باقة جديدة','New package'),desc:bi(),features:bi([],[])}},
         fields:[{p:'name', t:'bi', l:'اسم الباقة'},
           {row:[{p:'kind', t:'select', l:'النوع', opts:function(){return [['','تلقائي'],['service','خدمة'],['package','باقة']]}},{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'featured', t:'check', l:'الأكثر طلباً'}]},
-          {row:[{p:'price', t:'num', l:'السعر (اتركه فارغاً = عرض سعر)'},{p:'oldPrice', t:'num', l:'السعر القديم (يظهر مشطوباً)'}]},
+          {row:[{p:'pricing', t:'select', l:'طريقة التسعير', opts:function(){return [['fixed','سعر ثابت'],['from','يبدأ من'],['quote','حسب الطلب']]}, def:pmodeA},{p:'price', t:'num', l:'السعر'},{p:'oldPrice', t:'num', l:'السعر القديم (يظهر مشطوباً)'}]},
+          {p:'priceText', t:'bi', l:'نص التسعير (اختياري)', hint:'«حسب الطلب»: بيطلع مكان السعر، مثلاً «بعد ما نعرف فكرتك ونوعها» (فاضي = «السعر حسب الطلب»). «يبدأ من»: سطر صغير تحت السعر، مثلاً «حسب المدة وعدد المشاهد». «سعر ثابت»: ما بيطلع.'},
           {p:'unit', t:'bi', l:'الوحدة (للفيديو، شهرياً…)'},{p:'desc', t:'bita', l:'وصف قصير'},{p:'features', t:'bilist', l:'المميزات', hint:'كل ميزة بسطر'},
           {p:'id', t:'text', l:'المعرّف (يظهر في الرابط)', ltr:1} ]}},
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return (x.name&&x.name.ar)||'إضافة'},
@@ -209,7 +213,7 @@
   function fid(){ return 'f'+Math.random().toString(36).slice(2,9); }
   function field(obj,f){
     if(f.row) return '<div class="row">'+f.row.map(function(x){return field(obj,x)}).join('')+'</div>';
-    var v=get(obj,f.p), id=fid(), hint=f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'', d=' data-p="'+esc(f.p)+'" data-t="'+f.t+'"';
+    var v=get(obj,f.p); if((v==null||v==='')&&f.def) v=f.def(obj); var id=fid(), hint=f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'', d=' data-p="'+esc(f.p)+'" data-t="'+f.t+'"';
     var lab='<label for="'+id+'">'+esc(f.l)+'</label>';
     switch(f.t){
       case 'text': return '<div class="field">'+lab+'<input id="'+id+'"'+d+(f.ltr?' dir="ltr"':'')+' value="'+esc(v)+'">'+hint+'</div>';
@@ -320,7 +324,7 @@
     if(b.dataset.rcopy){ var u=b.dataset.rcopy; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ toast('انتسخ الرابط'); },function(){ b.previousSibling.select(); }); return; }
     var q=b.dataset.rslug.split(':'), arr=get(C,q[0]), it=arr[+q[1]]; it.slug=slugOf(it,arr); SHOPEN=true; render(); dirty(); saveDraft(); });
   // a ticked «private» moves the work's tag right away
-  document.addEventListener('change',function(e){ if(/\.private$/.test(e.target.dataset&&e.target.dataset.p||'')) setTimeout(render,0); });
+  document.addEventListener('change',function(e){ if(/\.(private|pricing)$/.test(e.target.dataset&&e.target.dataset.p||'')) setTimeout(render,0); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-ropen],[data-rback],[data-rtab]'); if(!b) return;
     if(b.dataset.ropen){ var q=b.dataset.ropen.split(':'); ROPEN[q[0]]=+q[1]; SHOPEN=false; render();
       if(!matchMedia('(min-width:1001px)').matches){ var pn=document.querySelector('.rsplit[data-rep="'+q[0]+'"]'); if(pn) pn.scrollIntoView({block:'start'}); } return; }

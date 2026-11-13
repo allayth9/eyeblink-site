@@ -6,12 +6,12 @@
   var BASE=document.body.getAttribute('data-base')||'';
   var SVC_ID=document.body.getAttribute('data-service')||'';
   var UI={
-    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.',goAcct:'افتح حسابي',ask:'عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
+    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.',goAcct:'افتح حسابي',ask:'السعر حسب الطلب',chooseQuote:'اطلب عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
         svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب المتطلبات',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
         pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',brief:'البريف',challenge:'التحدي',idea:'الفكرة',execution:'التنفيذ',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'ماذا يحدث بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
-    en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
+    en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Priced on request',chooseQuote:'Request a quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
         offline:'Your request is ready',offlineP:'We copied your request details. Send them to us on Instagram and we will reply with a clear plan.',copy:'Copy details',copied:'Copied',openIG:'Open Instagram',
@@ -151,6 +151,8 @@
     if(S.whatsapp){ var n=String(S.whatsapp).replace(/[^0-9]/g,''); h+='<a class="chip glass" href="https://wa.me/'+n+'" target="_blank" rel="noopener">'+brand('whatsapp')+'<span><small>WhatsApp</small><b class="latin">+'+esc(n)+'</b></span></a>'; }
     return h; }
   // a "package" is a recurring plan; everything else on the price list is a single service
+  // how it is priced: «quote» (no number), «from» (a starting price) or «fixed»; unset keeps the old behaviour
+  function pmode(p){ var has=p.price!=null&&p.price!==''; if(p.pricing==='quote'||!has) return 'quote'; if(p.pricing==='fixed'||p.pricing==='from') return p.pricing; return kind(p)==='package'?'fixed':'from'; }
   function kind(p){ return p.kind || (p.id==='monthly'||/month/i.test((p.unit&&p.unit.en)||'')? 'package':'service'); }
   function pkgCard(p,link,wide){
     var cur=(C.packages&&C.packages.currency)||'$', has=p.price!=null&&p.price!=='', isPkg=kind(p)==='package';
@@ -160,12 +162,12 @@
     var top='<span class="pkg-top"><span class="k">'+esc(label)+'</span>'+(p.featured?'<span class="badge">'+UI.featured+'</span>':'')+'</span>';
     return pkgTail(p,link,wide,tag,attr,top,pr,isPkg);
   }
-  function priceHtml(p){ var cur=(C.packages&&C.packages.currency)||'$', has=p.price!=null&&p.price!=='', isPkg=kind(p)==='package';
+  function priceHtml(p){ var cur=(C.packages&&C.packages.currency)||'$', m=pmode(p), has=m!=='quote', note=L(p.priceText);
     var was=has&&+p.oldPrice>+p.price? '<s class="was">'+esc(money(cur,p.oldPrice))+'</s><span class="off">'+UI.save+' <bdi>'+Math.round((1-p.price/p.oldPrice)*100)+'%</bdi></span>' : '';
-    var price=!has? '<b class="ask">'+UI.ask+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
-    return (was?'<span class="wasrow">'+was+'</span>':'')+(has&&!isPkg?'<small>'+UI.from+'</small>':'')+price; }
+    var price=!has? '<b class="ask'+(note?' own':'')+'">'+esc(note||UI.ask)+'</b>' : '<b>'+esc(money(cur,p.price))+'</b><small>'+esc(L(p.unit))+'</small>';
+    return (was?'<span class="wasrow">'+was+'</span>':'')+(m==='from'?'<small>'+UI.from+'</small>':'')+price+(m==='from'&&note?'<span class="pnote">'+esc(note)+'</span>':''); }
   function pkgTail(p,link,wide,tag,attr,top,pr,isPkg){
-    var btn='<span class="btn '+(p.featured||isPkg?'btn-primary':'btn-glass glass')+' pick">'+(link?UI.details+' <span class="arr">'+ARW+'</span>':(isPkg?UI.choosePkg:UI.choose))+'</span>';
+    var btn='<span class="btn '+(p.featured||isPkg?'btn-primary':'btn-glass glass')+' pick">'+(link?UI.details+' <span class="arr">'+ARW+'</span>':(isPkg?UI.choosePkg:pmode(p)==='quote'?UI.chooseQuote:UI.choose))+'</span>';
     var feats='<ul>'+(L(p.features)||[]).map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul>';
     if(wide) return '<'+tag+' class="pkg wide glass rv" data-id="'+esc(p.id)+'"'+attr+'><div class="w-main">'+top+'<h3>'+esc(L(p.name))+'</h3><p>'+esc(L(p.desc))+'</p>'+feats+'</div><div class="w-side">'+pr+btn+'</div></'+tag+'>';
     return '<'+tag+' class="pkg glass rv'+(p.featured?' featured':'')+'" data-id="'+esc(p.id)+'"'+attr+'>'+top+'<h3>'+esc(L(p.name))+'</h3>'+pr+'<p>'+esc(L(p.desc))+'</p>'+feats+btn+'</'+tag+'>';
@@ -727,10 +729,10 @@
       document.getElementById('selName').textContent=L(p.name);
       document.getElementById('selDesc').textContent=L(p.desc)||'';
       document.getElementById('selKind').textContent=isPack(p)?'PACKAGE':((C.services||[]).filter(function(s){return s.id===p.service})[0]||{}).label||'SERVICE';
-      document.getElementById('selPrice').innerHTML=(p.price==null||p.price==='')? esc(UI.quote) : esc(money(cur,p.price))+(+p.oldPrice>+p.price?' <s>'+esc(money(cur,p.oldPrice))+'</s>':'');
+      var pm=pmode(p); document.getElementById('selPrice').innerHTML=pm==='quote'? esc(L(p.priceText)||UI.quote) : (pm==='from'?'<small class="pfrom">'+esc(UI.from)+'</small> ':'')+'<bdi>'+esc(money(cur,p.price))+'</bdi>'+(+p.oldPrice>+p.price?' <s><bdi>'+esc(money(cur,p.oldPrice))+'</bdi></s>':'');
       document.getElementById('selUnit').textContent=L(p.unit)||'';
       document.getElementById('selFeats').innerHTML=(L(p.features)||[]).map(function(f){return '<li>'+esc(f)+'</li>'}).join('');
-      document.getElementById('qtyRow').hidden=isPack(p)||p.price==null||p.price===''||(C.order||{}).askQty===false;
+      document.getElementById('qtyRow').hidden=isPack(p)||pm==='quote'||(C.order||{}).askQty===false;
     }
     calc();
     var done=document.getElementById('orderDone'); if(done&&!done.hidden){ done.hidden=true; document.getElementById('order').hidden=false; }
@@ -762,7 +764,9 @@
     var P=C.packages||{}, cur=P.currency||'$', p=item();
     var t=document.getElementById('total'), qo=document.getElementById('qty'); if(qo) qo.textContent=qty;
     if(!p){ t.textContent='—'; return; }
-    if(p.price==null||p.price===''){ t.textContent=UI.quote; return; }
+    // «from»: the word sits before the number (an attribute, so the total sent with the order stays a plain amount)
+    if(pmode(p)==='from') t.setAttribute('data-pre',UI.from); else t.removeAttribute('data-pre');
+    if(pmode(p)==='quote'){ t.textContent=UI.quote; return; }
     var base=+p.price*(isPack(p)?1:qty), fixed=0, pct=0;
     [].forEach.call(document.querySelectorAll('#addons input:checked'),function(i){ var a=(P.addons||[]).filter(function(x){return x.id===i.value})[0]; if(!a)return; if(a.type==='percent') pct+=+a.price; else fixed+=+a.price; });
     var sum=Math.round((base+fixed)*(1+pct/100));
@@ -784,7 +788,7 @@
     var plats=[].map.call(f.querySelectorAll('input[name=platform]:checked'),function(i){return i.value});
     var E=f.elements, ps=E.pay, pm=ps&&ps.value? ps.options[ps.selectedIndex].text : '';
     var items=[], cur=P.currency||'$';
-    if(p.price!=null&&p.price!==''){ var q=isPack(p)?1:qty, run=+p.price*q, pcts=[]; items.push({name:L(p.name),qty:q,unit:+p.price});
+    if(pmode(p)!=='quote'){ var q=isPack(p)?1:qty, run=+p.price*q, pcts=[]; items.push({name:L(p.name),qty:q,unit:+p.price});
       [].forEach.call(document.querySelectorAll('#addons input:checked'),function(i){ var a=(P.addons||[]).filter(function(x){return x.id===i.value})[0]; if(!a) return; if(a.type==='percent') pcts.push(a); else { items.push({name:L(a.name),qty:1,unit:+a.price}); run+=+a.price; } });
       pcts.forEach(function(a){ items.push({name:L(a.name)+' ('+a.price+'%)',qty:1,unit:Math.round(run*a.price)/100}); }); }
     var visit=null; try{ visit=JSON.parse(localStorage.getItem('eb-src')||'null'); }catch(_){}
