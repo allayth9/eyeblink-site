@@ -23,6 +23,7 @@ async function db(env){
       env.DB.prepare("CREATE TABLE IF NOT EXISTS work_views (id TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0, seed INTEGER NOT NULL DEFAULT 0, updated_at TEXT)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS view_hits (k TEXT PRIMARY KEY, day TEXT NOT NULL)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS work_likes (id TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS like_seed (id TEXT PRIMARY KEY, seed INTEGER NOT NULL DEFAULT 0)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS like_hits (k TEXT PRIMARY KEY, id TEXT NOT NULL, at TEXT, who TEXT)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS interest (k TEXT PRIMARY KEY, day TEXT NOT NULL, works TEXT, told INTEGER NOT NULL DEFAULT 0)"),
     ]);
@@ -49,7 +50,9 @@ export async function onRequestGet({ request, env }) {
   await seedMissing(D, ids);
   const rows = (await D.prepare(`SELECT id, n FROM work_views WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [];
   const views = {}; for (const r of rows) views[r.id] = r.n;
-  const likes = {}; for (const r of ((await D.prepare(`SELECT id, n FROM work_likes WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [])) likes[r.id] = r.n;
+  // likes start from 40% of the views the first time a work is seen; real likes add to that
+  await D.batch(rows.map(r => D.prepare("INSERT OR IGNORE INTO like_seed (id, seed) VALUES (?, ?)").bind(r.id, Math.round(r.n * 0.4))));
+  const likes = {}; for (const r of ((await D.prepare(`SELECT s.id, s.seed + COALESCE(l.n, 0) AS n FROM like_seed s LEFT JOIN work_likes l ON l.id = s.id WHERE s.id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [])) likes[r.id] = r.n;
   return json({ ok: true, views, likes }, 200, { "cache-control": "public, max-age=10" });
 }
 
@@ -64,12 +67,9 @@ export async function onRequestPost({ request, env }) {
   const k = (await sha256("v|" + ip + "|" + ua + "|" + id)).slice(0, 32);
   if (typeof d.like === "boolean") return like(request, env, D, id, k, d.like, now);
   await seedMissing(D, [id]);
-  // every real watch counts; the same visitor opening the same work again within 30 minutes counts once
-  const hit = await D.prepare("INSERT INTO view_hits (k, day) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET day = excluded.day WHERE view_hits.day < ?")
-    .bind(k, now, new Date(Date.now() - 30 * 60000).toISOString()).run();
-  const counted = !!(hit.meta && hit.meta.changes);
-  if (counted) await D.prepare("UPDATE work_views SET n = n + 1, updated_at = ? WHERE id = ?").bind(now, id).run();
-  if (Math.random() < 0.02) await D.prepare("DELETE FROM view_hits WHERE day < ?").bind(new Date(Date.now() - 2 * 86400000).toISOString()).run();
+  // every open and every replay is a view, the same visitor included
+  const counted = true;
+  await D.prepare("UPDATE work_views SET n = n + 1, updated_at = ? WHERE id = ?").bind(now, id).run();
   const row = await D.prepare("SELECT n FROM work_views WHERE id = ?").bind(id).first();
   await interest(request, env, D, ip, ua, id, now).catch(() => {});
   return json({ ok: true, counted, n: row ? row.n : null });
@@ -109,7 +109,7 @@ async function like(request, env, D, id, k, on, now) {
     changed = !!(r.meta && r.meta.changes);
     if (changed) await D.prepare("UPDATE work_likes SET n = MAX(n - 1, 0) WHERE id = ?").bind(id).run();
   }
-  const row = await D.prepare("SELECT n FROM work_likes WHERE id = ?").bind(id).first(), n = row ? row.n : 0;
+  const row = await D.prepare("SELECT COALESCE((SELECT n FROM work_likes WHERE id = ?), 0) + COALESCE((SELECT seed FROM like_seed WHERE id = ?), 0) AS n").bind(id, id).first(), n = row ? row.n : 0;
   if (on && changed) {
     let c = {}; try { c = JSON.parse(await env.EB.get("content", { cacheTtl: 60 }) || "{}"); } catch {}
     const p = (c.projects || []).find(x => x && workKey(x) === id), t = (p && p.title && (p.title.ar || p.title.en)) || id;

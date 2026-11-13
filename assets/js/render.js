@@ -343,7 +343,7 @@
       var media='<img alt="" loading="lazy"'+(p.poster?' src="'+esc(url(p.poster))+'"':' data-auto="1"')+'>'+
         (p.preview?'<video class="hov" muted loop playsinline preload="none" data-src="'+esc(url(p.preview))+'" aria-hidden="true"></video>':'');
       var sub=[L(p.summary),p.client?L(p.client):'',p.year||''].filter(Boolean).join(' · ');
-      return '<div class="pw" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot glass" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
+      return '<div class="pw glass" data-service="'+esc(p.service||'')+'"><button type="button" class="proj slot" data-i="'+i+'" data-service="'+esc(p.service||'')+'" aria-label="'+esc(UI.watch+L(p.title))+'">'+
         '<div class="rec"><span>'+esc(lab)+'</span><b>● PLAY</b></div>'+
         '<div class="desk '+shape(p.ratio)+'"><span class="sheet"></span>'+
           '<div class="pol"><i class="tape"></i><div class="ph">'+media+'<span class="play glass"><svg viewBox="0 0 16 16"><path d="M3 1.5v13l11-6.5z"/></svg></span></div>'+
