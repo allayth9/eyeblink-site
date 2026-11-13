@@ -22,25 +22,20 @@
 'float H(vec2 p){return lens(dropD(p),11.)*7.5+waves(p);}',
 'void main(){',
 ' vec2 p=vec2(gl_FragCoord.x,uRes.y*uDpr-gl_FragCoord.y)/uDpr;',
-' float dd=dropD(p);if(dd>4.){gl_FragColor=vec4(0.);return;}',
+' float dd=dropD(p);if(dd>3.){gl_FragColor=vec4(0.);return;}',
 ' float h0=H(p);vec3 n=normalize(vec3(h0-H(p+vec2(1.,0.)),h0-H(p+vec2(0.,1.)),1.));vec3 V=vec3(0.,0.,1.);',
-' float spec=pow(max(dot(reflect(-normalize(vec3(-.45,-.8,.85)),n),V),0.),90.);',
-' float fres=clamp((1.-n.z)*4.,0.,1.);',
-' vec3 irid=.5+.5*cos(6.2831*(vec3(0.,.33,.67)+fres*.85+p.x*.0028+uTime*.035));',
+' float spec=pow(max(dot(reflect(-normalize(vec3(-.45,-.8,.85)),n),V),0.),80.);',
+   // the edge's outward direction (screen, y down)
+' vec2 g=normalize(vec2(dropD(p+vec2(1.,0.))-dd,dropD(p+vec2(0.,1.))-dd)+1e-5);',
 ' float dm=smoothstep(1.,-1.,dd);',
-' float body=.5+.5*clamp(-n.y*3.,-1.,1.);',
-   // the glass: a faint cool fill, lighter at the top, like the bar's own glass
-' float da=dm*(.07+.05*body);vec3 dc=mix(vec3(.62,.80,1.),vec3(1.),body*.7);',
-   // the rim: thin and quiet
-' float rim=dm*(1.-smoothstep(0.,6.,-dd));float la=rim*.01;dc=vec3(.55,.75,1.)*la+dc*da*(1.-la);da=la+da*(1.-la);',
-   // one upper highlight, the «wet» line of liquid glass
-' float cres=dm*smoothstep(.2,.6,dot(n.xy,normalize(vec2(.55,.85))))*smoothstep(0.,3.,-dd);la=clamp(cres*.28,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);',
-' la=clamp(dm*spec*.8,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);',
-   // a whisper of colour on the very edge
-' la=dm*smoothstep(-1.5,0.,dd)*.014;dc=mix(vec3(1.),irid,.25)*la+dc*(1.-la);da=la+da*(1.-la);',
-   // 20% toward the identity's dark navy (#0E1A5C)
-' dc=mix(dc,vec3(.055,.102,.361),.2);',
-' gl_FragColor=vec4(dc,da)*uA;}'].join('\n');
+   // iOS liquid glass: a clear teal-blue body, a soft inner glow round the edge, one thin bright rim
+   // (brightest at the top-left, a softer second light at the bottom-right)
+' vec3 c=vec3(.42,.74,.92)*.15*dm;float a=.15*dm;',
+' float la=dm*(1.-smoothstep(0.,10.,-dd))*.2;c=vec3(.85,.97,1.)*la+c*(1.-la);a=la+a*(1.-la);',
+' vec2 L=normalize(vec2(-1.,-1.));float key=pow(max(dot(g,L),0.),1.4),back=pow(max(dot(g,-L),0.),2.);',
+' la=clamp((1.-smoothstep(0.,1.3,abs(dd+.7)))*(.22+.55*key+.30*back),0.,1.);c=vec3(.9,.99,1.)*la+c*(1.-la);a=la+a*(1.-la);',
+' la=clamp(dm*spec*.55,0.,1.);c=vec3(1.)*la+c*(1.-la);a=la+a*(1.-la);',
+' gl_FragColor=vec4(c,a)*uA;}'].join('\n');
 
   function Drop(list,items,host,isOn){
     var cv=document.createElement('canvas'); cv.className='nav-water'; cv.setAttribute('aria-hidden','true');
