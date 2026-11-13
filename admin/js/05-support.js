@@ -3,10 +3,10 @@
   var SUPA=null, SOPEN=null, SFILT='open';
   function loadSupport(){ if(!LIVE){ SUPA=[]; if(TAB==='support') renderSupport(); return; }
     fetch(API+'/support?admin=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ SUPA=j.ok?j.tickets:[]; renderTabs(); if(TAB==='support') renderSupport(); }).catch(function(){ SUPA=SUPA||[]; }); }
-  function supAct(body,btn,ok){ if(btn) btn.disabled=true; return api('/support','POST',body).then(function(j){ if(!j.ok) throw 0; SUPA=SUPA.map(function(s){ return s.id===j.ticket.id?j.ticket:s; }); if(ok) toast(ok); renderTabs(); renderSupport(); }).catch(function(){ if(btn) btn.disabled=false; toast('ما زبط، جرّب مرة تانية',true); }); }
+  function supAct(body,btn,ok){ if(btn) btn.disabled=true; return api('/support','POST',body).then(function(j){ if(!j.ok) throw 0; SUPA=SUPA.map(function(s){ return s.id===j.ticket.id?j.ticket:s; }); if(ok) toast(ok); renderTabs(); renderSupport(); }).catch(function(){ if(btn) btn.disabled=false; toast('تعذّر ذلك، حاول مرة أخرى',true); }); }
   var SST={open:'مفتوحة',answered:'انرد عليها',closed:'مسكّرة'}, SFAM={open:'new',answered:'wait',closed:'off'}, SPICK=false;
   function renderSupport(){
-    renderTabs(); if(!SUPA){ $('#panel').innerHTML='<div class="sec"><div class="empty">عم يحمّل…</div></div>'; loadSupport(); return; }
+    renderTabs(); if(!SUPA){ $('#panel').innerHTML='<div class="sec"><div class="empty">جارٍ التحميل…</div></div>'; loadSupport(); return; }
     var list=SUPA.filter(function(s){ return SFILT==='all'||(SFILT==='open'?s.status!=='closed':s.status===SFILT); });
     var wide=matchMedia('(min-width:1001px)').matches;
     if(!list.some(function(s){ return s.id===SOPEN; })&&!SPICK){ SOPEN=wide&&list[0]?list[0].id:null; }
@@ -14,16 +14,16 @@
     if(cur&&cur.unread&&LIVE) api('/support','POST',{action:'seen',id:cur.id}).then(function(){ cur.unread=0; renderTabs(); });
     var fmtT=function(a){ return new Date(a).toLocaleString('ar-u-nu-latn',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); };
     var cnt=function(st){ return SUPA.filter(function(s){ return s.status===st; }).length; };
-    $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+kc(cnt('open'),'بانتظار ردك','new','support')+kc(cnt('answered'),'بانتظار العميل','wait','k_wait')+kc(SUPA.filter(function(s){ return s.unread; }).length,'رسائل ما انقرت','fix','notify')+kc(cnt('closed'),'مسكّرة','off','k_done')+'</div></section>'+
-      '<div class="subtabs">'+[['open','المفتوحة'],['closed','المسكّرة'],['all','الكل']].map(function(x){ return '<button type="button" data-sfilt="'+x[0]+'"'+(SFILT===x[0]?' aria-current="true"':'')+'>'+x[1]+'</button>'; }).join('')+'</div>'+
-      (!SUPA.length?'<div class="sec"><div class="empty">ما في تذاكر دعم. أول ما حدا يكبس «هل يوجد مشكلة؟» بالموقع، بتطلع هون</div></div>':
+    $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+kc(cnt('open'),'بانتظار ردك','new','support')+kc(cnt('answered'),'بانتظار العميل','wait','k_wait')+kc(SUPA.filter(function(s){ return s.unread; }).length,'رسائل غير مقروءة','fix','notify')+kc(cnt('closed'),'مسكّرة','off','k_done')+'</div></section>'+
+      '<div class="subtabs">'+[['open','المفتوحة'],['closed','المغلقة'],['all','الكل']].map(function(x){ return '<button type="button" data-sfilt="'+x[0]+'"'+(SFILT===x[0]?' aria-current="true"':'')+'>'+x[1]+'</button>'; }).join('')+'</div>'+
+      (!SUPA.length?'<div class="sec"><div class="empty">لا توجد تذاكر دعم. حين يضغط أحد الزوار «هل يوجد مشكلة؟» في الموقع، تظهر التذكرة هنا</div></div>':
       '<div class="osplit'+(cur?' has-open':'')+'"><ul class="olist">'+(list.length?list.map(function(s){ var last=s.messages[s.messages.length-1];
         return '<li><button type="button" class="orow st tf-'+(SFAM[s.status]||'new')+(s.id===SOPEN?' on':'')+(s.unread?' unread':'')+'" data-sopen="'+esc(s.id)+'"><span class="orow-m"><b>'+esc(s.name)+'</b><small dir="ltr">'+esc(s.id)+'</small></span><span class="orow-v small">'+esc(fmtT(s.updatedAt||s.at))+'</span>'+
-          '<span class="orow-p">'+esc(String(last.text).slice(0,90))+'</span><span class="tag">'+esc(SST[s.status])+'</span><span class="orow-x">'+(s.unread?'<i class="ounr">'+s.unread+'</i><span>'+(s.unread>1?'رسائل جديدة':'رسالة جديدة')+'</span>':'')+'</span></button></li>'; }).join(''):'<li class="muted small" style="padding:12px">ما في شي هون</li>')+'</ul>'+
+          '<span class="orow-p">'+esc(String(last.text).slice(0,90))+'</span><span class="tag">'+esc(SST[s.status])+'</span><span class="orow-x">'+(s.unread?'<i class="ounr">'+s.unread+'</i><span>'+(s.unread>1?'رسائل جديدة':'رسالة جديدة')+'</span>':'')+'</span></button></li>'; }).join(''):'<li class="muted small" style="padding:12px">لا شيء هنا</li>')+'</ul>'+
       (cur?'<section class="order item odetail supth tf-'+(SFAM[cur.status]||'new')+'"><div class="odh"><button class="btn sm oback" type="button" data-sback>‹ كل التذاكر</button><span class="code" dir="ltr">'+esc(cur.id)+'</span><span class="tag">'+esc(SST[cur.status])+'</span><b>'+esc(cur.name)+'</b><span class="muted small">'+esc(fmtT(cur.at))+'</span></div><div class="body"><div class="supth-h"><div><span class="muted small" dir="ltr">'+esc(cur.email)+'</span>'+(cur.acct?' <span class="muted small">· عميل بحساب</span>':cur.src==='team'?' <span class="muted small">· من الفريق</span>':' <span class="muted small">· زائر</span>')+'<div class="muted small">'+(cur.page?'من: <bdi dir="ltr">'+esc(cur.page.replace(/^https?:\/\/[^/]+/,''))+'</bdi>':'')+'</div></div>'+
-          '<div class="actions">'+(cur.status==='closed'?'<button class="btn sm" type="button" data-sreopen="'+esc(cur.id)+'">إعادة فتح</button>':'<button class="btn sm" type="button" data-sclose="'+esc(cur.id)+'">تسكير التذكرة</button>')+'<a class="btn sm" href="mailto:'+esc(cur.email)+'?subject='+encodeURIComponent('Eyeblink · '+cur.id)+'">إيميل</a></div></div>'+
+          '<div class="actions">'+(cur.status==='closed'?'<button class="btn sm" type="button" data-sreopen="'+esc(cur.id)+'">إعادة فتح</button>':'<button class="btn sm" type="button" data-sclose="'+esc(cur.id)+'">إغلاق التذكرة</button>')+'<a class="btn sm" href="mailto:'+esc(cur.email)+'?subject='+encodeURIComponent('Eyeblink · '+cur.id)+'">إيميل</a></div></div>'+
         '<div class="athread">'+cur.messages.map(function(m){ return '<div class="amsg '+(m.from==='client'?'c':'s')+(m.from==='bot'?' k-bot':'')+'"><div>'+esc(m.text).replace(/\n/g,'<br>')+'</div><small>'+(m.from==='client'?esc(cur.name):m.from==='bot'?'رد تلقائي':'أنت')+' · '+esc(fmtT(m.at))+'</small></div>'; }).join('')+'</div>'+
-        '<div class="asend"><textarea id="sreply" dir="auto" placeholder="اكتب ردك… (بيوصله بالموقع وعلى إيميله)"></textarea><button class="btn primary sm" type="button" data-sreply="'+esc(cur.id)+'">إرسال</button></div></div></section>':'<div class="odetail empty-sel">اختار تذكرة من القائمة</div>')+'</div>');
+        '<div class="asend"><textarea id="sreply" dir="auto" placeholder="اكتب ردك… (يصله في الموقع وعلى بريده الإلكتروني)"></textarea><button class="btn primary sm" type="button" data-sreply="'+esc(cur.id)+'">إرسال</button></div></div></section>':'<div class="odetail empty-sel">اختر تذكرة من القائمة</div>')+'</div>');
     var th=$('#panel .athread'); if(th) th.scrollTop=th.scrollHeight;
   }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-sfilt],[data-sopen],[data-sback],[data-sreply],[data-sclose],[data-sreopen]'); if(!b) return; var D=b.dataset;
@@ -31,8 +31,8 @@
     if(D.sopen){ SOPEN=D.sopen; SPICK=true; route(); renderSupport(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.hasAttribute('data-sback')){ SOPEN=null; SPICK=false; route(); renderSupport(); return; }
     if(D.sreply){ var tx=($('#sreply')||{}).value||''; if(!tx.trim()){ toast('اكتب الرد',true); return; } supAct({action:'reply',id:D.sreply,text:tx.trim()},b,'وصل الرد للعميل'); return; }
-    if(D.sclose){ supAct({action:'close',id:D.sclose},b,'انسكّرت التذكرة'); return; }
-    if(D.sreopen){ supAct({action:'reopen',id:D.sreopen},b,'انفتحت التذكرة'); }
+    if(D.sclose){ supAct({action:'close',id:D.sclose},b,'أُغلقت التذكرة'); return; }
+    if(D.sreopen){ supAct({action:'reopen',id:D.sreopen},b,'فُتحت التذكرة'); }
   });
   function renderOrders(){
     renderTabs();
@@ -40,8 +40,8 @@
     var count=function(st){ return ORDERS.filter(function(o){return o.status===st}).length; }, due=ORDERS.filter(dueFollow).length;
     var methods=((C.payments&&C.payments.methods)||[]);
     var head='<section class="sec"><div class="crm-top"><h3>الطلبات والفرص</h3><button class="btn sm'+(NEWOPP?'':' primary')+'" type="button" data-oppnew>'+(NEWOPP?'إغلاق':'+ فرصة جديدة')+'</button></div>'+(NEWOPP?oppForm():'')+funnel()+
-      '<div class="chips">'+[['all','الكل',ORDERS.length]].concat(due?[['follow','بحاجة متابعة',due]]:[]).concat(Object.keys(ST).map(function(k){return [k,ST[k],count(k)]})).map(function(x){return '<button type="button" class="btn sm'+(OFILTER===x[0]?' primary':'')+(x[0]==='follow'?' due':'')+'" data-ofilter="'+x[0]+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</button>'}).join('')+'</div>'+
-      '<details class="crmset"><summary class="small muted">أسباب الخسارة (لما يتلغى طلب)</summary><textarea id="lostList" dir="auto" rows="6">'+esc(lostReasons().join('\n'))+'</textarea><div class="actions"><span class="small muted">كل سبب بسطر</span><button class="btn sm" type="button" data-lostsave>حفظ</button></div></details>'+
+      '<div class="chips">'+[['all','الكل',ORDERS.length]].concat(due?[['follow','بحاجة إلى متابعة',due]]:[]).concat(Object.keys(ST).map(function(k){return [k,ST[k],count(k)]})).map(function(x){return '<button type="button" class="btn sm'+(OFILTER===x[0]?' primary':'')+(x[0]==='follow'?' due':'')+'" data-ofilter="'+x[0]+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</button>'}).join('')+'</div>'+
+      '<details class="crmset"><summary class="small muted">أسباب الخسارة (عند إلغاء طلب)</summary><textarea id="lostList" dir="auto" rows="6">'+esc(lostReasons().join('\n'))+'</textarea><div class="actions"><span class="small muted">كل سبب بسطر</span><button class="btn sm" type="button" data-lostsave>حفظ</button></div></details>'+
       (!LIVE?'<p class="hint">هذا طلب تجريبي ليظهر لك طريقة العمل. الطلبات الحقيقية تصل هنا بعد نشر الموقع على Cloudflare.</p>':'')+'</section>';
     if(!list.length){ $('#panel').innerHTML=head+'<div class="sec"><div class="empty">لا توجد طلبات هنا.</div></div>'; return; }
     if(OPENCODE){ var oc=ORDERS.filter(function(o){ return o.code===OPENCODE; })[0]; if(oc){ OOPEN=oc.key; OPICK=true; } OPENCODE=null; }
@@ -74,7 +74,7 @@
           '<div class="small muted" style="margin-top:6px">رسالة جاهزة</div><div class="actions"><button class="btn sm" type="button" data-reply="delivered" data-ok="'+k+'">رسالة التسليم</button></div>'+
           '<div class="replybox" hidden><textarea class="replytext" dir="auto"></textarea><div class="actions">'+(o.email?'<button class="btn sm primary" type="button" data-sendreply="'+k+'">أرسل في محادثة الموقع</button>':'')+'<button class="btn sm" type="button" data-copyreply>نسخ الرسالة</button><a class="btn sm" data-openreply target="_blank" rel="noopener">افتح المحادثة الخارجية</a></div></div>'+
         '</div></div></div></div>';
-    }).join(''):'<div class="odetail empty-sel">اختار طلب من القائمة</div>')+'</div>';
+    }).join(''):'<div class="odetail empty-sel">اختر طلباً من القائمة</div>')+'</div>';
   }
   // one line per request: who, which package, the stage, the value, and what is waiting (unread messages, a follow-up due)
   function orderRow(o){ var k=esc(o.key), v=pnum(o.price||o.total), due=dueFollow(o);

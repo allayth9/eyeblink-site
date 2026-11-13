@@ -37,7 +37,7 @@
     if(S.done) got='<div class="pnote ok">✓ مدفوع بالكامل'+(o.invoice?' · فاتورة <b dir="ltr">'+esc(o.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="final">أعد إرسالها</button>':'')+'</div>';
     else {
       ask='<button class="btn sm primary" type="button" data-pask="'+k+'"'+(o.email?'':' disabled')+'>'+(S.asked?'أعد إرسال طلب الدفع':'اطلب الدفع من العميل')+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span>'+(S.stage!=='full'?' ('+STG[S.stage]+')':'')+'</button>'+
-        (S.asked?'<div class="pnote">'+(S.receipt?'📎 العميل رفع إيصال الدفع — تأكّد من وصول المبلغ واكبس «وصل الدفع».':'⏳ وصل للعميل طلب دفع '+esc(o.payInfo.amount)+' · '+esc(new Date(o.payInfo.at).toLocaleString('ar',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+(o.payInfo.reminded?' · ⏰ وصله تذكير':'')+'</div>'):'');
+        (S.asked?'<div class="pnote">'+(S.receipt?'📎 رفع العميل إيصال الدفع. تأكّد من وصول المبلغ، ثم اضغط «وصل الدفع»':'⏳ وصل العميلَ طلبُ دفع '+esc(o.payInfo.amount)+' · '+esc(new Date(o.payInfo.at).toLocaleString('ar',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+(o.payInfo.reminded?' · ⏰ وصله تذكير':'')+'</div>'):'');
       got='<button class="btn sm'+(S.asked?' primary':'')+'" type="button" data-pgot="'+k+'">✓ وصل '+STG[S.stage]+' · <span dir="ltr">'+esc(pfmt(S.amt,c))+'</span></button><div class="pnote">تُنشأ فاتورة برقم تسلسلي وتُرسل إلى العميل بالبريد الإلكتروني تلقائياً.</div>';
     }
     var depLine= o.deposit&&o.deposit.paid? '<div class="pnote ok">✓ العربون مدفوع <span dir="ltr">'+esc(pfmt(pnum(o.deposit.amount),c))+'</span>'+(o.deposit.invoice?' · فاتورة <b dir="ltr">'+esc(o.deposit.invoice.no)+'</b> <button class="btn sm" type="button" data-oinv="'+k+'" data-kind="deposit">أعد إرسالها</button>':'')+'</div>':'';
@@ -55,7 +55,7 @@
     btn.disabled=true;
     return fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify(d)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ Object.assign(o,j.order); renderOrders(); var d2=document.querySelector('[data-okey="'+o.key+'"]'); if(d2) d2.open=true; toast(okMsg); })
-      .catch(function(e){ btn.disabled=false; toast(({'set price and method first':'اكتب السعر واختر طريقة الدفع أولاً','no private details for this method':'اكتب حساب الاستلام بالخطوة 3'})[e.message]||'تعذّر، جرّب مرة ثانية',true); });
+      .catch(function(e){ btn.disabled=false; toast(({'set price and method first':'اكتب السعر واختر طريقة الدفع أولاً','no private details for this method':'اكتب حساب الاستلام بالخطوة 3'})[e.message]||'تعذّر ذلك، حاول مرة أخرى',true); });
   }
   document.addEventListener('click',function(e){
     var b=e.target.closest('[data-pask],[data-pgot]'); if(!b) return;
@@ -79,7 +79,7 @@
 
   /* ---------- CRM: opportunities from outside the site, follow-ups, contact log, loss reasons, the funnel ---------- */
   var SRC={website:'الموقع',instagram:'إنستغرام',whatsapp:'واتساب',referral:'توصية',email:'إيميل',meeting:'لقاء',other:'غيره'};
-  var LOST_DEF=['السعر','التوقيت','ما عاد ردّ','اختار غيرنا','مش مناسب لنا','غيره'];
+  var LOST_DEF=['السعر','التوقيت','توقّف عن الرد','اختار جهة أخرى','غير مناسب لنا','غيره'];
   var OPEN_ST=['new','discussing','confirmed','awaiting-payment'], WON_ST=['paid','in-progress','review','delivered'], NEWOPP=false;
   function lostReasons(){ var l=P&&P.crm&&P.crm.lostReasons; return l&&l.length?l:LOST_DEF; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
@@ -96,28 +96,28 @@
     var srcs=topOf(ORDERS.map(srcOf)), lost=topOf(ORDERS.filter(function(o){ return o.status==='cancelled'; }).map(function(o){ return o.lostReason; }));
     var due=ORDERS.filter(dueFollow).length;
     return '<div class="kcs">'+kc(open.length,'فرص مفتوحة'+(val?' · <span dir="ltr">'+esc(pfmt(val,(C.packages&&C.packages.currency)||'$'))+'</span>':''),'new','orders')+
-      kc(due,'بحاجة متابعة اليوم','fix','k_wait')+
-      kc(recent.length?Math.round(won.length*100/recent.length)+'%':'—','تحوّلت لشغل (آخر 30 يوم'+(recent.length?' · '+won.length+' من '+recent.length:'')+')','info','reports',won.length)+
+      kc(due,'بحاجة إلى متابعة اليوم','fix','k_wait')+
+      kc(recent.length?Math.round(won.length*100/recent.length)+'%':'—','تحوّلت إلى مشاريع (آخر 30 يوماً'+(recent.length?' · '+won.length+' من '+recent.length:'')+')','info','reports',won.length)+
       kc('<span dir="ltr">'+paidSum+'</span>','مجموع المدفوع','ok','payments',paidSum>0)+'</div>'+
-      (srcs.length||lost.length?'<p class="small muted crm-line">'+(srcs.length?'من وين بيجوا: '+srcs.slice(0,4).map(function(x){ return esc(SRC[x[0]]||x[0])+' <b>'+x[1]+'</b>'; }).join(' · '):'')+(lost.length?(srcs.length?'<span class="sep">|</span>':'')+'أكتر سبب خسارة: '+esc(lost[0][0])+' <b>'+lost[0][1]+'</b>':'')+'</p>':'');
+      (srcs.length||lost.length?'<p class="small muted crm-line">'+(srcs.length?'مصادر الفرص: '+srcs.slice(0,4).map(function(x){ return esc(SRC[x[0]]||x[0])+' <b>'+x[1]+'</b>'; }).join(' · '):'')+(lost.length?(srcs.length?'<span class="sep">|</span>':'')+'أكثر أسباب الخسارة: '+esc(lost[0][0])+' <b>'+lost[0][1]+'</b>':'')+'</p>':'');
   }
   function oppForm(){
-    return '<form class="opp" id="oppForm"><div class="ph"><b>فرصة جديدة</b><span class="small muted">حدا كتبلك برّا الموقع؟ سجّله هون، وبيمشي بنفس المراحل ومسار الدفع</span></div>'+
+    return '<form class="opp" id="oppForm"><div class="ph"><b>فرصة جديدة</b><span class="small muted">تواصل معك أحد من خارج الموقع؟ سجّله هنا، ويمرّ بالمراحل ومسار الدفع نفسها</span></div>'+
       '<div class="row"><div class="field"><label>الاسم *</label><input name="name" dir="auto" required></div><div class="field"><label>التواصل (رقم أو حساب)</label><input name="contact" dir="ltr"></div></div>'+
-      '<div class="row"><div class="field"><label>الإيميل (اختياري)</label><input name="email" type="email" dir="ltr"></div><div class="field"><label>المصدر</label>'+srcSel('name="source"','instagram')+'</div></div>'+
-      '<div class="row"><div class="field"><label>شو بدو باختصار</label><input name="title" dir="auto" placeholder="مثال: فيديو إطلاق مطعم"></div><div class="field"><label>القيمة التقديرية</label><input name="value" dir="ltr" placeholder="300 $"></div></div>'+
+      '<div class="row"><div class="field"><label>البريد الإلكتروني (اختياري)</label><input name="email" type="email" dir="ltr"></div><div class="field"><label>المصدر</label>'+srcSel('name="source"','instagram')+'</div></div>'+
+      '<div class="row"><div class="field"><label>المطلوب باختصار</label><input name="title" dir="auto" placeholder="مثال: فيديو إطلاق مطعم"></div><div class="field"><label>القيمة التقديرية</label><input name="value" dir="ltr" placeholder="300 $"></div></div>'+
       '<div class="field"><label>التفاصيل</label><textarea name="details" dir="auto"></textarea></div>'+
-      '<div class="row"><div class="field"><label>الخطوة الجاية</label><input name="nextStep" dir="auto" placeholder="مثال: ابعتله عرض السعر"></div><div class="field"><label>موعد المتابعة</label><input name="followUp" type="date" value="'+todayISO()+'"></div></div>'+
+      '<div class="row"><div class="field"><label>الخطوة التالية</label><input name="nextStep" dir="auto" placeholder="مثال: إرسال عرض السعر"></div><div class="field"><label>موعد المتابعة</label><input name="followUp" type="date" value="'+todayISO()+'"></div></div>'+
       '<div class="actions"><button class="btn primary sm" type="submit">إضافة الفرصة</button><button class="btn sm" type="button" data-oppx>إلغاء</button></div></form>';
   }
   function crmFields(o,k){
     var cancelled=o.status==='cancelled', canConv=o.email && WON_ST.concat(['confirmed','awaiting-payment']).indexOf(o.status)>=0;
-    return '<div class="crm">'+(hiddenOpp(o)?'<p class="small hid">🔒 مخفية عن العميل: ما بتطلع بحسابه وما بيوصله أي إيميل، لحد ما تصير «مؤكَّد»</p>':'')+
+    return '<div class="crm">'+(hiddenOpp(o)?'<p class="small hid">🔒 مخفية عن العميل: لا تظهر في حسابه ولا يصله أي بريد حتى تصبح «مؤكَّد»</p>':'')+
       '<div class="row"><div class="field"><label>المصدر</label>'+srcSel('data-of="source"',srcOf(o))+'</div><div class="field"><label>موعد المتابعة</label><input type="date" data-of="followUp" value="'+esc(o.followUp||'')+'"></div></div>'+
-      '<div class="field"><label>الخطوة الجاية</label><input data-of="nextStep" dir="auto" value="'+esc(o.nextStep||'')+'" placeholder="شو لازم يصير بعدين؟"></div>'+
-      '<div class="field lostf"'+(cancelled?'':' hidden')+'><label>ليش ما مشي؟</label><select data-of="lostReason"><option value="">اختر السبب…</option>'+lostReasons().map(function(r){ return '<option'+(r===o.lostReason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+(o.lostReason&&lostReasons().indexOf(o.lostReason)<0?'<option selected>'+esc(o.lostReason)+'</option>':'')+'</select></div>'+
-      (o.email?'':'<div class="field"><label>إيميل العميل (لحسابه ومسار الدفع)</label><input data-of="email" type="email" dir="ltr" placeholder="name@example.com"></div>')+
-      '<div class="touch"><div class="small muted">سجل التواصل</div><div class="trow">'+srcSel('data-tch','whatsapp')+'<input data-tnote dir="auto" placeholder="شو صار؟ مثال: بعتتله الأسعار، رح يرد بكرا"><button class="btn sm" type="button" data-otouch="'+k+'">سجّل</button></div>'+
+      '<div class="field"><label>الخطوة التالية</label><input data-of="nextStep" dir="auto" value="'+esc(o.nextStep||'')+'" placeholder="ما الذي يجب أن يحدث بعد ذلك؟"></div>'+
+      '<div class="field lostf"'+(cancelled?'':' hidden')+'><label>لماذا لم يكتمل؟</label><select data-of="lostReason"><option value="">اختر السبب…</option>'+lostReasons().map(function(r){ return '<option'+(r===o.lostReason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+(o.lostReason&&lostReasons().indexOf(o.lostReason)<0?'<option selected>'+esc(o.lostReason)+'</option>':'')+'</select></div>'+
+      (o.email?'':'<div class="field"><label>بريد العميل الإلكتروني (لحسابه ومسار الدفع)</label><input data-of="email" type="email" dir="ltr" placeholder="name@example.com"></div>')+
+      '<div class="touch"><div class="small muted">سجل التواصل</div><div class="trow">'+srcSel('data-tch','whatsapp')+'<input data-tnote dir="auto" placeholder="ماذا حدث؟ مثال: أرسلتُ له الأسعار، وسيردّ غداً"><button class="btn sm" type="button" data-otouch="'+k+'">سجّل</button></div>'+
         ((o.touches||[]).length?'<ul class="tlist">'+o.touches.slice(0,6).map(function(t){ return '<li><b>'+esc(SRC[t.channel]||t.channel)+'</b> '+esc(t.note)+'<span class="small muted"> · '+esc(new Date(t.at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}))+'</span></li>'; }).join('')+'</ul>':'')+'</div>'+
       (canConv?'<button class="btn sm conv" type="button" data-oconv="'+k+'">حوّله لعميل متعاقد ←</button>':'')+
     '</div>';
@@ -131,36 +131,36 @@
       .then(function(p){ return p&&p.ok&&p.client? null : api('/work','POST',{action:'clientSave',email:em,name:o.name,phone:phone}); })
       .then(function(){ return api('/access','POST',{action:'createAccount',email:em,name:o.name,lang:o.lang==='en'?'en':'ar'}); })
       .then(function(r){
-        if(r.ok){ PKG={email:em,name:o.name,password:r.password,link:r.link,lang:r.lang,phone:phone,sent:r.sent}; return 'جاهز: هاي بيانات دخول العميل، ابعتله ياها'; }
-        if(r.error==='exists') return api('/access','POST',{action:'setRole',email:em,role:'client'}).then(function(){ return 'عنده حساب أصلاً، فتفعّلت له مساحة العمل'; });
+        if(r.ok){ PKG={email:em,name:o.name,password:r.password,link:r.link,lang:r.lang,phone:phone,sent:r.sent}; return 'جاهز: هذه بيانات دخول العميل، أرسلها إليه'; }
+        if(r.error==='exists') return api('/access','POST',{action:'setRole',email:em,role:'client'}).then(function(){ return 'لديه حساب مسبقاً، ففُعّلت له مساحة العمل'; });
         throw new Error(r.error||'fail'); })
       .then(function(msg){ return api('/orders','PATCH',{key:o.key,link:true}).then(function(){ return msg; },function(){ return msg; }); })
       .then(function(msg){ toast(msg); TAB='clients'; CL=null; render(); loadUsers(); loadClients(); loadProfile(em,'overview'); scrollTo(0,0); })
-      .catch(function(){ b.disabled=false; toast('ما زبط التحويل، جرّب مرة تانية',true); });
+      .catch(function(){ b.disabled=false; toast('تعذّر التحويل، حاول مرة أخرى',true); });
   }
   document.addEventListener('change',function(e){ var el=e.target; if(TAB!=='orders') return;
     if(el.matches('.order [data-of="status"]')){ var lf=el.closest('.order').querySelector('.lostf'); if(lf) lf.hidden=el.value!=='cancelled'; } });
   document.addEventListener('submit',function(e){ var f=e.target; if(f.id!=='oppForm') return; e.preventDefault();
     var d={action:'manual'}; [].forEach.call(f.elements,function(el){ if(el.name) d[el.name]=el.value.trim(); });
     if(!d.name){ toast('اكتب الاسم',true); f.elements.name.focus(); return; }
-    if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ toast('الإيميل مش صحيح',true); f.elements.email.focus(); return; }
-    var add=function(o){ ORDERS.unshift(o); NEWOPP=false; OFILTER='all'; OOPEN=o.key; OPICK=true; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd){ dd.open=true; dd.scrollIntoView({block:'center'}); } toast('انضافت الفرصة '+o.code); };
+    if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ toast('البريد الإلكتروني غير صحيح',true); f.elements.email.focus(); return; }
+    var add=function(o){ ORDERS.unshift(o); NEWOPP=false; OFILTER='all'; OOPEN=o.key; OPICK=true; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd){ dd.open=true; dd.scrollIntoView({block:'center'}); } toast('أُضيفت الفرصة '+o.code); };
     if(!LIVE){ var now=new Date().toISOString(); add({key:'order:demo-'+Date.now(),code:'EB-DEMO'+(ORDERS.length+1),status:'new',createdAt:now,name:d.name,contact:d.contact,email:d.email,details:d.details||'—',packageName:d.title||'فرصة',total:d.value,source:d.source,manual:true,nextStep:d.nextStep,followUp:d.followUp,touches:[],messages:[],history:[{at:now,status:'new'}],demo:true}); return; }
     var b=f.querySelector('[type=submit]'); b.disabled=true;
-    api('/orders','POST',d).then(function(j){ if(!j.ok) throw new Error(j.error); add(j.order); }).catch(function(err){ b.disabled=false; toast(err.message==='email'?'الإيميل مش صحيح':'ما انحفظت، جرّب مرة تانية',true); }); });
+    api('/orders','POST',d).then(function(j){ if(!j.ok) throw new Error(j.error); add(j.order); }).catch(function(err){ b.disabled=false; toast(err.message==='email'?'البريد الإلكتروني غير صحيح':'لم تُحفظ، حاول مرة أخرى',true); }); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-oppnew],[data-oppx],[data-otouch],[data-oconv],[data-lostsave]'); if(!b) return;
     if(b.hasAttribute('data-oppnew')){ NEWOPP=!NEWOPP; renderOrders(); var f=$('#oppForm'); if(f) f.elements.name.focus(); return; }
     if(b.hasAttribute('data-oppx')){ NEWOPP=false; renderOrders(); return; }
     if(b.dataset.oconv){ convertClient(orderOf(b.dataset.oconv),b); return; }
     if(b.hasAttribute('data-lostsave')){ var l=$('#lostList').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean).slice(0,20);
       P=P||{}; P.crm=Object.assign({},P.crm,{lostReasons:l});
-      if(!LIVE){ savePrivDraft(); renderOrders(); toast('انحفظت الأسباب'); return; }
-      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); renderOrders(); toast('انحفظت الأسباب'); }).catch(function(){ b.disabled=false; toast('ما انحفظت',true); }); return; }
+      if(!LIVE){ savePrivDraft(); renderOrders(); toast('حُفظت الأسباب'); return; }
+      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); renderOrders(); toast('حُفظت الأسباب'); }).catch(function(){ b.disabled=false; toast('لم تُحفظ',true); }); return; }
     var o=orderOf(b.dataset.otouch), box=b.closest('.touch'), note=box.querySelector('[data-tnote]').value.trim(), ch=box.querySelector('[data-tch]').value;
-    if(!note){ toast('اكتب شو صار',true); box.querySelector('[data-tnote]').focus(); return; }
-    var addT=function(t){ o.touches=t||[{at:new Date().toISOString(),channel:ch,note:note}].concat(o.touches||[]); renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('انسجّل التواصل'); };
+    if(!note){ toast('اكتب ما حدث',true); box.querySelector('[data-tnote]').focus(); return; }
+    var addT=function(t){ o.touches=t||[{at:new Date().toISOString(),channel:ch,note:note}].concat(o.touches||[]); renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('سُجّل التواصل'); };
     if(!LIVE||o.demo){ addT(); return; }
-    b.disabled=true; api('/orders','PATCH',{key:o.key,touch:{channel:ch,note:note}}).then(function(j){ if(!j.ok) throw 0; addT(j.order.touches); }).catch(function(){ b.disabled=false; toast('ما انسجّل',true); });
+    b.disabled=true; api('/orders','PATCH',{key:o.key,touch:{channel:ch,note:note}}).then(function(j){ if(!j.ok) throw 0; addT(j.order.touches); }).catch(function(){ b.disabled=false; toast('لم يُسجَّل',true); });
   });
 
   /* ---------- documents: a quote and an agreement per order, each a private link the client opens, saves as PDF and accepts / signs ---------- */
@@ -179,7 +179,7 @@
   function fxConv(v,from,to){ var n=pnum(v)/fxRate(from)*fxRate(to); return to==='SYP'?Math.round(n):Math.round(n*100)/100; }
   function curSel(attr,val){ var known=FXC.some(function(k){ return k[0]===val; }); return '<select '+attr+'>'+FXC.map(function(k){ return '<option value="'+k[0]+'"'+(k[0]===val?' selected':'')+'>'+k[1]+' · '+k[0]+'</option>'; }).join('')+(val&&!known?'<option selected value="'+esc(val)+'">'+esc(val)+'</option>':'')+'</select>'; }
   function fxBox(c){ return c&&c!=='$'&&FXC.some(function(k){ return k[0]===c; })?'<span class="fx small muted">1$ = <input data-dfx="'+c+'" dir="ltr" value="'+fxRate(c)+'"> '+c+(c==='SYP'&&FXLIVE&&FXLIVE.at?' · <span title="سعر المبيع بدمشق">تلقائي من «الليرة اليوم» · '+esc(new Date(FXLIVE.at).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'}))+'</span>':'')+'</span>':''; }
-  function saveFx(c,v){ P=P||{}; P.fx=Object.assign({},P.fx); P.fx[c]=+v; P.fxAt=Object.assign({},P.fxAt); P.fxAt[c]=new Date().toISOString(); if(!LIVE){ savePrivDraft(); return; } fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظ سعر الصرف'); }).catch(function(){ toast('ما انحفظ سعر الصرف',true); }); }
+  function saveFx(c,v){ P=P||{}; P.fx=Object.assign({},P.fx); P.fx[c]=+v; P.fxAt=Object.assign({},P.fxAt); P.fxAt[c]=new Date().toISOString(); if(!LIVE){ savePrivDraft(); return; } fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('حُفظ سعر الصرف'); }).catch(function(){ toast('لم يُحفظ سعر الصرف',true); }); }
   document.addEventListener('change',function(e){ var el=e.target;
     if(el.dataset.dfx){ if(+el.value>0) saveFx(el.dataset.dfx,el.value); return; }
     // documents: switching currency converts every price and the discount from the old currency to the new one
@@ -191,7 +191,7 @@
       payMethods:d.payMethods||'Binance Pay (USDT) · Western Union', payIds:d.payIds||['binance','westernunion'], payOther:d.payOther||'', days:d.days||10, revisions:d.revisions!=null?d.revisions:2, valid:d.valid||14, plan:d.plan||'split', pct:d.pct||50,
       approvalDays:d.approvalDays||7, silenceDays:d.silenceDays||14, archiveDays:d.archiveDays||60, jurisdiction:d.jurisdiction||'', lists:d.lists||{}}; }
   function dlists(lang){ var L=dset().lists[lang]||{}; return {includes:L.includes||DDEF[lang].includes, excludes:L.excludes||DDEF[lang].excludes}; }
-  function revAr(n){ return n==0?'لا يشمل جولات تعديل':'يشمل '+(n==1?'جولة واحدة':n==2?'جولتين':n+' جولات')+' من التعديلات'; }
+  function revAr(n){ return n==0?'لا يشمل جولات تعديل':'يشمل '+(n==1?'جولة واحدة':n==2?'جولتان':n+' جولات')+' من التعديلات'; }
   // the agreement's terms, written from the deal's numbers; the studio can still rewrite any of them for one client
   function clausesFor(lang,v){
     var en=lang==='en', total=v.total, pay;
@@ -251,14 +251,14 @@
     return en ? 'Hello '+n+', here is the '+(s.type==='quote'?'quote':'service agreement')+' for “'+(s.title||'')+'”:\n'+url+'\nYou can download it as a PDF and '+(s.type==='quote'?'accept it':'sign it')+' from the same link'
       : 'مرحباً '+n+'، هذا '+(s.type==='quote'?'عرض السعر':'اتفاق العمل')+' لمشروع «'+(s.title||'')+'»:\n'+url+'\nيمكنك تحميله PDF و'+(s.type==='quote'?'الموافقة عليه':'توقيعه')+' من الرابط نفسه'; }
   function waLink(contact,text){ var dg=String(contact||'').replace(/[^0-9]/g,''); return 'https://wa.me/'+(/^\+?[0-9 ()-]{8,}$/.test(String(contact||'').trim())?dg:'')+'?text='+encodeURIComponent(text); }
-  function docState(s){ return s.status==='accepted'? (s.type==='quote'?'✓ وافق':'✓ وقّع')+(s.acceptedBy?' · '+s.acceptedBy:'') : s.viewedAt? 'شافه العميل' : 'مُرسل، ما انفتح لسا'; }
+  function docState(s){ return s.status==='accepted'? (s.type==='quote'?'✓ وافق':'✓ وقّع')+(s.acceptedBy?' · '+s.acceptedBy:'') : s.viewedAt? 'اطّلع عليه العميل' : 'مُرسل، لم يُفتح بعد'; }
   function docsBox(o,k){
     var list=o.docs||[];
-    return '<div class="docs"><div class="dh"><b>عرض السعر والاتفاقية</b><span class="small muted">برابط خاص: العميل بيفتحه، بيحمّله PDF، وبيوافق أو بيوقّع</span></div>'+
+    return '<div class="docs"><div class="dh"><b>عرض السعر والاتفاقية</b><span class="small muted">برابط خاص: يفتحه العميل، ويحمّله PDF، ثم يوافق أو يوقّع</span></div>'+
       (list.length?'<ul class="dlist">'+list.map(function(s){ return '<li><div class="dl1"><b>'+esc(DTYPE[s.type])+'</b> <span dir="ltr" class="muted">'+esc(s.no)+(s.ver>1?' · v'+s.ver:'')+'</span><span class="pill '+(s.status==='accepted'?'ok':s.viewedAt?'seen':'')+'">'+esc(docState(s))+'</span></div>'+
         '<div class="dl2"><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'" target="_blank" rel="noopener">فتح</a><a class="btn sm" href="'+esc(docUrl(s.token,s.type))+'?print=1" target="_blank" rel="noopener">PDF</a>'+
         '<button class="btn sm" type="button" data-dshare="'+k+'" data-t="'+esc(s.token)+'">إرسال</button>'+(s.status!=='accepted'?'<button class="btn sm" type="button" data-dedit="'+k+'" data-t="'+esc(s.token)+'" data-type="'+s.type+'">تعديل</button>':'')+
-        (s.type==='quote'&&s.status==='accepted'&&!list.some(function(x){return x.type==='agreement'})?'<button class="btn sm primary" type="button" data-dnew="'+k+'" data-type="agreement" data-from="'+esc(s.token)+'">اتفاقية من هالعرض</button>':'')+'</div></li>'; }).join('')+'</ul>':'')+
+        (s.type==='quote'&&s.status==='accepted'&&!list.some(function(x){return x.type==='agreement'})?'<button class="btn sm primary" type="button" data-dnew="'+k+'" data-type="agreement" data-from="'+esc(s.token)+'">اتفاقية من هذا العرض</button>':'')+'</div></li>'; }).join('')+'</ul>':'')+
       onboardBox(o,k)+
       '<div class="actions"><button class="btn sm" type="button" data-dnew="'+k+'" data-type="quote">+ عرض سعر</button><button class="btn sm" type="button" data-dnew="'+k+'" data-type="agreement">+ اتفاقية</button></div></div>';
   }
@@ -270,28 +270,28 @@
     var waTxt=(o.lang==='en'?'Your workspace for the project is ready. Activate it with your email '+(ob.email||o.email||'')+':\n':'مساحة العمل الخاصة بمشروعك جاهزة. فعّلها ببريدك '+(ob.email||o.email||'')+':\n')+inv;
     return '<div class="onb"><div class="small muted">بعد التوقيع</div><ol>'+
       row(true,'وقّع الاتفاقية '+esc(ag.no),esc(ag.acceptedBy||'')+(ag.acceptedAt?' · '+esc(new Date(ag.acceptedAt).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):''))+
-      row(!!ob.client,'مساحة العمل', ob.client?'عنده حساب متعاقد أصلاً':
-        (inv?'الدعوة جاهزة وظاهرة للعميل بصفحة الاتفاقية نفسها. لما يفعّلها بيوصلك تيليغرام<div class="dl2"><a class="btn sm" target="_blank" rel="noopener" href="'+esc(waLink(o.contact,waTxt))+'">ابعتله الدعوة واتساب</a><button class="btn sm" type="button" data-copytxt="'+esc(inv)+'">نسخ رابط الدعوة</button>'+(o.email?'<button class="btn sm" type="button" data-oconv="'+k+'">أو جهّز حسابه بكلمة سر مؤقتة</button>':'')+'</div>':'ما في إيميل للعميل'))+
+      row(!!ob.client,'مساحة العمل', ob.client?'لديه حساب متعاقد مسبقاً':
+        (inv?'الدعوة جاهزة وظاهرة للعميل في صفحة الاتفاقية نفسها، وحين يفعّلها يصلك إشعار على تيليغرام<div class="dl2"><a class="btn sm" target="_blank" rel="noopener" href="'+esc(waLink(o.contact,waTxt))+'">أرسل الدعوة عبر واتساب</a><button class="btn sm" type="button" data-copytxt="'+esc(inv)+'">نسخ رابط الدعوة</button>'+(o.email?'<button class="btn sm" type="button" data-oconv="'+k+'">أو أعدّ حسابه بكلمة سر مؤقتة</button>':'')+'</div>':'لا يوجد بريد إلكتروني للعميل'))+
       row(!!o.projectId,'مشروعه بمساحة العمل', o.projectId?'مربوط بـ «'+esc(o.projectName||'')+'»':'<div class="dl2"><button class="btn sm primary" type="button" data-oproj="'+k+'">افتح مشروعه من الاتفاقية</button></div>')+
-      row(!!dep,'العربون', dep?'وصل':'من «مسار الدفع» تحت: السعر وخطة الدفع جاهزين من العرض')+
+      row(!!dep,'العربون', dep?'وصل':'من «مسار الدفع» في الأسفل: السعر وخطة الدفع جاهزان من العرض')+
     '</ol></div>';
   }
   // the agreement becomes a project in the workspace: client record (if new), project with dates from the timeline, linked to this order
   function openProject(o,b){
     if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; }
-    var em=o.email; if(!em){ toast('ما في إيميل للعميل',true); return; } b.disabled=true;
+    var em=o.email; if(!em){ toast('لا يوجد بريد إلكتروني للعميل',true); return; } b.disabled=true;
     loadDocs(o).then(function(list){ var ag=list.filter(function(d){ return d.type==='agreement'&&d.accepted; })[0]; if(!ag) throw new Error('no agreement');
       var B=ag.body, start=new Date(), end=new Date(Date.now()+Math.ceil((+B.days||10)*7/5)*864e5), iso=function(d){ return d.toISOString().slice(0,10); };
       return fetch(API+'/work?admin=1&profile='+encodeURIComponent(em),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).catch(function(){ return {}; })
         .then(function(p){ return p&&p.ok&&p.client? null : api('/work','POST',{action:'clientSave',email:em,name:B.client.name||o.name,company:B.client.company||'',phone:/^\+?[0-9 ()-]{8,}$/.test(o.contact||'')?o.contact.trim():''}); })
         .then(function(){ return api('/work','POST',{action:'project',client_email:em,name:B.title,type:'once',start_date:iso(start),end_date:iso(end),description:(B.summary?B.summary+'\n\n':'')+B.items.map(function(x){ return '• '+x.name+(x.qty>1?' ×'+x.qty:''); }).join('\n')+'\n\n'+ag.no,services:B.items.map(function(x){ return x.name; }).slice(0,12)}); })
         .then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); return api('/orders','PATCH',{key:o.key,project:j.id}); })
-        .then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); Object.assign(o,j.order); WORK=null; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('انفتح مشروعه بمساحة العمل وانربط بالطلب'); }); })
-      .catch(function(err){ b.disabled=false; toast(({'not client':'عنده حساب عادي لسا: استنى يفعّل الدعوة، أو رقّيه من «العملاء»','no account':'ما في حساب ولا سجل عميل بهالإيميل','no agreement':'ما في اتفاقية موقّعة'})[err.message]||'ما زبط، جرّب مرة تانية',true); });
+        .then(function(j){ if(!j.ok) throw new Error(j.error||'fail'); Object.assign(o,j.order); WORK=null; renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; toast('فُتح مشروعه في مساحة العمل ورُبط بالطلب'); }); })
+      .catch(function(err){ b.disabled=false; toast(({'not client':'لديه حساب عادي حتى الآن: انتظر حتى يفعّل الدعوة، أو رقِّه من «العملاء»','no account':'لا يوجد حساب ولا سجل عميل بهذا البريد','no agreement':'لا توجد اتفاقية موقّعة'})[err.message]||'تعذّر ذلك، حاول مرة أخرى',true); });
   }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-oproj],[data-copytxt]'); if(!b) return;
     if(b.dataset.oproj){ openProject(orderOf(b.dataset.oproj),b); return; }
-    try{ navigator.clipboard.writeText(b.dataset.copytxt).then(function(){ toast('انتسخ الرابط'); }); }catch(_){ toast('ما انتسخ',true); } });
+    try{ navigator.clipboard.writeText(b.dataset.copytxt).then(function(){ toast('نُسخ الرابط'); }); }catch(_){ toast('تعذّر النسخ',true); } });
   function loadDocs(o){ if(!LIVE||o.demo) return Promise.resolve([]);
     return fetch(API+'/docs?key='+encodeURIComponent(o.key),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ DOCS[o.key]=j.docs||[]; return DOCS[o.key]; }); }
   // a fresh document starts from the order (and, for an agreement, from its quote when there is one)
@@ -333,25 +333,25 @@
     document.documentElement.classList.add('dlock');
     var head='<div class="dtop"><div><b>'+(D.token?'تعديل ':'')+DTYPE[D.type]+'</b><span class="muted small"> · '+esc(D.o.name)+' · <span dir="ltr">'+esc(D.o.code)+'</span>'+(D.no?' · <span dir="ltr">'+esc(D.no)+'</span>':'')+'</span></div><button class="btn sm" type="button" data-dclose>إغلاق</button></div>';
     if(D.result){ var r=D.result, txt=docShareText(D.o,r.s,b.lang,r.url);
-      el.innerHTML='<div class="dbox">'+head+'<div class="dres"><div class="dok">✓ '+(r.updated?'تحدّث المستند على نفس الرابط':'جاهز. هاد رابط '+(q?'عرض السعر':'الاتفاقية')+' الخاص بالعميل')+'</div><div class="dlink" dir="ltr">'+esc(r.url)+'</div>'+
+      el.innerHTML='<div class="dbox">'+head+'<div class="dres"><div class="dok">✓ '+(r.updated?'حُدّث المستند على الرابط نفسه':'جاهز. هذا رابط '+(q?'عرض السعر':'الاتفاقية')+' الخاص بالعميل')+'</div><div class="dlink" dir="ltr">'+esc(r.url)+'</div>'+
         '<div class="field"><label>الرسالة</label><textarea id="dmsg" dir="auto" rows="4">'+esc(txt)+'</textarea></div>'+
         '<div class="actions"><a class="btn primary" id="dwa" href="'+esc(waLink(D.o.contact,txt))+'" target="_blank" rel="noopener">إرسال على واتساب</a><button class="btn" type="button" data-dcopy>نسخ الرسالة</button>'+
         (D.o.email&&!hiddenOpp(D.o)?'<button class="btn" type="button" data-dchat>إرسال بمحادثة الموقع</button>':'')+'<a class="btn" href="'+esc(r.url)+'" target="_blank" rel="noopener">فتح</a><a class="btn" href="'+esc(r.url)+'?print=1" target="_blank" rel="noopener">تحميل PDF</a></div>'+
-        '<p class="small muted">لإنستغرام أو أي مكان تاني: انسخ الرسالة وابعتها. أول ما يفتح العميل الرابط أو يوافق، بيوصلك إشعار على تيليغرام وبيتسجّل بالطلب</p></div></div>';
+        '<p class="small muted">لإنستغرام أو أي مكان آخر: انسخ الرسالة وأرسلها. حين يفتح العميل الرابط أو يوافق، يصلك إشعار على تيليغرام ويُسجَّل في الطلب</p></div></div>';
       return; }
     var items='<div class="ditems"><div class="dih"><span>البند</span><span>الوصف</span><span>الكمية</span><span>سعر الوحدة</span><span></span></div>'+b.items.map(function(x,i){
-      return '<div class="dirow"><input data-dp="items.'+i+'.name" value="'+esc(x.name)+'" dir="auto" placeholder="مثال: فيلم إطلاق 60 ثانية"><textarea data-dp="items.'+i+'.desc" dir="auto" rows="2" placeholder="شو بيشمل بالضبط">'+esc(x.desc)+'</textarea><input data-dp="items.'+i+'.qty" type="number" min="1" value="'+esc(x.qty)+'"><input data-dp="items.'+i+'.unit" dir="ltr" value="'+esc(x.unit)+'"><button class="btn sm" type="button" data-ditemx="'+i+'" title="حذف">×</button></div>'; }).join('')+
+      return '<div class="dirow"><input data-dp="items.'+i+'.name" value="'+esc(x.name)+'" dir="auto" placeholder="مثال: فيلم إطلاق 60 ثانية"><textarea data-dp="items.'+i+'.desc" dir="auto" rows="2" placeholder="ماذا يشمل بالتحديد">'+esc(x.desc)+'</textarea><input data-dp="items.'+i+'.qty" type="number" min="1" value="'+esc(x.qty)+'"><input data-dp="items.'+i+'.unit" dir="ltr" value="'+esc(x.unit)+'"><button class="btn sm" type="button" data-ditemx="'+i+'" title="حذف">×</button></div>'; }).join('')+
       '<div class="actions"><button class="btn sm" type="button" data-ditemadd>+ بند</button>'+(pk.length?'<select data-dpkg><option value="">أضف من الباقات…</option>'+pk.map(function(p,i){ return '<option value="'+i+'">'+esc((p.name&&(p.name[b.lang]||p.name.ar))||p.id)+' · '+esc(p.price)+'</option>'; }).join('')+'</select>':'')+'</div></div>';
     var money='<div class="row">'+dField('العملة',curSel('data-dcur',b.cur||'$')+fxBox(b.cur))+dField('خصم (مبلغ)',dIn('discount',b.discount||'','dir="ltr" placeholder="0"'))+'<div class="field dtotal"><label>الإجمالي</label><b dir="ltr">'+esc(pfmt(total,b.cur||'$'))+'</b></div></div>';
     var terms='<div class="row">'+dField('مدة التنفيذ (أيام عمل)',dIn('days',b.days,'type="number" min="0"'))+dField('جولات التعديل',dIn('revisions',b.revisions,'type="number" min="0" max="10"'))+(q?dField('العرض صالح لمدة (يوم)',dIn('valid',b.valid,'type="number" min="1"')):'')+'</div>'+
       '<div class="row">'+dField('خطة الدفع','<select data-dp="plan"><option value="split"'+(b.plan!=='full'?' selected':'')+'>عربون والباقي قبل التسليم</option><option value="full"'+(b.plan==='full'?' selected':'')+'>كامل المبلغ قبل البدء</option></select>')+(b.plan!=='full'?dField('نسبة العربون %',dIn('pct',b.pct,'type="number" min="10" max="90"')):'')+'</div>'+
-      dField('طرق الدفع المقبولة بهالمستند','<div class="dpay">'+payList().map(function(m){ var on=(b.payIds||[]).indexOf(m.id)>=0; return '<label class="dchip'+(on?' on':'')+'"><input type="checkbox" data-dpay="'+esc(m.id)+'"'+(on?' checked':'')+'>'+(m.logo?'<img src="'+esc(abs(String(m.logo).replace(/^\//,'')))+'" alt="">':'')+esc(m.name)+'</label>'; }).join('')+'</div>'+dIn('payOther',b.payOther,'dir="auto" placeholder="غيرها (اختياري): مثال تحويل بنكي"'))+
-      '<div class="small muted dpayline">بيظهر للعميل: <b>'+esc(payText(b)||'—')+'</b></div>';
+      dField('طرق الدفع المقبولة في هذا المستند','<div class="dpay">'+payList().map(function(m){ var on=(b.payIds||[]).indexOf(m.id)>=0; return '<label class="dchip'+(on?' on':'')+'"><input type="checkbox" data-dpay="'+esc(m.id)+'"'+(on?' checked':'')+'>'+(m.logo?'<img src="'+esc(abs(String(m.logo).replace(/^\//,'')))+'" alt="">':'')+esc(m.name)+'</label>'; }).join('')+'</div>'+dIn('payOther',b.payOther,'dir="auto" placeholder="غيرها (اختياري): مثال تحويل بنكي"'))+
+      '<div class="small muted dpayline">يظهر للعميل: <b>'+esc(payText(b)||'—')+'</b></div>';
     var lists='<div class="row">'+dField('يشمل (كل سطر بند)','<textarea data-dp="includes" data-lines dir="auto" rows="4">'+esc((b.includes||[]).join('\n'))+'</textarea>')+dField('لا يشمل','<textarea data-dp="excludes" data-lines dir="auto" rows="4">'+esc((b.excludes||[]).join('\n'))+'</textarea>')+'</div>';
     var v=b.v||{};
-    var agr= q?'':'<section class="dsec"><h4>البنود</h4><p class="small muted">بتتولّد من الأرقام فوق. عدّل أي بند لهالعميل بس، أو اضغط «توليد من جديد» بعد ما تغيّر الأرقام</p>'+
+    var agr= q?'':'<section class="dsec"><h4>البنود</h4><p class="small muted">تُولَّد من الأرقام أعلاه. عدّل أي بند لهذا العميل وحده، أو اضغط «توليد البنود من جديد» بعد تغيير الأرقام</p>'+
       '<div class="row">'+dField('مهلة الرد قبل تأجيل الموعد (أيام)',dIn('v.approvalDays',v.approvalDays,'type="number" min="1"'))+dField('تُعتمد النسخة تلقائياً بعد (أيام بلا رد)',dIn('v.silenceDays',v.silenceDays,'type="number" min="3"'))+dField('حفظ الملفات بعد التسليم (أيام)',dIn('v.archiveDays',v.archiveDays,'type="number" min="7"'))+'</div>'+
-      '<div class="row"><label class="check"><input type="checkbox" data-dp="v.sourceFiles"'+(v.sourceFiles?' checked':'')+'> تشمل الملفات المفتوحة</label><label class="check"><input type="checkbox" data-dp="v.portfolio"'+(v.portfolio!==false?' checked':'')+'> حقّنا نعرضه بأعمالنا</label></div>'+
+      '<div class="row"><label class="check"><input type="checkbox" data-dp="v.sourceFiles"'+(v.sourceFiles?' checked':'')+'> تشمل الملفات المفتوحة</label><label class="check"><input type="checkbox" data-dp="v.portfolio"'+(v.portfolio!==false?' checked':'')+'> يحق لنا عرضه ضمن أعمالنا</label></div>'+
       dField('جهة الاختصاص عند الخلاف',dIn('v.jurisdiction',v.jurisdiction,'dir="auto" placeholder="المحاكم المختصة في بلد الطرف الأول"'))+
       '<div class="actions"><button class="btn sm" type="button" data-dregen>توليد البنود من جديد</button></div>'+
       '<div class="dclauses">'+b.clauses.map(function(c,i){ return '<div class="dcl"><span class="dn" dir="ltr">'+('0'+(i+1)).slice(-2)+'</span><div><input data-dp="clauses.'+i+'.h" value="'+esc(c.h)+'" dir="auto"><textarea data-dp="clauses.'+i+'.p" dir="auto" rows="3">'+esc(c.p)+'</textarea></div><button class="btn sm" type="button" data-dclx="'+i+'" title="حذف البند">×</button></div>'; }).join('')+'</div>'+
@@ -363,8 +363,8 @@
       '<section class="dsec"><h4>العميل</h4><div class="row">'+dField('الاسم',dIn('client.name',b.client.name))+dField('الشركة / النشاط',dIn('client.company',b.client.company))+dField('المدينة والدولة',dIn('client.place',b.client.place))+'</div><div class="row">'+dField('التواصل',dIn('client.contact',b.client.contact,'dir="ltr"'))+dField('الإيميل',dIn('client.email',b.client.email,'dir="ltr" type="email"'))+'</div></section>'+
       '<section class="dsec"><h4>'+(q?'البنود والسعر':'نطاق العمل والقيمة')+'</h4>'+items+money+'</section>'+
       '<section class="dsec"><h4>الشروط</h4>'+terms+lists+dField('ملاحظات (اختياري)','<textarea data-dp="notes" dir="auto" rows="2">'+esc(b.notes)+'</textarea>')+'</section>'+agr+
-      '<details class="dsec dstudio"><summary>بياناتنا بالمستند (الطرف الأول)</summary><div class="row">'+dField('الاسم',dIn('studio.name',b.studio.name))+dField('المدينة والدولة',dIn('studio.place',b.studio.place))+'</div>'+dField('التواصل (كل سطر لحاله)','<textarea data-dp="studio.contact" dir="ltr" rows="2">'+esc(b.studio.contact)+'</textarea>')+'</details>'+
-      '<div class="dfoot"><button class="btn" type="button" data-ddefault title="يصير هيك كل مستند جديد">احفظ الشروط كافتراضية</button><span class="sp"></span><button class="btn" type="button" data-dclose>إلغاء</button><button class="btn primary" type="button" data-dissue>'+(D.token?'تحديث المستند':'إصدار الرابط')+'</button></div></div>';
+      '<details class="dsec dstudio"><summary>بياناتنا بالمستند (الطرف الأول)</summary><div class="row">'+dField('الاسم',dIn('studio.name',b.studio.name))+dField('المدينة والدولة',dIn('studio.place',b.studio.place))+'</div>'+dField('التواصل (كل وسيلة في سطر)','<textarea data-dp="studio.contact" dir="ltr" rows="2">'+esc(b.studio.contact)+'</textarea>')+'</details>'+
+      '<div class="dfoot"><button class="btn" type="button" data-ddefault title="يصبح هذا الإعداد لكل مستند جديد">احفظ الشروط كافتراضية</button><span class="sp"></span><button class="btn" type="button" data-dclose>إلغاء</button><button class="btn primary" type="button" data-dissue>'+(D.token?'تحديث المستند':'إصدار الرابط')+'</button></div></div>';
   }
   function dpath(obj,path,val){ var p=path.split('.'), o=obj; for(var i=0;i<p.length-1;i++){ o=o[p[i]]=o[p[i]]||{}; } o[p[p.length-1]]=val; }
   function closeDoc(){ var el=$('#dsheet'); if(el) el.remove(); document.documentElement.classList.remove('dlock'); var o=DED&&DED.o; DED=null; if(o&&TAB==='orders'){ renderOrders(); var dd=document.querySelector('[data-okey="'+o.key+'"]'); if(dd) dd.open=true; } }
@@ -376,7 +376,7 @@
     if(el.dataset.dp==='plan'||el.dataset.dp==='lang'||el.type==='checkbox'){ if(el.dataset.dp==='lang'){ var L=dlists(el.value), b=DED.b; b.includes=L.includes.slice(); b.excludes=L.excludes.slice(); if(DED.type==='agreement') b.clauses=clausesFor(el.value,docVars(b)); } drawDoc(); return; }
     if(el.hasAttribute('data-dpkg')&&el.value!==''){ var p=C.packages.items[+el.value], lg=DED.b.lang, f=(p.features&&(p.features[lg]||p.features.ar))||[];
       DED.b.items.push({name:(p.name&&(p.name[lg]||p.name.ar))||'',desc:f.join(lg==='en'?' · ':' · '),qty:1,unit:+p.price||0}); drawDoc(); return; }
-    if(el.hasAttribute('data-dfromq')){ var qd=DED.quotes.filter(function(x){return x.token===el.value})[0]; if(!qd) return; var keep=DED.b.v, nb=JSON.parse(JSON.stringify(qd.body)); nb.quoteNo=qd.no; nb.v=keep; nb.clauses=clausesFor(nb.lang,docVars(nb)); DED.b=nb; drawDoc(); toast('انعبّت الاتفاقية من العرض '+qd.no); } });
+    if(el.hasAttribute('data-dfromq')){ var qd=DED.quotes.filter(function(x){return x.token===el.value})[0]; if(!qd) return; var keep=DED.b.v, nb=JSON.parse(JSON.stringify(qd.body)); nb.quoteNo=qd.no; nb.v=keep; nb.clauses=clausesFor(nb.lang,docVars(nb)); DED.b=nb; drawDoc(); toast('مُلئت الاتفاقية من العرض '+qd.no); } });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-dnew],[data-dedit],[data-dshare],[data-dclose],[data-ditemadd],[data-ditemx],[data-dcladd],[data-dclx],[data-dregen],[data-dissue],[data-ddefault],[data-dcopy],[data-dchat]'); if(!b) return;
     if(b.dataset.dnew||b.dataset.dedit){ var o=orderOf(b.dataset.dnew||b.dataset.dedit); if(!LIVE||o.demo){ toast('يعمل على الموقع المنشور',true); return; } openDoc(o,b.dataset.type,b.dataset.t||null,b.dataset.from||null); return; }
     if(b.dataset.dshare){ var o2=orderOf(b.dataset.dshare), s=(o2.docs||[]).filter(function(x){return x.token===b.dataset.t})[0]; if(!s) return;
@@ -387,22 +387,22 @@
     if(b.dataset.ditemx){ B.items.splice(+b.dataset.ditemx,1); drawDoc(); return; }
     if(b.hasAttribute('data-dcladd')){ B.clauses.push({h:'',p:''}); drawDoc(); return; }
     if(b.dataset.dclx){ B.clauses.splice(+b.dataset.dclx,1); drawDoc(); return; }
-    if(b.hasAttribute('data-dregen')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='أكيد؟ رح تنمسح تعديلاتك على البنود'; return; } B.clauses=clausesFor(B.lang,docVars(B)); drawDoc(); toast('اتولّدت البنود من الأرقام الحالية'); return; }
-    if(b.hasAttribute('data-dcopy')){ var t=$('#dmsg'); try{ navigator.clipboard.writeText(t.value).then(function(){ toast('انتسخت الرسالة'); },function(){ t.select(); }); }catch(_){ t.select(); } return; }
+    if(b.hasAttribute('data-dregen')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='هل أنت متأكد؟ ستُحذف تعديلاتك على البنود'; return; } B.clauses=clausesFor(B.lang,docVars(B)); drawDoc(); toast('وُلّدت البنود من الأرقام الحالية'); return; }
+    if(b.hasAttribute('data-dcopy')){ var t=$('#dmsg'); try{ navigator.clipboard.writeText(t.value).then(function(){ toast('نُسخت الرسالة'); },function(){ t.select(); }); }catch(_){ t.select(); } return; }
     if(b.hasAttribute('data-dchat')){ sendMsg(DED.o.key,$('#dmsg').value,b); return; }
     if(b.hasAttribute('data-ddefault')){ P=P||{}; var d=P.docs=Object.assign({},P.docs);
       Object.assign(d,{studioName:B.studio.name,studioPlace:B.studio.place,studioContact:B.studio.contact,payIds:(B.payIds||[]).slice(),payOther:B.payOther||'',payMethods:payText(B),days:+B.days,revisions:+B.revisions,valid:+B.valid||14,plan:B.plan,pct:+B.pct});
       if(B.v) Object.assign(d,{approvalDays:+B.v.approvalDays,silenceDays:+B.v.silenceDays,archiveDays:+B.v.archiveDays,jurisdiction:B.v.jurisdiction||''});
       d.lists=Object.assign({},d.lists); d.lists[B.lang]={includes:(B.includes||[]).filter(Boolean),excludes:(B.excludes||[]).filter(Boolean)};
-      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('انحفظت كإعدادات افتراضية لكل مستند جديد'); }).catch(function(){ toast('ما انحفظت',true); }).then(function(){ b.disabled=false; }); return; }
+      b.disabled=true; fetch(API+'/private',{method:'PUT',headers:headers({'content-type':'application/json'}),body:JSON.stringify(P)}).then(function(r){ if(!r.ok) throw 0; PSAVED=JSON.stringify(P); toast('حُفظت إعدادات افتراضية لكل مستند جديد'); }).catch(function(){ toast('لم تُحفظ',true); }).then(function(){ b.disabled=false; }); return; }
     if(b.hasAttribute('data-dissue')){
       if(!String(B.title||'').trim()){ toast('اكتب عنوان المشروع',true); var ti=$('#dsheet [data-dp="title"]'); if(ti) ti.focus(); return; }
-      B.items=B.items.filter(function(x){ return String(x.name||'').trim(); }); if(!B.items.length){ toast('ضيف بند واحد عالأقل',true); drawDoc(); return; }
+      B.items=B.items.filter(function(x){ return String(x.name||'').trim(); }); if(!B.items.length){ toast('أضف بنداً واحداً على الأقل',true); drawDoc(); return; }
       if(DED.type==='agreement') B.clauses=(B.clauses||[]).filter(function(c){ return String(c.h||'').trim()||String(c.p||'').trim(); });
       B.payMethods=payText(B); b.disabled=true; var wasToken=DED.token;
       api('/docs','POST',{action:'issue',key:DED.o.key,type:DED.type,token:DED.token,doc:B}).then(function(j){
         if(!j.ok) throw new Error(j.error||'fail');
         DED.o.docs=j.docs; DED.token=j.doc.token; DED.no=j.doc.no; DED.result={url:docUrl(j.doc.token,j.doc.type),s:j.docs.filter(function(x){return x.token===j.doc.token})[0],updated:!!wasToken}; drawDoc();
-      }).catch(function(err){ b.disabled=false; toast(({title:'اكتب عنوان المشروع',items:'ضيف بند واحد عالأقل',clauses:'ضيف بند واحد عالأقل',locked:'العميل وافق عليه، ما بينعدّل. اعمل نسخة جديدة'})[err.message]||'ما انحفظ، جرّب مرة تانية',true); }); return; }
+      }).catch(function(err){ b.disabled=false; toast(({title:'اكتب عنوان المشروع',items:'أضف بنداً واحداً على الأقل',clauses:'أضف بنداً واحداً على الأقل',locked:'وافق عليه العميل، فلا يمكن تعديله. أنشئ نسخة جديدة'})[err.message]||'لم يُحفظ، حاول مرة أخرى',true); }); return; }
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&DED) closeDoc(); });

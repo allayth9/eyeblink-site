@@ -508,7 +508,7 @@
   var SHARE_ICO='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 13.3l7.4 4.4M15.7 6.3l-7.4 4.4"/></svg>';
   function shareWork(p,b){ if(!p||!p.slug) return; var u=location.origin+'/w/'+encodeURIComponent(p.slug)+(AR?'':'?l=en'), t=L(p.title)+' · Eyeblink Studio';
     if(navigator.share){ navigator.share({title:t,url:u}).catch(function(){}); return; }
-    var done=function(){ var t=b.querySelector('.ptip')||b.appendChild(document.createElement('span')); t.className='ptip'; t.setAttribute('role','status'); t.textContent=AR?'انتسخ الرابط':'Link copied'; b.classList.add('done'); clearTimeout(b._t); b._t=setTimeout(function(){ b.classList.remove('done'); },1800); };
+    var done=function(){ var t=b.querySelector('.ptip')||b.appendChild(document.createElement('span')); t.className='ptip'; t.setAttribute('role','status'); t.textContent=AR?'نُسخ الرابط':'Link copied'; b.classList.add('done'); clearTimeout(b._t); b._t=setTimeout(function(){ b.classList.remove('done'); },1800); };
     if(navigator.clipboard) navigator.clipboard.writeText(u).then(done,function(){ prompt('',u); }); else prompt('',u); }
   function bindLB(){
     if(lbBound) return; lb=document.getElementById('lb'); if(!lb) return; lbBound=true;

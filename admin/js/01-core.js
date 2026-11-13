@@ -91,7 +91,7 @@
   var TABS=[
     {id:'today', title:'اليوم', today:1},
     {id:'home', title:'الرئيسية', grp:'محتوى الموقع', secs:[
-      {h:'شريط الإطلاق (Early Access)', hint:'سطر رفيع تحت القائمة العلوية بكل صفحات الموقع. الزائر يقدر يسكّره. يختفي وحده بعد تاريخ الانتهاء أو لما يكتمل العدد. اكتب أرقاماً حقيقية فقط.', fields:[
+      {h:'شريط الإطلاق (Early Access)', hint:'سطر رفيع تحت القائمة العلوية بكل صفحات الموقع. ويمكن للزائر إغلاقه. يختفي وحده بعد تاريخ الانتهاء أو عند اكتمال العدد. اكتب أرقاماً حقيقية فقط.', fields:[
         {p:'launch.show', t:'check', l:'إظهار شريط الإطلاق'},
         {p:'launch.text', t:'bi', l:'النص', hint:'مثال: إطلاق Eyeblink Studio · نستقبل عدداً محدوداً من المشاريع بشروط الإطلاق'},
         {row:[{p:'launch.cta', t:'bi', l:'نص الرابط'},{p:'launch.link', t:'text', l:'الرابط', ltr:1, hint:'مثال: pricing أو contact'}]},
@@ -132,7 +132,7 @@
         fields:[{p:'name', t:'bi', l:'اسم الباقة'},
           {row:[{p:'kind', t:'select', l:'النوع', opts:function(){return [['','تلقائي'],['service','خدمة'],['package','باقة']]}},{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'featured', t:'check', l:'الأكثر طلباً'}]},
           {row:[{p:'pricing', t:'select', l:'طريقة التسعير', opts:function(){return [['fixed','سعر ثابت'],['from','يبدأ من'],['quote','حسب الطلب']]}, def:pmodeA},{p:'price', t:'num', l:'السعر'},{p:'oldPrice', t:'num', l:'السعر القديم (يظهر مشطوباً)'}]},
-          {p:'priceText', t:'bi', l:'نص التسعير (اختياري)', hint:'«حسب الطلب»: بيطلع مكان السعر، مثلاً «بعد ما نعرف فكرتك ونوعها» (فاضي = «السعر حسب الطلب»). «يبدأ من»: سطر صغير تحت السعر، مثلاً «حسب المدة وعدد المشاهد». «سعر ثابت»: ما بيطلع.'},
+          {p:'priceText', t:'bi', l:'نص التسعير (اختياري)', hint:'«حسب الطلب»: يظهر مكان السعر، مثل «بعد معرفة فكرتك ونوعها»، وإن تُرك فارغاً يظهر «السعر حسب الطلب». «يبدأ من»: سطر صغير تحت السعر، مثل «حسب المدة وعدد المشاهد». «سعر ثابت»: لا يظهر.'},
           {p:'unit', t:'bi', l:'الوحدة (للفيديو، شهرياً…)'},{p:'desc', t:'bita', l:'وصف قصير'},{p:'features', t:'bilist', l:'المميزات', hint:'كل ميزة بسطر'},
           {p:'id', t:'text', l:'المعرّف (يظهر في الرابط)', ltr:1} ]}},
       {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return (x.name&&x.name.ar)||'إضافة'},
@@ -171,7 +171,7 @@
           {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm', make:1, hint:'«صنع من الفيديو»: اختر الفيديو الكامل من جهازك، فتُقتطع منه 4 لقطات قصيرة من أجزاء مختلفة وتُدمج في معاينة صامتة (~7 ثوانٍ) تُرفع وحدها. أبقِ هذه الصفحة مفتوحة أثناء الصنع.'},
           {p:'poster', t:'media', l:'صورة الغلاف', accept:'image/*'},
           {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف على تخزيننا (الأسرع)'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
-          {p:'full.src', t:'media', l:'الفيلم الكامل على تخزيننا (إذا اخترت «ملف على تخزيننا»)', accept:'video/mp4', vault:1, hint:'بيتشغّل فوراً بمشغّل الموقع، بلا Vimeo. صدّره MP4 (H.264) مع «Fast Start / Optimize for web». الحجم المناسب: 1080p، 20–80MB.'} ]}} ]},
+          {p:'full.src', t:'media', l:'الفيلم الكامل على تخزيننا (إذا اخترت «ملف على تخزيننا»)', accept:'video/mp4', vault:1, hint:'يعمل فوراً بمشغّل الموقع دون Vimeo. صدّره MP4 (H.264) مع «Fast Start / Optimize for web». الحجم المناسب: 1080p، 20–80MB.'} ]}} ]},
     {id:'about', title:'من نحن', secs:[
       {h:'المقدمة', fields:[{p:'about.h1', t:'bi', l:'العنوان'},{p:'about.lead', t:'bita', l:'الوصف'}]},
       {h:'نبذة عنّا', fields:[{p:'about.bioH', t:'bi', l:'العنوان'},{p:'about.bio', t:'bilist', l:'الفقرات', hint:'كل فقرة بسطر'},{p:'about.values', t:'bilist', l:'القيم', hint:'كل قيمة بسطر'}]} ]},
@@ -246,7 +246,7 @@
     return '';
   }
   // the folded English: one quiet line under the Arabic
-  function enPrev(e){ e=String(e||'').replace(/\n/g,' · '); return e?'EN · '+(e.length>120?e.slice(0,120)+'…':e):'الإنجليزي بيتولّد لحاله'; }
+  function enPrev(e){ e=String(e||'').replace(/\n/g,' · '); return e?'EN · '+(e.length>120?e.slice(0,120)+'…':e):'تُولَّد الإنجليزية تلقائياً'; }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-enx]'); if(!b) return; var w=b.closest('.field').querySelector('.enw'); w.hidden=!w.hidden;
     b.textContent=w.hidden?'تعديل الإنجليزي':'إخفاء الإنجليزي'; if(w.hidden) decorate(); else { var i=w.querySelector('input,textarea'); if(i) i.focus(); } });
   function abs(u){ return /^(https?:|data:|blob:|\/)/.test(u)? u : '../'+u; }
@@ -297,7 +297,7 @@
           '<button class="btn sm danger" type="button" data-del="'+si+':'+sel+'">حذف</button></div></details>')+'</div>'+
         (tabs.length>1?'<div class="subtabs rtabs">'+tabs.map(function(t,k){ return '<button type="button" data-rtab="'+esc(p)+':'+k+'"'+(k===ti?' aria-current="true"':'')+'>'+esc(t[0])+'</button>'; }).join('')+'</div>':'')+
         '<div class="body">'+tabs[ti][1].map(function(k){ return pre(field(it,r.fields[k])); }).join('')+'</div></div>'
-      :'<div class="odetail empty-sel">اختار من القائمة</div>';
+      :'<div class="odetail empty-sel">اختر من القائمة</div>';
     var hint=!r.fixed&&arr.length>1?'<li class="olh rhint">'+arr.length+' · اضغط مطوّلاً واسحب لتغيير الترتيب</li>':'';
     return '<div class="osplit rsplit'+(it?' has-open':'')+'" data-rep="'+esc(p)+'"'+(r.fixed?' data-fixed="1"':'')+'><ul class="olist">'+hint+rows+'</ul>'+panel+'</div>'+
       (r.fixed?'':'<div class="radd"><button class="btn" type="button" data-add="'+si+'">'+esc(sp.addL||'+ إضافة')+'</button>'+
@@ -310,18 +310,18 @@
   function shareBox(it,sel,p){ var u=it.slug?'https://eyeblinkstudio.com/w/'+it.slug:'', t=(it.title&&it.title.ar)||'', live=it.slug&&SAVED.indexOf('"slug":"'+it.slug+'"')>=0, o=SHARES&&it.slug&&SHARES[it.slug];
     if(SHARES===null&&LIVE){ SHARES={}; fetch(API+'/views?shares=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(j.ok){ SHARES=j.shares; if(TAB==='work') render(); } }).catch(function(){}); }
     return '<details class="cp-more rshare"'+(SHOPEN?' open':'')+'><summary class="btn sm primary">مشاركة</summary><div class="cp-menu rshare-m">'+
-      (!u?'<p class="small muted">ما إله رابط لسا</p><button class="btn sm primary" type="button" data-rslug="'+esc(p)+':'+sel+'">جهّز رابط</button>':
+      (!u?'<p class="small muted">لا يوجد له رابط بعد</p><button class="btn sm primary" type="button" data-rslug="'+esc(p)+':'+sel+'">جهّز رابط</button>':
         '<div class="rlink"><input readonly dir="ltr" value="'+esc(u)+'" aria-label="رابط العمل"><button class="btn sm" type="button" data-rcopy="'+esc(u)+'">نسخ</button></div>'+
         '<div class="rshare-b"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(t+' · '+u)+'">واتساب</a><a class="btn sm" href="mailto:?subject='+encodeURIComponent(t+' · Eyeblink Studio')+'&body='+encodeURIComponent(u)+'">إيميل</a><a class="btn sm" target="_blank" rel="noopener" href="'+esc(u)+'">فتح ↗</a></div>'+
-        (live?'':'<p class="small rwarn">انشر التعديلات حتى يشتغل الرابط</p>'))+
-      '<label class="check rpriv"><input type="checkbox" data-p="'+esc(p)+'.'+sel+'.private" data-t="check"'+(it.private?' checked':'')+'> عمل خاص: بيفتح بالرابط بس، وما بيبين بقائمة الأعمال</label>'+
-      (u?'<p class="small muted">'+(o&&o.n?'الرابط انفتح '+o.n+(o.n===1?' مرة':' مرات')+' · آخر مرة '+esc(new Date(o.last).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):'الرابط لسا ما انفتح')+'</p>':'')+'</div></details>'; }
+        (live?'':'<p class="small rwarn">انشر التعديلات ليعمل الرابط</p>'))+
+      '<label class="check rpriv"><input type="checkbox" data-p="'+esc(p)+'.'+sel+'.private" data-t="check"'+(it.private?' checked':'')+'> عمل خاص: يُفتح من الرابط فقط، ولا يظهر في قائمة الأعمال</label>'+
+      (u?'<p class="small muted">'+(o&&o.n?'فُتح الرابط '+o.n+(o.n===1?' مرة':' مرات')+' · آخر مرة '+esc(new Date(o.last).toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'short'})):'لم يُفتح الرابط بعد')+'</p>':'')+'</div></details>'; }
   document.addEventListener('toggle',function(e){ if(e.target.classList&&e.target.classList.contains('rshare')) SHOPEN=e.target.open; },true);
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-rslugall]'); if(!b) return; var arr=get(C,b.dataset.rslugall)||[], n=0;
     arr.forEach(function(it){ if(!it.slug){ it.slug=slugOf(it,arr); n++; } }); if(!n) return;
-    render(); dirty(); saveDraft(); toast((n===1?'تجهّز رابط واحد':n===2?'تجهّز رابطين':'تجهّز '+n+(n<=10?' روابط':' رابط'))+' · انشر التعديلات حتى '+(n===1?'يشتغل':'يشتغلوا')); });
+    render(); dirty(); saveDraft(); toast((n===1?'جُهِّز رابط واحد':n===2?'جُهِّز رابطان':'جُهِّز '+n+(n<=10?' روابط':' رابط'))+' · انشر التعديلات '+(n===1?'ليعمل':'لتعمل')); });
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-rslug],[data-rcopy]'); if(!b) return;
-    if(b.dataset.rcopy){ var u=b.dataset.rcopy; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ toast('انتسخ الرابط'); },function(){ b.previousSibling.select(); }); return; }
+    if(b.dataset.rcopy){ var u=b.dataset.rcopy; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ toast('نُسخ الرابط'); },function(){ b.previousSibling.select(); }); return; }
     var q=b.dataset.rslug.split(':'), arr=get(C,q[0]), it=arr[+q[1]]; it.slug=slugOf(it,arr); SHOPEN=true; render(); dirty(); saveDraft(); });
   // a ticked «private» moves the work's tag right away
   document.addEventListener('change',function(e){ if(/\.(private|pricing)$/.test(e.target.dataset&&e.target.dataset.p||'')) setTimeout(render,0); });
@@ -384,13 +384,13 @@
   function pubBar(d){ var b=$('#pubbar');
     if(!b){ if(!d) return; document.querySelector('.main').insertAdjacentHTML('beforeend','<div id="pubbar" class="pubbar" role="status"><i></i><span data-pbn></span><span class="pbacts"><button class="btn sm" type="button" data-pbundo>تراجع</button><a class="btn sm" data-pvw target="_blank" rel="noopener" href="/">معاينة</a><button class="btn sm primary" type="button" data-pbpub>نشر</button></span></div>'); b=$('#pubbar'); }
     b.hidden=!d; if(!d) return; var n=changes(), u=b.querySelector('[data-pbundo]');
-    b.querySelector('[data-pbn]').textContent=n<=1?'تعديل واحد ما انتشر':n===2?'تعديلين ما انتشروا':n+' تعديلات ما انتشرت';
+    b.querySelector('[data-pbn]').textContent=n<=1?'تعديل واحد غير منشور':n===2?'تعديلان غير منشورين':n+' تعديلات غير منشورة';
     b.querySelector('[data-pvw]').href=SITEPG[TAB]||'/'; b.querySelector('[data-pbpub]').disabled=false; u.dataset.armed=''; u.textContent='تراجع'; }
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-pbundo],[data-pbpub]'); if(!b) return;
     if(b.hasAttribute('data-pbpub')){ b.disabled=true; $('#publishBtn').click(); return; }
-    if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟ رجوع لآخر نسخة منشورة'; return; }
+    if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='هل أنت متأكد؟ الرجوع إلى آخر نسخة منشورة'; return; }
     C=JSON.parse(SAVED); if(PSAVED) P=JSON.parse(PSAVED); saveDraft(); savePrivDraft(); try{ localStorage.removeItem('eb-preview'); }catch(_){}
-    render(); dirty(); toast('رجعت لآخر نسخة منشورة'); });
+    render(); dirty(); toast('عادت اللوحة إلى آخر نسخة منشورة'); });
 
   /* ---------------- events ---------------- */
   document.addEventListener('input',function(e){
@@ -413,11 +413,11 @@
     if(el.dataset.make) makePreview(el);
     // a full film to our storage (R2), in pieces, with a progress bar; the address lands in the field when done
     if(el.dataset.vupload&&el.files[0]){ var vp=el.dataset.vupload, f0=el.files[0], bx=document.querySelector('[data-vstate="'+vp+'"]'), bar=bx&&bx.querySelector('i'), lab=bx&&bx.querySelector('span');
-      if(bx){ bx.hidden=false; lab.textContent='عم يرفع… 0%'; } el.disabled=true;
-      vaultUpload(f0,function(pc){ if(bar) bar.style.width=Math.round(pc*100)+'%'; if(lab) lab.textContent='عم يرفع… '+Math.round(pc*100)+'%'; })
+      if(bx){ bx.hidden=false; lab.textContent='جارٍ الرفع… 0%'; } el.disabled=true;
+      vaultUpload(f0,function(pc){ if(bar) bar.style.width=Math.round(pc*100)+'%'; if(lab) lab.textContent='جارٍ الرفع… '+Math.round(pc*100)+'%'; })
         .then(function(j){ var u=String(j.url).replace(/^https?:\/\/[^\/]+/,''); set(C,vp,u); var tp=vp.replace(/\.src$/,'.type'); set(C,tp,'mp4'); var ts=document.querySelector('[data-p="'+tp+'"]'); if(ts) ts.value='mp4'; dirty(); saveDraft(); el.disabled=false;
-          if(lab) lab.textContent='انرفع ✓ '+f0.name+' · انشر التعديلات حتى يبين بالموقع'; var inp=document.querySelector('[data-p="'+vp+'"]'); if(inp) inp.value=u; })
-        .catch(function(e){ el.disabled=false; if(lab) lab.textContent=e==='r2'?'التخزين (R2) لسا مو مفعّل':e==='type'?'نوع الملف مو مدعوم (MP4 بس)':'ما زبط الرفع، جرّب مرة تانية'; }); }
+          if(lab) lab.textContent='اكتمل الرفع ✓ '+f0.name+' · انشر التعديلات ليظهر في الموقع'; var inp=document.querySelector('[data-p="'+vp+'"]'); if(inp) inp.value=u; })
+        .catch(function(e){ el.disabled=false; if(lab) lab.textContent=e==='r2'?'التخزين (R2) غير مفعّل بعد':e==='type'?'نوع الملف غير مدعوم (MP4 فقط)':'تعذّر الرفع، حاول مرة أخرى'; }); }
   });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;

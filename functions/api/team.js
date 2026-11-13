@@ -190,7 +190,7 @@ async function memberAction(ctx, u, d){
   if (d.action === "decline") {
     if (t.status !== "assigned" || Date.now() - Date.parse(t.offeredAt || t.createdAt) >= DECLINE_MS) return json({ ok: false, error: "late" }, 409);
     t.status = "declined"; (t.log ||= []).push({ at: now, what: "declined", reason: C_(d.reason, 300) });
-    ctx.waitUntil(telegram(env, "↩️ " + u.name + " اعتذر عن المهمة «" + t.title + "»" + (d.reason ? ": " + C_(d.reason, 300) : "") + "\nأسندها لحدا تاني من " + SITE + "/admin/#team")); }
+    ctx.waitUntil(telegram(env, "↩️ " + u.name + " اعتذر عن المهمة «" + t.title + "»" + (d.reason ? ": " + C_(d.reason, 300) : "") + "\nأسندها إلى عضو آخر من " + SITE + "/admin/#team")); }
   if (d.action === "submit") {
     const url = C_(d.url, 600); if (!URL_OK.test(url)) return json({ ok: false, error: "url" }, 400);
     if (t.status === "approved") return json({ ok: false, error: "approved" }, 409);

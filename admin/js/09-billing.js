@@ -83,7 +83,7 @@
         return '<div class="order item odetail tf-'+fam+'"><div class="odh"><button class="btn sm oback" type="button" data-bback>‹ كل الفواتير</button><span class="code" dir="ltr">'+esc(r.no)+'</span><span class="tag">'+esc(BST[r.state]||r.state)+'</span><b>'+esc(r.name||r.email)+'</b>'+
           '<span class="muted small">'+esc(r.title||'')+(r.project?' · '+esc(r.project):'')+(r.src==='order'?' · طلب '+esc(r.code):'')+' · <span dir="ltr">'+esc(mny(r.total,r.currency))+'</span>'+(r.balance&&r.balance!==r.total?' · متبقٍ <span dir="ltr">'+esc(mny(r.balance,r.currency))+'</span>':'')+'</span></div>'+
           '<div class="body">'+(BFORM&&BFORM.id===r.id?bform(r.x):bdetail(r))+'</div></div>'; })(sel)
-      :'<div class="odetail empty-sel">اختار فاتورة من القائمة</div>';
+      :'<div class="odetail empty-sel">اختر فاتورة من القائمة</div>';
     $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+
         kc(fmtMap(out),'مستحق غير مدفوع','wait','k_wait',sum(out)>0)+kc(fmtMap(paidM),'دفعات هذا الشهر','ok','payments',sum(paidM)>0)+kc(nOver,'فواتير متأخرة','bad','k_late')+
         kc(rows.filter(function(r){return r.state==='paid'}).length,'مدفوعة','ok','k_done')+kc(nDraft,'مسودات','off','services')+'</div></section>'+
