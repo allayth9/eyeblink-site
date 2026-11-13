@@ -2037,10 +2037,10 @@ body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opaci
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 /* phones: the launch line keeps clear of its × (it sits in the top corner) */
 @media (max-width:860px){ .launch{padding-inline-end:46px} .launch .ltext{flex-basis:calc(100% - 20px)} }
-/* the top menu's water drop (navdrop.js): the current page sits under it; it travels to the picked page */
+/* the menus' water drop (navdrop.js): the current page sits under it; it travels to the picked page */
 .nav .bar{position:relative}
-.bar.has-drop .links{position:relative;z-index:1}
+.has-drop>.links,.dock.has-drop>a{position:relative;z-index:1}
 .nav-water{position:absolute;z-index:0;pointer-events:none}
-.nav-drop{display:none;position:absolute;left:0;border-radius:999px;z-index:0;pointer-events:none;will-change:transform,width;background:rgba(var(--k-white-rgb),.08)}
-.bar.drop-css .nav-drop{display:block}
-.bar.has-drop .links a[aria-current="page"]{background:none}
+.nav-drop{display:none;position:absolute;left:0;border-radius:999px;z-index:0;pointer-events:none;will-change:transform,width;background:rgba(var(--k-white-rgb),.07);box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb),.18),inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+.drop-css>.nav-drop{display:block}
+.has-drop .links a[aria-current="page"],.dock.has-drop a[aria-current="page"]{background:none;box-shadow:none}
