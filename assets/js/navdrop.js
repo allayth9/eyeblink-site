@@ -32,12 +32,14 @@
    // the glass: a faint cool fill, lighter at the top, like the bar's own glass
 ' float da=dm*(.07+.05*body);vec3 dc=mix(vec3(.62,.80,1.),vec3(1.),body*.7);',
    // the rim: thin and quiet
-' float rim=dm*(1.-smoothstep(0.,6.,-dd));float la=rim*.10;dc=vec3(.55,.75,1.)*la+dc*da*(1.-la);da=la+da*(1.-la);',
+' float rim=dm*(1.-smoothstep(0.,6.,-dd));float la=rim*.01;dc=vec3(.55,.75,1.)*la+dc*da*(1.-la);da=la+da*(1.-la);',
    // one upper highlight, the «wet» line of liquid glass
 ' float cres=dm*smoothstep(.2,.6,dot(n.xy,normalize(vec2(.55,.85))))*smoothstep(0.,3.,-dd);la=clamp(cres*.28,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);',
 ' la=clamp(dm*spec*.8,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);',
    // a whisper of colour on the very edge
-' la=dm*smoothstep(-1.5,0.,dd)*.14;dc=mix(vec3(1.),irid,.25)*la+dc*(1.-la);da=la+da*(1.-la);',
+' la=dm*smoothstep(-1.5,0.,dd)*.014;dc=mix(vec3(1.),irid,.25)*la+dc*(1.-la);da=la+da*(1.-la);',
+   // 20% toward the identity's dark navy (#0E1A5C)
+' dc=mix(dc,vec3(.055,.102,.361),.2);',
 ' gl_FragColor=vec4(dc,da)*uA;}'].join('\n');
 
   function Drop(list,items,host,isOn){

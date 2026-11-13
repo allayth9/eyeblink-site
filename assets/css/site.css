@@ -2041,6 +2041,8 @@ body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opaci
 .nav .bar{position:relative}
 .has-drop>.links,.dock.has-drop>a{position:relative;z-index:1}
 .nav-water{position:absolute;z-index:0;pointer-events:none}
-.nav-drop{display:none;position:absolute;left:0;border-radius:999px;z-index:0;pointer-events:none;will-change:transform,width;background:rgba(var(--k-white-rgb),.07);box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb),.18),inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+.nav-drop{display:none;position:absolute;left:0;border-radius:999px;z-index:0;pointer-events:none;will-change:transform,width;background:linear-gradient(rgba(var(--k-white-rgb),.056),rgba(var(--k-white-rgb),.056)),rgba(var(--k-deep-rgb),.14);box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb),.14),inset 0 0 0 1px rgba(var(--k-white-rgb),.008)}
 .drop-css>.nav-drop{display:block}
 .has-drop .links a[aria-current="page"],.dock.has-drop a[aria-current="page"]{background:none;box-shadow:none}
+/* the blink between pages keeps the menus on top: the page changes under a bar that stays */
+html:has(.cut-lids.shut) header.nav,html:has(.cut-lids.opening) header.nav,.arriving header.nav,html:has(.cut-lids.shut) .dock,html:has(.cut-lids.opening) .dock,.arriving .dock{z-index:160}
