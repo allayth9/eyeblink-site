@@ -24,6 +24,7 @@ async function db(env){
       env.DB.prepare("CREATE TABLE IF NOT EXISTS view_hits (k TEXT PRIMARY KEY, day TEXT NOT NULL)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS work_likes (id TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS like_hits (k TEXT PRIMARY KEY, id TEXT NOT NULL, at TEXT, who TEXT)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS interest (k TEXT PRIMARY KEY, day TEXT NOT NULL, works TEXT, told INTEGER NOT NULL DEFAULT 0)"),
     ]);
     ready = true;
   }
@@ -70,7 +71,27 @@ export async function onRequestPost({ request, env }) {
   if (counted) await D.prepare("UPDATE work_views SET n = n + 1, updated_at = ? WHERE id = ?").bind(now, id).run();
   if (Math.random() < 0.02) await D.prepare("DELETE FROM view_hits WHERE day < ?").bind(new Date(Date.now() - 2 * 86400000).toISOString()).run();
   const row = await D.prepare("SELECT n FROM work_views WHERE id = ?").bind(id).first();
+  await interest(request, env, D, ip, ua, id, now).catch(() => {});
   return json({ ok: true, counted, n: row ? row.n : null });
+}
+const SAME = 3, ALL = 5;
+async function interest(request, env, D, ip, ua, id, now) {
+  const k = (await sha256("i|" + ip + "|" + ua)).slice(0, 32), day = now.slice(0, 10);
+  const r = await D.prepare("SELECT day, works, told FROM interest WHERE k = ?").bind(k).first();
+  let works = {}, told = 0; if (r && r.day === day) { try { works = JSON.parse(r.works || "{}"); } catch {} told = r.told; }
+  works[id] = (works[id] || 0) + 1;
+  const all = Object.values(works).reduce((a, b) => a + b, 0), top = Object.entries(works).sort((a, b) => b[1] - a[1])[0];
+  const hot = !told && (top[1] >= SAME || all >= ALL);
+  await D.prepare("INSERT INTO interest (k, day, works, told) VALUES (?, ?, ?, ?) ON CONFLICT(k) DO UPDATE SET day = excluded.day, works = excluded.works, told = excluded.told")
+    .bind(k, day, JSON.stringify(works), hot ? 1 : told).run();
+  if (Math.random() < 0.02) await D.prepare("DELETE FROM interest WHERE day < ?").bind(new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10)).run();
+  if (!hot) return;
+  let c = {}; try { c = JSON.parse(await env.EB.get("content", { cacheTtl: 60 }) || "{}"); } catch {}
+  const name = wid => { const p = (c.projects || []).find(x => x && workKey(x) === wid); return (p && p.title && (p.title.ar || p.title.en)) || wid; };
+  const cf = request.cf || {}, u = await currentUser(request, env).catch(() => null);
+  const who = [u && (u.name || u.email), [cf.city, cf.country].filter(Boolean).join("، "), /iphone|ipad|android|mobile/i.test(ua) ? "موبايل" : "كمبيوتر"].filter(Boolean).join(" · ");
+  const list = Object.entries(works).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([w, n]) => "«" + name(w) + "»" + (n > 1 ? " ×" + n : "")).join("، ");
+  await telegram(env, "👀 زائر مهتم بشغلك اليوم\n" + who + "\nفتح " + all + " مرات: " + list + "\n\nممكن يكون عميل محتمل. إذا كان مسجّل دخول، اسمه بأول سطر");
 }
 // «أعجبني»: one per visitor per work (tap again to take it back); the studio hears who on Telegram
 async function like(request, env, D, id, k, on, now) {
