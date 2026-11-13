@@ -2017,3 +2017,9 @@ header.nav,.dock,.help-float{transition:translate .6s cubic-bezier(.22,.9,.24,1)
 .wa-float,.help-float{transition:transform .3s,translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
 body.cine header.nav{translate:0 -140%;opacity:0;pointer-events:none}
 body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opacity:0;pointer-events:none}
+/* the work page: the player waits, paused, under the cover; once ready, taps go through the cover to it */
+.case-player>iframe.case-pre{z-index:0}
+.case-player>.case-pre~img{z-index:1}
+.case-player .case-play{z-index:2}
+.case-player.armed>img,.case-player.armed .case-play{pointer-events:none}
+.case-player .gone{opacity:0!important;transition:opacity .35s ease!important}

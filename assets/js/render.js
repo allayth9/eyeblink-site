@@ -356,7 +356,9 @@
     loadViews();
     [].forEach.call(grid.querySelectorAll('.pshare'),function(b){ b.addEventListener('click',function(){ shareWork(list[+b.dataset.share],b); }); });
     [].forEach.call(grid.querySelectorAll('.plike'),function(b){ b.addEventListener('click',function(){ likeWork(b); }); });
-    [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); });
+    [].forEach.call(grid.querySelectorAll('.proj'),function(b){ b.addEventListener('click',function(){ openLB(list[+b.dataset.i]); }); b._p=list[+b.dataset.i];
+      b.addEventListener('pointerenter',function(e){ if(e.pointerType!=='mouse') return; clearTimeout(b._wt); b._wt=setTimeout(function(){ warmLB(b._p); },180); });
+      b.addEventListener('pointerleave',function(){ clearTimeout(b._wt); });
       var im=b.querySelector('img[data-auto]'); if(im) thumbFor(list[+b.dataset.i],im); });
     // preview on hover (mouse) or keyboard focus; it fades in once it is really playing, and back to the cover on leave
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -414,7 +416,7 @@
   }
   function play(card){
     if(CP.cur&&CP.cur!==card&&CP.cur._pv) CP.cur._pv.stop();
-    CP.cur=card; if(card&&card._pv) card._pv.start();
+    CP.cur=card; if(card&&card._pv) card._pv.start(); if(card) warmLB(card._p);
   }
   function check(){
     clearTimeout(CP.timer);
@@ -517,19 +519,25 @@
   function preOver(host,p){ if(!p.preview||!host.querySelector('iframe')) return; var v=document.createElement('video'); v.className='lb-pre'; v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
     v.setAttribute('muted',''); v.setAttribute('playsinline',''); if(p.poster) v.poster=url(p.poster); v.src=url(p.preview); host.appendChild(v); v.play().catch(function(){}); }
   function preOff(host){ var v=host&&host.querySelector('.lb-pre'); if(!v||v.classList.contains('off')) return; v.classList.add('off'); setTimeout(function(){ v.remove(); },600); }
+  function vplay(f){ try{ f.contentWindow.postMessage(JSON.stringify({method:'play'}),'*'); }catch(_){} }
+  // the player of the work you are about to open loads, paused, inside the closed window (one at a time, Vimeo only)
+  function warmLB(p){ if(!p||root.classList.contains('lite')) return; bindLB(); if(!lb||!lb.hidden||lb._closing) return; var s=playerSrc(p); if(!/vimeo/.test(s)||lbFrame._warm===s) return;
+    lbFrame._warm=s; lbFrame._ready=0; lbFrame._go=0; lbFrame.innerHTML='<iframe src="'+s.replace('autoplay=1','autoplay=0')+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(L(p.title))+'"></iframe>'; }
   function playerSrc(p){ var v=vid(p.full||{});
     return v&&v.type==='vimeo'?'https://player.vimeo.com/video/'+v.id+'?'+(v.hash?'h='+v.hash+'&':'')+'autoplay=1&title=0&byline=0&portrait=0&dnt=1&transparent=0&api=1':
       v&&v.type==='youtube'?'https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1&rel=0&enablejsapi=1&playsinline=1':''; }
   function openLB(p){
     countView(p); if(CP.on) play(null);
-    var f=p.full||{}, html='', title=L(p.title), v=vid(f), src=playerSrc(p);
+    var f=p.full||{}, html='', title=L(p.title), v=vid(f), src=playerSrc(p), warm=src&&lbFrame._warm===src&&lbFrame.querySelector('iframe');
     html= src? '<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(title)+'"></iframe>'
              : '<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
     fitAR(p,lb);
     // the work's story under the film: up to five short cards, then Behind the Frame images (hidden per work, or all from the panel)
     var cs=document.getElementById('lbCase'); if(cs) lb.classList.toggle('has-case',fillStory(cs,p));
-    lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
-    lbFrame._p=p; preOver(lbFrame,p); var ve=lbFrame.querySelector('video'); if(ve){ ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); }); ve.addEventListener('ended',endScreen); }
+    lbTitle.textContent=title; if(!warm){ lbFrame.innerHTML=html; lbFrame._ready=0; } lbFrame._warm=''; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
+    lbFrame._p=p; preOver(lbFrame,p); clearTimeout(lbFrame._fb);
+    if(warm){ if(lbFrame._ready) vplay(warm); else lbFrame._go=1; lbFrame._fb=setTimeout(function(){ preOff(lbFrame); },2500); }
+    var ve=lbFrame.querySelector('video'); if(ve){ ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight); }); ve.addEventListener('ended',endScreen); }
     var yf=lbFrame.querySelector('iframe'); if(yf&&/youtube/.test(yf.src)) yf.addEventListener('load',function(){ try{ yf.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'*'); }catch(_){} });
     vimeoAsk(lbFrame.querySelector('iframe')); waves(true); fadeAudio(0,1,1400,0);
     document.getElementById('lbClose').focus(); document.body.style.overflow='hidden'; root.classList.add('modal-open');
@@ -551,7 +559,8 @@
   var PF=null;
   function renderCase(){ var pg=document.getElementById('casePage'); if(!pg) return; var slug=pg.dataset.slug, p=(C.projects||[]).filter(function(x){ return x&&x.slug===slug; })[0]; if(!p) return;
     var pl=document.getElementById('casePlayer'); pl._arReal=pl.hasAttribute('data-real'); fitAR(p,pl);
-    if(!pl._bound){ pl._bound=1; pl.addEventListener('click',function(){ if(!PF) playHere(p,pl); }); if(pl._want&&!PF) playHere(p,pl,1); }
+    if(!pl._bound){ pl._bound=1; pl.addEventListener('click',function(){ if(!pl.classList.contains('playing')) playHere(p,pl); }); if(pl._want&&!pl.classList.contains('playing')) playHere(p,pl,1); }
+    armCase(p,pl);
     var k=workKey(p), act=document.getElementById('caseAct');
     act.innerHTML='<span class="views" data-views="'+esc(k)+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span>'+
       '<button type="button" class="plike" data-like="'+esc(k)+'" aria-pressed="false" aria-label="'+esc((AR?'أعجبني: ':'Like: ')+L(p.title))+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z"/></svg><b></b></button>'+
@@ -559,9 +568,17 @@
     act.querySelector('.plike').addEventListener('click',function(){ likeWork(this); }); act.querySelector('.pshare').addEventListener('click',function(){ shareWork(p,this); });
     fillStory(document.getElementById('caseStory'),p); loadViews(); }
   function cineSet(){ document.body.classList.toggle('cine',!!(PF&&PF._on&&PF._vis!==false)); }
-  function playHere(p,pl,late){ bindLB(); var src=playerSrc(p), f=p.full||{}; countView(p); PF=pl; pl._p=p; pl.classList.add('playing');
-    pl._on=1; if('IntersectionObserver' in window&&!pl._io){ pl._io=new IntersectionObserver(function(e){ pl._vis=e[0].intersectionRatio>=.6; cineSet(); },{threshold:[0,.6,1]}); pl._io.observe(pl); }
-    pl.scrollIntoView({block:'center',behavior:'smooth'}); cineSet();
+  // the Vimeo player loads, paused, under the cover; when it is ready the cover lets taps through to it
+  function armCase(p,pl){ var s=playerSrc(p); if(!/vimeo/.test(s)||pl._armed||pl.classList.contains('playing')) return; pl._armed=1; PF=pl; pl._p=p; pl._ready=0;
+    var f=document.createElement('iframe'); f.className='case-pre'; f.src=s.replace('autoplay=1','autoplay=0'); f.setAttribute('allow','autoplay; fullscreen; picture-in-picture'); f.setAttribute('allowfullscreen',''); f.title=L(p.title); pl.insertBefore(f,pl.firstChild);
+    // a tap on the player takes the focus into it: the cover steps aside at once, so whatever the player shows is seen
+    addEventListener('blur',function(){ setTimeout(function(){ if(document.activeElement===f&&!pl.classList.contains('playing')) caseGo(pl); },0); }); }
+  // the armed player started (the visitor tapped it): the cover fades, the view counts, the page goes dark around it
+  function caseGo(pl){ pl.classList.add('playing'); pl.classList.remove('armed'); countView(pl._p);
+    [].forEach.call(pl.querySelectorAll('.case-play,img'),function(x){ x.classList.add('gone'); setTimeout(function(){ x.remove(); },400); }); caseOn(pl); }
+  function caseOn(pl){ pl._on=1; if('IntersectionObserver' in window&&!pl._io){ pl._io=new IntersectionObserver(function(e){ pl._vis=e[0].intersectionRatio>=.6; cineSet(); },{threshold:[0,.6,1]}); pl._io.observe(pl); }
+    pl.scrollIntoView({block:'center',behavior:'smooth'}); cineSet(); }
+  function playHere(p,pl,late){ bindLB(); var src=playerSrc(p), f=p.full||{}; countView(p); PF=pl; pl._p=p; pl.classList.add('playing'); pl.classList.remove('armed'); pl._ready=0; caseOn(pl);
     pl.innerHTML=src?'<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(L(p.title))+'"></iframe>'
       :'<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
     if(!late) preOver(pl,p); var ve=pl.querySelector('video'); if(ve){ ve.addEventListener('ended',endScreen); ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight,pl); }); }
@@ -584,13 +601,14 @@
     if(!/vimeo\.com$/.test((e.origin||'').replace(/^https?:\/\//,'').split(':')[0])) return;
     var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
     if(!d) return;
-    var host=lb&&!lb.hidden?lbFrame:PF, f=host&&host.querySelector('iframe'); if(!f) return;
+    var host=null, f=null; [lbFrame,PF].forEach(function(h){ var x=h&&h.querySelector('iframe'); if(x&&x.contentWindow===e.source){ host=h; f=x; } }); if(!f) return;
     if(d.event==='ready'){ ['getVideoWidth','getVideoHeight'].forEach(function(m){ f.contentWindow.postMessage(JSON.stringify({method:m}),'*'); }); setVol(fa.cur);
-      f.contentWindow.postMessage(JSON.stringify({method:'addEventListener',value:'ended'}),'*'); f.contentWindow.postMessage(JSON.stringify({method:'addEventListener',value:'play'}),'*'); }
-    if(d.event==='play') preOff(host);
+      f.contentWindow.postMessage(JSON.stringify({method:'addEventListener',value:'ended'}),'*'); f.contentWindow.postMessage(JSON.stringify({method:'addEventListener',value:'play'}),'*');
+      host._ready=1; if(host._go){ host._go=0; vplay(f); } if(host===PF&&PF._armed&&!PF.classList.contains('playing')) PF.classList.add('armed'); }
+    if(d.event==='play'){ clearTimeout(host._fb); preOff(host); if(host===PF&&!PF.classList.contains('playing')) caseGo(PF); }
     if(d.event==='ended') endScreen();
     if(d.method==='getVideoWidth'){ vw=+d.value; } if(d.method==='getVideoHeight'){ vh=+d.value; }
-    if(vw&&vh){ setAR(vw,vh,host===PF?PF:lb); vw=vh=0; }
+    if(vw&&vh&&!(host===lbFrame&&lb.hidden)){ setAR(vw,vh,host===PF?PF:lb); vw=vh=0; }
   });
   // YouTube tells us when it ends too (state 0)
   addEventListener('message',function(e){ if(!/youtube(-nocookie)?\.com$/.test((e.origin||'').replace(/^https?:\/\//,''))) return; var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
@@ -663,7 +681,7 @@
     if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16,el);
     if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height,el); }).catch(function(){}); } }
   function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; [].forEach.call(lb.querySelectorAll('.lb-view'),function(v){ v.remove(); }); fadeAudio(null,0,300,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
-    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },340); }
+    setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; lbFrame._warm=''; lbFrame._go=0; clearTimeout(lbFrame._fb); document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },340); }
 
   /* ---------------- order: a popup like the player, same waves ---------------- */
   var selected=null, qty=1, olb=null;
