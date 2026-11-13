@@ -1963,7 +1963,7 @@ html{-webkit-tap-highlight-color:transparent}
 .wpt select{min-width:0}
 @media (max-width:620px){ .wpt{grid-template-columns:84px 1fr} .wpt input[name=x]{grid-column:1/-1} }
 /* under each work: views · like · share in one quiet row, outside the card button (a button can't hold buttons) */
-.pw{display:flex;flex-direction:column;min-width:0;aspect-ratio:4/5}   /* 4:5 as a minimum: more text, a taller card */
+.pw{display:flex;flex-direction:column;min-width:0;aspect-ratio:20/27}   /* a little taller than 4:5 so the row costs the photo nothing; more text, a taller card */
 .pw[hidden]{display:none}
 .pw>.proj.slot{flex:1 1 auto;width:100%;min-width:0;aspect-ratio:auto;min-height:0;padding-bottom:10px;background:none;box-shadow:none;border-radius:0}
 .pact{display:flex;align-items:center;gap:8px;padding:6px 22px 18px}
