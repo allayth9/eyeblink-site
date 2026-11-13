@@ -525,9 +525,7 @@
     var f=p.full||{}, html='', title=L(p.title), v=vid(f), src=playerSrc(p);
     html= src? '<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(title)+'"></iframe>'
              : '<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
-    var a=ratio(p.ratio).split('/'); setAR(+a[0],+a[1]);
-    if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16);
-    if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height); }).catch(function(){}); }
+    fitAR(p,lb);
     // the work's story under the film: up to five short cards, then Behind the Frame images (hidden per work, or all from the panel)
     var cs=document.getElementById('lbCase'); if(cs) lb.classList.toggle('has-case',fillStory(cs,p));
     lbTitle.textContent=title; lbFrame.innerHTML=html; lastFocus=document.activeElement; lb.hidden=false; lb._closing=0; void lb.offsetWidth; requestAnimationFrame(function(){ lb.classList.add('show'); });
@@ -552,8 +550,8 @@
      the lightbox), views · like · share under it, then the story */
   var PF=null;
   function renderCase(){ var pg=document.getElementById('casePage'); if(!pg) return; var slug=pg.dataset.slug, p=(C.projects||[]).filter(function(x){ return x&&x.slug===slug; })[0]; if(!p) return;
-    var pl=document.getElementById('casePlayer'), a=ratio(p.ratio).split('/'); pl.style.setProperty('--ar',a[0]+'/'+a[1]); pl.style.setProperty('--arn',(+a[0]/+a[1]).toFixed(4)); pl.classList.toggle('tall',+a[1]>+a[0]);
-    if(!pl._bound){ pl._bound=1; pl.addEventListener('click',function(){ if(!PF) playHere(p,pl); }); }
+    var pl=document.getElementById('casePlayer'); pl._arReal=pl.hasAttribute('data-real'); fitAR(p,pl);
+    if(!pl._bound){ pl._bound=1; pl.addEventListener('click',function(){ if(!PF) playHere(p,pl); }); if(pl._want&&!PF) playHere(p,pl,1); }
     var k=workKey(p), act=document.getElementById('caseAct');
     act.innerHTML='<span class="views" data-views="'+esc(k)+'" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><b></b></span>'+
       '<button type="button" class="plike" data-like="'+esc(k)+'" aria-pressed="false" aria-label="'+esc((AR?'أعجبني: ':'Like: ')+L(p.title))+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z"/></svg><b></b></button>'+
@@ -561,12 +559,12 @@
     act.querySelector('.plike').addEventListener('click',function(){ likeWork(this); }); act.querySelector('.pshare').addEventListener('click',function(){ shareWork(p,this); });
     fillStory(document.getElementById('caseStory'),p); loadViews(); }
   function cineSet(){ document.body.classList.toggle('cine',!!(PF&&PF._on&&PF._vis!==false)); }
-  function playHere(p,pl){ bindLB(); var src=playerSrc(p), f=p.full||{}; countView(p); PF=pl; pl._p=p; pl.classList.add('playing');
+  function playHere(p,pl,late){ bindLB(); var src=playerSrc(p), f=p.full||{}; countView(p); PF=pl; pl._p=p; pl.classList.add('playing');
     pl._on=1; if('IntersectionObserver' in window&&!pl._io){ pl._io=new IntersectionObserver(function(e){ pl._vis=e[0].intersectionRatio>=.6; cineSet(); },{threshold:[0,.6,1]}); pl._io.observe(pl); }
     pl.scrollIntoView({block:'center',behavior:'smooth'}); cineSet();
     pl.innerHTML=src?'<iframe src="'+src+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="'+esc(L(p.title))+'"></iframe>'
       :'<video controls autoplay playsinline '+(p.poster?'poster="'+esc(url(p.poster))+'"':'')+' src="'+esc(url(f.src||p.preview))+'"></video>';
-    preOver(pl,p); var ve=pl.querySelector('video'); if(ve) ve.addEventListener('ended',endScreen);
+    if(!late) preOver(pl,p); var ve=pl.querySelector('video'); if(ve){ ve.addEventListener('ended',endScreen); ve.addEventListener('loadedmetadata',function(){ if(ve.videoWidth) setAR(ve.videoWidth,ve.videoHeight,pl); }); }
     var yf=pl.querySelector('iframe'); if(yf&&/youtube/.test(yf.src)) yf.addEventListener('load',function(){ try{ yf.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'*'); }catch(_){} }); }
   // a Behind the Frame image opened large over the player: arrows / swipe to move, click or Esc to close
   function shotView(list,i){
@@ -592,7 +590,7 @@
     if(d.event==='play') preOff(host);
     if(d.event==='ended') endScreen();
     if(d.method==='getVideoWidth'){ vw=+d.value; } if(d.method==='getVideoHeight'){ vh=+d.value; }
-    if(vw&&vh){ setAR(vw,vh); vw=vh=0; }
+    if(vw&&vh){ setAR(vw,vh,host===PF?PF:lb); vw=vh=0; }
   });
   // YouTube tells us when it ends too (state 0)
   addEventListener('message',function(e){ if(!/youtube(-nocookie)?\.com$/.test((e.origin||'').replace(/^https?:\/\//,''))) return; var d; try{ d=typeof e.data==='string'?JSON.parse(e.data):e.data; }catch(_){ return; }
@@ -659,7 +657,11 @@
       var tries=0, iv=setInterval(function(){ if(++tries>8||lb.hidden){ clearInterval(iv); return; } if(fa.cur<to) setVol(fa.cur); },150);
     }
   }
-  function setAR(w,h){ if(!w||!h) return; lb.style.setProperty('--ar',w+'/'+h); lb.style.setProperty('--arn',(w/h).toFixed(4)); lb.classList.toggle('tall',h>w); }
+  function setAR(w,h,el){ el=el||lb; if(!w||!h||!el) return; el.style.setProperty('--ar',w+'/'+h); el.style.setProperty('--arn',(w/h).toFixed(4)); el.classList.toggle('tall',h>w); }
+  // the frame follows the film: the panel's ratio first, then the real size from Vimeo (YouTube Shorts are 9:16)
+  function fitAR(p,el){ var f=p.full||{}, v=vid(f), a=ratio(p.ratio).split('/'); if(!el._arReal) setAR(+a[0],+a[1],el);
+    if(v&&v.type==='youtube' && /\/shorts\//i.test(String(f.id||f.src||''))) setAR(9,16,el);
+    if(v&&v.type==='vimeo'){ fetch('https://vimeo.com/api/oembed.json?url='+encodeURIComponent('https://vimeo.com/'+v.id+(v.hash?'/'+v.hash:''))).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.width&&j.height) setAR(j.width,j.height,el); }).catch(function(){}); } }
   function closeLB(){ if(lb.hidden||lb._closing) return; lb._closing=1; [].forEach.call(lb.querySelectorAll('.lb-view'),function(v){ v.remove(); }); fadeAudio(null,0,300,0); lb.classList.remove('show'); if(CP.on) setTimeout(check,800);
     setTimeout(function(){ waves(false); lb.hidden=true; lb._closing=0; lbFrame.innerHTML=''; document.body.style.overflow=''; root.classList.remove('modal-open'); if(lastFocus) lastFocus.focus(); },340); }
 

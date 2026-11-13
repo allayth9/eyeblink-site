@@ -28,6 +28,7 @@ export async function onRequestGet({ request, env, params }) {
   const full = title + " · Eyeblink Studio", desc = sum || (en ? "A work by Eyeblink Studio" : "عمل من Eyeblink Studio");
   const img = p.poster ? new URL(p.poster, url.origin + "/").toString() : url.origin + "/assets/img/og.jpg";
   const self = url.origin + "/w/" + slug + (en ? "?l=en" : "");
+  const ar = await filmSize(p);
 
   // head: a base so the page's relative links still work from /w/, then this work's title, description and cover
   html = html.replace(/<meta charset="utf-8">/i, '<meta charset="utf-8"><base href="' + (en ? "/en/" : "/") + '">');
@@ -57,7 +58,8 @@ export async function onRequestGet({ request, env, params }) {
   ${client ? `<p class="case-client">${en ? "For" : "لصالح"} <b>${esc(client)}</b></p>` : ""}
 </div></section>
 <section class="block" style="padding-top:0"><div class="wrap" id="casePage" data-slug="${esc(slug)}">
-  <div class="case-player" id="casePlayer">${p.poster ? `<img alt="" src="${esc(img)}" fetchpriority="high">` : ""}<button type="button" class="case-play glass" aria-label="${en ? "Play" : "تشغيل"}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 1.5v13l11-6.5z"/></svg></button></div>
+  <div class="case-player${ar && ar[1] > ar[0] ? " tall" : ""}" id="casePlayer"${ar ? ` data-real style="--ar:${ar[0]}/${ar[1]};--arn:${(ar[0] / ar[1]).toFixed(4)}"` : ""}>${p.poster ? `<img alt="" src="${esc(img)}" fetchpriority="high">` : ""}<button type="button" class="case-play glass" aria-label="${en ? "Play" : "تشغيل"}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 1.5v13l11-6.5z"/></svg></button></div>
+  <script>document.getElementById('casePlayer').addEventListener('click',function(){ this._want=1; },{once:true});</script>
   <div class="cact" id="caseAct"></div>
   <div class="lb-case case-story" id="caseStory" hidden></div>
 </div></section>
@@ -70,4 +72,17 @@ ${cta}
 </main>`;
   html = html.replace(/<main>[\s\S]*?<\/main>/, () => main);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" } });
+}
+
+// the film's real width and height: Vimeo's own answer, else the panel's ratio (YouTube Shorts are 9:16)
+async function filmSize(p) {
+  const f = p.full || {}, raw = String(f.id || f.src || ""), m = /vimeo\.com\/(?:.*?\/)?(?:video\/)?(\d{5,})(?:\/([0-9a-f]{6,}))?/i.exec(raw) || (f.type === "vimeo" && /^(\d{5,})$/.exec(raw));
+  if (m) try {
+    const h = (/[?&]h=([0-9a-f]+)/i.exec(raw) || [])[1] || m[2] || "";
+    const r = await fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + m[1] + (h ? "/" + h : "")),
+      { headers: { referer: "https://eyeblinkstudio.com/" }, cf: { cacheTtl: 86400, cacheEverything: true }, signal: AbortSignal.timeout(1500) });
+    const j = r.ok ? await r.json() : null; if (j && j.width && j.height) return [j.width, j.height];
+  } catch {}
+  if (/youtube\.com\/shorts\//i.test(raw)) return [9, 16];
+  const q = /^(\d+(?:\.\d+)?)[:\/](\d+(?:\.\d+)?)$/.exec(p.ratio || ""); return q ? [+q[1], +q[2]] : null;
 }
