@@ -98,7 +98,7 @@
         {p:'hero.eyebrow', t:'text', l:'السطر الصغير فوق العنوان', ltr:1},
         {p:'hero.h1', t:'bi', l:'العنوان', hint:'لتلوين جزء بالتدرّج ضعه بين <span class="grad"> و </span>'},
         {p:'hero.lead', t:'bita', l:'الفقرة تحت العنوان'} ]},
-      {h:'خانة الأرقام', hint:'تظهر تحت العنوان في الصفحة الرئيسية. اكتب أرقاماً دقيقة فقط.', rep:{p:'stats', name:function(x){return (x.value||'')+' '+((x.label&&x.label.ar)||'')}, add:function(){return {value:'',label:bi()}},
+      {h:'خانة الأرقام', hint:'تظهر تحت العنوان في الصفحة الرئيسية. اكتب أرقاماً دقيقة فقط.', rep:{p:'stats', split:{all:'كل الأرقام', addL:'+ رقم'}, name:function(x){return (x.value||'')+' '+((x.label&&x.label.ar)||'')}, add:function(){return {value:'',label:bi()}},
         fields:[{p:'value', t:'text', l:'الرقم', ltr:1},{p:'label', t:'bi', l:'الوصف'}]}},
       {h:'الشوريل', hint:'يظهر زر «شاهد الشوريل» في الواجهة عند وضع رابط. المعاينة القصيرة (اختيارية) تعمل تلقائياً بلا صوت بجانب الشعار: 6–10 ثوانٍ، أقل من 5MB.', fields:[
         {row:[{p:'hero.reel.type', t:'select', l:'مصدر الفيديو', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4']]}},{p:'hero.reel.id', t:'text', l:'رابط الشوريل على Vimeo أو YouTube', ltr:1}]},
@@ -107,7 +107,7 @@
       {h:'مقدمة الخدمات', fields:[{p:'servicesIntro.h', t:'bi', l:'العنوان'},{p:'servicesIntro.p', t:'bita', l:'الوصف'}]},
       {h:'آراء العملاء', hint:'تظهر في الرئيسية وصفحة الأسعار فقط بعد أن يقيّم عميل طلبه المسلَّم، يوافق على النشر، وتفعّل أنت التقييم من صندوق الطلبات.', fields:[{p:'reviews.h', t:'bi', l:'عنوان القسم'}]} ]},
     {id:'services', title:'الخدمات', secs:[
-      {h:'الخدمات الأربع', hint:'لكل خدمة صفحة خاصة بعالمها البصري. إضافة نوع خدمة جديد بالكامل يحتاج تصميم صفحته.', rep:{p:'services', fixed:1, name:function(x){return (x.name&&x.name.ar)||x.id}, fields:[
+      {h:'الخدمات الأربع', hint:'لكل خدمة صفحة خاصة بعالمها البصري. إضافة نوع خدمة جديد بالكامل يحتاج تصميم صفحته.', rep:{p:'services', fixed:1, split:{all:'كل الخدمات', sub:function(x){ return x.label||''; }, tabs:[['الأساسي',[0,1,2,3]],['الوسوم والتسليم والأدوات',[4,5,6]]]}, name:function(x){return (x.name&&x.name.ar)||x.id}, fields:[
         {p:'label', t:'text', l:'التسمية اللاتينية الصغيرة', ltr:1},
         {p:'name', t:'bi', l:'الاسم'},
         {p:'short', t:'bita', l:'وصف مختصر (البطاقة في الرئيسية)'},
@@ -115,19 +115,24 @@
         {p:'tags', t:'bilist', l:'الوسوم', hint:'كل وسم بسطر'},
         {p:'deliverables', t:'bilist', l:'ماذا يستلم العميل', hint:'كل بند بسطر'},
         {p:'tools', t:'list', l:'الأدوات والبرامج', hint:'كل أداة بسطر', ltr:1} ]}},
-      {h:'شعارات الأدوات', hint:'Premiere وAfter Effects وPhotoshop وIllustrator وAudition وDaVinci وElevenLabs تظهر بشعاراتها تلقائياً. لأي أداة ثانية (مثل Higgsfield) أو لتبديل شعار: اكتب الاسم بالضبط كما هو بقائمة الأدوات وارفع الشعار (PNG أو SVG مربّع بخلفية).', rep:{p:'toolLogos',
+      {h:'شعارات الأدوات', hint:'Premiere وAfter Effects وPhotoshop وIllustrator وAudition وDaVinci وElevenLabs تظهر بشعاراتها تلقائياً. لأي أداة ثانية (مثل Higgsfield) أو لتبديل شعار: اكتب الاسم بالضبط كما هو بقائمة الأدوات وارفع الشعار (PNG أو SVG مربّع بخلفية).', rep:{p:'toolLogos', split:{all:'كل الأدوات', addL:'+ أداة', thumb:function(x){ return x.logo||''; }, logo:1, tag:function(x){ return x.logo?null:['بلا شعار','wait']; }},
         name:function(x){return x.name||'أداة'}, add:function(){return {name:'',logo:''}}, fields:[{p:'name', t:'text', l:'اسم الأداة', ltr:1},{p:'logo', t:'media', l:'الشعار', accept:'image/*'}]}} ]},
     {id:'packages', title:'الباقات والأسعار', secs:[
       {h:'نصوص الصفحة', fields:[{p:'packages.h', t:'bi', l:'العنوان'},{p:'packages.p', t:'bita', l:'الوصف'},
         {p:'packages.currency', t:'text', l:'رمز العملة', ltr:1},{p:'packages.note', t:'bita', l:'ملاحظة الأسعار'},{p:'packages.payment', t:'bita', l:'طرق الدفع (تظهر بعد الطلب)'}]},
-      {h:'الخدمات والباقة', hint:'«خدمة» تظهر في شبكة «اطلب خدمة». «باقة» (مثل الشهرية) تظهر ببطاقة عريضة تحتها. السعر القديم اختياري: إن كان أعلى من السعر يظهر مشطوباً مع نسبة التوفير.', rep:{p:'packages.items', name:function(x){return ((x.name&&x.name.ar)||'باقة')+(x.price!=null&&x.price!==''?' · '+x.price:' · عرض سعر')+(+x.oldPrice>+x.price?' (بدل '+x.oldPrice+')':'')},
+      {h:'الخدمات والباقة', hint:'«خدمة» تظهر في شبكة «اطلب خدمة». «باقة» (مثل الشهرية) تظهر ببطاقة عريضة تحتها. السعر القديم اختياري: إن كان أعلى من السعر يظهر مشطوباً مع نسبة التوفير.', rep:{p:'packages.items', name:function(x){return (x.name&&x.name.ar)||'باقة'},
+        split:{all:'كل الخدمات والباقات', addL:'+ خدمة أو باقة', tabs:[['الأساسي',[0,1,2,3]],['الوصف والمميزات',[4,5]],['المعرّف',[6]]],
+          sub:function(x){ var cur=(C.packages&&C.packages.currency)||'$', s=(C.services||[]).filter(function(v){ return v.id===x.service; })[0];
+            return [x.price!=null&&x.price!==''?cur+x.price+(+x.oldPrice>+x.price?' (بدل '+cur+x.oldPrice+')':'')+(x.unit&&x.unit.ar?' '+x.unit.ar:''):'عرض سعر', (s&&s.name&&s.name.ar)||''].filter(Boolean).join(' · '); },
+          tag:function(x){ return x.featured?['الأكثر طلباً','sign']:x.kind==='package'?['باقة','info']:null; }},
         add:function(){return {id:'pkg-'+Date.now().toString(36),service:'editing',featured:false,price:null,unit:bi('للفيديو','per video'),name:bi('باقة جديدة','New package'),desc:bi(),features:bi([],[])}},
         fields:[{p:'name', t:'bi', l:'اسم الباقة'},
           {row:[{p:'kind', t:'select', l:'النوع', opts:function(){return [['','تلقائي'],['service','خدمة'],['package','باقة']]}},{p:'service', t:'select', l:'الخدمة', opts:SVC},{p:'featured', t:'check', l:'الأكثر طلباً'}]},
           {row:[{p:'price', t:'num', l:'السعر (اتركه فارغاً = عرض سعر)'},{p:'oldPrice', t:'num', l:'السعر القديم (يظهر مشطوباً)'}]},
           {p:'unit', t:'bi', l:'الوحدة (للفيديو، شهرياً…)'},{p:'desc', t:'bita', l:'وصف قصير'},{p:'features', t:'bilist', l:'المميزات', hint:'كل ميزة بسطر'},
           {p:'id', t:'text', l:'المعرّف (يظهر في الرابط)', ltr:1} ]}},
-      {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return ((x.name&&x.name.ar)||'إضافة')+' · '+(x.type==='percent'?x.price+'%':x.price)},
+      {h:'الإضافات', rep:{p:'packages.addons', name:function(x){return (x.name&&x.name.ar)||'إضافة'},
+        split:{all:'كل الإضافات', addL:'+ إضافة', sub:function(x){ return x.type==='percent'?'+'+x.price+'% من السعر':'+'+((C.packages&&C.packages.currency)||'$')+x.price; }},
         add:function(){return {id:'add-'+Date.now().toString(36),name:bi('إضافة','Add-on'),price:10,type:'fixed'}},
         fields:[{p:'name', t:'bi', l:'الاسم'},{row:[{p:'price', t:'num', l:'القيمة'},{p:'type', t:'select', l:'النوع', opts:function(){return [['fixed','مبلغ ثابت'],['percent','نسبة %']]}},{p:'id', t:'text', l:'المعرّف', ltr:1}]} ]}},
       {h:'نافذة الطلب', hint:'تنفتح فوق الصفحة عندما يضغط العميل «اطلب». حدّد ما تسأله النافذة وما يراه العميل فيها.', fields:[
@@ -140,7 +145,9 @@
         {p:'order.text.platforms', t:'bi', l:'سؤال المنصة'},{p:'order.text.qty', t:'bi', l:'عدّاد الفيديوهات'},{p:'order.text.addons', t:'bi', l:'عنوان الإضافات'},
         {p:'order.text.link', t:'bi', l:'خانة رابط المواد'},{p:'order.text.deadline', t:'bi', l:'خانة الموعد'},{p:'order.text.contact', t:'bi', l:'خانة التواصل الخارجي'},
         {p:'order.text.pay', t:'bi', l:'خانة طريقة الدفع'},{p:'order.text.next', t:'bi', l:'عنوان الخطوات'},{p:'order.text.send', t:'bi', l:'زر الإرسال'}]},
-      {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'}, add:function(){return {q:bi(),a:bi()}},
+      {h:'الأسئلة الشائعة', hint:'تظهر أسفل صفحة الأسعار. راجع الأجوبة لتطابق طريقة عملك.', fields:[{p:'faq.h', t:'bi', l:'عنوان القسم'}], rep:{p:'faq.items', name:function(x){return (x.q&&x.q.ar)||'سؤال'},
+        split:{all:'كل الأسئلة', addL:'+ سؤال', sub:function(x){ var a=String((x.a&&x.a.ar)||'').replace(/\s+/g,' ').trim(); return a.length>70?a.slice(0,68)+'…':a; },
+          tag:function(x){ return x.a&&x.a.ar?null:['بلا جواب','fix']; }}, add:function(){return {q:bi(),a:bi()}},
         fields:[{p:'q', t:'bi', l:'السؤال'},{p:'a', t:'bita', l:'الجواب'}]}} ]},
     {id:'work', title:'الأعمال', secs:[
       {h:'دراسات الحالة', hint:'قصة كل عمل (البريف، التحدي، الفكرة، التنفيذ، النتيجة) وصور الكواليس، تظهر تحت الفيديو عند فتحه. تُكتب داخل كل مشروع بالأسفل.', fields:[
@@ -166,13 +173,13 @@
       {h:'نبذة عنّا', fields:[{p:'about.bioH', t:'bi', l:'العنوان'},{p:'about.bio', t:'bilist', l:'الفقرات', hint:'كل فقرة بسطر'},{p:'about.values', t:'bilist', l:'القيم', hint:'كل قيمة بسطر'}]} ]},
     {id:'contact', title:'التواصل والمراحل', secs:[
       {h:'التواصل', fields:[{p:'site.instagram', t:'text', l:'حساب إنستغرام (بدون @)', ltr:1},{p:'contact.h', t:'bi', l:'العنوان'},{p:'contact.p', t:'bita', l:'الوصف'},{p:'contact.briefH', t:'bi', l:'عنوان «ماذا ترسل لنا»'}],
-        rep:{p:'contact.brief', name:function(x){return (x.h&&x.h.ar)||''}, add:function(){return {k:'ITEM',h:bi(),p:bi()}}, fields:[{p:'k', t:'text', l:'التسمية', ltr:1},{p:'h', t:'bi', l:'العنوان'},{p:'p', t:'bi', l:'التوضيح'}]}},
+        rep:{p:'contact.brief', split:{all:'كل البنود', addL:'+ بند', sub:function(x){ return x.k||''; }}, name:function(x){return (x.h&&x.h.ar)||''}, add:function(){return {k:'ITEM',h:bi(),p:bi()}}, fields:[{p:'k', t:'text', l:'التسمية', ltr:1},{p:'h', t:'bi', l:'العنوان'},{p:'p', t:'bi', l:'التوضيح'}]}},
       {h:'آلية العمل', fields:[{p:'process.h', t:'bi', l:'العنوان'},{p:'process.p', t:'bita', l:'الوصف'}],
-        rep:{p:'process.steps', name:function(x,i){return (i+1)+'. '+((x.h&&x.h.ar)||'')}, add:function(){return {h:bi(),p:bi()}}, fields:[{p:'h', t:'bi', l:'المرحلة'},{p:'p', t:'bita', l:'الشرح'}]}} ]},
+        rep:{p:'process.steps', split:{all:'كل المراحل', addL:'+ مرحلة', sub:function(x){ var a=String((x.p&&x.p.ar)||'').replace(/\s+/g,' ').trim(); return a.length>70?a.slice(0,68)+'…':a; }}, name:function(x,i){return (i+1)+'. '+((x.h&&x.h.ar)||'')}, add:function(){return {h:bi(),p:bi()}}, fields:[{p:'h', t:'bi', l:'المرحلة'},{p:'p', t:'bita', l:'الشرح'}]}} ]},
     {id:'payments', title:'طرق الدفع', secs:[
       {h:'نصوص القسم', fields:[{p:'payments.h', t:'bi', l:'العنوان'},{p:'payments.p', t:'bita', l:'الوصف'}]},
-      {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.', rep:{p:'payments.methods',
-        name:function(x){return (x.name||'طريقة')+(x.enabled===false?' (مخفية)':'')}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
+      {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.', rep:{p:'payments.methods', split:{all:'كل الطرق', addL:'+ طريقة', thumb:function(x){ return x.logo||''; }, logo:1, tag:function(x){ return x.enabled===false?['مخفية','off']:null; }},
+        name:function(x){return x.name||'طريقة'}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
         fields:[{row:[{p:'name', t:'text', l:'الاسم', ltr:1},{p:'enabled', t:'check', l:'ظاهرة على الموقع'}]},{p:'logo', t:'media', l:'الشعار (PNG أو SVG بخلفية شفافة)', accept:'image/*'},{p:'id', t:'text', l:'المعرّف', ltr:1}]}},
       {h:'الدفع التلقائي والتذكير', hint:'«عربون» = يدفع العميل نسبة قبل البدء والباقي قبل التسليم، ولكل دفعة فاتورتها. يصل التذكير إلى العميل مرة واحدة إن لم يرفع الإيصال.', fields:[
         {row:[{p:'payments.defaultPlan', t:'select', l:'خطة الدفع الافتراضية للطلبات', opts:function(){return [['full','كامل المبلغ دفعة واحدة'],['split','عربون + الباقي قبل التسليم']]}},{p:'payments.depositPct', t:'num', l:'نسبة العربون %'}]},
@@ -266,14 +273,7 @@
       if(s.priv==='payments'){ var pm=(P&&P.payments)||{};
         html+=((C.payments&&C.payments.methods)||[]).map(function(m){ return '<div class="field"><label>'+esc(m.name||m.id)+'</label><textarea data-priv="payments.'+esc(m.id)+'" dir="auto" placeholder="مثال: Binance ID / رقم المحفظة / بريد PayPal">'+esc(pm[m.id]||'')+'</textarea></div>'; }).join('');
       }
-      if(s.rep&&s.rep.split) html+=repSplit(s,si);
-      else if(s.rep){ var arr=get(C,s.rep.p)||[];
-        html+='<div class="rep" data-rep="'+esc(s.rep.p)+'">'+arr.map(function(it,i){
-          return '<details class="item"'+(arr.length<=1?' open':'')+'><summary><span class="chev">‹</span><b>'+esc(s.rep.name(it,i))+'</b>'+
-            (s.rep.fixed?'':'<button class="btn sm" type="button" data-move="'+si+':'+i+':-1" aria-label="أعلى">↑</button><button class="btn sm" type="button" data-move="'+si+':'+i+':1" aria-label="أسفل">↓</button><button class="btn sm danger" type="button" data-del="'+si+':'+i+'">حذف</button>')+
-            '</summary><div class="body">'+s.rep.fields.map(function(f){ return field(it, f).replace(/data-p="/g,'data-p="'+s.rep.p+'.'+i+'.').replace(/data-upload="/g,'data-upload="'+s.rep.p+'.'+i+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+s.rep.p+'.'+i+'.'); }).join('')+'</div></details>';
-        }).join('')+'</div>'+(s.rep.fixed?'':'<div><button class="btn" type="button" data-add="'+si+'">+ إضافة</button></div>');
-      }
+      if(s.rep) html+=repSplit(s,si);
       return html+'</section>';
     }).join('');
     decorate();
@@ -281,11 +281,11 @@
   var SECT={};
   // a list as rows + the chosen item in a side panel (like requests and tasks); ↑ ↓ and delete live in the «⋯» menu
   var ROPEN={}, RTAB={};
-  function repSplit(s,si){ var r=s.rep, p=r.p, arr=get(C,p)||[], sp=r.split, wide=matchMedia('(min-width:1001px)').matches;
+  function repSplit(s,si){ var r=s.rep, p=r.p, arr=get(C,p)||[], sp=r.split||{}, wide=matchMedia('(min-width:1001px)').matches;
     var sel=ROPEN[p]; if(sel==null||sel>=arr.length) sel=ROPEN[p]=wide&&arr.length?0:-1;
     var it=arr[sel], tabs=sp.tabs||[['',r.fields.map(function(_,k){ return k; })]], ti=Math.min(RTAB[p]||0,tabs.length-1);
     var rows=arr.map(function(x,i){ var tg=sp.tag&&sp.tag(x,i), th=sp.thumb&&sp.thumb(x);
-      return '<li><button type="button" class="orow rrow'+(i===sel?' on':'')+'" data-ropen="'+esc(p)+':'+i+'"><span class="rth">'+(th?'<img alt="" loading="lazy" src="'+esc(abs(th))+'">':'')+'</span>'+
+      return '<li><button type="button" class="orow rrow'+(sp.thumb?'':' nth')+(i===sel?' on':'')+'" data-ropen="'+esc(p)+':'+i+'">'+(sp.thumb?'<span class="rth'+(sp.logo?' logo':'')+'">'+(th?'<img alt="" loading="lazy" src="'+esc(abs(th))+'">':'')+'</span>':'')+
         '<span class="orow-m"><b>'+esc(r.name(x,i))+'</b></span><span class="orow-p">'+esc(sp.sub?sp.sub(x,i):'')+'</span>'+(tg?'<span class="tag'+(tg[1]?' tf-'+tg[1]:' rtag')+'">'+esc(tg[0])+'</span>':'')+'</button></li>'; }).join('');
     var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr|vupload|vstate)="/g,'data-$1="'+p+'.'+sel+'.'); };
     var panel=it?'<div class="order item odetail rpanel"><div class="odh"><button class="btn sm oback" type="button" data-rback="'+esc(p)+'">‹ '+esc(sp.all||'كل العناصر')+'</button><b>'+esc(r.name(it,sel))+'</b>'+
@@ -425,14 +425,14 @@
       else { var fj=fi+(act==='up'?-1:1); if(fj<0||fj>=fa.length) return; var ft=fa[fi]; fa[fi]=fa[fj]; fa[fj]=ft; }
       set(C,fp2,fa); render(); keepOpen(fp2); dirty(); saveDraft(); return; }
     if(b.dataset.add!=null){ var s=tab.secs[+b.dataset.add]; var arr=get(C,s.rep.p)||[]; arr.push(s.rep.add()); set(C,s.rep.p,arr);
-      if(s.rep.split){ ROPEN[s.rep.p]=arr.length-1; RTAB[s.rep.p]=0; render(); dirty(); saveDraft(); var np=document.querySelector('.rsplit[data-rep="'+s.rep.p+'"] .rpanel'); if(np) np.scrollIntoView({block:'nearest'}); return; }
+      { ROPEN[s.rep.p]=arr.length-1; RTAB[s.rep.p]=0; render(); dirty(); saveDraft(); var np=document.querySelector('.rsplit[data-rep="'+s.rep.p+'"] .rpanel'); if(np) np.scrollIntoView({block:'nearest'}); return; }
       render(); dirty(); saveDraft();
       var items=document.querySelectorAll('[data-rep="'+s.rep.p+'"] .item'); var last=items[items.length-1]; if(last){ last.open=true; last.scrollIntoView({block:'center'}); } return; }
     if(b.dataset.del){ e.preventDefault(); var q=b.dataset.del.split(':'), s2=tab.secs[+q[0]], a2=get(C,s2.rep.p);
       if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف؟'; setTimeout(function(){ if(b.isConnected){ b.dataset.armed=''; b.textContent='حذف'; } },3000); return; }
-      a2.splice(+q[1],1); if(s2.rep.split) ROPEN[s2.rep.p]=a2.length?Math.min(+q[1],a2.length-1):-1; render(); dirty(); saveDraft(); return; }
+      a2.splice(+q[1],1); ROPEN[s2.rep.p]=a2.length?Math.min(+q[1],a2.length-1):-1; render(); dirty(); saveDraft(); return; }
     if(b.dataset.move){ e.preventDefault(); var m=b.dataset.move.split(':'), s3=tab.secs[+m[0]], a3=get(C,s3.rep.p), i=+m[1], j=i+(+m[2]);
-      if(j<0||j>=a3.length) return; var tmp=a3[i]; a3[i]=a3[j]; a3[j]=tmp; if(s3.rep.split) ROPEN[s3.rep.p]=j; render(); dirty(); saveDraft(); return; }
+      if(j<0||j>=a3.length) return; var tmp=a3[i]; a3[i]=a3[j]; a3[j]=tmp; ROPEN[s3.rep.p]=j; render(); dirty(); saveDraft(); return; }
   });
   $('#publishBtn').addEventListener('click',publish);
   $('#previewBtn').addEventListener('click',function(){ saveDraft(); try{ localStorage.setItem('eb-preview','1'); }catch(_){} });
