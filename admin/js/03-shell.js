@@ -138,7 +138,8 @@
   addEventListener('popstate',function(){ if(!LIVE&&!C) return; var r=readRoute(); ROUTING=true;
     if(r.tab==='tasks'){ var ts=!!r.sub&&/^T-/.test(r.sub); WOPEN=ts?r.sub:null; WSUB=ts||!r.sub?'tasks':r.sub; } if(r.tab==='billing') BOPEN=r.sub; if(r.tab==='support'){ SOPEN=r.sub; SPICK=!!r.sub; } if(r.tab==='team') teamRoute(r.sub); if(r.tab==='clients'&&!r.sub) PROF=null; if(r.tab==='orders'){ OPENCODE=r.sub; if(!r.sub){ OOPEN=null; OPICK=false; } }
     go(r.tab); if(r.tab==='clients'&&r.sub) loadProfile(r.sub); ROUTING=false; });
-  function go(tab){ TAB=tab; route(); render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
+  function go(tab){ if($('#tsheet')) closeT(); if($('#dsheet')){ DED=null; closeDoc(); }   // a sheet left open never covers the next section (the phone's back button)
+    TAB=tab; route(); render(); if(tab==='orders') loadOrders(); if(tab==='clients') loadUsers(); if(tab==='tasks') loadWork(); if(tab==='notify') loadNotify(); if(tab==='billing') loadBilling(); if(tab==='reports') loadReports(); if(tab==='team') loadTeam(); if(tab==='support') loadSupport(); if(tab==='today'){ loadOrders(); loadTeam(); } scrollTo(0,0); }
   function goOrder(key){ TAB='orders'; OFILTER='all'; OOPEN=key; OPICK=true; render(); var d=document.querySelector('[data-okey="'+key+'"]'); if(d){ d.open=true; setTimeout(function(){ d.scrollIntoView({block:'start',behavior:'smooth'}); },40); d.classList.add('flash'); setTimeout(function(){ d.classList.remove('flash'); },1600); } }
 
   /* ---------- «Today»: what needs you, ranked; the week ahead; where the pipeline stands ---------- */
