@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "project": {
+    "name": "eyeblink-site",
+    "productType": "studio website + admin panel (Arabic-first, RTL)",
+    "stack": ["static html", "vanilla js", "cloudflare pages functions"]
+  },
+  "sources": {
+    "tokens": ["assets/css/site.css", "admin/theme.css", "admin/admin.css"],
+    "components": ["assets/js/render.js", "admin/js"],
+    "assets": ["assets"],
+    "instructions": ["../CLAUDE.md", "../notes/brand.md"]
+  },
+  "design": {
+    "colorMode": "dark-first (the panel also has a light theme)",
+    "colors": {
+      "night": "#04061A",
+      "card": "#0B1236",
+      "deep": "#0E1A5C",
+      "hour": "#2E62FF",
+      "horizon": "#3FE0E8",
+      "dusk": "#8B5CFF",
+      "venus": "#E07BE0",
+      "light": "#EEF2F6",
+      "mist": "#AEBBD2",
+      "dim": "#6F7FA0",
+      "brandGradient": "linear-gradient(45deg,#2FC4D8 0%,#2A86E6 24%,#1C45E6 52%,#1638C4 76%,#0E1A5C 100%)"
+    },
+    "typography": {
+      "arabicDisplay": "EYEN Ammon Bold",
+      "arabicBody": "Hayyakum",
+      "latinLabels": "Oswald (uppercase, wide tracking, small)",
+      "wordmark": "Manrope",
+      "minimumSize": "12px"
+    },
+    "spacing": {},
+    "radius": { "small": "8px", "control": "12px", "card": "16px", "panel": "22px", "pill": "999px" },
+    "shadows": {},
+    "motion": { "style": "calm, cinematic, precise", "reducedMotion": "required" },
+    "density": "comfortable"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [".glass", ".btn", ".kc (number card)", ".osplit/.olist/.odetail (list + panel)", ".tag + tf-* status colours", "ask() confirm window"],
+    "patterns": ["one status colour per meaning (who must act next)", "list + side panel; full screen item on phones", "liquid glass surfaces"]
+  },
+  "constraints": {
+    "must": ["Arabic first, RTL; English pages are generated", "every product text in Modern Standard Arabic", "one accent colour per design (horizon)", "touch targets at least 40px", "back button closes what is open"],
+    "avoid": ["invented clients, numbers or reviews", "real brand logos", "emoji in designs", "the founder's name or face", "the September identity (cyan-violet, lens, IBM Plex)", "a full stop at the end of display lines"]
+  },
+  "decisions": [],
+  "evidence": [],
+  "generatedAt": "2026-11-13T14:26:34.861Z"
+}

@@ -864,8 +864,8 @@
 
   /* ---------------- boot ---------------- */
   renderAll(); track();
-  if(isDraft){ var bar=document.createElement('div'); bar.className='draft-bar'; bar.innerHTML=UI.draft+' <a href="#" id="exitDraft">'+UI.exit+'</a>'; document.body.appendChild(bar);
-    bar.querySelector('a').addEventListener('click',function(e){ e.preventDefault(); try{ localStorage.removeItem('eb-preview'); }catch(_){} location.reload(); }); }
+  if(isDraft){ var bar=document.createElement('div'); bar.className='draft-bar'; bar.innerHTML=UI.draft+' <button type="button" id="exitDraft">'+UI.exit+'</button>'; document.body.appendChild(bar);
+    bar.querySelector('#exitDraft').addEventListener('click',function(e){ e.preventDefault(); try{ localStorage.removeItem('eb-preview'); }catch(_){} location.reload(); }); }
   else if(/^https?:/.test(location.protocol)){
     fetch(BASE+'api/content',{cache:'no-store'}).then(function(r){ return r.ok? r.json():null; }).then(function(j){
       if(j && j.services){ var sd={}; try{ sd=JSON.parse(document.getElementById('eb-seed').textContent); }catch(_){}
