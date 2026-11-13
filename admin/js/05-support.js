@@ -4,7 +4,7 @@
   function loadSupport(){ if(!LIVE){ SUPA=[]; if(TAB==='support') renderSupport(); return; }
     fetch(API+'/support?admin=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ SUPA=j.ok?j.tickets:[]; renderTabs(); if(TAB==='support') renderSupport(); }).catch(function(){ SUPA=SUPA||[]; }); }
   function supAct(body,btn,ok){ if(btn) btn.disabled=true; return api('/support','POST',body).then(function(j){ if(!j.ok) throw 0; SUPA=SUPA.map(function(s){ return s.id===j.ticket.id?j.ticket:s; }); if(ok) toast(ok); renderTabs(); renderSupport(); }).catch(function(){ if(btn) btn.disabled=false; toast('تعذّر ذلك، حاول مرة أخرى',true); }); }
-  var SST={open:'مفتوحة',answered:'انرد عليها',closed:'مسكّرة'}, SFAM={open:'new',answered:'wait',closed:'off'}, SPICK=false;
+  var SST={open:'مفتوحة',answered:'تمّ الرد',closed:'مغلقة'}, SFAM={open:'new',answered:'wait',closed:'off'}, SPICK=false;
   function renderSupport(){
     renderTabs(); if(!SUPA){ $('#panel').innerHTML='<div class="sec"><div class="empty">جارٍ التحميل…</div></div>'; loadSupport(); return; }
     var list=SUPA.filter(function(s){ return SFILT==='all'||(SFILT==='open'?s.status!=='closed':s.status===SFILT); });
@@ -14,7 +14,7 @@
     if(cur&&cur.unread&&LIVE) api('/support','POST',{action:'seen',id:cur.id}).then(function(){ cur.unread=0; renderTabs(); });
     var fmtT=function(a){ return new Date(a).toLocaleString('ar-u-nu-latn',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); };
     var cnt=function(st){ return SUPA.filter(function(s){ return s.status===st; }).length; };
-    $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+kc(cnt('open'),'بانتظار ردك','new','support')+kc(cnt('answered'),'بانتظار العميل','wait','k_wait')+kc(SUPA.filter(function(s){ return s.unread; }).length,'رسائل غير مقروءة','fix','notify')+kc(cnt('closed'),'مسكّرة','off','k_done')+'</div></section>'+
+    $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+kc(cnt('open'),'بانتظار ردك','new','support')+kc(cnt('answered'),'بانتظار العميل','wait','k_wait')+kc(SUPA.filter(function(s){ return s.unread; }).length,'رسائل غير مقروءة','fix','notify')+kc(cnt('closed'),'مغلقة','off','k_done')+'</div></section>'+
       '<div class="subtabs">'+[['open','المفتوحة'],['closed','المغلقة'],['all','الكل']].map(function(x){ return '<button type="button" data-sfilt="'+x[0]+'"'+(SFILT===x[0]?' aria-current="true"':'')+'>'+x[1]+'</button>'; }).join('')+'</div>'+
       (!SUPA.length?'<div class="sec"><div class="empty">لا توجد تذاكر دعم. حين يضغط أحد الزوار «هل يوجد مشكلة؟» في الموقع، تظهر التذكرة هنا</div></div>':
       '<div class="osplit'+(cur?' has-open':'')+'"><ul class="olist">'+(list.length?list.map(function(s){ var last=s.messages[s.messages.length-1];

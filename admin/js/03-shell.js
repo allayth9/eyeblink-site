@@ -275,6 +275,14 @@
     L.push({k:'إجراء',t:'+ مهمة للفريق',run:function(){ TSUB='tasks'; go('team'); setTimeout(function(){ openTTask(null); },80); }});
     ORDERS.forEach(function(o){ L.push({k:'طلب',t:o.name+' · '+(o.packageName||'')+' · '+o.code,s:ST[o.status],run:function(){ goOrder(o.key); }}); });
     if(TEAM) TEAM.members.forEach(function(m){ L.push({k:'الفريق',t:m.name+' · '+(TROLE[m.role]||m.role),run:function(){ TSUB='members'; go('team'); }}); });
+    // clients, works, tasks, invoices, support tickets, and every section of the site's content
+    ((CL&&CL.clients)||USERS||[]).forEach(function(c){ L.push({k:'عميل',t:(c.name||c.email)+(c.company?' · '+c.company:''),s:[c.email,c.phone].filter(Boolean).join(' '),run:function(){ go('clients'); loadProfile(c.email); }}); });
+    var wsi=-1; TABS.forEach(function(t){ if(t.id==='work') (t.secs||[]).forEach(function(s,i){ if(s.rep&&s.rep.p==='projects') wsi=i; }); });
+    ((C&&C.projects)||[]).forEach(function(p,i){ L.push({k:'عمل',t:(p.title&&p.title.ar)||'عمل',s:[p.client,p.year,p.slug].filter(Boolean).join(' '),run:function(){ ROPEN.projects=i; if(wsi>=0) SECT.work=wsi; go('work'); }}); });
+    if(WORK&&WORK.tasks) WORK.tasks.forEach(function(t){ L.push({k:'مهمة',t:t.ref+' · '+t.title,s:[t.project_name,t.client_email].filter(Boolean).join(' '),run:function(){ WSUB='tasks'; WOPEN=t.ref; go('tasks'); loadWork(); }}); });
+    if(BILL&&BILL.invoices) BILL.invoices.forEach(function(x){ L.push({k:'فاتورة',t:(x.no||'')+' · '+[x.title,x.period].filter(Boolean).join(' · '),s:x.client_email||'',run:function(){ BOPEN='ws:'+x.id; go('billing'); }}); });
+    if(SUPA) SUPA.forEach(function(s){ L.push({k:'دعم',t:s.id+' · '+(s.name||''),s:s.email||'',run:function(){ SOPEN=s.id; SPICK=true; go('support'); }}); });
+    TABS.forEach(function(t){ (t.secs||[]).forEach(function(s,i){ if(s.h) L.push({k:'قسم',t:s.h,s:t.title,run:function(){ SECT[t.id]=i; go(t.id); }}); }); });
     return L;
   }
   function openCmd(){ var el=$('#cmdk'); if(el){ el.remove(); return; }
