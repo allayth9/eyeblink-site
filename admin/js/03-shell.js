@@ -144,7 +144,7 @@
   /* ---------- «Today»: what needs you, ranked; the week ahead; where the pipeline stands ---------- */
   var TODAY_LOCK=false, ORD_READY=false;
   function hrs(iso){ return (Date.now()-Date.parse(iso))/36e5; }
-  function ago(iso){ var h=hrs(iso); return h<1?'قبل قليل':h<24?'من '+Math.round(h)+' ساعة':'من '+Math.round(h/24)+' يوم'; }
+  function ago(iso){ var h=hrs(iso), n=Math.round(h<24?h:h/24), w=h<24?['ساعة','ساعتين','ساعات']:['يوم','يومين','أيام']; return h<1?'قبل قليل':'منذ '+(n===1?w[0]:n===2?w[1]:n<=10?n+' '+w[2]:n+' '+w[0]); }
   function alerts(){
     var A=[], t0=todayISO(), add=function(lvl,title,sub,goTo,at){ A.push({lvl:lvl,title:title,sub:sub,go:goTo,at:at||''}); };
     ORDERS.forEach(function(o){ if(o.demo) return; var nm=esc(o.name)+' · <span dir="ltr">'+esc(o.code)+'</span>', closed=o.status==='cancelled'||o.status==='delivered', g={tab:'orders',key:o.key};
@@ -174,6 +174,7 @@
         else if(t.due&&t.due<t0&&t.status!=='approved') add('crit','مهمة فريق متأخرة',esc(t.title)+' · '+esc(mn(t.member)),g,t.due);
         if(t.status==='approved'&&!(t.payout&&t.payout.paid)){ due+=+t.fee||0; cur=t.cur||cur; } });
       if(due) add('info','أجور فريق مستحقة','<span dir="ltr">'+esc(pfmt(due,cur))+'</span>',{tab:'team',sub:'members'}); }
+    if(BK&&BK.stale) add('info','لم تُحفظ نسخة احتياطية منذ أكثر من أسبوعين',BK.snaps&&BK.snaps[0]?'آخر نسخة '+bkAgo(BK.snaps[0].at):'لا توجد نسخة كاملة بعد',{tab:'backup'},(BK.snaps&&BK.snaps[0]&&BK.snaps[0].at)||'');
     if(FXLIVE&&(FXLIVE.ok===false||(FXLIVE.at&&hrs(FXLIVE.at)>72))) add('info','لم يُحدَّث سعر الليرة',FXLIVE.at?'آخر سعر '+ago(FXLIVE.at)+' · يمكنك إدخاله يدوياً من خانة العملة':'تعذّر جلب السعر من «الليرة اليوم»',{tab:'orders'});
     (SUPA||[]).forEach(function(s){ if(s.status!=='closed'&&s.unread) add(hrs(s.updatedAt||s.at)>12?'crit':'warn','تذكرة دعم بانتظار ردك',esc(s.name)+' · <span dir="ltr">'+esc(s.id)+'</span>',{tab:'support',id:s.id},s.updatedAt||s.at); });
     var rank={crit:0,warn:1,info:2}; return A.sort(function(a,b){ return rank[a.lvl]-rank[b.lvl]||(a.at<b.at?-1:1); });

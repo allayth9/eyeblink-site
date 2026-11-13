@@ -4,7 +4,7 @@
   function sampleOrders(){ return [{key:'order:demo',code:'EB-DEMO1',status:'new',createdAt:new Date().toISOString(),name:'طلب تجريبي',contact:'@client.account',details:'فيديو موشن 45 ثانية لإطلاق منتج. (هذا طلب تجريبي ليظهر لك شكل الصندوق)',package:'motion',packageName:'فيديو موشن غرافيك',addons:['كتابة السكريبت'],total:'85 $',lang:'ar',price:'',method:'',paid:false,paidAmount:'',notes:'',history:[{at:new Date().toISOString(),status:'new'}],email:'client@example.com',unread:1,messages:[{from:'client',text:'مرحباً، هل يمكن التسليم قبل نهاية الأسبوع؟',at:new Date().toISOString()}],demo:true}]; }
   function loadOrders(){
     if(!LIVE){ if(!ORDERS.length) ORDERS=sampleOrders(); if(TAB==='orders') renderOrders(); else renderTabs(); return; }
-    fetch(API+'/orders',{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ ORDERS=j.orders||[]; ORD_READY=true; if(TAB==='orders') renderOrders(); else renderTabs(); }).catch(function(){});
+    fetch(API+'/orders',{headers:headers({})}).then(function(r){return r.json()}).then(function(j){ ORDERS=j.orders||[]; ORD_READY=true; if(TAB==='orders') renderOrders(); else { renderTabs(); if(TAB==='reports'&&REP&&!REP.err) renderReports(); } }).catch(function(){});
   }
   function contactLink(c,text){
     c=String(c||'').trim(); var digits=c.replace(/[^0-9]/g,'');
@@ -78,7 +78,7 @@
     var fl=box.querySelector('.pflow'); if(fl){ var tmp=document.createElement('div'); tmp.innerHTML=payFlow(o,esc(o.key),((C.payments&&C.payments.methods)||[])); fl.replaceWith(tmp.firstChild); } });
 
   /* ---------- CRM: opportunities from outside the site, follow-ups, contact log, loss reasons, the funnel ---------- */
-  var SRC={website:'الموقع',instagram:'إنستغرام',whatsapp:'واتساب',referral:'توصية',email:'إيميل',meeting:'لقاء',other:'غيره'};
+  var SRC={website:'الموقع',instagram:'إنستغرام',whatsapp:'واتساب',referral:'توصية',email:'إيميل',meeting:'لقاء',other:'مصدر آخر'};
   var LOST_DEF=['السعر','التوقيت','توقّف عن الرد','اختار جهة أخرى','غير مناسب لنا','غيره'];
   var OPEN_ST=['new','discussing','confirmed','awaiting-payment'], WON_ST=['paid','in-progress','review','delivered'], NEWOPP=false;
   function lostReasons(){ var l=P&&P.crm&&P.crm.lostReasons; return l&&l.length?l:LOST_DEF; }

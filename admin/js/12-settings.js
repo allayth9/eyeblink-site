@@ -39,14 +39,42 @@
   });
 
   /* ---------------- backup ---------------- */
+  var BK=null, BKALL=false;
+  function bkAgo(iso){ var d=Math.floor((Date.now()-new Date(iso))/864e5); return d<1?'اليوم':d===1?'أمس':d===2?'قبل يومين':d<=10?'قبل '+d+' أيام':'قبل '+d+' يوماً'; }
+  function bkDate(iso){ try{ return new Date(iso).toLocaleString('ar-u-nu-latn',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); }catch(_){ return iso; } }
+  function bkSize(n){ return n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
+  // the snapshots and content versions; a snapshot is stored by itself when the last one is a week old
+  function loadBackup(auto){ if(!LIVE) return; fetch(API+'/backup?list=1',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok) return; BK=j;
+      var last=j.snaps[0]&&new Date(j.snaps[0].at); BK.stale=!last||(Date.now()-last)>14*864e5;
+      if(auto&&j.r2&&(!last||(Date.now()-last)>7*864e5)) bkSnap(true); else if(TAB==='backup') renderBackup(); }).catch(function(){}); }
+  function bkSnap(quiet){ return fetch(API+'/backup',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({snapshot:1})}).then(function(r){ return r.json(); })
+    .then(function(j){ if(!j.ok) throw 0; if(!quiet) toast('حُفظت نسخة كاملة على التخزين'); loadBackup(); }).catch(function(){ if(!quiet) toast('تعذّر حفظ النسخة، حاول مرة أخرى',true); }); }
   function renderBackup(){
-    $('#panel').innerHTML='<section class="sec"><h3>تصدير نسخة</h3><p class="hint">انسخ المحتوى الكامل واحفظه في ملف نصي باسم content.json.</p>'+
-      '<textarea id="exportBox" dir="ltr" style="min-height:220px;font-family:monospace;font-size:12px" readonly>'+esc(JSON.stringify(C,null,1))+'</textarea>'+
-      '<div><button class="btn" type="button" id="copyExport">نسخ</button></div></section>'+
-      '<section class="sec"><h3>استيراد نسخة</h3><p class="hint">اختر ملف content.json محفوظاً سابقاً. سيحل محل المحتوى الحالي في اللوحة (لن يُنشر حتى تضغط «نشر التعديلات»).</p>'+
-      '<input type="file" id="importFile" accept="application/json,.json"></section>'+
-      '<section class="sec"><h3>تجاهل المسودة</h3><p class="hint">يعيد اللوحة إلى آخر نسخة منشورة.</p><div><button class="btn danger" type="button" id="resetDraft">تجاهل المسودة</button></div></section>';
-    $('#copyExport').onclick=function(){ var t=$('#exportBox'); try{ navigator.clipboard.writeText(t.value).then(function(){toast('تم النسخ')},function(){t.select()}); }catch(_){ t.select(); } };
-    $('#importFile').onchange=function(){ var f=this.files[0]; if(!f) return; f.text().then(function(txt){ var j=JSON.parse(txt); if(!j.services) throw 0; C=j; saveDraft(); dirty(); toast('تم الاستيراد'); }).catch(function(){ toast('الملف غير صالح',true); }); };
+    if(LIVE&&!BK){ $('#panel').innerHTML='<section class="sec"><div class="empty">جارٍ التحميل…</div></section>'; loadBackup(); return; }
+    var S=(BK&&BK.snaps)||[], V=(BK&&BK.versions)||[], last=S[0];
+    var inc=['محتوى الموقع','الطلبات والفرص','العملاء ومساحات العمل','المهام والتسليمات','الفواتير والعروض والاتفاقيات','الفريق وأجوره','الإعدادات الخاصة'];
+    $('#panel').innerHTML=
+      '<section class="sec"><h3>النسخة الكاملة</h3>'+
+        '<div class="bk-head"><div><b>'+(!LIVE?'يعمل هذا القسم على الموقع المنشور':last?'آخر نسخة كاملة: '+bkAgo(last.at):'لم تُحفظ نسخة كاملة بعد')+'</b>'+
+          '<span class="small muted">'+(BK&&!BK.r2?'التخزين (R2) غير مفعّل، فالنسخ التلقائية متوقفة':'تُحفظ نسخة تلقائياً كل أسبوع على تخزيننا الخاص، ونحتفظ بآخر 8 نسخ')+'</span></div>'+
+          '<div class="bk-act"><a class="btn primary" href="'+API+'/backup" download'+(LIVE?'':' aria-disabled="true"')+'>نزّل نسخة كاملة الآن</a>'+(BK&&BK.r2?'<button class="btn" type="button" id="bkSnap">احفظ نسخة على التخزين</button>':'')+'</div></div>'+
+        '<p class="small muted bk-lbl">تشمل</p><div class="bk-chips">'+inc.map(function(x){ return '<span class="tag tf-info">'+x+'</span>'; }).join('')+'<span class="tag tf-off">دون كلمات السر والجلسات</span></div>'+
+        '<p class="hint">ملفات الفيديو والصور لا تدخل في النسخة لكبر حجمها، وتُدرج أسماؤها فقط، والملفات نفسها محفوظة على التخزين. وتُستعاد بيانات العمل من النسخة عند الحاجة يدوياً، حمايةً من محوها بضغطة خاطئة.</p></section>'+
+      (S.length?'<section class="sec"><h3>النسخ المحفوظة على التخزين</h3><div class="bk-list">'+S.map(function(s){ return '<div class="bk-row"><span><b>'+esc(bkDate(s.at))+'</b><small>'+bkSize(s.size)+'</small></span><a class="btn sm" href="'+API+'/backup?snap='+encodeURIComponent(s.key)+'" download>تنزيل</a></div>'; }).join('')+'</div></section>':'')+
+      '<section class="sec"><h3>نسخ محتوى الموقع</h3><p class="hint">تُحفظ نسخة من المحتوى قبل كل نشر، وتبقى 30 يوماً. استعادة نسخة تعيد نصوص الموقع وأعماله وأسعاره كما كانت، وتُحفظ النسخة الحالية قبلها.</p>'+
+        (V.length?'<div class="bk-list">'+V.slice(0,BKALL?30:6).map(function(v){ return '<div class="bk-row"><span><b>'+esc(bkDate(v.at))+'</b><small>'+esc(bkAgo(v.at))+'</small></span><button class="btn sm" type="button" data-bkrestore="'+esc(v.key)+'" data-bkat="'+esc(bkDate(v.at))+'">استعادة</button></div>'; }).join('')+'</div>'+
+          (V.length>6?'<button class="btn sm bk-more" type="button" id="bkAll">'+(BKALL?'عرض أقل':'عرض كل النسخ ('+Math.min(V.length,30)+')')+'</button>':'')
+          :'<div class="empty small">'+(LIVE?'لا توجد نسخ محتوى بعد.':'يعمل هذا القسم على الموقع المنشور.')+'</div>')+'</section>'+
+      '<section class="sec"><h3>المحتوى وحده</h3><p class="hint">ملف content.json لنصوص الموقع فقط. الاستيراد يضع الملف في اللوحة ولا يُنشر حتى تضغط «نشر التعديلات».</p>'+
+        '<div class="bk-act"><button class="btn" type="button" id="copyExport">نزّل content.json</button><label class="btn">استيراد ملف<input type="file" id="importFile" accept="application/json,.json" hidden></label><button class="btn danger" type="button" id="resetDraft">تجاهل المسودة</button></div></section>';
+    var ba=$('#bkAll'); if(ba) ba.onclick=function(){ BKALL=!BKALL; renderBackup(); };
+    var sb=$('#bkSnap'); if(sb) sb.onclick=function(){ sb.disabled=true; sb.textContent='جارٍ الحفظ…'; bkSnap(false); };
+    [].forEach.call(document.querySelectorAll('[data-bkrestore]'),function(b){ b.onclick=function(){
+      ask({tone:'warn',title:'استعادة نسخة المحتوى',text:'تعود نصوص الموقع وأعماله وأسعاره إلى هذه النسخة فوراً، وتُحفظ النسخة الحالية قبلها',rows:[['النسخة',b.dataset.bkat]],ok:'استعِدها'}).then(function(y){ if(!y) return;
+        fetch(API+'/backup',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({restore:b.dataset.bkrestore})}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok) throw 0;
+          return fetch(API+'/content',{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(c){ C=c; SAVED=JSON.stringify(c); try{ localStorage.removeItem('eb-draft'); }catch(_){} dirty(); BK=null; toast('استُعيدت النسخة وظهرت على الموقع'); renderBackup(); }); })
+          .catch(function(){ toast('تعذّرت الاستعادة، حاول مرة أخرى',true); }); }); }; });
+    $('#copyExport').onclick=function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(C,null,1)],{type:'application/json'})); a.download='content.json'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); };
+    $('#importFile').onchange=function(){ var f=this.files[0]; if(!f) return; f.text().then(function(txt){ var j=JSON.parse(txt); if(!j.services) throw 0; C=j; saveDraft(); dirty(); toast('استُورد الملف إلى اللوحة'); }).catch(function(){ toast('الملف غير صالح',true); }); };
     $('#resetDraft').onclick=function(){ try{ localStorage.removeItem('eb-draft'); localStorage.removeItem('eb-preview'); }catch(_){} C=JSON.parse(SAVED); dirty(); toast('عادت اللوحة للنسخة المنشورة'); };
   }

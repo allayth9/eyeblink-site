@@ -42,8 +42,11 @@ export async function onRequestGet({ request, env }) {
   // the panel: how often each shared link (/w/<slug>) was opened
   if (new URL(request.url).searchParams.get("shares") === "1") {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
-    const shares = {}; try { const r = (await env.DB.prepare("SELECT slug, n, last FROM share_opens").all()).results || []; for (const x of r) shares[x.slug] = { n: x.n, last: x.last }; } catch {}
-    return json({ ok: true, shares }, 200, { "cache-control": "no-store" });
+    const shares = {}, likes = {}, views = {}; try { const r = (await env.DB.prepare("SELECT slug, n, last FROM share_opens").all()).results || []; for (const x of r) shares[x.slug] = { n: x.n, last: x.last }; } catch {}
+    // likes: the real ones only (no starting number); views as shown on the site
+    try { for (const x of ((await env.DB.prepare("SELECT id, n FROM work_likes").all()).results || [])) likes[x.id] = x.n; } catch {}
+    try { for (const x of ((await env.DB.prepare("SELECT id, n FROM work_views").all()).results || [])) views[x.id] = x.n; } catch {}
+    return json({ ok: true, shares, likes, views }, 200, { "cache-control": "no-store" });
   }
   const D = await db(env); if (!D) return json({ ok: true, views: {} });
   const ids = await workIds(env); if (!ids.length) return json({ ok: true, views: {} });
