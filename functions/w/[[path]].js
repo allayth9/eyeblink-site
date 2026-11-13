@@ -57,7 +57,7 @@ export async function onRequestGet({ request, env, params }) {
   ${client ? `<p class="case-client">${en ? "For" : "لصالح"} <b>${esc(client)}</b></p>` : ""}
 </div></section>
 <section class="block" style="padding-top:0"><div class="wrap" id="casePage" data-slug="${esc(slug)}">
-  <div class="case-player" id="casePlayer">${p.poster ? `<img alt="" src="${esc(img)}" fetchpriority="high">` : ""}<button type="button" class="case-play glass" aria-label="${en ? "Play" : "تشغيل"}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v13l11-6.5z"/></svg></button></div>
+  <div class="case-player" id="casePlayer">${p.poster ? `<img alt="" src="${esc(img)}" fetchpriority="high">` : ""}<button type="button" class="case-play glass" aria-label="${en ? "Play" : "تشغيل"}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 1.5v13l11-6.5z"/></svg></button></div>
   <div class="cact" id="caseAct"></div>
   <div class="lb-case case-story" id="caseStory" hidden></div>
 </div></section>

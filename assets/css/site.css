@@ -1998,8 +1998,7 @@ html{-webkit-tap-highlight-color:transparent}
 .case-player>img,.case-player>iframe,.case-player>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0}
 .case-player.playing{cursor:auto}.case-player.playing>video{object-fit:contain;background:#000}
 .case-play{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;transition:transform .3s var(--ease,ease)}
-.case-play svg{width:24px;height:24px;fill:#fff;margin-inline-start:4px}
-[dir="rtl"] .case-play svg{margin-inline-start:0;margin-inline-end:-4px;transform:none}
+.case-play svg{width:24px;height:24px;fill:#fff;translate:1px 0}   /* centred box, nudged 1px toward the point so its weight sits in the middle */
 .case-player:hover .case-play{transform:translate(-50%,-50%) scale(1.06)}
 .case-player.playing .case-play{display:none}
 .cact{display:flex;justify-content:center;align-items:center;gap:8px;margin:18px 0 6px}
@@ -2013,3 +2012,8 @@ html{-webkit-tap-highlight-color:transparent}
 /* the preview over a booting player: it holds the frame, then fades when the film plays */
 .lb-pre{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:3;pointer-events:none;background:#04061A;transition:opacity .55s ease}
 .lb-pre.off{opacity:0}
+/* cinema: while the film plays on its page and is in view, the header, the dock and the floating buttons step aside */
+header.nav,.dock,.help-float{transition:translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
+.wa-float,.help-float{transition:transform .3s,translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
+body.cine header.nav{translate:0 -140%;opacity:0;pointer-events:none}
+body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opacity:0;pointer-events:none}
