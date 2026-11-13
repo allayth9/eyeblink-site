@@ -12,12 +12,13 @@ const KEY_OK = /^v\/[a-f0-9]{24}\/[a-z0-9][a-z0-9.\-_]{0,80}$/;
 export async function onRequestGet({ request, params, env }) {
   if (!env.R2) return new Response("storage not configured", { status: 503 });
   const key = (params.path || []).join("/");
-  if (!KEY_OK.test(key) || !(await mayRead(request, env, key))) return new Response("not found", { status: 404 });
+  const film = KEY_OK.test(key) && await isFilm(env, key);
+  if (!KEY_OK.test(key) || !(film || await mayRead(request, env, key))) return new Response("not found", { status: 404 });
   const range = request.headers.get("range");
   const obj = await env.R2.get(key, range ? { range: request.headers } : undefined);
   if (!obj) return new Response("not found", { status: 404 });
   const h = new Headers(); obj.writeHttpMetadata(h);
-  h.set("accept-ranges", "bytes"); h.set("cache-control", "private, max-age=3600"); h.set("etag", obj.httpEtag);
+  h.set("accept-ranges", "bytes"); h.set("cache-control", film ? "public, max-age=31536000, immutable" : "private, max-age=3600"); h.set("etag", obj.httpEtag);
   const name = (obj.customMetadata && obj.customMetadata.name) || key.split("/").pop();
   h.set("content-disposition", (new URL(request.url).searchParams.get("dl") ? "attachment" : "inline") + "; filename*=UTF-8''" + encodeURIComponent(name));
   if (range && obj.range) {
@@ -27,6 +28,11 @@ export async function onRequestGet({ request, params, env }) {
   }
   h.set("content-length", String(obj.size));
   return new Response(obj.body, { headers: h });
+}
+// a work's full film on the site (a key never changes, so it can be cached for good)
+async function isFilm(env, key){
+  let c = {}; try { c = JSON.parse(await env.EB.get("content", { cacheTtl: 60 }) || "{}"); } catch {}
+  return (c.projects || []).some(p => p && p.full && p.full.type === "mp4" && String(p.full.src || "").endsWith("/api/vault/" + key));
 }
 // the studio (panel session), or the client a delivery with this file was sent to
 async function mayRead(request, env, key){

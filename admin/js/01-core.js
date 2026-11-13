@@ -159,8 +159,8 @@
           {p:'frames', t:'frames', l:'Behind the Frame — صور من الكواليس (حتى 8)', hint:'ستوريبورد، لقطة من التايملاين، قبل وبعد التلوين، لقطة من التصوير… لكل صورة وصف قصير. تظهر كصف تحت دراسة الحالة.'},
           {p:'preview', t:'media', l:'معاينة قصيرة (فيديو)', accept:'video/mp4,video/webm', make:1, hint:'«صنع من الفيديو»: اختر الفيديو الكامل من جهازك، فتُقتطع منه 4 لقطات قصيرة من أجزاء مختلفة وتُدمج في معاينة صامتة (~7 ثوانٍ) تُرفع وحدها. أبقِ هذه الصفحة مفتوحة أثناء الصنع.'},
           {p:'poster', t:'media', l:'صورة الغلاف', accept:'image/*'},
-          {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف MP4'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
-          {p:'full.src', t:'media', l:'ملف MP4 كامل (فقط إذا اخترت MP4)', accept:'video/mp4'} ]}} ]},
+          {row:[{p:'full.type', t:'select', l:'الفيديو الكامل', opts:function(){return [['vimeo','Vimeo'],['youtube','YouTube'],['mp4','ملف على تخزيننا (الأسرع)'],['none','المعاينة فقط']]}},{p:'full.id', t:'text', l:'رابط الفيديو على Vimeo أو YouTube (الصق الرابط كاملاً)', ltr:1}]},
+          {p:'full.src', t:'media', l:'الفيلم الكامل على تخزيننا (إذا اخترت «ملف على تخزيننا»)', accept:'video/mp4', vault:1, hint:'بيتشغّل فوراً بمشغّل الموقع، بلا Vimeo. صدّره MP4 (H.264) مع «Fast Start / Optimize for web». الحجم المناسب: 1080p، 20–80MB.'} ]}} ]},
     {id:'about', title:'من نحن', secs:[
       {h:'المقدمة', fields:[{p:'about.h1', t:'bi', l:'العنوان'},{p:'about.lead', t:'bita', l:'الوصف'}]},
       {h:'نبذة عنّا', fields:[{p:'about.bioH', t:'bi', l:'العنوان'},{p:'about.bio', t:'bilist', l:'الفقرات', hint:'كل فقرة بسطر'},{p:'about.values', t:'bilist', l:'القيم', hint:'كل قيمة بسطر'}]} ]},
@@ -229,8 +229,8 @@
           '<div class="enl"><span'+(e?' dir="ltr"':'')+'>'+esc(enPrev(e))+'</span><em class="enauto" hidden>تلقائي</em><button type="button" class="linkbtn small" data-enx>تعديل الإنجليزي</button></div><div class="enw" hidden>'+inp('en',e)+'</div>'+hint+'</div>';
       case 'media':
         var isV=/video/.test(f.accept||''), prev=v? (isV?'<video class="thumb" src="'+esc(abs(v))+'" muted></video>':'<img class="thumb" alt="" src="'+esc(abs(v))+'">') : '';
-        return '<div class="field">'+lab+'<div class="media">'+prev+'<input id="'+id+'"'+d+' dir="ltr" placeholder="رابط أو ارفع ملفاً" value="'+esc(v)+'"><label class="btn sm">رفع<input type="file" accept="'+esc(f.accept||'*/*')+'" data-upload="'+esc(f.p)+'" hidden></label>'+
-          (f.make?'<label class="btn sm primary">صنع من الفيديو<input type="file" accept="video/*" data-make="'+esc(f.p)+'" hidden></label>':'')+'</div><p class="mkstate small" data-mkstate="'+esc(f.p)+'" hidden></p>'+hint+'</div>';
+        return '<div class="field">'+lab+'<div class="media">'+prev+'<input id="'+id+'"'+d+' dir="ltr" placeholder="رابط أو ارفع ملفاً" value="'+esc(v)+'"><label class="btn sm'+(f.vault?' primary':'')+'">'+(f.vault?'ارفع الفيلم':'رفع')+'<input type="file" accept="'+esc(f.accept||'*/*')+'" '+(f.vault?'data-vupload':'data-upload')+'="'+esc(f.p)+'" hidden></label>'+
+          (f.make?'<label class="btn sm primary">صنع من الفيديو<input type="file" accept="video/*" data-make="'+esc(f.p)+'" hidden></label>':'')+'</div><p class="mkstate small" data-mkstate="'+esc(f.p)+'" hidden></p>'+(f.vault?'<div class="wup" data-vstate="'+esc(f.p)+'" hidden><i></i><span></span></div>':'')+hint+'</div>';
     }
     return '';
   }
@@ -287,7 +287,7 @@
     var rows=arr.map(function(x,i){ var tg=sp.tag&&sp.tag(x,i), th=sp.thumb&&sp.thumb(x);
       return '<li><button type="button" class="orow rrow'+(i===sel?' on':'')+'" data-ropen="'+esc(p)+':'+i+'"><span class="rth">'+(th?'<img alt="" loading="lazy" src="'+esc(abs(th))+'">':'')+'</span>'+
         '<span class="orow-m"><b>'+esc(r.name(x,i))+'</b></span><span class="orow-p">'+esc(sp.sub?sp.sub(x,i):'')+'</span>'+(tg?'<span class="tag'+(tg[1]?' tf-'+tg[1]:' rtag')+'">'+esc(tg[0])+'</span>':'')+'</button></li>'; }).join('');
-    var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr)="/g,'data-$1="'+p+'.'+sel+'.'); };
+    var pre=function(h){ return h.replace(/data-p="/g,'data-p="'+p+'.'+sel+'.').replace(/data-upload="/g,'data-upload="'+p+'.'+sel+'.').replace(/data-(make|mkstate|fr|vupload|vstate)="/g,'data-$1="'+p+'.'+sel+'.'); };
     var panel=it?'<div class="order item odetail rpanel"><div class="odh"><button class="btn sm oback" type="button" data-rback="'+esc(p)+'">‹ '+esc(sp.all||'كل العناصر')+'</button><b>'+esc(r.name(it,sel))+'</b>'+
         (sp.share?shareBox(it,sel,p):'')+(r.fixed?'':'<details class="cp-more rmore"><summary class="btn sm" aria-label="المزيد">⋯</summary><div class="cp-menu">'+
           '<button class="btn sm danger" type="button" data-del="'+si+':'+sel+'">حذف</button></div></details>')+'</div>'+
@@ -407,6 +407,13 @@
     if(el.dataset.t==='check'||el.tagName==='SELECT'){ el.dispatchEvent(new Event('input',{bubbles:true})); }
     if(el.dataset.upload) upload(el);
     if(el.dataset.make) makePreview(el);
+    // a full film to our storage (R2), in pieces, with a progress bar; the address lands in the field when done
+    if(el.dataset.vupload&&el.files[0]){ var vp=el.dataset.vupload, f0=el.files[0], bx=document.querySelector('[data-vstate="'+vp+'"]'), bar=bx&&bx.querySelector('i'), lab=bx&&bx.querySelector('span');
+      if(bx){ bx.hidden=false; lab.textContent='عم يرفع… 0%'; } el.disabled=true;
+      vaultUpload(f0,function(pc){ if(bar) bar.style.width=Math.round(pc*100)+'%'; if(lab) lab.textContent='عم يرفع… '+Math.round(pc*100)+'%'; })
+        .then(function(j){ var u=String(j.url).replace(/^https?:\/\/[^\/]+/,''); set(C,vp,u); var tp=vp.replace(/\.src$/,'.type'); set(C,tp,'mp4'); var ts=document.querySelector('[data-p="'+tp+'"]'); if(ts) ts.value='mp4'; dirty(); saveDraft(); el.disabled=false;
+          if(lab) lab.textContent='انرفع ✓ '+f0.name+' · انشر التعديلات حتى يبين بالموقع'; var inp=document.querySelector('[data-p="'+vp+'"]'); if(inp) inp.value=u; })
+        .catch(function(e){ el.disabled=false; if(lab) lab.textContent=e==='r2'?'التخزين (R2) لسا مو مفعّل':e==='type'?'نوع الملف مو مدعوم (MP4 بس)':'ما زبط الرفع، جرّب مرة تانية'; }); }
   });
   document.addEventListener('click',function(e){
     var b=e.target.closest('button'); if(!b) return;

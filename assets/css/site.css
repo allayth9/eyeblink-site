@@ -2010,3 +2010,6 @@ html{-webkit-tap-highlight-color:transparent}
 .case-story{max-height:none!important;overflow:visible;width:min(980px,100%);margin:34px auto 0}
 .case-sim h2{font-size:clamp(26px,3.4vw,40px);margin:0 0 22px}
 .lb-view.page{position:fixed;z-index:400}
+/* the preview over a booting player: it holds the frame, then fades when the film plays */
+.lb-pre{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:3;pointer-events:none;background:#04061A;transition:opacity .55s ease}
+.lb-pre.off{opacity:0}
