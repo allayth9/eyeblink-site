@@ -188,7 +188,7 @@ video.afile{max-width:320px}
 .stable th{position:sticky;top:0;background:var(--panel);text-align:start;font-weight:500;color:var(--mist);padding:10px 12px}
 .stable td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
 .stable small{font-size:11.5px}
-.tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:99px;background:rgba(var(--acc),.15);color:var(--horizon)}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:99px;background:rgba(var(--acc),.15);color:var(--horizon)}
 select option{background:var(--panel);color:var(--light)}select{color-scheme:dark}
 /* payment path */
 .pflow{margin:10px 0 14px;padding:14px 16px;border-radius:16px;background:linear-gradient(160deg,rgba(var(--acc),.06),rgba(139,92,255,.05));box-shadow:inset 0 0 0 1px rgba(var(--acc),.2)}
@@ -513,7 +513,7 @@ html[dir=rtl] #tabs button[aria-current="true"]::before{border-radius:3px 0 0 3p
 .order .pill.src{--c:var(--mist)}
 .order .pill:not(.unread):not(.src)::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .c-crit{color:var(--a-crit)!important}.c-warn{color:var(--a-warn)!important}.c-info{color:var(--a-info)!important}.c-good{color:var(--a-good)!important}
-.tag{font-style:normal;font-size:11.5px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,currentColor 14%,transparent);white-space:nowrap}
+.tag{font-style:normal;font-size:12px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,currentColor 14%,transparent);white-space:nowrap}
 /* TODAY */
 .tdy{display:grid;gap:22px}
 .tdy-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}

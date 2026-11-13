@@ -10,7 +10,8 @@
   try{ renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,alpha:true,powerPreference:'high-performance'}); }catch(e){ return; }
   // phones: fewer points, a lighter pixel ratio and ~30 fps, so scrolling stays smooth
   var SMALL=Math.min(innerWidth,innerHeight)<700, COARSE=matchMedia('(pointer: coarse)').matches;
-  var DPR=Math.min(window.devicePixelRatio||1,SMALL||COARSE?1:1.75);
+  // the screen's real density (up to 2×) so the points stay crisp on phones too; it steps down once if frames run slow
+  var DPR=Math.min(window.devicePixelRatio||1,2);
   renderer.setPixelRatio(DPR);
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(35,1,0.1,100); camera.position.z=7;
@@ -164,9 +165,13 @@
         u2.uAlpha.value=Math.min(1,Math.max(0,(H-er.top)/(H*0.6)))*Math.min(1,Math.max(0,(gap-0.28)/0.32));
       }
     }
-    renderer.render(scene,camera);
+    renderer.render(scene,camera); pace(now);
     if(!reduce) requestAnimationFrame(frame);
   }
+  // after the first 90 drawn frames: too slow for this device → a lighter density, once (the points keep their size)
+  var pf=0, p0=0, pl=0, paced=false;
+  function pace(now){ if(paced||reduce) return; if(!p0||now-pl>500){ p0=pl=now; pf=0; return; } pl=now; if(++pf<90) return; paced=true;   // a pause (hidden tab, open window) restarts the count
+    var avg=(now-p0)/pf; if(avg>(MINF?52:30)&&DPR>1){ DPR=Math.max(1,DPR*0.7); renderer.setPixelRatio(DPR); size(); uniforms.uSize.value=mat2.uniforms.uSize.value=2.7*DPR; } }
   requestAnimationFrame(function(n){ frame(n); canvas.classList.add('on'); });
   if(reduce){ addEventListener('scroll',function(){ requestAnimationFrame(frame); },{passive:true}); addEventListener('resize',function(){ requestAnimationFrame(frame); }); }
 })();

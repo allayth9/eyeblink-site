@@ -31,7 +31,7 @@
   --horizon:#1C45E6; --hour:#1C45E6; --dusk:#6B3FE0; --venus:#B5459F;
   --fg:4,6,26; --acc:28,69,230; --bgc:255,255,255; --ln:4,6,26; --ln2:4,6,26; --scr:20,30,70;
   --line:rgba(4,6,26,.09); --surface:rgba(255,255,255,.55); --surface2:rgba(255,255,255,.75);
-  --f-new:#0B8C95; --f-info:#2E62FF; --f-prod:#6B3FE0; --f-fix:#C2410C; --f-wait:#A86200; --f-sign:#A3369F; --f-ok:#11804F; --f-bad:#C92A4A; --f-off:#5B6785;
+  --f-new:#0B8C95; --f-info:#2E62FF; --f-prod:#6B3FE0; --f-fix:#C2410C; --f-wait:#8F5300; --f-sign:#A3369F; --f-ok:#0E7246; --f-bad:#C92A4A; --f-off:#5B6785;
   --glass:linear-gradient(160deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.34) 40%,rgba(255,255,255,.22) 100%);
   --glass-edge:#fff; --glass-blur:blur(18px) saturate(180%); --glass-shadow:0 30px 70px -34px rgba(20,40,140,.28);
   --input:rgba(255,255,255,.7);
@@ -371,3 +371,7 @@ b,strong,th{font-weight:500}
 .panel{grid-template-columns:minmax(0,1fr)}
 @media (max-width:1000px){ .board{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:600px){ .board{grid-template-columns:minmax(0,1fr)} }
+/* touch screens: every small button and tab is at least 40px tall (a finger, not a cursor) */
+@media (pointer:coarse){ .btn.sm,.secnav button,.secnav a,.subtabs button,.rtabs button,summary.btn,.linkbtn{min-height:40px} }
+/* tags and counters: 12px at the least */
+.tag,#tabs .count{font-size:12px}

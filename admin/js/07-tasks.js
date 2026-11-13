@@ -106,7 +106,6 @@
           a.kind==='comment'?'علّق: '+(d.text||''):a.kind==='file_added'?'أضاف ملف «'+(d.title||'')+'»':a.kind;
         return '<div>'+esc(new Date(a.at).toLocaleString('ar'))+' · <b>'+esc(a.actor==='studio'?'أنت':a.actor_name)+'</b> · '+esc(w)+(d.note?' — '+esc(d.note):'')+'</div>'; }).join('')+'</div>':'')+'</div>';
   }
-  function wtaskCard(t){ return '<details class="order item wt" data-wref="'+esc(t.ref)+'"'+(WOPEN===t.ref?' open':'')+'><summary><span class="chev">‹</span><span class="code">'+esc(t.ref)+'</span>'+wpill(t.status)+'<b>'+esc(t.title)+'</b><span class="muted small">'+esc(t.project_name)+' · المطلوب '+esc(wd(t.requested_date))+(t.confirmed_date?' · المؤكد '+esc(wd(t.confirmed_date)):'')+'</span></summary><div class="body">'+wtaskBody(t)+'</div></details>'; }
   function projForm(p){ p=p||{}; var svc=C.services||[], cl=WORK.clients||[];
     return '<form class="wpf" data-wpid="'+esc(p.id||'')+'"><div class="row"><div class="field"><label>العميل المتعاقد</label><select name="client_email">'+(cl.length?'':'<option value="">لا يوجد عملاء متعاقدون بعد</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===p.client_email?' selected':'')+'>'+esc(c.name)+' — '+esc(c.email)+'</option>'; }).join('')+'</select></div>'+
       '<div class="field"><label>اسم المشروع</label><input name="name" value="'+esc(p.name||'')+'" required></div></div>'+

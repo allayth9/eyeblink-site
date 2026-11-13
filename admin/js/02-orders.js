@@ -329,7 +329,7 @@
   function drawDoc(){
     var D=DED, b=D.b, q=D.type==='quote', en=b.lang==='en', pk=((C.packages&&C.packages.items)||[]);
     var sub=0; b.items.forEach(function(x){ sub+=(+x.qty||1)*pnum(x.unit); }); var total=Math.max(0,sub-pnum(b.discount));
-    var el=$('#dsheet'); if(!el){ el=document.createElement('div'); el.id='dsheet'; document.body.appendChild(el); }
+    var el=$('#dsheet'); if(!el){ el=document.createElement('div'); el.id='dsheet'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); document.body.appendChild(el); }
     document.documentElement.classList.add('dlock');
     var head='<div class="dtop"><div><b>'+(D.token?'تعديل ':'')+DTYPE[D.type]+'</b><span class="muted small"> · '+esc(D.o.name)+' · <span dir="ltr">'+esc(D.o.code)+'</span>'+(D.no?' · <span dir="ltr">'+esc(D.no)+'</span>':'')+'</span></div><button class="btn sm" type="button" data-dclose>إغلاق</button></div>';
     if(D.result){ var r=D.result, txt=docShareText(D.o,r.s,b.lang,r.url);

@@ -285,8 +285,13 @@
     TABS.forEach(function(t){ (t.secs||[]).forEach(function(s,i){ if(s.h) L.push({k:'قسم',t:s.h,s:t.title,run:function(){ SECT[t.id]=i; go(t.id); }}); }); });
     return L;
   }
+  // Tab stays inside an open sheet or the search (the confirm window keeps its own)
+  document.addEventListener('keydown',function(e){ if(e.key!=='Tab') return; var m=document.querySelector('#cmdk,#dsheet,#tsheet'); if(!m||document.querySelector('.cfm-ov')) return;
+    var f=[].filter.call(m.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select,textarea,summary,[tabindex]:not([tabindex="-1"])'),function(x){ return x.offsetParent!==null; });
+    if(!f.length) return; var a=f[0], z=f[f.length-1], at=document.activeElement;
+    if(!m.contains(at)){ e.preventDefault(); a.focus(); } else if(e.shiftKey&&at===a){ e.preventDefault(); z.focus(); } else if(!e.shiftKey&&at===z){ e.preventDefault(); a.focus(); } },true);
   function openCmd(){ var el=$('#cmdk'); if(el){ el.remove(); return; }
-    el=document.createElement('div'); el.id='cmdk'; el.innerHTML='<div class="cmd"><input placeholder="ابحث عن طلب، عميل، صفحة، أو إجراء…" dir="auto"><ul></ul><div class="cmd-f"><span><kbd>↑</kbd><kbd>↓</kbd> تنقّل</span><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div></div>';
+    el=document.createElement('div'); el.id='cmdk'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); el.setAttribute('aria-label','بحث سريع'); el.innerHTML='<div class="cmd"><input placeholder="ابحث عن طلب، عميل، صفحة، أو إجراء…" dir="auto"><ul></ul><div class="cmd-f"><span><kbd>↑</kbd><kbd>↓</kbd> تنقّل</span><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div></div>';
     document.body.appendChild(el); var inp=el.querySelector('input'), ul=el.querySelector('ul'), items=cmdItems(), sel=0, shown=[];
     var draw=function(){ var q=inp.value.trim().toLowerCase(); shown=(q?items.filter(function(x){ return (x.t+' '+(x.s||'')+' '+x.k).toLowerCase().indexOf(q)>=0; }):items.filter(function(x){ return x.k!=='طلب'; })).slice(0,12); sel=Math.min(sel,Math.max(0,shown.length-1));
       ul.innerHTML=shown.length?shown.map(function(x,i){ return '<li'+(i===sel?' class="on"':'')+' data-i="'+i+'"><em>'+esc(x.k)+'</em><b>'+esc(x.t)+'</b>'+(x.s?'<span>'+esc(x.s)+'</span>':'')+'</li>'; }).join(''):'<li class="none">لا نتائج</li>'; };

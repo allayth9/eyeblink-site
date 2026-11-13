@@ -162,14 +162,14 @@
       showCreds({title:'اتفاقية التعاون جاهزة',lines:[['الرابط',url]],msg:'مرحباً '+m.name+'، هذه اتفاقية التعاون مع Eyeblink Studio. اقرأها ووقّعها من الرابط، وبعدها تُفتح لك مهامك في بوابة الفريق:\n'+url,phone:m.phone,open:url}); renderTeam(); })
       .catch(function(e){ b.disabled=false; toast('تعذّر إنشاء الاتفاقية',true); if(quiet) throw e; }); }
   // a small sheet with what to send (login details, agreement link): copy, WhatsApp
-  function showCreds(o){ var el=document.createElement('div'); el.id='tsheet';
+  function showCreds(o){ var el=document.createElement('div'); el.id='tsheet'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
     el.innerHTML='<div class="dbox"><div class="dtop"><b>'+esc(o.title)+'</b><button class="btn sm" type="button" data-tclose>إغلاق</button></div><div class="dres">'+o.lines.map(function(l){ return '<div class="field"><label>'+esc(l[0])+'</label><div class="dlink" dir="ltr">'+esc(l[1])+'</div></div>'; }).join('')+
       (o.note?'<p class="small muted">'+esc(o.note)+'</p>':'')+'<div class="field"><label>الرسالة</label><textarea id="tmsg" dir="auto" rows="5">'+esc(o.msg)+'</textarea></div><div class="actions"><a class="btn primary" target="_blank" rel="noopener" href="'+esc(waLink(o.phone,o.msg))+'">إرسال على واتساب</a><button class="btn" type="button" data-tcopy>نسخ الرسالة</button>'+(o.open?'<a class="btn" target="_blank" rel="noopener" href="'+esc(o.open)+'">فتح</a>':'')+'</div></div></div>';
     document.body.appendChild(el); document.documentElement.classList.add('dlock'); }
   function openTTask(id){
     TOPEN=id; var t=id?TEAM.tasks.filter(function(x){return x.id===id})[0]:null; if(id&&!t) return;
     var act=TEAM.members.filter(function(m){ return m.status==='active'; }), x=t||{member:TNEWFOR||(act[0]&&act[0].email)||'',cur:'$',links:[]}; TNEWFOR=null;
-    var old=$('#tsheet'); if(old) old.remove(); var el=document.createElement('div'); el.id='tsheet';
+    var old=$('#tsheet'); if(old) old.remove(); var el=document.createElement('div'); el.id='tsheet'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
     var ords=ORDERS.filter(function(o){ return !o.demo&&o.status!=='cancelled'; });
     el.innerHTML='<div class="dbox"><div class="dtop"><div><b>'+(t?esc(t.title):'مهمة جديدة للفريق')+'</b>'+(t?' <span class="pill tt-'+t.status+'">'+TTST[t.status]+'</span>':'')+'</div><button class="btn sm" type="button" data-tclose>إغلاق</button></div>'+
       '<form id="tTask" class="dsec"><div class="row"><div class="field"><label>عضو الفريق</label><select name="member">'+act.concat(t&&!act.some(function(m){return m.email===t.member})?[{email:t.member,name:memName(t.member)}]:[]).map(function(m){ return '<option value="'+esc(m.email)+'"'+(m.email===x.member?' selected':'')+'>'+esc(m.name)+'</option>'; }).join('')+'</select></div>'+

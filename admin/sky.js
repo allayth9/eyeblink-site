@@ -7,10 +7,14 @@
   var cv=document.createElement('canvas'); cv.id='sky'; cv.setAttribute('aria-hidden','true');
   document.body.insertBefore(cv,document.body.firstChild);
   var cx=cv.getContext('2d'), gl=document.createElement('canvas'), gx=gl.getContext('2d'), GS=8;
+  // the soft body is enlarged in steps (1/8 → 1/4 → 1/2 → full): smooth light instead of blocks
+  var g4=document.createElement('canvas'), x4=g4.getContext('2d'), g2=document.createElement('canvas'), x2=g2.getContext('2d');
   var W=0, H=0, R=1, T=Math.random()*1000, last=0, still=matchMedia('(prefers-reduced-motion: reduce)').matches;
   var STEP=12, TAU=Math.PI*2;
-  function size(){ R=Math.min(window.devicePixelRatio||1,1.5); W=innerWidth; H=innerHeight; cv.width=Math.round(W*R); cv.height=Math.round(H*R); cx.setTransform(R,0,0,R,0,0);
-    gl.width=Math.ceil(W/GS); gl.height=Math.ceil(H/GS); gx.setTransform(1/GS,0,0,1/GS,0,0); }
+  function size(){ R=Math.min(window.devicePixelRatio||1,2); W=innerWidth; H=innerHeight; cv.width=Math.round(W*R); cv.height=Math.round(H*R); cx.setTransform(R,0,0,R,0,0);
+    gl.width=Math.ceil(W/GS); gl.height=Math.ceil(H/GS); gx.setTransform(1/GS,0,0,1/GS,0,0);
+    g4.width=gl.width*2; g4.height=gl.height*2; g2.width=gl.width*4; g2.height=gl.height*4;
+    [x4,x2,cx].forEach(function(c){ c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high'; }); }
   var DARK=['14,26,92','28,69,230','47,196,216','28,69,230','14,26,92'], LIGHT=['28,69,230','28,69,230','42,134,230','28,69,230','28,69,230'];
   function grad(c,ctx,a){ var g=ctx.createLinearGradient(0,0,W,0);
     [0,.24,.5,.76,1].forEach(function(p,i){ g.addColorStop(p,'rgba('+c[i]+','+(i===0||i===4?0:a)+')'); }); return g; }
@@ -34,7 +38,9 @@
       gx.fillStyle=grad(C,gx,light?.1:(i===1?.34:.24)); gx.fill();
       gx.lineWidth=amp*0.22; gx.strokeStyle=grad(C,gx,light?.08:.2); path(gx,e[0]); gx.stroke(); });
     cx.clearRect(0,0,W,H); cx.globalCompositeOperation=light?'source-over':'lighter'; cx.lineCap='round';
-    cx.imageSmoothingEnabled=true; cx.drawImage(gl,0,0,gl.width,gl.height,0,0,gl.width*GS,gl.height*GS);
+    x4.clearRect(0,0,g4.width,g4.height); x4.drawImage(gl,0,0,g4.width,g4.height);
+    x2.clearRect(0,0,g2.width,g2.height); x2.drawImage(g4,0,0,g2.width,g2.height);
+    cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high'; cx.drawImage(g2,0,0,g2.width,g2.height,0,0,gl.width*GS,gl.height*GS);
     // the fine dotted texture across the middle ribbon
     var m=edges[1]; cx.setLineDash([1.2,3.2]); cx.lineWidth=1; cx.strokeStyle=grad(C,cx,light?.22:.34);
     for(var k=1;k<36;k++){ var q=k/36; path(cx,function(x){ return m[0](x)*(1-q)+m[1](x)*q; }); cx.stroke(); }
