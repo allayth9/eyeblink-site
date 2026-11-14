@@ -2341,4 +2341,9 @@ nav.dock{view-transition-name:eb-dock}
 }
 .wnav a.on::after,.wnav-more.on::after{box-shadow:0 0 6px var(--k)}
 /* 14 Nov · the top bar is glass, so what passes under it should melt into it: a denser blur than the other glass (22px → 44px) */
-.nav .bar.glass{-webkit-backdrop-filter:blur(44px) saturate(1.9) brightness(1.04);backdrop-filter:blur(44px) saturate(1.9) brightness(1.04)}
+.nav .bar.glass{-webkit-backdrop-filter:blur(25px) saturate(1.9) brightness(1.04);backdrop-filter:blur(25px) saturate(1.9) brightness(1.04)}
+/* the top bar's edge: the same 1px ring as before, now in the metal button's palette — softer and turning slower than the button,
+   so the bar and the metal buttons read as one family; the plain hairline under it goes, so only the metal edge shows */
+.nav .bar.glass::after{background:conic-gradient(from var(--lm),rgba(233,237,243,.62),rgba(124,134,150,.28) 6%,rgba(247,249,252,.7) 12%,rgba(159,227,255,.5) 18%,rgba(93,102,120,.24) 25%,rgba(238,242,246,.62) 33%,rgba(163,173,189,.34) 40%,rgba(255,214,222,.4) 46%,rgba(111,122,138,.24) 52%,rgba(244,247,252,.62) 62%,rgba(143,216,255,.5) 70%,rgba(91,100,117,.24) 78%,rgba(233,237,243,.62) 88%,rgba(154,166,184,.34) 94%,rgba(233,237,243,.62));animation:lmRim 16s linear infinite}
+.nav .bar.glass{box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb),.18),0 24px 60px -24px rgba(var(--k-black-rgb),.65),0 2px 10px -4px rgba(var(--k-black-rgb),.4)}
+@media (prefers-reduced-motion:reduce){ .nav .bar.glass::after{animation:none} }
