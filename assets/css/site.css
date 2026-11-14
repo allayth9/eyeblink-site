@@ -2298,38 +2298,16 @@ html[lang="ar"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary)
   .wpl .wtc{min-height:36px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
   .wbv{min-height:40px;display:inline-flex;align-items:center}
 }
-
-/* ===== background theme «سينما» (panel → settings.bgTheme = "cinema" → html[data-bg="cinema"]): the site's colours stay;
-   only the backdrop changes: a darker sky, the light sphere almost grey (shader uSat) and softer, stronger film grain, dark edges ===== */
-/* blacker (14 Nov): the sky is almost black, only a faint night-blue lift at the bottom */
-html[data-bg="cinema"] .sky{background:radial-gradient(120% 70% at 50% 125%,rgba(var(--k-night-rgb),.9) 0%,var(--k-black) 60%);background-color:var(--k-black)}
-html[data-bg="cinema"] body{background-color:var(--k-black)}
-html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .5)}
-html[data-bg="cinema"] .grain{opacity:.16}
-html[data-bg="cinema"] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(var(--k-black-rgb,0,0,0),.82) 100%)}
-@media (max-width:860px){ html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .5 * .85)} html[data-bg="cinema"] body::after{background:radial-gradient(ellipse at center,transparent 45%,rgba(var(--k-black-rgb,0,0,0),.72) 100%)} }
-/* cinema: the cards, menus and bars follow the black backdrop (neutral black with a faint white sheen, not navy).
-   The site's top menu bar keeps its own look. Desktop cards are already a white tint over the backdrop, so they follow by themselves */
-html[data-bg="cinema"] :is(.dock,.wnav,.wm-bar,.wz1){background:linear-gradient(160deg,rgba(var(--k-white-rgb),.06),rgba(var(--k-white-rgb),.02)),rgba(var(--k-black-rgb),.9)!important}
-/* menus and sheets open over the page, so they stay as opaque as before (97%) */
-html[data-bg="cinema"] :is(.wnav-sec,.hmenu,.hpanel,.wsheet){background:linear-gradient(160deg,rgba(var(--k-white-rgb),.06),rgba(var(--k-white-rgb),.02)),rgba(var(--k-black-rgb),.97)!important}
-html[data-bg="cinema"] .wnav.glass{background:linear-gradient(160deg,rgba(var(--k-white-rgb),.06),rgba(var(--k-white-rgb),.02)),rgba(var(--k-black-rgb),.92)!important}
-@media (pointer:coarse){
-  html[data-bg="cinema"] .glass:not(.bar):not(.dock){background:linear-gradient(160deg,rgba(var(--k-white-rgb),.09),rgba(var(--k-white-rgb),.035) 42%,rgba(var(--k-white-rgb),.05)),rgba(var(--k-black-rgb),.55)}
-}
-@media (max-width:860px){ html[data-bg="cinema"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(var(--k-black-rgb),.92),0 12px 28px -8px rgba(var(--k-g3-rgb),.7)!important} }
-/* cinema: the metal button goes back to the graphite body of the original liquid-metal button (the blue was too loud on black);
-   the moving metal rim stays, the blue glow underneath goes */
-html[data-bg="cinema"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary,.nav .bar>.btn.ws-new,.wnav a.wnav-new,.nav .links a.ws-link){
-  background:linear-gradient(180deg,rgba(var(--k-white-rgb),.17),rgba(var(--k-white-rgb),.05) 55%,rgba(var(--k-white-rgb),.02)) padding-box,
-    linear-gradient(var(--k-black),var(--k-black)) padding-box,
-    conic-gradient(from var(--lm),#e9edf3,#7c8696,#f7f9fc 12%,#c9d2de 18%,#5d6678 25%,#eef2f6 33%,#a3adbd 40%,#d9dde4 46%,#6f7a8a 52%,#f4f7fb 62%,#b9c4d2 70%,#5b6475 78%,#e9edf3 88%,#9aa6b8 94%,#e9edf3) border-box!important;
-  box-shadow:0 0 0 1px rgba(var(--k-black-rgb),.5),0 12px 22px -10px rgba(var(--k-black-rgb),.8)!important}
-@media (max-width:860px){ html[data-bg="cinema"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(var(--k-black-rgb),.92),0 10px 22px -8px rgba(var(--k-black-rgb),.9)!important} }
-/* cinema: notifications in quiet greys; the kind still shows as a small coloured dot, without the glow */
-html[data-bg="cinema"] :is(.hp-i.new,.wni.new){background:rgba(var(--k-white-rgb),.045);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
-html[data-bg="cinema"] :is(.hp-i,.wni)>i{background:rgba(var(--k-white-rgb),.06);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.1)}
-html[data-bg="cinema"] :is(.hp-i,.wni)>i::after{box-shadow:none;filter:saturate(.7)}
-html[data-bg="cinema"] .wni.new::before{box-shadow:none;opacity:.7}
-html[data-bg="cinema"] .wni.new>i::after{animation:none}
-html[data-bg="cinema"] .hbadge{background:var(--light);color:var(--k-black);box-shadow:none}
+/* 14 Nov: an open custom dropdown (the currency list on the invoices page) sat under the cards that follow it, so taps and scrolls
+   went to them and its see-through background mixed with them: the open list now rises above them, is opaque, and keeps its own scroll */
+.curhost{position:relative;z-index:20}
+.dsel.open{z-index:40}
+.dsel-list{background:linear-gradient(160deg,rgba(22,30,80,.99),rgba(8,12,40,.99));overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+/* 14 Nov: inside the client workspace the metal buttons were too loud a blue for a working page: the body becomes blue glass
+   (a light tint of the identity blue over the dark page), the moving metal rim stays. The site's own buttons keep the full blue */
+body[data-page="workspace"] :is(.ws-page .btn-primary,.nav .bar>.btn.ws-new,.wnav a.wnav-new){
+  background:linear-gradient(180deg,rgba(var(--k-g2-rgb),.34),rgba(var(--k-g3-rgb),.22) 60%,rgba(var(--k-g3-rgb),.18)) padding-box,
+    linear-gradient(rgba(var(--k-night-rgb),.55),rgba(var(--k-night-rgb),.55)) padding-box,
+    conic-gradient(from var(--lm),#e9edf3,#7c8696,#f7f9fc 12%,#9fe3ff 18%,#5d6678 25%,#eef2f6 33%,#a3adbd 40%,#ffd6de 46%,#6f7a8a 52%,#f4f7fb 62%,#8fd8ff 70%,#5b6475 78%,#e9edf3 88%,#9aa6b8 94%,#e9edf3) border-box!important;
+  box-shadow:0 0 0 1px rgba(var(--k-black-rgb),.35),0 10px 24px -14px rgba(var(--k-g2-rgb),.55)!important;text-shadow:none}
+@media (max-width:860px){ body[data-page="workspace"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(10,14,42,.95),0 10px 24px -12px rgba(var(--k-g2-rgb),.6)!important} }
