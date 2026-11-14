@@ -2340,3 +2340,5 @@ nav.dock{view-transition-name:eb-dock}
   .wnav-in>a.on::after,.wnav-more.on::after{bottom:3px;height:2px;box-shadow:0 0 6px var(--k)}
 }
 .wnav a.on::after,.wnav-more.on::after{box-shadow:0 0 6px var(--k)}
+/* 14 Nov · the top bar is glass, so what passes under it should melt into it: a denser blur than the other glass (22px → 44px) */
+.nav .bar.glass{-webkit-backdrop-filter:blur(44px) saturate(1.9) brightness(1.04);backdrop-filter:blur(44px) saturate(1.9) brightness(1.04)}
