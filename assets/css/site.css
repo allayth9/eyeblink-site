@@ -2301,8 +2301,10 @@ html[lang="ar"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary)
 
 /* ===== background theme «سينما» (panel → settings.bgTheme = "cinema" → html[data-bg="cinema"]): the site's colours stay;
    only the backdrop changes: a darker sky, the light sphere almost grey (shader uSat) and softer, stronger film grain, dark edges ===== */
-html[data-bg="cinema"] .sky{background:radial-gradient(120% 80% at 50% 120%,rgba(var(--k-card-rgb),.85) 0%,var(--k-night) 62%)}
-html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .6)}
+/* blacker (14 Nov): the sky is almost black, only a faint night-blue lift at the bottom */
+html[data-bg="cinema"] .sky{background:radial-gradient(120% 70% at 50% 125%,rgba(var(--k-night-rgb),.9) 0%,var(--k-black) 60%);background-color:var(--k-black)}
+html[data-bg="cinema"] body{background-color:var(--k-black)}
+html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .5)}
 html[data-bg="cinema"] .grain{opacity:.16}
-html[data-bg="cinema"] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.65) 100%)}
-@media (max-width:860px){ html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .6 * .85)} html[data-bg="cinema"] body::after{background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.55) 100%)} }
+html[data-bg="cinema"] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(var(--k-black-rgb,0,0,0),.82) 100%)}
+@media (max-width:860px){ html[data-bg="cinema"] #field.on{opacity:calc(var(--field-op,1) * .5 * .85)} html[data-bg="cinema"] body::after{background:radial-gradient(ellipse at center,transparent 45%,rgba(var(--k-black-rgb,0,0,0),.72) 100%)} }
