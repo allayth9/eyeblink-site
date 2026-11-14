@@ -191,6 +191,10 @@
   var HELP=AR?{h:'المساعدة',wa:'تواصل معنا عبر واتساب',waP:'رد سريع من الاستوديو',bug:'إبلاغ عن مشكلة تقنية',bugP:'يُرفق رابط الصفحة الحالية تلقائياً',x:'إغلاق'}
     :{h:'Help',wa:'Message us on WhatsApp',waP:'A quick reply from the studio',bug:'Report a technical issue',bugP:'The current page link is attached for you',x:'Close'};
   function shellBar(){ var bar=document.querySelector('.nav .bar'); if(!bar) return;
+    // the language switch keeps the client on the same view, and their e-mails follow the language they chose
+    var lg=bar.querySelector('.lang'); if(lg&&!lg.dataset.ws){ lg.dataset.ws='1'; var base=lg.getAttribute('href').split('#')[0];
+      lg.addEventListener('click',function(){ lg.setAttribute('href',base+location.hash);
+        try{ navigator.sendBeacon(BASE+'api/account',new Blob([JSON.stringify({action:'lang',lang:AR?'en':'ar'})],{type:'application/json'})); }catch(_){} },true); }
     var cta=bar.querySelector('.btn-primary'); if(cta&&!cta.classList.contains('ws-new')){ cta.classList.add('ws-new','eb-metal'); cta.setAttribute('href','#w/new'); cta.innerHTML=ICO.plus+'<span>'+T.newTask+'</span>'; }
     if(!bar.querySelector('.ws-help')){ var hb=document.createElement('button'); hb.type='button'; hb.className='hbell ws-help'; hb.setAttribute('aria-label',HELP.h); hb.setAttribute('aria-haspopup','dialog');
       hb.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6"/><path d="M12 16.8v.2"/></svg>';
@@ -328,13 +332,13 @@
   var TF={fresh:['new','review'],progress:['accepted','progress','revision'],waiting:['info','feedback','final'],done:['completed'],closed:['rejected','cancelled']};
   var FC={all:'#AEBBD2',fresh:'#6E8BFF',progress:'#3FE0E8',waiting:'#E07BE0',done:'#5EF0B0',closed:'#ff8c9c',upcoming:'#F5C66B'};
   var TC=null;
-  /* ---- the calendar: confirmed dates, requested dates not confirmed yet, and the recurring schedule; .ics export ---- */
-  var CAL=AR?{seg:{list:'القائمة',cal:'التقويم'},month:'شهر',week:'أسبوع',today:'اليوم',prev:'السابق',next:'التالي',ics:'تصدير <span dir="ltr">.ics</span>',
+  /* ---- the calendar: confirmed dates, requested dates not confirmed yet,, and the recurring schedule ---- */
+  var CAL=AR?{seg:{list:'القائمة',cal:'التقويم'},month:'شهر',week:'أسبوع',today:'اليوم',prev:'السابق',next:'التالي',
       k:{conf:'موعد مؤكد',req:'موعد مطلوب، بانتظار التأكيد',rec:'مهمة دورية مجدولة',done:'سُلّمت'},none:'لا مواعيد في هذا اليوم.',more:function(n){ return '+'+n; },
-      days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'],sd:['س','ح','ن','ث','ر','خ','ج'],file:'مواعيد-eyeblink'}
-    :{seg:{list:'List',cal:'Calendar'},month:'Month',week:'Week',today:'Today',prev:'Previous',next:'Next',ics:'Export .ics',
+      days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'],sd:['س','ح','ن','ث','ر','خ','ج']}
+    :{seg:{list:'List',cal:'Calendar'},month:'Month',week:'Week',today:'Today',prev:'Previous',next:'Next',
       k:{conf:'Confirmed date',req:'Requested, awaiting confirmation',rec:'Scheduled recurring task',done:'Delivered'},none:'Nothing on this day.',more:function(n){ return '+'+n; },
-      days:['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'],sd:['Sa','Su','Mo','Tu','We','Th','Fr'],file:'eyeblink-dates'};
+      days:['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'],sd:['Sa','Su','Mo','Tu','We','Th','Fr']};
   function tseg(on){ return '<nav class="wseg" aria-label="'+U2.allTasks+'">'+[['list','#w/tasks'],['cal','#w/tasks/cal']].map(function(x){ return '<a href="'+x[1]+'"'+(x[0]===on?' class="on" aria-current="page"':'')+'>'+CAL.seg[x[0]]+'</a>'; }).join('')+'</nav>'; }
   var CMODE='month', CSEL='';
   function ymd(d){ return d.toISOString().slice(0,10); }
@@ -366,8 +370,7 @@
     host.innerHTML=head('tasks','TASKS',U2.allTasks,U2.allTasksP,'<div class="whd-a"><a class="btn btn-primary" href="#w/new">+ '+T.newTask+'</a></div>')+tseg('cal')+
       '<section class="wcal glass"><div class="wcal-h"><div class="wcal-nav"><a class="wcal-arr" href="#w/tasks/cal/'+ymd(prevM).slice(0,7)+'" aria-label="'+CAL.prev+'">'+(AR?'→':'←')+'</a><h3>'+esc(mName)+'</h3><a class="wcal-arr" href="#w/tasks/cal/'+ymd(nextM).slice(0,7)+'" aria-label="'+CAL.next+'">'+(AR?'←':'→')+'</a>'+
         '<a class="chipb" href="#w/tasks/cal/'+td.slice(0,7)+'" data-today>'+CAL.today+'</a></div>'+
-        '<div class="wcal-tools"><div class="wcal-mode" role="group">'+['month','week'].map(function(m){ return '<button type="button" class="chipb'+(CMODE===m?' on':'')+'" data-mode="'+m+'" aria-pressed="'+(CMODE===m)+'">'+CAL[m]+'</button>'; }).join('')+'</div>'+
-        '<button type="button" class="btn btn-glass glass" data-ics>'+CAL.ics+'</button></div></div>'+
+        '<div class="wcal-tools"><div class="wcal-mode" role="group">'+['month','week'].map(function(m){ return '<button type="button" class="chipb'+(CMODE===m?' on':'')+'" data-mode="'+m+'" aria-pressed="'+(CMODE===m)+'">'+CAL[m]+'</button>'; }).join('')+'</div></div></div>'+
         '<ul class="wcal-lg">'+['conf','req','rec','done'].map(function(k){ return '<li><i class="ck-'+k+'" aria-hidden="true"></i>'+CAL.k[k]+'</li>'; }).join('')+'</ul>'+
         '<div class="wcal-g'+(CMODE==='week'?' wk':'')+'" role="grid">'+CAL.days.map(function(x,i){ return '<span class="wcal-w" role="columnheader"><span class="lg">'+x+'</span><span class="sm" aria-hidden="true">'+CAL.sd[i]+'</span></span>'; }).join('')+cells+'</div>'+
         '<div class="wcal-day" aria-live="polite"></div></section>';
@@ -377,15 +380,7 @@
     host.querySelector('.wcal-g').onkeydown=function(e){ var c=e.target.closest('[data-d]'); if(!c) return; var mv={ArrowRight:AR?-1:1,ArrowLeft:AR?1:-1,ArrowDown:7,ArrowUp:-7}[e.key];
       if(e.key==='Enter'||e.key===' '){ e.preventDefault(); c.click(); return; } if(!mv) return; e.preventDefault(); var t=this.querySelector('[data-d="'+dAdd(c.dataset.d,mv)+'"]'); if(t){ t.focus(); t.click(); } };
     host.querySelectorAll('[data-mode]').forEach(function(b){ b.onclick=function(){ CMODE=b.dataset.mode; drawCal(j,month); }; });
-    host.querySelector('[data-ics]').onclick=function(){ icsDownload(calEvents(j,td,dAdd(td,183)).filter(function(e){ return e.k!=='done'; })); };
     dayList(); rise(); }
-  // a calendar file for the next six months (all-day events; Apple, Google and Outlook all read it)
-  function icsDownload(ev){ var x=function(t){ return String(t||'').replace(/\\/g,'\\\\').replace(/[,;]/g,'\\$&').replace(/\n/g,'\\n'); }, st=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
-    var body=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eyeblink Studio//Workspace//'+(AR?'AR':'EN'),'CALSCALE:GREGORIAN','X-WR-CALNAME:Eyeblink Studio'].concat([].concat.apply([],ev.map(function(e,i){
-      return ['BEGIN:VEVENT','UID:'+(e.ref||'rec-'+i)+'-'+e.k+'-'+e.d+'@eyeblinkstudio.com','DTSTAMP:'+st,'DTSTART;VALUE=DATE:'+e.d.replace(/-/g,''),'DTEND;VALUE=DATE:'+dAdd(e.d,1).replace(/-/g,''),
-        'SUMMARY:'+x(e.title+' · '+CAL.k[e.k]),'DESCRIPTION:'+x((e.proj||'')+(e.ref?' · '+e.ref:'')),'END:VEVENT']; })),['END:VCALENDAR']).join('\r\n');
-    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([body],{type:'text/calendar;charset=utf-8'})); a.download=CAL.file+'.ics'; document.body.appendChild(a); a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }
 
   function allTasks(f){ if(TC&&Date.now()-TC.at<20000) return drawTasks(TC.j,f); loading();
     api('?view=tasks').then(function(j){ if(!j.ok) return fail(j); TC={j:j,at:Date.now()}; drawTasks(j,f); }); }

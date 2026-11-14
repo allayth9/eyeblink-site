@@ -61,7 +61,7 @@ a{color:inherit;text-decoration:none}
   radial-gradient(80% 60% at 90% -10%,rgba(var(--k-hour-rgb),.45),transparent 60%),
   radial-gradient(120% 80% at 50% 120%,var(--deep) 0%,var(--night) 62%)}
 #field{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:0;transition:opacity 1.6s var(--ease)}
-#field.on{opacity:1}
+#field.on{opacity:var(--field-op,1)}
 .grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.08;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");animation:grain 1.2s steps(6) infinite}
 @keyframes grain{0%{background-position:0 0}20%{background-position:-37px 21px}40%{background-position:29px -43px}60%{background-position:-18px -9px}80%{background-position:41px 33px}100%{background-position:0 0}}
 /* ---------- liquid glass ---------- */
@@ -517,7 +517,7 @@ select{cursor:pointer}
     radial-gradient(90% 50% at 10% 110%,rgba(110,100,255,.12),transparent 60%),
     radial-gradient(90% 55% at 90% -10%,rgba(var(--k-hour-rgb),.4),transparent 60%),
     radial-gradient(120% 80% at 50% 120%,var(--deep) 0%,var(--night) 62%)}
-  #field{opacity:.85}
+  #field.on{opacity:calc(var(--field-op,1) * .85)}
   .grid3,.pkgs,.steps,.brief,.deliver{display:flex!important;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;gap:12px;
     margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px));padding-block:4px 14px;scroll-padding-inline:max(16px,env(safe-area-inset-left,0px));scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .grid3::-webkit-scrollbar,.pkgs::-webkit-scrollbar,.steps::-webkit-scrollbar,.brief::-webkit-scrollbar,.deliver::-webkit-scrollbar{display:none}
@@ -2286,3 +2286,16 @@ a.wcal-e:hover{filter:brightness(1.2)}
 .wcmp-t{flex:none;font-family:var(--latin);font-size:13px;color:var(--mist);font-variant-numeric:tabular-nums}
 .wcmp-ab.on b:last-child,.wcmp-ab:not(.on) b:first-child{color:var(--k-horizon)}
 @media (max-width:860px){ .wcmp-t{display:none} .wcmp-stage.one video{max-height:70vh} }
+/* Arabic in the metal button: Hayyakum sets its letters high in the line box, so the label is moved 2px down to sit in the optical
+   middle (the + icon keeps its place); English is already centred. Measured on screenshots at 3x */
+html[lang="ar"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary):not(.round){padding-top:14px!important;padding-bottom:10px!important}
+html[lang="ar"] .nav .links a.ws-link{padding-top:11px!important;padding-bottom:7px!important}
+html[lang="ar"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary):not(.round) svg{position:relative;top:-2px}
+/* review (14 Nov): an earlier version opened at 360px was wider than the screen (grid items default to min-width:auto) */
+.wvh-l{grid-template-columns:minmax(0,1fr)}.wvh .wdl{min-width:0}
+/* review: small links and buttons get a full finger-sized target on touch screens; desktop keeps its size */
+@media (pointer:coarse){
+  .wh-more,.wcmp-b,.wf-del{display:inline-flex;align-items:center;min-height:40px;padding-inline:8px}
+  .wpl .wtc{min-height:36px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+  .wbv{min-height:40px;display:inline-flex;align-items:center}
+}

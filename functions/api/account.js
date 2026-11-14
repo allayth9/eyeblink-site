@@ -37,6 +37,13 @@ export async function onRequestPost({ request, env }) {
     await env.EB.put("user:" + u.email, JSON.stringify(u));
     return json({ ok: true }, 200, { "set-cookie": await startSession(env, u.email) });
   }
+  // the client switched the workspace language: their e-mails and notifications follow it
+  if (d.action === "lang") {
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    if (d.lang !== "ar" && d.lang !== "en") return json({ ok: false }, 400);
+    if (u.lang !== d.lang) { u.lang = d.lang; await env.EB.put("user:" + u.email, JSON.stringify(u)); }
+    return json({ ok: true });
+  }
   if (await limited(env, "arl:" + ip, 25, 3600)) return json({ ok: false, error: "too many attempts" }, 429);
   let user;
   if (d.action === "forgot") {

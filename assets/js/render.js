@@ -181,6 +181,8 @@
     [].forEach.call(document.querySelectorAll('[data-list]'),function(el){ var f=R[el.dataset.list]; if(f) f(el,svc||{}); });
     [].forEach.call(document.querySelectorAll('[data-ig]'),function(el){ var h=(C.site&&C.site.instagram)||'eyeblnk'; if(el.tagName==='A') el.href='https://instagram.com/'+h; else el.textContent='@'+h; });
     var S=C.settings||{};
+    // the studio sets how strongly the live background shows (0–100, from the panel)
+    if(S.bgOpacity!=null&&S.bgOpacity!=='') document.documentElement.style.setProperty('--field-op',Math.max(0,Math.min(100,+S.bgOpacity))/100);
     [].forEach.call(document.querySelectorAll('[data-show]'),function(el){ el.hidden = S[el.dataset.show]===false; });
     [].forEach.call(document.querySelectorAll('[data-contact-extra],[data-cta-links]'),function(el){ el.innerHTML=chips(S); });
     var of=document.getElementById('order'), oc=document.getElementById('orderClosed');
