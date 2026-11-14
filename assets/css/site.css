@@ -2324,7 +2324,8 @@ body[data-page="workspace"] .wcrow .btn-primary{align-self:end}
    tells the browser they are the same element on both pages, so it keeps them on screen instead of clearing and repainting them.
    Nothing else animates here (the blink lids do the cut); browsers without support simply ignore it */
 @view-transition{navigation:auto}
-header.nav{view-transition-name:eb-header}
+/* on the glass bar itself, not on the header: a named element isolates what is inside it, so on the header it cut the bar's blur off from the page behind */
+.nav .bar{view-transition-name:eb-header}
 nav.dock{view-transition-name:eb-dock}
 ::view-transition-old(root),::view-transition-new(root){animation:none}
 ::view-transition-group(eb-header),::view-transition-group(eb-dock){animation-duration:0s}
