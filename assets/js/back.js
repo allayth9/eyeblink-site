@@ -24,6 +24,7 @@
     [function(){ var o=document.getElementById('olb'); return o&&!o.hidden&&o; }, click('#olbClose')],
     [function(){ var m=document.querySelectorAll('.acct-modal.show'); return m[m.length-1]; }, click('.x')],
     [function(){ return document.querySelector('.sup:not([hidden])'); }, click('.sup-x')],
+    [function(){ return document.querySelector('.wsheet-ov.show'); }, click('.wsheet-x')],
     [function(){ return document.querySelector('.hmenu.show,.hpanel.show,.wnav-x.open'); }, esc],
     [function(){ return document.querySelector('header.nav.open'); }, click('#menuBtn')]
   ];

@@ -8,10 +8,10 @@
   var bar=document.querySelector('.nav .bar'), acct=bar&&bar.querySelector('.acct-link');
   if(!bar||!acct||!/^https?:/.test(location.protocol)) return;
   var T=AR?{ws:'مساحة العمل',acct:'حسابي وطلباتي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',client:'عميل متعاقد',customer:'حساب عميل',
-      nt:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',seeAll:'كل الإشعارات',err:'تعذّر التحميل.'}
+      site:'العودة إلى الموقع الرئيسي',setWs:'الإعدادات',cat:{all:'الكل',tasks:'المهام',requests:'طلبات المعلومات',deliveries:'التسليمات',comments:'التعليقات',projects:'المشاريع',billing:'الفواتير'},nt:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',seeAll:'كل الإشعارات',err:'تعذّر التحميل.'}
     :{ws:'Workspace',acct:'My account & requests',inv:'Invoices',set:'Notification settings',tasks:'All tasks',newTask:'New task',out:'Sign out',client:'Active client',customer:'Client account',
-      nt:'Notifications',all:'Mark all as read',none:'No notifications yet.',seeAll:'All notifications',err:'Could not load.'};
-  var ICON={ws:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg>',
+      site:'Back to the main site',setWs:'Settings',cat:{all:'All',tasks:'Tasks',requests:'Information requests',deliveries:'Deliveries',comments:'Comments',projects:'Projects',billing:'Invoices'},nt:'Notifications',all:'Mark all as read',none:'No notifications yet.',seeAll:'All notifications',err:'Could not load.'};
+  var ICON={home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20H14.5v-5h-5v5H4z"/></svg>',ws:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg>',
     bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
     user:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 19.5c1.3-3.4 4-5 7.2-5s5.9 1.6 7.2 5"/></svg>',
     inv:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h9l3 3v14l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2z"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/></svg>',
@@ -38,9 +38,7 @@
   setInterval(function(){ if(!document.hidden&&S&&S.u&&S.u.role==='client') get('work?view=unread').then(function(w){ if(w&&w.ok){ S.unread=w.unread; save(); badge(); } }); },90000);
 
   /* ---- draw ---- */
-  // workspace page on phones: the site pages and the language live in the ☰ menu (the bottom of the screen belongs to the workspace)
-  if(PAGE==='workspace'&&links&&!links.querySelector('.lang-li')){ var lg=bar.querySelector('.lang'); if(lg){ var ll=document.createElement('li'); ll.className='lang-li'; ll.innerHTML='<a href="'+lg.getAttribute('href')+'" hreflang="'+(AR?'en':'ar')+'">'+(AR?'English':'العربية')+'</a>'; links.appendChild(ll); }
-    var hm=document.createElement('li'); hm.className='lang-li home-li'; hm.innerHTML='<a href="'+BASE+'index.html">'+(AR?'الرئيسية':'Home')+'</a>'; links.insertBefore(hm,links.firstChild); }
+  // the workspace is an app: no site menu in its bar; the way back to the site is in the account menu
   function apply(){
     var u=S&&S.u, cl=u&&u.role==='client';
     acct.classList.toggle('in',!!u); bar.classList.toggle('is-client',!!cl); try{ window.dispatchEvent(new CustomEvent('eb:who',{detail:u||null})); }catch(_){} if(u){ acct.title=u.name; acct.setAttribute('aria-haspopup','menu'); acct.setAttribute('aria-expanded','false'); } else { acct.removeAttribute('aria-haspopup'); acct.removeAttribute('aria-expanded'); }
@@ -67,7 +65,7 @@
     var u=S.u, cl=u.role==='client';
     menu=document.createElement('div'); menu.className='hmenu'; menu.setAttribute('role','menu');
     menu.innerHTML='<div class="hm-h"><b>'+esc(u.name)+'</b><small dir="ltr">'+esc(u.email)+'</small><span class="hm-role'+(cl?' on':'')+'">'+(cl?T.client:T.customer)+'</span></div>'+
-      (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/new','plus',T.newTask,'c-new')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',T.set,'c-set')+'<i class="hm-sep"></i>':'')+
+      (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/new','plus',T.newTask,'c-new')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',PAGE==='workspace'?T.setWs:T.set,'c-set')+'<i class="hm-sep"></i>':'')+(PAGE==='workspace'?item(BASE||'./','home',T.site,'c-site'):'')+
       item(BASE+'account','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>';
     bar.appendChild(menu); acct.setAttribute('aria-expanded','true'); requestAnimationFrame(function(){ menu.classList.add('show'); });
     menu.querySelector('.hm-out').onclick=function(){ post('account',{action:'logout'}).then(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} location.href=(BASE||'./'); }); };
@@ -88,11 +86,18 @@
   function togglePanel(e){ e.stopPropagation(); if(panel) return closeAll(); closeAll(); openPanel(); }
   function openPanel(){
     panel=document.createElement('div'); panel.className='hpanel'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label',T.nt);
-    panel.innerHTML='<div class="hp-h"><b>'+T.nt+'</b><button type="button" class="hp-all">'+T.all+'</button></div><div class="hp-l"><div class="hp-load"><i></i><i></i><i></i></div></div><a class="hp-f" href="'+WS+'#w/notifications">'+T.seeAll+'</a>';
+    panel.innerHTML='<div class="hp-h"><b>'+T.nt+'</b><button type="button" class="hp-all">'+T.all+'</button></div><div class="hp-cf" role="group" hidden></div><div class="hp-l"><div class="hp-load"><i></i><i></i><i></i></div></div><a class="hp-f" href="'+WS+'#w/notifications">'+T.seeAll+'</a>';
     bar.appendChild(panel); bell.setAttribute('aria-expanded','true'); requestAnimationFrame(function(){ panel.classList.add('show'); });
-    var list=panel.querySelector('.hp-l');
+    var list=panel.querySelector('.hp-l'), cf=panel.querySelector('.hp-cf'), cat='';
     get('work?view=notifications').then(function(j){ if(!panel) return; if(!j||!j.ok){ list.innerHTML='<p class="hp-e">'+T.err+'</p>'; return; } S.unread=j.unread; save(); badge();
-      list.innerHTML=j.items.length?j.items.slice(0,12).map(function(n){ return '<a class="hp-i c-'+esc(n.cat)+(n.read_at?'':' new')+'" href="'+WS+esc(n.link||'#w')+'" data-id="'+n.id+'"><i></i><span><b>'+esc(ntext(n))+'</b>'+(n.data&&n.data.note?'<em>'+esc(n.data.note)+'</em>':'')+'<small>'+esc(ago(n.created_at))+'</small></span></a>'; }).join(''):'<p class="hp-e">'+T.none+'</p>'; });
+      // filters: only the kinds this client actually has
+      var cats=Object.keys(T.cat).filter(function(k){ return k!=='all'&&j.items.some(function(n){ return n.cat===k; }); });
+      var draw=function(){ var L=j.items.filter(function(n){ return !cat||n.cat===cat; });
+        list.innerHTML=L.length?L.slice(0,12).map(function(n){ return '<a class="hp-i c-'+esc(n.cat)+(n.read_at?'':' new')+'" href="'+WS+esc(n.link||'#w')+'" data-id="'+n.id+'"><i></i><span><b>'+esc(ntext(n))+'</b>'+(n.data&&n.data.note?'<em>'+esc(n.data.note)+'</em>':'')+'<small>'+esc(ago(n.created_at))+'</small></span></a>'; }).join(''):'<p class="hp-e">'+T.none+'</p>';
+        [].forEach.call(cf.querySelectorAll('button'),function(b){ b.setAttribute('aria-pressed',b.dataset.c===cat?'true':'false'); }); };
+      if(cats.length>1){ cf.hidden=false; cf.innerHTML=['all'].concat(cats).map(function(k){ return '<button type="button" data-c="'+(k==='all'?'':k)+'">'+esc(T.cat[k])+'</button>'; }).join('');
+        cf.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; e.stopPropagation(); cat=b.dataset.c; draw(); }; }
+      draw(); });
     list.addEventListener('click',function(e){ var a=e.target.closest('a[data-id]'); if(!a) return; if(a.classList.contains('new')){ post('work',{action:'read',ids:[+a.dataset.id]}); S.unread=Math.max(0,(S.unread||0)-1); save(); badge(); } sameHash(e,a); });
     panel.querySelector('.hp-all').onclick=function(){ post('work',{action:'read',all:true}).then(function(r){ if(r&&r.ok){ S.unread=0; save(); badge(); [].forEach.call(panel.querySelectorAll('.hp-i.new'),function(x){ x.classList.remove('new'); }); if(window.EBPortal&&EBPortal.notified) EBPortal.notified(); } }); };
     panel.querySelector('.hp-f').addEventListener('click',function(e){ sameHash(e,this); });

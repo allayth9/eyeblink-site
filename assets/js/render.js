@@ -37,6 +37,7 @@
   /* ---- support window: lives in assets/js/support.js (shared with the team space), loaded the first time it opens.
      shortcut: the ?v below is set by hand; change it whenever support.js changes ---- */
   var supWho=null; window.addEventListener('eb:who',function(e){ supWho=e.detail||null; });
+  window.EBSupOpen=function(){ supOpen(); };
   function supOpen(){ var go=function(){ window.EBSupport.open(supWho); }; if(window.EBSupport) return go(); var s=document.createElement('script'); s.src=BASE+'assets/js/support.js?v=b5111ded'; s.onload=go; document.head.appendChild(s); }
   function money(c,n){ if(c==='$'&&VC!=='$'&&FX[VC]&&n!==''&&isFinite(+n)){ var v=+n*FX[VC]; n=VC==='SYP'?Math.round(v/100)*100:FX[VC]<1?Math.round(v*10)/10:Math.round(v); c=VC; }
     var s=isFinite(+n)?(+n).toLocaleString('en-US'):n; return AR? s+' '+c : (c.length>1?c+' ':c)+s; }
@@ -187,15 +188,15 @@
     var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt) document.title=tt;
     applyLayout(pg);
     window.EBC=C;
-    // floating WhatsApp button (only when a number is set)
+    // floating WhatsApp button (only when a number is set; not on the account page, nor in the workspace: it has WhatsApp in its help sheet)
     var wa=String(S.whatsapp||'').replace(/[^0-9]/g,''), wf=document.querySelector('.wa-float');
-    if(wa && !document.querySelector('.acct-page')){ if(!wf){ wf=document.createElement('a'); wf.className='wa-float'; wf.target='_blank'; wf.rel='noopener'; document.body.appendChild(wf); }
+    if(wa && !document.querySelector('.acct-page,.ws-page')){ if(!wf){ wf=document.createElement('a'); wf.className='wa-float'; wf.target='_blank'; wf.rel='noopener'; document.body.appendChild(wf); }
       wf.href='https://wa.me/'+wa; wf.setAttribute('aria-label',UI.wa); wf.title=UI.wa;
       wf.innerHTML='<svg viewBox="0 0 24 24"><path class="f" d="'+((window.EB_BRANDS&&EB_BRANDS.whatsapp&&EB_BRANDS.whatsapp.p)||'')+'"/></svg>'; }
     else if(wf) wf.remove();
-    // account and workspace: one tap to tell support what went wrong, with the details already written
+    // the account page: one tap to tell support what went wrong (the workspace has its own help button in its top bar)
     var hf=document.querySelector('.help-float');
-    if(document.querySelector('.acct-page,.ws-page')){ if(!hf){ hf=document.createElement('a'); hf.className='help-float'; document.body.appendChild(hf); }
+    if(document.querySelector('.acct-page') ){ if(!hf){ hf=document.createElement('a'); hf.className='help-float'; document.body.appendChild(hf); }
       var subj=(AR?'مشكلة تقنية':'Technical issue')+(location.hash.length>1?' · '+decodeURIComponent(location.hash.slice(1)).slice(0,60):'');
       var body=(AR?'ما الذي حدث؟\n\n\n— تفاصيل تساعدنا —\n':'What happened?\n\n\n— details that help us —\n')+'Page: '+location.href+'\nBrowser: '+navigator.userAgent+'\nTime: '+new Date().toISOString();
       hf.href='#support'; hf.onclick=function(e){ e.preventDefault(); supOpen(); };
@@ -220,6 +221,7 @@
   function renderLaunch(){
     // right after the sticky menu, in the page flow: it scrolls away with the content (the menu's height never changes)
     var nav=document.querySelector('header.nav'); if(!nav) return;
+    if(document.body.getAttribute('data-page')==='workspace') return;   // the client workspace is an app, not the marketing site
     var old=document.querySelector('.launch-wrap'); if(old) old.remove();
     var Lc=C.launch||{}, text=L(Lc.text), total=+Lc.total||0, taken=Math.max(0,+Lc.taken||0), left=Math.max(0,total-taken);
     if(!Lc.show||!text) return;

@@ -2046,3 +2046,58 @@ body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opaci
 .has-drop .links a[aria-current="page"],.dock.has-drop a[aria-current="page"]{background:none;box-shadow:none}
 /* the blink between pages keeps the menus on top: the page changes under a bar that stays */
 html:has(.cut-lids.shut) header.nav,html:has(.cut-lids.opening) header.nav,.arriving header.nav,html:has(.cut-lids.shut) .dock,html:has(.cut-lids.opening) .dock,.arriving .dock{z-index:160}
+/* ===== the client workspace as its own app (phase 1): no site menu, four sections, «new task» as the main button, help in the bar ===== */
+body[data-page="workspace"] .nav .links,body[data-page="workspace"] .nav .menu-btn,body[data-page="workspace"] .launch-wrap,body[data-page="workspace"] .dock{display:none!important}
+body[data-page="workspace"] .nav .bar>.lang{display:grid!important}
+body[data-page="workspace"] .nav .bar{gap:8px}
+body[data-page="workspace"] .nav .brand{margin-inline-end:auto}
+/* the main button: the identity's gradient (cyan, blue, deep blue), never the old pink-violet */
+.nav .bar>.btn.ws-new,.wnav a.wnav-new{color:var(--k-white);background:linear-gradient(135deg,var(--k-g1) 0%,var(--k-g2) 48%,var(--k-g3) 100%);background-size:100% 100%;box-shadow:0 10px 26px -12px rgba(var(--k-g2-rgb),.8),inset 0 1px 0 rgba(var(--k-white-rgb),.28)}
+.nav .bar>.btn.ws-new{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;font-weight:500}
+.nav .bar>.btn.ws-new svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.nav .bar>.btn.ws-new:hover,.wnav a.wnav-new:hover{color:var(--k-white);filter:brightness(1.08)}
+.nav .bar>.btn.ws-new.on,.wnav a.wnav-new.on{box-shadow:0 0 0 2px rgba(var(--k-horizon-rgb),.6),0 10px 26px -12px rgba(var(--k-g2-rgb),.8)}
+.ws-help svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media (min-width:861px){ body[data-page="workspace"] .wnav a.wnav-new{display:none} }
+@media (max-width:860px){
+  .wnav-in>a[data-s="overview"]{order:1}.wnav-in>a[data-s="tasks"]{order:2}.wnav-new{order:3}.wnav-in>a[data-s="projects"]{order:4}.wnav-in>a[data-s="invoices"]{order:5}
+  .wnav-in>a{min-height:48px}
+  /* the phone: the «+» lives in the bottom bar; the top bar keeps the mark, the language, help, the bell and the account */
+  .nav .bar>.btn.ws-new{display:none!important}
+  body[data-page="workspace"] .nav .brand .wm>span{display:none}
+  .wnav a.wnav-new{min-width:56px;min-height:56px}
+  /* writing a new task: the bar steps aside, «preview and send» sits at the bottom, clear of the home indicator */
+  body[data-wsec="new"] .wnav{display:none}
+  body[data-page="workspace"][data-wsec="new"]{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+  body[data-wsec="new"] .wm-bar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+}
+/* bottom sheets: help, and the steps of a task */
+.wsheet-ov{position:fixed;inset:0;z-index:170;display:flex;align-items:flex-end;justify-content:center;background:rgba(var(--k-night-rgb),.55);opacity:0;transition:opacity .25s}
+.wsheet-ov.show{opacity:1}
+.wsheet{width:min(560px,100%);max-height:80vh;overflow:auto;margin:0 10px calc(10px + env(safe-area-inset-bottom,0px));padding:8px 18px 18px;border-radius:24px;background:rgba(14,20,52,.97);box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb),.12),0 -20px 60px -20px rgba(var(--k-black-rgb),.6);transform:translateY(24px);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.wsheet-ov.show .wsheet{transform:none}
+.wsheet-h{display:flex;align-items:center;justify-content:space-between;padding:10px 0 12px}
+.wsheet-h b{font-size:17px;font-weight:500}
+.wsheet-x{width:44px;height:44px;border:0;border-radius:50%;background:rgba(var(--k-white-rgb),.07);color:var(--light);font-size:22px;line-height:1;cursor:pointer}
+.wsheet-l{display:grid;gap:10px}
+.wsheet-i{display:block;width:100%;text-align:start;min-height:56px;padding:14px 16px;border:0;border-radius:16px;background:rgba(var(--k-white-rgb),.06);color:var(--light);font:inherit;cursor:pointer;text-decoration:none}
+.wsheet-i:hover,.wsheet-i:focus-visible{background:rgba(var(--k-white-rgb),.1)}
+.wsheet-i b{display:block;font-weight:500;font-size:15.5px}.wsheet-i small{display:block;color:var(--mist);font-size:13.5px;margin-top:2px}
+/* the steps: a shape with every state (never colour alone) */
+.wstage{display:none;align-items:center;gap:10px;width:100%;min-height:48px;margin:6px 0 2px;padding:10px 14px;border:0;border-radius:999px;background:rgba(var(--k-white-rgb),.06);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.35);color:var(--light);font:inherit;font-size:15px;cursor:pointer;text-align:start}
+.wstage span{flex:1;font-weight:500}.wstage small{color:var(--mist);font-family:var(--latin);letter-spacing:.06em}.wstage em{font-style:normal;color:var(--mist)}
+.wstage.ex{box-shadow:inset 0 0 0 1px rgba(var(--k-gold-rgb),.55)}
+@media (max-width:600px){ .wtask .wtrack{display:none} .wstage{display:flex} }
+.sh-now,.sh-done,.sh-next,.sh-ex{flex:none;display:inline-block;width:12px;height:12px}
+.sh-now{border-radius:50%;background:var(--k-horizon)}
+.sh-done{border-radius:50%;background:var(--k-horizon);opacity:.55;clip-path:polygon(14% 52%,0 66%,38% 100%,100% 22%,86% 8%,38% 72%)}
+.sh-next{border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--dim)}
+.sh-ex{width:11px;height:11px;transform:rotate(45deg);background:var(--k-gold)}
+.wsheet-ex{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:rgba(var(--k-gold-rgb),.1)}
+.wsteps{list-style:none;margin:0;padding:0;display:grid}
+.wsteps li{display:flex;align-items:center;gap:12px;min-height:46px;padding:0 6px;border-bottom:1px solid rgba(var(--k-white-rgb),.06);color:var(--mist)}
+.wsteps li.now{color:var(--light);font-weight:500}.wsteps li.done{color:var(--light)}
+/* the bell's filters (only the kinds this client has) */
+.hp-cf{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
+.hp-cf button{min-height:32px;padding:0 12px;border:0;border-radius:999px;background:rgba(var(--k-white-rgb),.06);color:var(--mist);font:inherit;font-size:13px;cursor:pointer}
+.hp-cf button[aria-pressed="true"]{background:rgba(var(--k-horizon-rgb),.16);color:var(--light);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.5)}

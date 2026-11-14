@@ -138,7 +138,7 @@
 
   /* ======== the workspace page (workspace): its own bar, colour per section ======== */
   var host=null, shell=null, DASH=null, CUR='overview';
-  var U2=AR?{more:'المزيد',nav:{overview:'نظرة عامة',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
+  var U2=AR?{more:'المزيد',nav:{overview:'الرئيسية',projects:'المشاريع',tasks:'المهام',invoices:'الفواتير',notifications:'الإشعارات',settings:'الإعدادات'},hi:'أهلاً',hiP:'هذه مساحة عملك مع Eyeblink Studio: مشاريعك ومهامك ومواعيدها وتسليماتها في مكان واحد.',
       g:{login:'سجّل دخولك لفتح مساحة العمل.',client:'مساحة العمل متاحة للعملاء المتعاقدين مع الاستوديو. إن كان لديك تعاون مستمر معنا، فاطلب الوصول من صفحة حسابك.',in:'تسجيل الدخول',acct:'صفحة حسابي'},
       allTasks:'كل المهام',allTasksP:'جميع مهامك في كل المشاريع، مع حالتها ومواعيدها.',search:'ابحث في المهام…',allProj:'كل المشاريع',
       f:{all:'الكل',fresh:'جديدة',progress:'قيد التنفيذ',waiting:'بانتظار ردّك',done:'مكتملة',closed:'ملغاة ومرفوضة',upcoming:'مواعيد قادمة'},none:'لا توجد مهام تطابق هذا الاختيار.',
@@ -148,7 +148,7 @@
       nw:{h:'مهام جديدة',p:'أضف مهمة واحدة أو عدة مهام دفعة واحدة، وكلها تصل إلى الاستوديو معاً.',card:'المهمة',add:'+ أضف مهمة أخرى',copy:'تبدأ المهمة الجديدة بنوع المهمة السابقة وموعدها وأولويتها.',
         rm:'إزالة',more:'تفاصيل وروابط وموجز إبداعي',review:'معاينة وإرسال',count:function(n){ return n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام'; },max:'الحد الأقصى 10 مهام في الإرسال الواحد.',
         sendAll:function(n){ return n===1?'أرسل المهمة':'أرسل '+(n===2?'المهمتين':n+' مهام'); },sentAll:function(n){ return n===1?'وصلت المهمة إلى الاستوديو.':'وصلت '+(n===2?'المهمتان':n+' مهام')+' إلى الاستوديو.'; },noProj:'لا يوجد مشروع نشط بعد لإرسال المهام إليه.'}}
-    :{more:'More',nav:{overview:'Overview',projects:'Projects',tasks:'Tasks',invoices:'Invoices',notifications:'Notifications',settings:'Settings'},hi:'Hi',hiP:'Your workspace with Eyeblink Studio: projects, tasks, dates and deliveries in one place.',
+    :{more:'More',nav:{overview:'Home',projects:'Projects',tasks:'Tasks',invoices:'Invoices',notifications:'Notifications',settings:'Settings'},hi:'Hi',hiP:'Your workspace with Eyeblink Studio: projects, tasks, dates and deliveries in one place.',
       g:{login:'Sign in to open your workspace.',client:'The workspace is for clients with an ongoing agreement with the studio. If that is you, request access from your account page.',in:'Sign in',acct:'My account'},
       allTasks:'All tasks',allTasksP:'Every task across your projects, with status and dates.',search:'Search tasks…',allProj:'All projects',
       f:{all:'All',fresh:'New',progress:'In progress',waiting:'Waiting for you',done:'Completed',closed:'Cancelled & rejected',upcoming:'Upcoming dates'},none:'No tasks match this view.',
@@ -166,36 +166,48 @@
     done:SVG('<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'),dates:SVG('<rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>'),arrow:SVG('<path d="M15 6l-6 6 6 6"/>'),more:SVG('<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>'),chev:'<svg class="wm-c" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>'};
   var TYPEC={monthly:'#A78BFA',campaign:'#F5C66B',content:'#5EF0B0',editing:'#6E8BFF',motion:'#E07BE0',commercial:'#FFC56B',once:'#3FE0E8',custom:'#7DD3FC'};
   var PAL=['#6E8BFF','#E07BE0','#3FE0E8','#F5C66B','#5EF0B0','#A78BFA','#FF7AB6','#7DD3FC','#FFC56B','#8FA2FF'];
-  var NAV=[['overview','#w'],['projects','#w/projects'],['tasks','#w/tasks'],['invoices','#w/invoices'],['notifications','#w/notifications'],['settings','#w/settings']];
+  // four sections in order of use; notifications live in the bell, settings in the account menu, «new task» is the main button
+  var NAV=[['overview','#w'],['tasks','#w/tasks'],['projects','#w/projects'],['invoices','#w/invoices']];
   // the bar: three main sections always in view; invoices, notifications and settings sit inline on wide screens
   // and behind «More» on narrow ones (one set of links, never duplicated)
-  var MAIN=NAV.slice(0,3), MORE=NAV.slice(3);
+  var MAIN=NAV, MORE=[];
   function navA(n){ return '<a class="c-'+n[0]+'" data-s="'+n[0]+'" href="'+n[1]+'">'+ICO[n[0]]+'<span>'+U2.nav[n[0]]+'</span>'+(n[0]==='notifications'?'<b class="wn-n" hidden></b>':'')+'</a>'; }
   function mount(el){ shell=el;
-    el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+MAIN.map(navA).join('')+
-      '<div class="wnav-x"><button type="button" class="wnav-more" aria-expanded="false" aria-controls="wnavSec" aria-haspopup="true">'+ICO.more+'<span class="wm-l">'+U2.more+'</span>'+ICO.chev+'<b class="wn-dot" hidden></b></button>'+
-      '<div class="wnav-sec" id="wnavSec">'+MORE.map(navA).join('')+'</div></div></div>'+
+    // the phone's bar: two sections, the round «+», two sections (the «+» is the top bar's main button on a computer)
+    el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+MAIN.map(navA).join('')+'</div>'+
       '<a class="wnav-new" href="#w/new" aria-label="'+T.newTask+'">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
     host=el.querySelector('.wview');
-    var mb=el.querySelector('.wnav-more'), x=el.querySelector('.wnav-x');
-    mb.onclick=function(e){ e.stopPropagation(); moreOpen(!x.classList.contains('open')); };
-    document.addEventListener('click',function(e){ if(x.classList.contains('open')&&!e.target.closest('.wnav-x')) moreOpen(false); });
-    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&x.classList.contains('open')){ moreOpen(false); mb.focus(); } });
-    el.querySelector('.wnav-sec').addEventListener('click',function(e){ if(e.target.closest('a')) moreOpen(false); });
+    shellBar();
     // phones: the bar lives directly under <body>, so no parent can turn its fixed position into a scrolling one
     // shortcut: decided once per load; turning a tablet across 860px keeps the first layout until reload
     [].forEach.call(document.querySelectorAll('body>.wnav'),function(o){ o.remove(); }); if(matchMedia('(max-width:860px)').matches) document.body.appendChild(el.querySelector('.wnav'));
     route(); }
-  function moreOpen(on){ var x=document.querySelector('.wnav-x'), mb=x.querySelector('.wnav-more'); x.classList.toggle('open',on); mb.setAttribute('aria-expanded',on?'true':'false');
-    if(on){ var f=x.querySelector('.wnav-sec a.on')||x.querySelector('.wnav-sec a'); if(f) f.focus({preventScroll:true}); } }
   function setSec(sec){ if(sec!=='tasks') TC=null; CUR=sec; shell.dataset.sec=sec; var nv=document.querySelector('.wnav'); if(nv) nv.dataset.sec=sec;
+    document.body.dataset.wsec=sec;   // the phone hides its bottom bar while a new task is being written
     [].forEach.call(document.querySelectorAll('.wnav a[data-s]'),function(a){ var on=a.dataset.s===sec; a.classList.toggle('on',on); if(on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
-    // «More» stands in for the section it hides, so the open section is always named in the bar
-    var mb=document.querySelector('.wnav-more'), inMore=MORE.some(function(n){ return n[0]===sec; });
-    mb.classList.toggle('on',inMore); mb.className=mb.className.replace(/\bc-\w+/g,'').trim()+(inMore?' c-'+sec:'');
-    mb.querySelector('.wm-l').textContent=inMore?U2.nav[sec]:U2.more; mb.querySelector('svg').outerHTML=inMore?ICO[sec]:ICO.more;
-    if(inMore) mb.setAttribute('aria-current','page'); else mb.removeAttribute('aria-current');
-    document.querySelector('.wnav-new').classList.toggle('on',sec==='new'); moreOpen(false); paintN(LASTN); }
+    [].forEach.call(document.querySelectorAll('.wnav-new,.ws-new'),function(b){ b.classList.toggle('on',sec==='new'); }); paintN(LASTN); }
+
+  /* ---------- the workspace's own top bar: the main «new task» button and help (the site's menu is not shown here) ---------- */
+  var HELP=AR?{h:'المساعدة',wa:'تواصل معنا عبر واتساب',waP:'رد سريع من الاستوديو',bug:'إبلاغ عن مشكلة تقنية',bugP:'يُرفق رابط الصفحة الحالية تلقائياً',x:'إغلاق'}
+    :{h:'Help',wa:'Message us on WhatsApp',waP:'A quick reply from the studio',bug:'Report a technical issue',bugP:'The current page link is attached for you',x:'Close'};
+  function shellBar(){ var bar=document.querySelector('.nav .bar'); if(!bar) return;
+    var cta=bar.querySelector('.btn-primary'); if(cta&&!cta.classList.contains('ws-new')){ cta.classList.add('ws-new'); cta.setAttribute('href','#w/new'); cta.innerHTML=ICO.plus+'<span>'+T.newTask+'</span>'; }
+    if(!bar.querySelector('.ws-help')){ var hb=document.createElement('button'); hb.type='button'; hb.className='hbell ws-help'; hb.setAttribute('aria-label',HELP.h); hb.setAttribute('aria-haspopup','dialog');
+      hb.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6"/><path d="M12 16.8v.2"/></svg>';
+      var acct=bar.querySelector('.acct-link'); bar.insertBefore(hb,acct); hb.onclick=helpSheet; } }
+  // a bottom sheet (help, the steps of a task); the phone's back button closes it (back.js)
+  function sheet(title,html){ closeSheet(); var o=document.createElement('div'); o.className='wsheet-ov';
+    o.innerHTML='<div class="wsheet" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="wsheet-h"><b>'+esc(title)+'</b><button type="button" class="wsheet-x" aria-label="'+HELP.x+'">×</button></div>'+html+'</div>';
+    document.body.appendChild(o); o._back=document.activeElement; requestAnimationFrame(function(){ o.classList.add('show'); });
+    o.addEventListener('click',function(e){ if(e.target===o||e.target.closest('.wsheet-x')) closeSheet(); });
+    var f=o.querySelector('.wsheet-x'); if(f) f.focus({preventScroll:true}); return o; }
+  function closeSheet(){ var o=document.querySelector('.wsheet-ov'); if(!o) return; o.classList.remove('show'); var b=o._back; setTimeout(function(){ o.remove(); },260); if(b&&b.focus) b.focus({preventScroll:true}); }
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&document.querySelector('.wsheet-ov.show')) closeSheet(); });
+  function helpSheet(){ var S=C().settings||{}, wa=String(S.whatsapp||(C().site||{}).whatsapp||'').replace(/[^0-9]/g,'');
+    var o=sheet(HELP.h,'<div class="wsheet-l">'+
+      (wa?'<a class="wsheet-i" href="https://wa.me/'+wa+'" target="_blank" rel="noopener noreferrer"><b>'+HELP.wa+'</b><small>'+HELP.waP+'</small></a>':'')+
+      '<button type="button" class="wsheet-i" data-bug><b>'+HELP.bug+'</b><small>'+HELP.bugP+'</small></button></div>');
+    o.querySelector('[data-bug]').onclick=function(){ closeSheet(); if(window.EBSupOpen) EBSupOpen(); }; }
   var LASTN=0;
   function paintN(n){ LASTN=n; var b=shell&&document.querySelector('.wnav .wn-n'), d=shell&&document.querySelector('.wnav .wn-dot'); if(b){ b.hidden=!n; b.textContent=n>9?'9+':n; } if(d){ d.hidden=!n||CUR==='notifications'; d.textContent=n>9?'9+':n; } }
   function setUnread(n){ n=+n||0; paintN(n); if(window.EBHdr) EBHdr.setUnread(n); }
@@ -461,6 +473,17 @@
 
   /* ---- task ---- */
   var PATH=['new','review','accepted','progress','feedback','final','completed'];
+  /* the steps of a task on a phone: one capsule with the step (or the exception) now, the seven steps in a bottom sheet.
+     A shape goes with every state, so it never rests on colour alone: ● now, ✓ done, ○ next, ◆ an exception */
+  var SHAPE={now:'<i class="sh-now" aria-hidden="true"></i>',done:'<i class="sh-done" aria-hidden="true"></i>',next:'<i class="sh-next" aria-hidden="true"></i>',ex:'<i class="sh-ex" aria-hidden="true"></i>'};
+  var EXC={info:1,revision:1,rejected:1,cancelled:1};
+  function stageCap(t,at,off){ var ex=!!EXC[t.status], n=Math.max(0,at)+1, done=t.status==='completed';
+    return '<button type="button" class="wstage'+(ex?' ex':'')+'" data-stage aria-haspopup="dialog">'+(ex?SHAPE.ex:done?SHAPE.done:SHAPE.now)+
+      '<span>'+esc(T.st[t.status]||t.status)+'</span>'+(off?'':'<small dir="ltr">'+n+' / '+PATH.length+'</small>')+'<em aria-hidden="true">⌄</em></button>'; }
+  function stageSheet(t,at,off){ var ex=!!EXC[t.status], done=t.status==='completed';
+    sheet(AR?'مراحل المهمة':'Task steps',(ex?'<p class="wsheet-ex">'+SHAPE.ex+'<b>'+esc(T.st[t.status])+'</b></p>':'')+
+      '<ol class="wsteps">'+PATH.map(function(s,i){ var k=off?'next':(i<at||done)?'done':i===at?'now':'next';
+        return '<li class="'+k+'"'+(k==='now'?' aria-current="step"':'')+'>'+SHAPE[k]+'<span>'+esc(T.st[s])+'</span></li>'; }).join('')+'</ol>'); }
   function task(ref){
     loading(); TC=null;
     api('?task='+encodeURIComponent(ref)).then(function(j){ if(!j.ok) return fail(j); var t=j.task, cr=t.change_request;
@@ -469,9 +492,10 @@
       host.innerHTML='<a class="wback" href="#w/p/'+esc(t.project_id)+'">← '+esc(t.project_name||T.back)+'</a>'+
         '<div class="wcard glass wtask r-'+esc(t.status)+'"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</div></div>'+
         (off?'':'<ol class="track wtrack" style="--p:'+(Math.max(0,at)/(PATH.length-1))+'">'+PATH.map(function(s,i){ return '<li class="'+(i<at||t.status==='completed'?'done':i===at?'now':'')+'"><i></i><b>'+esc(T.st[s])+'</b></li>'; }).join('')+'</ol>')+
+        stageCap(t,at,off)+
         '<div class="wdates2"><div><span>'+T.req+'</span><b>'+esc(t.requested_date?d8(t.requested_date):T.reqNone)+'</b><small class="muted">'+(AR?'من طرفك':'from you')+'</small></div>'+
           '<div class="'+(t.confirmed_date?'ok':'')+'"><span>'+T.conf+'</span><b>'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</b><small class="muted">'+(t.confirmed_date?(AR?'معتمد من Eyeblink':'confirmed by Eyeblink'):T.confNone)+'</small></div></div>'+
-        (cr&&cr.status==='pending'?'<p class="wnote">⏳ '+T.changePend+esc(d8(cr.date))+T.changeWait+'</p>':'')+
+        (cr&&cr.status==='pending'?'<p class="wnote">'+T.changePend+esc(d8(cr.date))+T.changeWait+'</p>':'')+
         (t.status==='info'?'<div class="wnote warn"><b>'+T.infoH+'</b><p>'+para(t.studio_note||'')+'</p><form class="form wreply"><label>'+T.reply+'<textarea name="text" dir="auto" maxlength="4000"></textarea></label>'+
           '<div class="lrow2"><input name="ll" placeholder="'+T.f.linkLabel+'" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'"></div><button class="btn btn-primary" type="submit">'+T.replyBtn+'</button></form></div>':'')+
         (t.status==='rejected'&&t.studio_note?'<div class="wnote bad"><b>'+T.rejH+'</b><p>'+para(t.studio_note)+'</p></div>':'')+
@@ -483,6 +507,7 @@
         '</div>'+deliveries(j)+'<section class="wsec">'+wh(T.cm.h+((j.comments||[]).length?' ('+j.comments.length+')':''),'#8FA2FF')+thread(j.comments,j.me)+'</section>'+
         '<section class="wsec">'+wh(T.log,'#AEBBD2')+'<ul class="wact">'+j.activity.map(actText).join('')+'</ul></section>';
       bindDeliveries(host,j,function(){ task(ref); }); rise();
+      var sc=host.querySelector('[data-stage]'); if(sc) sc.onclick=function(){ stageSheet(t,at,off); };
       bindThread(host.querySelector('.wthread').parentNode,{scope:'task',task:t.ref},function(){ task(ref); });
       var w=host.querySelector('.wreply'); if(w) w.onsubmit=function(e){ e.preventDefault(); var b=w.querySelector('button'); b.disabled=true; var u=w.elements.lu.value.trim();
         api('',{action:'reply',task:t.ref,text:w.elements.text.value.trim(),links:/^https?:\/\//i.test(u)?[{label:w.elements.ll.value.trim(),url:u}]:[]}).then(function(r){ if(r.ok){ toast(T.saved); task(ref); } else { b.disabled=false; toast(T.err); } }); };
