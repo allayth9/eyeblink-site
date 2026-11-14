@@ -681,6 +681,8 @@
   // review: our own player for files kept privately (R2); notes carry a time, a kind and a state
   var RV=AR?{kind:{edit:'تعديل',ask:'سؤال',note:'ملاحظة',love:'أعجبني'},st:{open:'مفتوحة',progress:'قيد العمل',resolved:'تمت',na:'لا تنطبق'},here:'+ ملاحظة عند هذه اللحظة',dl:'تحميل الملف',stAct:'غيّر حالة ملاحظة على',addAct:'أضاف ملاحظة على',hint:'أوقف الفيديو عند اللحظة التي تريدها، ثم اختر نوع الملاحظة واكتبها',tip:'أوقف الفيديو عند أي ثانية واضغط «ملاحظة عند هذه اللحظة»: تُثبَّت الملاحظة على تلك الثانية، ثم تختار نوعها: تعديل أو سؤال أو ملاحظة أو أعجبني.',tipOk:'فهمت'}
                 :{kind:{edit:'Change',ask:'Question',note:'Note',love:'Liked'},st:{open:'Open',progress:'In progress',resolved:'Resolved',na:'Not applicable'},here:'+ Note at this moment',dl:'Download file',stAct:'changed a note on',addAct:'added a note on',hint:'Pause where you want, pick the kind of note and write it',tip:'Pause on any second and press “Note at this moment”: the note is pinned to that second, then you pick its kind: change, question, note or liked.',tipOk:'Got it'};
+  // the player frame takes the video's own aspect ratio (CSS --ar), so a vertical reel is never boxed in a wide frame
+  document.addEventListener('loadedmetadata',function(e){ var v=e.target, w=v.closest&&v.closest('.wrv'); if(w&&v.videoHeight) w.style.setProperty('--ar',v.videoWidth/v.videoHeight); },true);
   function isVault(u){ return /\/api\/vault\/v\//.test(u||''); }
   function tcSec(t){ return String(t||'').split(':').map(Number).reduce(function(a,x){ return a*60+x; },0); }
   function secTc(s){ s=Math.max(0,Math.floor(s)); var m=Math.floor(s/60), r=s%60; return m+':'+(r<10?'0':'')+r; }

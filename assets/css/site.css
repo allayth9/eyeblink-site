@@ -2149,3 +2149,23 @@ body[data-page="workspace"] .nav .brand{margin-inline-end:auto}
   .wz-l2 .wz-rv{display:none}
   .wwel{flex-wrap:wrap;padding:14px}.wwel>div{flex-basis:calc(100% - 60px)}.wwel .btn{order:3;width:100%;justify-content:center}
 }
+
+/* ===== workspace action buttons: the liquid-metal button, its black body swapped for the identity blue =====
+   CSS instead of one WebGL canvas per button: a moving metal rim (conic gradient on the border box) round a blue body */
+@property --lm{syntax:'<angle>';inherits:false;initial-value:0deg}
+body[data-page="workspace"] .ws-page .btn-primary{border:2px solid transparent;color:var(--k-white);font-weight:600;text-shadow:0 1px 2px rgba(var(--k-night-rgb),.45);
+  background:linear-gradient(180deg,var(--k-g2) 0%,var(--k-g3) 55%,#1638C4 100%) padding-box,
+    conic-gradient(from var(--lm),#e9edf3,#7c8696,#f7f9fc 12%,#9fe3ff 18%,#5d6678 25%,#eef2f6 33%,#a3adbd 40%,#ffd6de 46%,#6f7a8a 52%,#f4f7fb 62%,#8fd8ff 70%,#5b6475 78%,#e9edf3 88%,#9aa6b8 94%,#e9edf3) border-box;
+  box-shadow:0 0 0 1px rgba(0,0,0,.3),0 20px 12px rgba(0,0,0,.08),0 9px 9px rgba(0,0,0,.12),0 2px 5px rgba(0,0,0,.15),0 10px 28px -10px rgba(var(--k-g3-rgb),.8);
+  animation:lmRim 7s linear infinite}
+body[data-page="workspace"] .ws-page .btn-primary:hover{filter:brightness(1.08) saturate(1.1);transform:translateY(-1px)}
+body[data-page="workspace"] .ws-page .btn-primary:active{transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 4px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.3)}
+body[data-page="workspace"] .ws-page .btn-primary:focus-visible{outline:2px solid var(--k-horizon);outline-offset:3px}
+body[data-page="workspace"] .ws-page .btn-primary:disabled{animation:none;filter:grayscale(.6) brightness(.8)}
+@keyframes lmRim{to{--lm:360deg}}
+@media (prefers-reduced-motion:reduce){body[data-page="workspace"] .ws-page .btn-primary{animation:none}}
+
+/* review player: the frame takes the video's own shape (a vertical reel is not boxed in a wide black frame) */
+.wrv{width:min(100%,calc(70vh * var(--ar,1.7778)));margin-inline:auto}
+.wrv video{width:100%;height:auto;max-height:none}
+.wrv-here{justify-self:center}
