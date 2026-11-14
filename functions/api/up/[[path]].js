@@ -5,7 +5,7 @@ import { s3Ready, r2Sign } from "../../_lib/s3.js";
 //   POST /api/up { op:"sign", scope:"project"|"brand", project?, category?|kind?, name, type, size }
 //        → { mode:"put", key, url, type }                 under 100 MB: one presigned PUT, Content-Type pinned in the signature
 //        → { mode:"multi", key, uploadId, part, type }    100 MB and over: multipart, parts ≥ 5 MiB, each part signed when it is sent
-//        → { mode:"proxy", key, uploadId, part, type }    only when the S3 keys are missing (local dev): parts go through PUT /api/up
+//        → { mode:"proxy", key, uploadId, part, type }    local dev only (no S3 keys on localhost): parts go through PUT /api/up
 //   POST /api/up { op:"parts", key, uploadId, numbers:[n…] } → { urls:{ n: url } }   (fresh links; the browser asks again on expiry)
 //   POST /api/up { op:"done", key, uploadId?, parts?, name, title? } → { ok, file }  completes a multipart, checks the object, records it in D1
 //   POST /api/up { op:"abort", key, uploadId }
@@ -29,6 +29,7 @@ async function allowed(request, env, key){
   const p = await env.DB.prepare("SELECT id FROM projects WHERE id=?1 AND (client_email=?2 OR id IN (SELECT project_id FROM project_members WHERE email=?2))").bind(pid, u.email).first();
   return p ? who : null;
 }
+const isLocal = req => /^(localhost|127\.0\.0\.1)$/.test(new URL(req.url).hostname);
 const safeName = raw => raw.toLowerCase().replace(/[^a-z0-9.\-_]/g, "-").replace(/-+/g, "-").replace(/^[^a-z0-9]+/, "").slice(-60) || "file";
 
 export async function onRequestPost({ request, env }){
@@ -45,6 +46,7 @@ export async function onRequestPost({ request, env }){
     } else key = "p/" + String(d.project || "") + "/" + (CATS.includes(d.category) ? d.category : "other");
     key += "/" + randHex(8) + "/" + safeName(name);
     if (!KEY.test(key) || !(await allowed(request, env, key))) return json({ ok: false }, 403);
+    if (!s3Ready(env) && !isLocal(request)) return json({ ok: false, error: "s3" }, 503);   // live without the keys: refuse, never route the file through here
     if (!s3Ready(env)) { const mp = await env.R2.createMultipartUpload(key, { httpMetadata: { contentType: type } }); return json({ ok: true, mode: "proxy", key, uploadId: mp.uploadId, part: 50 * MIB, type }); }
     if (size < BIG) return json({ ok: true, mode: "put", key, type, url: await r2Sign(env, "PUT", key, { headers: { "content-type": type } }) });
     const mp = await env.R2.createMultipartUpload(key, { httpMetadata: { contentType: type } });
@@ -89,7 +91,7 @@ async function record(env, key, obj, who, d){
 export async function onRequestPut({ request, env }){
   if (!env.R2) return json({ ok: false, error: "r2" }, 503);
   const q = new URL(request.url).searchParams, key = q.get("key") || "", n = +q.get("n");
-  if (s3Ready(env) || !KEY.test(key) || !(n >= 1 && n <= 10000)) return json({ ok: false }, 400);
+  if (s3Ready(env) || !isLocal(request) || !KEY.test(key) || !(n >= 1 && n <= 10000)) return json({ ok: false }, 400);
   if (!(await allowed(request, env, key))) return json({ ok: false }, 403);
   const len = +(request.headers.get("content-length") || 0); if (!len || len > 60 * MIB) return json({ ok: false, error: "size" }, 413);
   const part = await env.R2.resumeMultipartUpload(key, q.get("uploadId") || "").uploadPart(n, request.body);
