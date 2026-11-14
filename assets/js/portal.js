@@ -216,6 +216,7 @@
     if(h==='w/settings'){ setSec('settings'); return settings(); }
     if(h==='w/notifications'){ setSec('notifications'); return notifications(); }
     if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))){ setSec('invoices'); return invoices(m[1]); }
+    if((m=/^w\/tasks\/cal(?:\/(\d{4}-\d{2}))?$/.exec(h))){ setSec('tasks'); return calView(m[1]); }
     if((m=/^w\/tasks(?:\/(all|fresh|progress|waiting|done|closed|upcoming))?$/.exec(h))){ setSec('tasks'); return allTasks(m[1]||'all'); }
     if(h==='w/projects'){ setSec('projects'); return projectsView(); }
     if(h==='w/brand'){ setSec('projects'); return brandView(); }
@@ -327,6 +328,65 @@
   var TF={fresh:['new','review'],progress:['accepted','progress','revision'],waiting:['info','feedback','final'],done:['completed'],closed:['rejected','cancelled']};
   var FC={all:'#AEBBD2',fresh:'#6E8BFF',progress:'#3FE0E8',waiting:'#E07BE0',done:'#5EF0B0',closed:'#ff8c9c',upcoming:'#F5C66B'};
   var TC=null;
+  /* ---- the calendar: confirmed dates, requested dates not confirmed yet, and the recurring schedule; .ics export ---- */
+  var CAL=AR?{seg:{list:'القائمة',cal:'التقويم'},month:'شهر',week:'أسبوع',today:'اليوم',prev:'السابق',next:'التالي',ics:'تصدير <span dir="ltr">.ics</span>',
+      k:{conf:'موعد مؤكد',req:'موعد مطلوب، بانتظار التأكيد',rec:'مهمة دورية مجدولة',done:'سُلّمت'},none:'لا مواعيد في هذا اليوم.',more:function(n){ return '+'+n; },
+      days:['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'],sd:['س','ح','ن','ث','ر','خ','ج'],file:'مواعيد-eyeblink'}
+    :{seg:{list:'List',cal:'Calendar'},month:'Month',week:'Week',today:'Today',prev:'Previous',next:'Next',ics:'Export .ics',
+      k:{conf:'Confirmed date',req:'Requested, awaiting confirmation',rec:'Scheduled recurring task',done:'Delivered'},none:'Nothing on this day.',more:function(n){ return '+'+n; },
+      days:['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'],sd:['Sa','Su','Mo','Tu','We','Th','Fr'],file:'eyeblink-dates'};
+  function tseg(on){ return '<nav class="wseg" aria-label="'+U2.allTasks+'">'+[['list','#w/tasks'],['cal','#w/tasks/cal']].map(function(x){ return '<a href="'+x[1]+'"'+(x[0]===on?' class="on" aria-current="page"':'')+'>'+CAL.seg[x[0]]+'</a>'; }).join('')+'</nav>'; }
+  var CMODE='month', CSEL='';
+  function ymd(d){ return d.toISOString().slice(0,10); }
+  function dAdd(s,n){ var d=new Date(s+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return ymd(d); }
+  // every dated thing between two days, each with its kind (text and shape, never colour alone)
+  function calEvents(j,from,to){ var out=[], shut=['cancelled','rejected'];
+    j.tasks.forEach(function(t){ if(shut.indexOf(t.status)>=0) return;
+      var k=t.status==='completed'?'done':t.confirmed_date?'conf':t.requested_date?'req':'', d=t.confirmed_date||t.requested_date;
+      if(k&&d>=from&&d<=to) out.push({d:d,k:k,title:t.title,ref:t.ref,proj:t.project_name}); });
+    (j.recurring||[]).forEach(function(r){ var run=r.next_run, guard=0;   // the same steps as the server's schedule (weekly on a day, monthly on a date ≤ 28)
+      while(run&&guard++<80){ var due=dAdd(run,+r.due_days||0); if(due>to) break; if(due>=from) out.push({d:due,k:'rec',title:r.title,proj:r.project_name});
+        if(r.every==='week') run=dAdd(run,7); else { var x=new Date(run+'T12:00:00Z'); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth()+1); x.setUTCDate(Math.min(28,Math.max(1,+r.dom||1))); run=ymd(x); } } });
+    return out.sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:0; }); }
+  function calView(month){ if(TC&&Date.now()-TC.at<20000) return drawCal(TC.j,month); loading();
+    api('?view=tasks').then(function(j){ if(!j.ok) return fail(j); TC={j:j,at:Date.now()}; drawCal(j,month); }); }
+  function drawCal(j,month){ var td=ymd(new Date()); month=month||(CSEL||td).slice(0,7); if(!CSEL||CSEL.slice(0,7)!==month) CSEL=month===td.slice(0,7)?td:month+'-01';
+    // weeks start on Saturday; the grid runs right to left in Arabic by itself (dir="rtl")
+    var first=new Date(month+'-01T12:00:00Z'), lead=(first.getUTCDay()+1)%7, start=dAdd(month+'-01',-lead);
+    var wk=dAdd(CSEL,-((new Date(CSEL+'T12:00:00Z').getUTCDay()+1)%7)), from=CMODE==='week'?wk:start, n=CMODE==='week'?7:42, to=dAdd(from,n-1);
+    var ev=calEvents(j,from,to), by={}; ev.forEach(function(e){ (by[e.d]=by[e.d]||[]).push(e); });
+    var mName=new Date(month+'-01T12:00:00Z').toLocaleDateString(AR?'ar':'en-GB',{month:'long',timeZone:'UTC'})+' '+month.slice(0,4);   // the year in Latin digits, as everywhere on the site
+    var pill=function(e){ var inner='<i class="ck-'+e.k+'" aria-hidden="true"></i><span><bdi>'+esc(e.title)+'</bdi></span>';
+      return e.ref?'<a class="wcal-e k-'+e.k+'" href="#w/t/'+esc(e.ref)+'" title="'+esc(CAL.k[e.k]+' · '+e.title)+'">'+inner+'</a>':'<span class="wcal-e k-'+e.k+'" title="'+esc(CAL.k[e.k]+' · '+e.title)+'">'+inner+'</span>'; };
+    var cells=''; for(var i=0;i<n;i++){ var d=dAdd(from,i), L3=by[d]||[], out=d.slice(0,7)!==month&&CMODE==='month';
+      cells+='<div class="wcal-d'+(out?' out':'')+(d===td?' now':'')+(d===CSEL?' sel':'')+'" data-d="'+d+'" role="gridcell" tabindex="'+(d===CSEL?0:-1)+'" aria-label="'+esc(d8(d)+(L3.length?' · '+L3.length:''))+'">'+
+        '<b class="wcal-n">'+(+d.slice(8))+'</b>'+L3.slice(0,CMODE==='week'?8:3).map(pill).join('')+(L3.length>(CMODE==='week'?8:3)?'<small class="wcal-m">'+CAL.more(L3.length-(CMODE==='week'?8:3))+'</small>':'')+
+        '<span class="wcal-dots" aria-hidden="true">'+L3.slice(0,4).map(function(e){ return '<i class="ck-'+e.k+'"></i>'; }).join('')+'</span></div>'; }
+    var prevM=new Date(month+'-01T12:00:00Z'); prevM.setUTCMonth(prevM.getUTCMonth()-1); var nextM=new Date(month+'-01T12:00:00Z'); nextM.setUTCMonth(nextM.getUTCMonth()+1);
+    host.innerHTML=head('tasks','TASKS',U2.allTasks,U2.allTasksP,'<div class="whd-a"><a class="btn btn-primary" href="#w/new">+ '+T.newTask+'</a></div>')+tseg('cal')+
+      '<section class="wcal glass"><div class="wcal-h"><div class="wcal-nav"><a class="wcal-arr" href="#w/tasks/cal/'+ymd(prevM).slice(0,7)+'" aria-label="'+CAL.prev+'">'+(AR?'→':'←')+'</a><h3>'+esc(mName)+'</h3><a class="wcal-arr" href="#w/tasks/cal/'+ymd(nextM).slice(0,7)+'" aria-label="'+CAL.next+'">'+(AR?'←':'→')+'</a>'+
+        '<a class="chipb" href="#w/tasks/cal/'+td.slice(0,7)+'" data-today>'+CAL.today+'</a></div>'+
+        '<div class="wcal-tools"><div class="wcal-mode" role="group">'+['month','week'].map(function(m){ return '<button type="button" class="chipb'+(CMODE===m?' on':'')+'" data-mode="'+m+'" aria-pressed="'+(CMODE===m)+'">'+CAL[m]+'</button>'; }).join('')+'</div>'+
+        '<button type="button" class="btn btn-glass glass" data-ics>'+CAL.ics+'</button></div></div>'+
+        '<ul class="wcal-lg">'+['conf','req','rec','done'].map(function(k){ return '<li><i class="ck-'+k+'" aria-hidden="true"></i>'+CAL.k[k]+'</li>'; }).join('')+'</ul>'+
+        '<div class="wcal-g'+(CMODE==='week'?' wk':'')+'" role="grid">'+CAL.days.map(function(x,i){ return '<span class="wcal-w" role="columnheader"><span class="lg">'+x+'</span><span class="sm" aria-hidden="true">'+CAL.sd[i]+'</span></span>'; }).join('')+cells+'</div>'+
+        '<div class="wcal-day" aria-live="polite"></div></section>';
+    var dayList=function(){ var L3=(by[CSEL]||[]); host.querySelector('.wcal-day').innerHTML='<h4>'+esc(d8(CSEL))+'</h4>'+(L3.length?'<ul>'+L3.map(function(e){ return '<li>'+pill(e)+'<small class="muted">'+esc(CAL.k[e.k])+(e.proj?' · '+esc(e.proj):'')+'</small></li>'; }).join('')+'</ul>':'<p class="muted small">'+CAL.none+'</p>'); };
+    host.querySelector('.wcal-g').onclick=function(e){ if(e.target.closest('a')) return; var c=e.target.closest('[data-d]'); if(!c) return; CSEL=c.dataset.d;
+      [].forEach.call(this.querySelectorAll('.sel'),function(x){ x.classList.remove('sel'); x.tabIndex=-1; }); c.classList.add('sel'); c.tabIndex=0; dayList(); };
+    host.querySelector('.wcal-g').onkeydown=function(e){ var c=e.target.closest('[data-d]'); if(!c) return; var mv={ArrowRight:AR?-1:1,ArrowLeft:AR?1:-1,ArrowDown:7,ArrowUp:-7}[e.key];
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); c.click(); return; } if(!mv) return; e.preventDefault(); var t=this.querySelector('[data-d="'+dAdd(c.dataset.d,mv)+'"]'); if(t){ t.focus(); t.click(); } };
+    host.querySelectorAll('[data-mode]').forEach(function(b){ b.onclick=function(){ CMODE=b.dataset.mode; drawCal(j,month); }; });
+    host.querySelector('[data-ics]').onclick=function(){ icsDownload(calEvents(j,td,dAdd(td,183)).filter(function(e){ return e.k!=='done'; })); };
+    dayList(); rise(); }
+  // a calendar file for the next six months (all-day events; Apple, Google and Outlook all read it)
+  function icsDownload(ev){ var x=function(t){ return String(t||'').replace(/\\/g,'\\\\').replace(/[,;]/g,'\\$&').replace(/\n/g,'\\n'); }, st=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+    var body=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Eyeblink Studio//Workspace//'+(AR?'AR':'EN'),'CALSCALE:GREGORIAN','X-WR-CALNAME:Eyeblink Studio'].concat([].concat.apply([],ev.map(function(e,i){
+      return ['BEGIN:VEVENT','UID:'+(e.ref||'rec-'+i)+'-'+e.k+'-'+e.d+'@eyeblinkstudio.com','DTSTAMP:'+st,'DTSTART;VALUE=DATE:'+e.d.replace(/-/g,''),'DTEND;VALUE=DATE:'+dAdd(e.d,1).replace(/-/g,''),
+        'SUMMARY:'+x(e.title+' · '+CAL.k[e.k]),'DESCRIPTION:'+x((e.proj||'')+(e.ref?' · '+e.ref:'')),'END:VEVENT']; })),['END:VCALENDAR']).join('\r\n');
+    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([body],{type:'text/calendar;charset=utf-8'})); a.download=CAL.file+'.ics'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }
+
   function allTasks(f){ if(TC&&Date.now()-TC.at<20000) return drawTasks(TC.j,f); loading();
     api('?view=tasks').then(function(j){ if(!j.ok) return fail(j); TC={j:j,at:Date.now()}; drawTasks(j,f); }); }
   var TQ={p:'',q:''};
@@ -339,7 +399,7 @@
       host.querySelector('.wtasks').innerHTML=L2.length?taskTable(L2,!TQ.p):'<div class="wcard glass wempty"><p>'+U2.none+'</p></div>';
       [].forEach.call(host.querySelectorAll('.wtf a'),function(a){ var k=a.dataset.f, on=k===f; a.classList.toggle('on',on); a.setAttribute('aria-current',on?'true':'false');
         a.querySelector('small').textContent=j.tasks.filter(function(t){ return match(t,k)&&scope(t); }).length; }); };
-    host.innerHTML=head('tasks','TASKS',U2.allTasks,U2.allTasksP,'<div class="whd-a"><a class="btn btn-primary" href="#w/new'+(TQ.p?'/'+esc(TQ.p):'')+'">+ '+T.newTask+'</a></div>')+
+    host.innerHTML=head('tasks','TASKS',U2.allTasks,U2.allTasksP,'<div class="whd-a"><a class="btn btn-primary" href="#w/new'+(TQ.p?'/'+esc(TQ.p):'')+'">+ '+T.newTask+'</a></div>')+tseg('list')+
       '<div class="wtools glass"><div class="wtf" role="toolbar">'+['all','fresh','progress','waiting','upcoming','done','closed'].map(function(k){
         return '<a class="chipc" data-f="'+k+'" href="#w/tasks'+(k==='all'?'':'/'+k)+'" style="--k:'+FC[k]+'"><i></i>'+U2.f[k]+' <small></small></a>'; }).join('')+'</div>'+
       '<div class="wtq"><label class="wsearch"><input type="search" dir="auto" placeholder="'+U2.search+'" aria-label="'+U2.search+'" value="'+esc(TQ.q)+'"></label>'+(j.projects.length>1?'<select aria-label="'+T.project+'"><option value="">'+U2.allProj+'</option>'+j.projects.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===TQ.p?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select>':'')+'</div></div><div class="wtasks"></div>';
@@ -789,11 +849,62 @@
       '</article>'; }
   function deliveries(j){ var t=j.task, list=j.deliverables||[], rounds=list.filter(function(d){return d.status==='changes'}).length;
     if(!list.length&&['accepted','progress','revision'].indexOf(t.status)<0) return '';
-    return '<section class="wsec wdls">'+wh(T.dl.h+(rounds?' · '+T.dl.round+' '+rounds:''),'#E07BE0')+(list.length?dlCard(list[0],t,true)+
+    var vv=list.filter(function(d){ return isVault(d.url); });
+    return '<section class="wsec wdls">'+wh(T.dl.h+(rounds?' · '+T.dl.round+' '+rounds:''),'#E07BE0',vv.length>1?'<button type="button" class="wh-more wcmp-b" data-cmp>'+CMP.btn+'</button>':'')+'<div class="wcmp-host"></div>'+(list.length?dlCard(list[0],t,true)+
       (list.length>1?'<details class="wvh"><summary>'+T.dl.history+' ('+(list.length-1)+')</summary><div class="wvh-l">'+list.slice(1).map(function(d){ return dlCard(d,t,false); }).join('')+'</div></details>':'')
       :'<div class="wcard glass"><p class="muted" style="margin:0">'+T.dl.none+'</p></div>')+'</section>'; }
   var TCRE=/^(\d{1,2}:)?\d{1,2}:\d{2}$/;
+  /* ---- compare two versions: side by side or a centre curtain on a computer, a quick A/B switch in one player on a phone ----
+     B follows A: a frame callback (requestVideoFrameCallback, else requestAnimationFrame) nudges B's playbackRate when it drifts,
+     and seeks it only past 0.3 s; one track is muted; if either waits for data, both pause and resume together */
+  var CMP=AR?{btn:'مقارنة نسختين',side:'جنباً إلى جنب',wipe:'ستارة',a:'النسخة أ',b:'النسخة ب',play:'تشغيل',pause:'إيقاف',sound:'الصوت من',close:'إغلاق المقارنة',ab:'بدّل',seek:'الموضع'}
+    :{btn:'Compare two versions',side:'Side by side',wipe:'Curtain',a:'Version A',b:'Version B',play:'Play',pause:'Pause',sound:'Sound from',close:'Close comparison',ab:'Switch',seek:'Position'};
+  var CMPX=null;
+  function compare(box,list){ if(CMPX) CMPX(); var host2=box.querySelector('.wcmp-host'), vv=list.filter(function(d){ return isVault(d.url); }), one=!window.matchMedia('(min-width:861px) and (pointer:fine)').matches;
+    var name=function(d){ return d.is_final?'Final':d.label; }, src=function(d){ return rel(d.url); }, opt=function(sel){ return vv.map(function(d,i){ return '<option value="'+i+'"'+(i===sel?' selected':'')+'>'+esc(name(d))+'</option>'; }).join(''); };
+    var A=1, B=0, mode='side', cur=0, alive=true;   // A = the older of the two latest, B = the latest
+    host2.innerHTML='<div class="wcmp glass" dir="ltr"><div class="wcmp-top"><select data-a aria-label="'+CMP.a+'">'+opt(A)+'</select><span class="wcmp-vs">↔</span><select data-b aria-label="'+CMP.b+'">'+opt(B)+'</select>'+
+      (one?'':'<div class="wcmp-mode" role="group">'+['side','wipe'].map(function(m){ return '<button type="button" class="chipb'+(m===mode?' on':'')+'" data-m="'+m+'" aria-pressed="'+(m===mode)+'">'+CMP[m]+'</button>'; }).join('')+'</div>')+
+      '<button type="button" class="wcmp-x" data-x aria-label="'+CMP.close+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></div>'+
+      '<div class="wcmp-stage '+(one?'one':mode)+'"><figure><video playsinline preload="auto" data-va></video><figcaption></figcaption></figure>'+(one?'':'<figure class="b"><video playsinline preload="auto" muted data-vb></video><figcaption></figcaption></figure><div class="wcmp-h" role="slider" tabindex="0" aria-label="'+CMP.wipe+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>')+'</div>'+
+      '<div class="wcmp-bar"><button type="button" class="wcmp-p" data-p aria-label="'+CMP.play+'">'+SVG('<path d="M8 5v14l11-7z"/>')+'</button><input type="range" min="0" max="1000" value="0" data-s aria-label="'+CMP.seek+'"><span class="wcmp-t">0:00</span>'+
+        (one?'<button type="button" class="btn btn-glass glass wcmp-ab" data-ab dir="'+(AR?'rtl':'ltr')+'">'+CMP.ab+' <b>A</b>/<b>B</b></button>':'<button type="button" class="chipb" data-snd dir="'+(AR?'rtl':'ltr')+'">'+CMP.sound+' <b>A</b></button>')+'</div></div>';
+    var root=host2.firstChild, va=root.querySelector('[data-va]'), vb=root.querySelector('[data-vb]'), stage=root.querySelector('.wcmp-stage'), bar=root.querySelector('[data-s]'), tm=root.querySelector('.wcmp-t'), pb=root.querySelector('[data-p]');
+    var caps=root.querySelectorAll('figcaption'), playing=false, waitN=0;
+    var load=function(){ var t=va.currentTime||0;
+      if(one){ va.src=src(vv[cur?B:A]); caps[0].textContent=name(vv[cur?B:A]); }
+      else { va.src=src(vv[A]); vb.src=src(vv[B]); caps[0].textContent=name(vv[A]); caps[1].textContent=name(vv[B]); }
+      var back=function(){ va.removeEventListener('loadedmetadata',back); try{ va.currentTime=t; if(vb) vb.currentTime=t; }catch(_){} if(playing) both('play'); }; va.addEventListener('loadedmetadata',back); };
+    var both=function(m){ [va,vb].forEach(function(v){ if(v){ var r=v[m](); if(r&&r.catch) r.catch(function(){}); } }); };
+    var setPlay=function(on){ playing=on; pb.innerHTML=on?SVG('<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'):SVG('<path d="M8 5v14l11-7z"/>'); pb.setAttribute('aria-label',on?CMP.pause:CMP.play); both(on?'play':'pause'); };
+    pb.onclick=function(){ setPlay(!playing); };
+    // one clock: A; B is pulled back towards it
+    var tick=function(){ if(!alive||!root.isConnected){ alive=false; CMPX=null; return; }
+      if(va.duration){ bar.value=Math.round(va.currentTime/va.duration*1000); tm.textContent=secTc(va.currentTime)+' / '+secTc(va.duration); }
+      if(vb&&playing&&!waitN){ var d=vb.currentTime-va.currentTime; if(Math.abs(d)>0.3) vb.currentTime=va.currentTime; else vb.playbackRate=Math.abs(d)>0.04?Math.max(0.9,Math.min(1.1,1-d*0.5)):1; }
+      if(va.requestVideoFrameCallback&&playing) va.requestVideoFrameCallback(tick); else requestAnimationFrame(tick); };
+    tick();
+    bar.oninput=function(){ if(!va.duration) return; var t=bar.value/1000*va.duration; va.currentTime=t; if(vb) vb.currentTime=t; };
+    [va,vb].forEach(function(v){ if(!v) return;
+      v.addEventListener('waiting',function(){ if(!playing) return; waitN++; both('pause'); });
+      v.addEventListener('canplay',function(){ if(waitN>0){ waitN=Math.max(0,waitN-1); if(!waitN&&playing){ if(vb) vb.currentTime=va.currentTime; both('play'); } } });
+      v.addEventListener('play',function(){ if(v===va&&va.requestVideoFrameCallback) va.requestVideoFrameCallback(tick); });
+      v.addEventListener('ended',function(){ setPlay(false); }); });
+    root.querySelector('[data-a]').onchange=function(){ A=+this.value; load(); };
+    root.querySelector('[data-b]').onchange=function(){ B=+this.value; load(); };
+    var snd=root.querySelector('[data-snd]'); if(snd) snd.onclick=function(){ var toB=!va.muted; va.muted=toB; vb.muted=!toB; snd.querySelector('b').textContent=toB?'B':'A'; };
+    var ab=root.querySelector('[data-ab]'); if(ab) ab.onclick=function(){ cur=cur?0:1; ab.classList.toggle('on',!!cur); load(); };
+    root.querySelectorAll('[data-m]').forEach(function(b){ b.onclick=function(){ mode=b.dataset.m; stage.className='wcmp-stage '+mode; root.querySelectorAll('[data-m]').forEach(function(x){ x.classList.toggle('on',x===b); x.setAttribute('aria-pressed',x===b); }); }; });
+    // the curtain: drag the handle (or arrow keys); B shows on one side of it
+    var hd=root.querySelector('.wcmp-h'); if(hd){ var setW=function(pc){ pc=Math.max(0,Math.min(100,pc)); stage.style.setProperty('--w',pc+'%'); hd.setAttribute('aria-valuenow',Math.round(pc)); };
+      var drag=function(e){ var r=stage.getBoundingClientRect(); setW((e.clientX-r.left)/r.width*100); };
+      hd.onpointerdown=function(e){ hd.setPointerCapture(e.pointerId); drag(e); hd.onpointermove=drag; }; hd.onpointerup=function(){ hd.onpointermove=null; };
+      hd.onkeydown=function(e){ var v=+hd.getAttribute('aria-valuenow'); if(e.key==='ArrowLeft'){ e.preventDefault(); setW(v-5); } if(e.key==='ArrowRight'){ e.preventDefault(); setW(v+5); } }; setW(50); }
+    CMPX=function(){ alive=false; both('pause'); [va,vb].forEach(function(v){ if(v){ v.removeAttribute('src'); v.load(); } }); host2.innerHTML=''; CMPX=null; };
+    root.querySelector('[data-x]').onclick=function(){ CMPX(); };
+    load(); root.scrollIntoView({block:'nearest',behavior:'smooth'}); }
   function bindDeliveries(box,j,reload){
+    var cb=box.querySelector('[data-cmp]'); if(cb) cb.onclick=function(){ if(CMPX) CMPX(); else compare(box,j.deliverables||[]); };
     box.querySelectorAll('[data-seek]').forEach(function(b){ b.onclick=function(){ var v=b.closest('.wdl').querySelector('.wrv video'); if(v){ v.currentTime=tcSec(b.dataset.seek); v.play().catch(function(){}); } }; });
     box.querySelectorAll('[data-emb]').forEach(function(b){ b.onclick=function(){ var w=b.closest('.wdl').querySelector('.wembed');
       if(!w.hidden){ w.hidden=true; w.innerHTML=''; return; } w.hidden=false;

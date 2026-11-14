@@ -619,7 +619,8 @@ export async function onRequestGet(ctx) {
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
   if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(cparse),
-    projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results });
+    projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results,
+    recurring: (await D.prepare(`SELECT r.id, r.title, r.every, r.dow, r.dom, r.due_days, r.next_run, r.project_id, p.name AS project_name FROM recurring r JOIN projects p ON p.id=r.project_id WHERE r.project_id IN ${MINE} AND r.active=1`).bind(e).all()).results });
   if (q.get("view") === "brand") return json({ ok: true, brand: await brandOf(D, e) });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
   if (q.get("report") || q.get("reportDoc")) {
