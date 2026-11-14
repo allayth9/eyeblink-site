@@ -2303,11 +2303,39 @@ html[lang="ar"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary)
 .curhost{position:relative;z-index:20}
 .dsel.open{z-index:40}
 .dsel-list{background:linear-gradient(160deg,rgba(22,30,80,.99),rgba(8,12,40,.99));overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
-/* 14 Nov: inside the client workspace the metal buttons were too loud a blue for a working page: the body becomes blue glass
-   (a light tint of the identity blue over the dark page), the moving metal rim stays. The site's own buttons keep the full blue */
-body[data-page="workspace"] :is(.ws-page .btn-primary,.nav .bar>.btn.ws-new,.wnav a.wnav-new){
-  background:linear-gradient(180deg,rgba(var(--k-g2-rgb),.34),rgba(var(--k-g3-rgb),.22) 60%,rgba(var(--k-g3-rgb),.18)) padding-box,
-    linear-gradient(rgba(var(--k-night-rgb),.55),rgba(var(--k-night-rgb),.55)) padding-box,
-    conic-gradient(from var(--lm),#e9edf3,#7c8696,#f7f9fc 12%,#9fe3ff 18%,#5d6678 25%,#eef2f6 33%,#a3adbd 40%,#ffd6de 46%,#6f7a8a 52%,#f4f7fb 62%,#8fd8ff 70%,#5b6475 78%,#e9edf3 88%,#9aa6b8 94%,#e9edf3) border-box!important;
-  box-shadow:0 0 0 1px rgba(var(--k-black-rgb),.35),0 10px 24px -14px rgba(var(--k-g2-rgb),.55)!important;text-shadow:none}
-@media (max-width:860px){ body[data-page="workspace"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(10,14,42,.95),0 10px 24px -12px rgba(var(--k-g2-rgb),.6)!important} }
+/* 14 Nov · the client workspace on phones: the language switch lives in the account menu, so the bar has the same three icons
+   as the site and the full EYEBLINK STUDIO wordmark returns. On a computer the switch stays in the bar */
+.hmenu .c-lang{--k:var(--k-horizon)}
+@media (min-width:861px){ .hmenu .c-lang{display:none} }
+@media (max-width:860px){
+  body[data-page="workspace"] .nav .bar>.lang{display:none!important}
+  body[data-page="workspace"] .nav .brand .wm>span{display:inline}
+}
+/* phones: the wordmark in proportion to the eye — its capitals about 57% of the mark's height (Manrope caps ≈ .72em) */
+@media (max-width:620px){ .brand .eb-mark{width:46px} .brand .wm{font-size:12px;letter-spacing:.2em} .brand{gap:10px} }
+@media (max-width:374px){ .bar.is-client .brand .eb-mark,.brand .eb-mark{width:40px} .bar.is-client .brand .wm,.brand .wm{font-size:10.5px;letter-spacing:.15em} .brand{gap:8px} }
+@media (min-width:375px) and (max-width:389px){ body[data-page="workspace"] .nav .brand .wm{letter-spacing:.16em} body[data-page="workspace"] .nav .brand{gap:8px} body[data-page="workspace"] .bar .hbell,body[data-page="workspace"] .bar .acct-link{width:37px;height:37px} }
+/* 14 Nov: the workspace's action buttons are smaller and one size everywhere (40px high, 14px text, at least 132px wide);
+   the Arabic label keeps its 2px optical lift inside the smaller height */
+body[data-page="workspace"] .ws-page .btn-primary{min-height:40px;padding:8px 20px!important;font-size:14px;min-width:132px;justify-content:center;line-height:1.15}
+html[lang="ar"] body[data-page="workspace"] .ws-page .btn-primary{padding-top:6px!important;padding-bottom:10px!important}
+body[data-page="workspace"] .wcrow .btn-primary{align-self:end}
+/* 14 Nov · the top bar (and the phone's bottom bar) never leaves while the blink changes the page: a cross-document view transition
+   tells the browser they are the same element on both pages, so it keeps them on screen instead of clearing and repainting them.
+   Nothing else animates here (the blink lids do the cut); browsers without support simply ignore it */
+@view-transition{navigation:auto}
+header.nav{view-transition-name:eb-header}
+nav.dock{view-transition-name:eb-dock}
+::view-transition-old(root),::view-transition-new(root){animation:none}
+::view-transition-group(eb-header),::view-transition-group(eb-dock){animation-duration:0s}
+::view-transition-old(eb-header),::view-transition-old(eb-dock){display:none}
+::view-transition-new(eb-header),::view-transition-new(eb-dock){animation:none}
+/* 14 Nov · Arabic letters drop below the line (ي ر و ج). Where a label hides its overflow to end in "…", a tight line height cut
+   those tails off, and the active item's yellow line ran into them. The labels get room for the tails, the line sits under them */
+.wnav-in>a span,.wnav-more .wm-l{line-height:1.55;padding-bottom:1px}
+.wcal-e span{line-height:1.6}
+@media (max-width:860px){
+  .wnav-in>a,.wnav-more{padding:6px 2px 9px;gap:2px}
+  .wnav-in>a.on::after,.wnav-more.on::after{bottom:3px;height:2px;box-shadow:0 0 6px var(--k)}
+}
+.wnav a.on::after,.wnav-more.on::after{box-shadow:0 0 6px var(--k)}
