@@ -41,8 +41,10 @@ export async function onRequestPost({ request, env }){
     if (!(size > 0) || size > MAX) return json({ ok: false, error: "size" }, 413);
     let key;
     if (d.scope === "brand") {
-      const u = await currentUser(request, env); if (!u || u.role !== "client") return json({ ok: false }, 401);
-      key = "b/" + await brandOf(u.email) + "/" + (KINDS.includes(d.kind) ? d.kind : "other");
+      // the client's own library, or the studio filling it in for a client (client_email)
+      const em = (await isAdmin(request, env)) && d.client_email ? String(d.client_email).toLowerCase().slice(0, 254) : ((await currentUser(request, env)) || {}).email;
+      if (!em) return json({ ok: false }, 401);
+      key = "b/" + await brandOf(em) + "/" + (KINDS.includes(d.kind) ? d.kind : "other");
     } else key = "p/" + String(d.project || "") + "/" + (CATS.includes(d.category) ? d.category : "other");
     key += "/" + randHex(8) + "/" + safeName(name);
     if (!KEY.test(key) || !(await allowed(request, env, key))) return json({ ok: false }, 403);
@@ -78,6 +80,7 @@ async function record(env, key, obj, who, d){
   const title = String(d.title || d.name || parts[4]).trim().slice(0, 140), url = SITE + "/api/up/" + key;
   if (parts[0] === "b") {
     const email = who.email || String(d.client_email || "").toLowerCase();
+    if (await brandOf(email) !== parts[1]) throw new Error("brand owner");   // the studio names the client; the key must be that client's
     await D.prepare("INSERT INTO brand_assets (id, email, kind, title, key, size, type, created_at) VALUES (?,?,?,?,?,?,?,?)").bind(id, email, parts[2], title, key, obj.size, (obj.httpMetadata && obj.httpMetadata.contentType) || "", at).run();
     return { id, kind: parts[2], title, url, size: obj.size };
   }

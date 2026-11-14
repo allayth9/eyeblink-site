@@ -175,7 +175,7 @@
   function mount(el){ shell=el;
     // the phone's bar: two sections, the round «+», two sections (the «+» is the top bar's main button on a computer)
     el.innerHTML='<nav class="wnav glass" aria-label="'+T.ws+'"><div class="wnav-in">'+MAIN.map(navA).join('')+'</div>'+
-      '<a class="wnav-new" href="#w/new" aria-label="'+T.newTask+'">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
+      '<a class="wnav-new eb-metal round" href="#w/new" aria-label="'+T.newTask+'">'+ICO.plus+'<span>'+T.newTask+'</span></a></nav><div class="wview" aria-live="polite"></div>';
     host=el.querySelector('.wview');
     shellBar();
     // phones: the bar lives directly under <body>, so no parent can turn its fixed position into a scrolling one
@@ -191,7 +191,7 @@
   var HELP=AR?{h:'المساعدة',wa:'تواصل معنا عبر واتساب',waP:'رد سريع من الاستوديو',bug:'إبلاغ عن مشكلة تقنية',bugP:'يُرفق رابط الصفحة الحالية تلقائياً',x:'إغلاق'}
     :{h:'Help',wa:'Message us on WhatsApp',waP:'A quick reply from the studio',bug:'Report a technical issue',bugP:'The current page link is attached for you',x:'Close'};
   function shellBar(){ var bar=document.querySelector('.nav .bar'); if(!bar) return;
-    var cta=bar.querySelector('.btn-primary'); if(cta&&!cta.classList.contains('ws-new')){ cta.classList.add('ws-new'); cta.setAttribute('href','#w/new'); cta.innerHTML=ICO.plus+'<span>'+T.newTask+'</span>'; }
+    var cta=bar.querySelector('.btn-primary'); if(cta&&!cta.classList.contains('ws-new')){ cta.classList.add('ws-new','eb-metal'); cta.setAttribute('href','#w/new'); cta.innerHTML=ICO.plus+'<span>'+T.newTask+'</span>'; }
     if(!bar.querySelector('.ws-help')){ var hb=document.createElement('button'); hb.type='button'; hb.className='hbell ws-help'; hb.setAttribute('aria-label',HELP.h); hb.setAttribute('aria-haspopup','dialog');
       hb.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6"/><path d="M12 16.8v.2"/></svg>';
       var acct=bar.querySelector('.acct-link'); bar.insertBefore(hb,acct); hb.onclick=helpSheet; } }
@@ -494,32 +494,12 @@
       ffiles:'Font files',saved:'Brand library saved.',use:'Use the brand library for this task',useP:'Untick it if this task has its own brand files, and add them under links.',
       drop:'Drag and drop files here',dropOr:'or',pick:'choose from your device',dropCat:'Category',stored:'Kept by the studio',
       st:{wait:'Waiting',up:'Uploading',done:'Done',fail:'Upload failed',type:'File type not supported',size:'Larger than 5 GB'},retry:'Try again'};
+  // dropping files only where a mouse can drag them (a laptop or desktop)
+  var CANDROP=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches;
   function isUp(u){ return /\/api\/up\//.test(u||''); }
   function rel(u){ return String(u||'').replace(/^https?:\/\/[^\/]+/,''); }
-  function upPost(b){ return fetch(API+'up',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(b)})
-    .then(function(r){ return r.json().catch(function(){ return {ok:false}; }).then(function(j){ j._s=r.status; return j; }); }).catch(function(){ return {ok:false,_net:true}; }); }
-  function xput(url,blob,type,onp){ return new Promise(function(res,rej){ var x=new XMLHttpRequest(); x.open('PUT',url); if(type) x.setRequestHeader('content-type',type);
-    x.upload.onprogress=function(e){ if(e.lengthComputable) onp(e.loaded); }; x.onload=function(){ if(x.status>=200&&x.status<300) res(x); else rej(x); }; x.onerror=x.onabort=function(){ rej(x); }; x.send(blob); }); }
-  // one file → R2. Under 100 MB: one signed PUT. Larger: parts (≥ 5 MiB), three at a time, each part signed just before it is sent,
-  // so a link never outlives its 15 minutes; a failed part is signed again and retried (3 times)
-  function upload(file,meta,onp){ var size=file.size;
-    var sign=function(){ return upPost(Object.assign({op:'sign',name:file.name,type:file.type,size:size},meta)).then(function(s){ if(!s.ok) throw s; return s; }); };
-    return sign().then(function(s){
-      if(s.mode==='put') return xput(s.url,file,s.type,function(l){ onp(l/size); })
-        .catch(function(x){ if(x&&x.status===403) return sign().then(function(s2){ s=s2; return xput(s2.url,file,s2.type,function(l){ onp(l/size); }); }); throw x; })
-        .then(function(){ return upPost({op:'done',key:s.key,name:file.name}); });
-      var P=s.part, n=Math.ceil(size/P), got=[], parts=[], next=1;
-      var urlOf=function(i){ return s.mode==='proxy'?Promise.resolve(API+'up?key='+encodeURIComponent(s.key)+'&uploadId='+encodeURIComponent(s.uploadId)+'&n='+i)
-        :upPost({op:'parts',key:s.key,uploadId:s.uploadId,numbers:[i]}).then(function(r){ if(!r.ok) throw r; return r.urls[i]; }); };
-      var one=function(i,tries){ var blob=file.slice((i-1)*P,Math.min(i*P,size));
-        return urlOf(i).then(function(u){ return xput(u,blob,'',function(l){ got[i]=l; onp(got.reduce(function(a,b){ return a+(b||0); },0)/size); }); })
-          .then(function(x){ var et=s.mode==='proxy'?JSON.parse(x.responseText).etag:x.getResponseHeader('ETag'); if(!et) throw x; parts.push({partNumber:i,etag:et}); })
-          .catch(function(e){ got[i]=0; if(tries<3) return one(i,tries+1); throw e; }); };
-      var lane=function(){ if(next>n) return Promise.resolve(); var i=next++; return one(i,0).then(lane); };
-      return Promise.all([lane(),lane(),lane()]).then(function(){ return upPost({op:'done',key:s.key,uploadId:s.uploadId,parts:parts,name:file.name}); })
-        .catch(function(e){ upPost({op:'abort',key:s.key,uploadId:s.uploadId}); throw e; });
-    }).then(function(r){ if(!r.ok) throw r; onp(1); return r.file; });
-  }
+  // the uploader itself is shared with the studio panel: assets/js/r2up.js
+  function upload(f,meta,onp){ return window.EBUp.upload(f,meta,onp); }
   var UPEXT=/\.(mp4|mov|m4v|webm|mxf|avi|mp3|wav|aac|m4a|aif|aiff|flac|jpg|jpeg|png|webp|gif|heic|tif|tiff|psd|ai|eps|svg|pdf|doc|docx|ppt|pptx|xls|xlsx|txt|rtf|zip|rar|7z|ttf|otf|woff|woff2|prproj|aep|drp|srt|vtt|csv|json)$/i;
   function upRow(list,file){ var li=document.createElement('li'); li.innerHTML='<span class="wu-n"><bdi>'+esc(file.name)+'</bdi></span><span class="wu-s">'+BR.st.wait+'</span><i class="wu-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="'+esc(file.name)+'"><b></b></i>'; list.appendChild(li);
     return { set:function(f){ var pc=Math.round(f*100); li.querySelector('b').style.width=pc+'%'; li.querySelector('.wu-bar').setAttribute('aria-valuenow',pc); li.querySelector('.wu-s').textContent=pc>=100?BR.st.done:BR.st.up+' '+pc+'%'; },
@@ -531,13 +511,14 @@
     var step=function(){ var f=q.shift(); if(!f){ if(okN){ after(); if(bad.length) setTimeout(function(){ toast(BR.st.fail+': '+bad.join('، ')); },700); } return; } var row=upRow(list,f);
       upload(f,typeof meta==='function'?meta():meta,row.set).then(function(){ okN++; row.done(); step(); },function(){ row.fail(BR.st.fail); bad.push(f.name); step(); }); };
     step(); }
-  function dropZone(){ return '<div class="wdrop form" tabindex="0" role="button" aria-label="'+BR.drop+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'+
-    '<p><b>'+BR.drop+'</b> <span class="muted">'+BR.dropOr+'</span> <u>'+BR.pick+'</u></p><label class="wdrop-c" onclick="event.stopPropagation()">'+BR.dropCat+' <select>'+['raw','brand','reference','document'].map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label>'+
+  function dropZone(){ return '<div class="wdrop form" tabindex="0" role="button" aria-label="'+(CANDROP?BR.drop:BR.pick)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'+
+    '<p><b class="wd-d">'+BR.drop+'</b> <span class="muted wd-d">'+BR.dropOr+'</span> <u>'+BR.pick+'</u></p><label class="wdrop-c" onclick="event.stopPropagation()">'+BR.dropCat+' <select>'+['raw','brand','reference','document'].map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label>'+
     '<input type="file" multiple hidden></div><ul class="wupl"></ul>'; }
   function bindDrop(box,meta,after){ var z=box.querySelector('.wdrop'); if(!z) return; var inp=z.querySelector('input'), sel=z.querySelector('select'), list=box.querySelector('.wupl');
     var go=function(files){ if(files&&files.length) sendFiles(files,function(){ return Object.assign({category:sel.value},meta); },list,function(){ setTimeout(after,600); }); };
     z.onclick=function(e){ if(!e.target.closest('select,label')) inp.click(); }; z.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); inp.click(); } };
     inp.onchange=function(){ go(inp.files); inp.value=''; };
+    if(!CANDROP) return;   // phones and tablets: choosing files only, there is nothing to drag from
     ['dragenter','dragover'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.add('over'); }); });
     ['dragleave','drop'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.remove('over'); }); });
     z.addEventListener('drop',function(e){ go(e.dataTransfer&&e.dataTransfer.files); }); }

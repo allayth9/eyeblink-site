@@ -674,7 +674,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     return adminPost(ctx, d);
   }
@@ -959,7 +959,7 @@ async function adminGet(request, env, q){
     const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
-    return json({ ok: true, client: cr, account: !!u0, files, delivered, today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    return json({ ok: true, client: cr, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
@@ -1131,6 +1131,22 @@ async function adminPost(ctx, d){
     if (!r.ok) return json({ ok: false, error: r.description || "webhook" }, 502);
     await env.EB.put("tg:clients", JSON.stringify({ bot: me.result.username, secret, at }));
     return json({ ok: true, bot: me.result.username, hook });
+  }
+  // the studio fills in or corrects a client's brand library (the same rules as the client's own save)
+  if (d.action === "brandSave") {
+    const em = clip(d.email, 254).toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return json({ ok: false, error: "email" }, 400);
+    const hex = /^#[0-9a-f]{6}$/i;
+    const colors = (Array.isArray(d.colors) ? d.colors : []).slice(0, 24).map(c => ({ name: clip(c && c.name, 40), hex: String(c && c.hex || "").trim().toUpperCase() })).filter(c => hex.test(c.hex));
+    const fonts = (Array.isArray(d.fonts) ? d.fonts : []).slice(0, 12).map(f => ({ name: clip(f && f.name, 60), use: clip(f && f.use, 60) })).filter(f => f.name);
+    await D.prepare("INSERT INTO brand_kits (email, colors, fonts, style, music, updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET colors=excluded.colors, fonts=excluded.fonts, style=excluded.style, music=excluded.music, updated_at=excluded.updated_at")
+      .bind(em, JSON.stringify(colors), JSON.stringify(fonts), clip(d.style, 1500), clip(d.music, 1500), now()).run();
+    return json({ ok: true, brand: await brandOf(D, em) });
+  }
+  if (d.action === "brandAssetDel") {
+    const a = await D.prepare("SELECT * FROM brand_assets WHERE id=? AND deleted_at IS NULL").bind(clip(d.id, 40)).first(); if (!a) return json({ ok: false }, 404);
+    await D.prepare("UPDATE brand_assets SET deleted_at=? WHERE id=?").bind(now(), a.id).run();
+    if (env.R2) await env.R2.delete(a.key).catch(() => {});
+    return json({ ok: true });
   }
   if (d.action === "clientSave") {
     const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);

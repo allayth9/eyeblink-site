@@ -44,7 +44,7 @@
     acct.classList.toggle('in',!!u); bar.classList.toggle('is-client',!!cl); try{ window.dispatchEvent(new CustomEvent('eb:who',{detail:u||null})); }catch(_){} if(u){ acct.title=u.name; acct.setAttribute('aria-haspopup','menu'); acct.setAttribute('aria-expanded','false'); } else { acct.removeAttribute('aria-haspopup'); acct.removeAttribute('aria-expanded'); }
     // the workspace link: top bar (first item) + mobile dock
     var li=links&&links.querySelector('.ws-li');
-    if(cl&&links&&!li){ li=document.createElement('li'); li.className='ws-li'; li.innerHTML='<a class="ws-link" href="'+WS+'"'+(PAGE==='workspace'?' aria-current="page"':'')+'><i aria-hidden="true"></i><span>'+T.ws+'</span></a>'; links.insertBefore(li,links.firstChild); }
+    if(cl&&links&&!li){ li=document.createElement('li'); li.className='ws-li'; li.innerHTML='<a class="ws-link eb-metal" href="'+WS+'"'+(PAGE==='workspace'?' aria-current="page"':'')+'><i aria-hidden="true"></i><span>'+T.ws+'</span></a>'; links.insertBefore(li,links.firstChild); }
     if(!cl&&li) li.remove();
     // phones: the workspace is a floating button above the bottom bar (not a bottom-bar item); hidden on the workspace page itself
     var fab=document.querySelector('.ws-fab');

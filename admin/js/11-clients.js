@@ -99,12 +99,12 @@
       '<dl class="pkg-dl"><div><dt>الرابط</dt><dd dir="ltr">'+esc(k.link)+'</dd></div><div><dt>البريد</dt><dd dir="ltr">'+esc(k.email)+'</dd></div><div><dt>كلمة السر المؤقتة</dt><dd dir="ltr" class="pkg-pw">'+esc(k.password)+'</dd></div></dl>'+
       '<pre class="pkg-msg" dir="auto">'+esc(pkgMsg(k))+'</pre>'+
       '<div class="actions"><button class="btn sm primary" type="button" data-pkgcopy>نسخ الرسالة</button><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/'+digits+'?text='+encodeURIComponent(pkgMsg(k))+'">إرسال عبر واتساب'+(digits?'':' (اختر جهة الاتصال)')+'</a><button class="btn sm" type="button" data-pkgpw>نسخ كلمة السر</button></div></section>'; }
-  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['log','سجل النشاط']];
+  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['brand','مكتبة الهوية'],['log','سجل النشاط']];
   function renderProfile(){ var P=PROF;
     if(P.err) { $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="empty">'+(P.err==='live'?'يعمل هذا القسم على الموقع المنشور.':P.err==='db'?'قاعدة البيانات غير مربوطة.':'تعذّر تحميل ملف العميل.')+'</div></section>'; return; }
     if(!P.d){ $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="skel"><i></i><i></i><i></i></div></section>'; return; }
     var D=P.d, c=D.client||{}, u=D.user, email=P.email, isCl=u.role==='client', ords=ordersOf(email), listC=(CL&&CL.clients||[]).filter(function(x){ return x.email===email; })[0]||{};
-    var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,log:D.activity.length};
+    var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,brand:D.brand?D.brand.assets.length+D.brand.colors.length+D.brand.fonts.length:0,log:D.activity.length};
     var head='<section class="sec cp-head"><div class="cp-top"><button class="btn sm" type="button" data-pclose>‹ كل العملاء</button>'+(P.loading?'<span class="small muted">يُحدَّث…</span>':'')+'</div>'+
       '<div class="cph2">'+avatar({name:c.name||u.name,email:email,logo_url:c.logo_url},true)+'<div class="cp-id"><h2>'+esc(c.name||u.name||email)+'</h2>'+(c.company?'<div>'+esc(c.company)+'</div>':'')+
         '<div class="small muted"><span dir="ltr" style="user-select:all">'+esc(email)+'</span>'+(c.phone?' · <span dir="ltr">'+esc(c.phone)+'</span>':'')+(c.id?' · <span class="code">'+esc(c.id)+'</span>':'')+'</div>'+
@@ -124,7 +124,7 @@
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea name="notes" dir="auto" rows="3">'+esc(c.notes||'')+'</textarea></div><div class="actions"><button class="btn primary sm" type="submit">حفظ البيانات</button></div></form>'
         :(c.notes?'<div class="cp-notes"><span class="small muted">ملاحظات داخلية</span><p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p></div>':''))+
       '<nav class="cp-tabs" role="tablist">'+PSECS.map(function(x){ return '<button type="button" role="tab" class="t-'+x[0]+'" aria-selected="'+(PSEC===x[0])+'" data-psec="'+x[0]+'">'+x[1]+(cnt[x[0]]?' <small>'+cnt[x[0]]+'</small>':'')+'</button>'; }).join('')+'</nav></section>';
-    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
+    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,brand:pBrand,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
   }
   function kpi(n,l,k){ var fam={'#F5C66B':' ck-wait','#7DD3FC':' ck-ok'}[k]||''; return '<div class="ck'+fam+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
   function due2(D){ var due={},paid={}; D.invoices.forEach(function(x){ if(x.status!=='cancelled') paid[x.currency]=(paid[x.currency]||0)+x.paid-(x.refunded||0); if(x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0) due[x.currency]=(due[x.currency]||0)+x.balance; });
@@ -348,3 +348,31 @@
   // the «⋯» menu on a profile closes when you click anywhere else
   document.addEventListener('click',function(e){ if(!e.target.isConnected) return;   // a click that redrew the page is not a click outside
     [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });
+
+  // ---- the client's brand library: the studio can fill it in or correct it (the client sees the same library in the workspace) ----
+  var BKIND={logo_dark:'شعار على خلفية داكنة',logo_light:'شعار على خلفية فاتحة',vector:'ملفات متجهة',font:'ملفات الخطوط',other:'أخرى'};
+  function pBrand(D){ var B=D.brand||{colors:[],fonts:[],style:'',music:'',assets:[]}, rel=function(u){ return String(u||'').replace(/^https?:\/\/[^\/]+/,''); };
+    return '<section class="sec cp-brand"><div class="ph"><h3>مكتبة الهوية</h3>'+(B.updated_at?'<span class="small muted">آخر تعديل '+esc(ago2(B.updated_at))+'</span>':'')+'</div>'+
+      '<p class="hint">ما تكتبه هنا يظهر للعميل في صفحة «مكتبة الهوية»، ويدخل تلقائياً في موجز كل مهمة جديدة.</p>'+
+      '<form id="clBrand" novalidate><div class="field"><label>الألوان (سطر لكل لون: الرمز ثم الاسم)</label><textarea name="colors" dir="ltr" rows="4" placeholder="#3FE0E8 سماوي">'+esc(B.colors.map(function(c){ return c.hex+(c.name?' '+c.name:''); }).join('\n'))+'</textarea>'+
+        '<div class="cp-sw">'+B.colors.map(function(c){ return '<span title="'+esc(c.hex)+'" style="background:'+esc(c.hex)+'"></span>'; }).join('')+'</div></div>'+
+        '<div class="field"><label>الخطوط (سطر لكل خط: الاسم - الاستخدام)</label><textarea name="fonts" dir="auto" rows="3" placeholder="Tajawal - العناوين">'+esc(B.fonts.map(function(f){ return f.name+(f.use?' - '+f.use:''); }).join('\n'))+'</textarea></div>'+
+        '<div class="row"><div class="field"><label>الأسلوب البصري</label><textarea name="style" dir="auto" rows="3">'+esc(B.style)+'</textarea></div><div class="field"><label>الموسيقى</label><textarea name="music" dir="auto" rows="3">'+esc(B.music)+'</textarea></div></div>'+
+        '<div class="actions"><button class="btn primary sm" type="submit">حفظ مكتبة الهوية</button></div></form>'+
+      '<h4>الملفات</h4><div class="cp-bup"><select data-bkind aria-label="نوع الملف">'+Object.keys(BKIND).map(function(k){ return '<option value="'+k+'">'+BKIND[k]+'</option>'; }).join('')+'</select>'+
+        '<button class="btn sm" type="button" data-bpick>+ رفع ملفات</button><input type="file" multiple hidden data-bfile><span class="small muted" data-bprog></span></div>'+
+      (B.assets.length?'<div class="cp-bfiles">'+B.assets.map(function(a){ return '<div class="wfi"><span class="tag">'+esc(BKIND[a.kind]||a.kind)+'</span> <a href="'+esc(rel(a.url))+'?dl=1">'+esc(a.title)+'</a> <button class="btn sm danger" type="button" data-bdel="'+esc(a.id)+'">حذف</button></div>'; }).join('')+'</div>'
+        :'<div class="empty small">لا توجد ملفات بعد.</div>')+'</section>'; }
+  document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||f.id!=='clBrand') return; e.preventDefault(); var E=f.elements, bad=[];
+    var colors=E.colors.value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){ var m=/^(#?[0-9a-f]{6})\s*(.*)$/i.exec(l); if(!m){ bad.push(l); return null; } return {hex:(m[1][0]==='#'?'':'#')+m[1].toUpperCase(),name:m[2].trim()}; }).filter(Boolean);
+    if(bad.length){ toast('رمز لون غير صحيح: '+bad[0],true); E.colors.focus(); return; }
+    var fonts=E.fonts.value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){ var x=l.split(/\s+-\s+/); return {name:x[0].trim(),use:(x[1]||'').trim()}; });
+    creq({action:'brandSave',email:PROF.email,colors:colors,fonts:fonts,style:E.style.value.trim(),music:E.music.value.trim()},f.querySelector('[type=submit]'),'حُفظت مكتبة الهوية').catch(function(){}); });
+  document.addEventListener('click',function(e){ if(TAB!=='clients') return; var b;
+    if((b=e.target.closest('[data-bpick]'))){ b.parentNode.querySelector('[data-bfile]').click(); return; }
+    if((b=e.target.closest('[data-bdel]'))){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟'; return; } creq({action:'brandAssetDel',id:b.dataset.bdel},b,'حُذف الملف').catch(function(){}); } });
+  document.addEventListener('change',function(e){ var inp=e.target; if(TAB!=='clients'||!inp.hasAttribute('data-bfile')||!inp.files.length) return;
+    var box=inp.parentNode, kind=box.querySelector('[data-bkind]').value, prog=box.querySelector('[data-bprog]'), q=[].slice.call(inp.files), n=q.length, ok=0;
+    var step=function(){ var f=q.shift(); if(!f){ prog.textContent=ok+' / '+n; toast(ok===n?'رُفعت الملفات':'رُفع '+ok+' من '+n,ok!==n); loadProfile(PROF.email); return; }
+      window.EBUp.upload(f,{scope:'brand',kind:kind,client_email:PROF.email},function(x){ prog.textContent=f.name+' · '+Math.round(x*100)+'%'; }).then(function(){ ok++; step(); },function(){ step(); }); };
+    inp.value=''; step(); });
