@@ -88,26 +88,32 @@ export async function telegram(env, text){
     body: JSON.stringify({ chat_id: chat, text: text.slice(0, 3900), disable_web_page_preview: true }) }); return await r.json(); } catch (e) { return { ok:false, description:String(e) }; }
 }
 export function greet(o){ const f = String((o && o.name) || "").trim().split(/\s+/)[0]; return o && o.lang === "en" ? "Hi" + (f ? " " + f : "") + "," : "أهلاً" + (f ? " " + f : "") + "،"; }
-// one layout for every e-mail: logo centred on top → the greeting on its own line → title → details → button → logo in the footer
-export function mail(lang, title, bodyHtml, cta, link, hi){
-  const rtl = lang !== "en", al = rtl ? "right" : "left", dr = rtl ? "rtl" : "ltr", D = `dir="${dr}"`, DS = `direction:${dr};unicode-bidi:embed;`;
-  return `<!doctype html><html dir="${rtl?"rtl":"ltr"}" lang="${rtl?"ar":"en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="dark light"></head>
-<body ${D} style="${DS}margin:0;background:#04061A;padding:28px 12px;font-family:Tahoma,Arial,sans-serif;-webkit-text-size-adjust:100%">
-<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:560px;margin:0 auto;background:#0b1236;border-radius:20px;border:1px solid #1d2758">
-<tr><td align="center" style="padding:30px 24px 22px"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="190" alt="EYEBLINK STUDIO" style="display:block;width:190px;max-width:70%;height:auto;border:0;margin:0 auto"></a></td></tr>
-<tr><td style="padding:0 28px"><div style="height:2px;line-height:2px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:2px">&nbsp;</div></td></tr>
-<tr><td ${D} align="${al}" style="${DS}padding:26px 28px 30px;color:#EEF2F6;text-align:${al}">
-${hi?`<p ${D} style="${DS}margin:0 0 18px;font-size:17px;line-height:1.6;color:#ffffff">${h(hi)}</p>`:""}
-<h1 ${D} style="${DS}font-size:20px;line-height:1.5;margin:0 0 12px;color:#ffffff">${h(title)}</h1>
-<div ${D} style="${DS}font-size:15px;line-height:1.8;color:#C3CEE2;text-align:${al}">${bodyHtml}</div>
-${cta?`<div ${D} style="${DS}margin-top:24px"><a href="${link}" style="display:inline-block;background:#EEF2F6;color:#04061A;text-decoration:none;font-weight:bold;font-size:15px;padding:13px 26px;border-radius:999px">${h(cta)}</a></div>`:""}
-</td></tr></table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto"><tr><td align="center" style="padding:22px 12px 6px">
-<a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/apple-touch-icon.png" width="38" height="38" alt="Eyeblink" style="display:block;width:38px;height:38px;border-radius:10px;border:0;margin:0 auto"></a>
-<p style="margin:10px 0 0;color:#8E9BB8;font-size:12px;line-height:1.7;direction:ltr">Eyeblink Studio · <a href="${SITE}" style="color:#8E9BB8">eyeblinkstudio.com</a> · <a href="https://instagram.com/eyeblnk" style="color:#8E9BB8">@eyeblnk</a></p>
-<p ${D} style="${DS}margin:6px 0 0;color:#6F7FA0;font-size:11.5px;line-height:1.7">${rtl?"مشكلة تقنية أو استفسار عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#8E9BB8">support@eyeblinkstudio.com</a></p>
-</td></tr></table></body></html>`;
-}
+// one layout for every e-mail (14 Nov redesign): the identity's night, one quiet card, the identity gradient as a hairline
+// (cyan → blue → navy, not the old cyan → violet), a blue pill button with a light metal edge, generous spacing.
+// Table-based and inline-styled so Gmail, Outlook and Apple Mail draw it the same; RTL for Arabic, LTR for English
+export function mail(lang, title, bodyHtml, cta, link, hi){
+  const rtl = lang !== "en", al = rtl ? "right" : "left", dr = rtl ? "rtl" : "ltr", D = `dir="${dr}"`, DS = `direction:${dr};unicode-bidi:embed;`;
+  const font = rtl ? "'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif" : "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+  return `<!doctype html><html dir="${dr}" lang="${rtl?"ar":"en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${h(title)}</title></head>
+<body ${D} style="${DS}margin:0;padding:0;background:#04061A;font-family:${font};-webkit-text-size-adjust:100%">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#04061A" style="background:#04061A"><tr><td align="center" style="padding:36px 14px 28px">
+<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:580px">
+<tr><td align="center" style="padding:0 0 26px"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="170" alt="EYEBLINK STUDIO" style="display:block;width:170px;max-width:60%;height:auto;border:0;margin:0 auto"></a></td></tr>
+<tr><td style="background:#0A1033;border:1px solid #1B2556;border-radius:24px;overflow:hidden">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="height:3px;line-height:3px;font-size:0;background:#2A86E6;background-image:linear-gradient(90deg,#2FC4D8,#2A86E6 40%,#1C45E6 75%,#0E1A5C)">&nbsp;</td></tr>
+<tr><td ${D} align="${al}" style="${DS}padding:34px 36px 38px;text-align:${al}">
+${hi?`<p ${D} style="${DS}margin:0 0 20px;font-size:16px;line-height:1.7;color:#AEBBD2">${h(hi)}</p>`:""}
+<h1 ${D} style="${DS}margin:0 0 14px;font-size:22px;line-height:1.5;font-weight:700;color:#EEF2F6">${h(title)}</h1>
+<div ${D} style="${DS}font-size:15.5px;line-height:1.85;color:#C3CEE2;text-align:${al}">${bodyHtml}</div>
+${cta?`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px 0 0;${rtl?"margin-right:0;margin-left:auto":""}"><tr><td align="center" bgcolor="#2A86E6" style="border-radius:999px;background:#2A86E6;background-image:linear-gradient(180deg,#2A86E6,#1C45E6);border:1px solid #9FB6D6">
+<a href="${link}" style="display:inline-block;padding:14px 34px;font-family:${font};font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px">${h(cta)}</a></td></tr></table>`:""}
+</td></tr></table></td></tr>
+<tr><td align="center" style="padding:28px 12px 0">
+<p style="margin:0;color:#6F7FA0;font-size:12px;line-height:1.8;direction:ltr;letter-spacing:.04em"><a href="${SITE}" style="color:#AEBBD2;text-decoration:none">eyeblinkstudio.com</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://instagram.com/eyeblnk" style="color:#AEBBD2;text-decoration:none">@eyeblnk</a></p>
+<p ${D} style="${DS}margin:8px 0 0;color:#6F7FA0;font-size:12px;line-height:1.8">${rtl?"مشكلة تقنية أو سؤال عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#AEBBD2;text-decoration:none">support@eyeblinkstudio.com</a></p>
+</td></tr></table></td></tr></table></body></html>`;
+}
 // to the studio: e-mail (to the address in the site settings) + Telegram
 export async function notifyStudio(env, subject, text){
   const s = await siteSettings(env), to = env.NOTIFY_EMAIL || s.email;
@@ -215,8 +221,8 @@ export function invoicePage(o, inv, opt){
 }
 
 // ---- client e-mails: the request summary; an invoice for every payment ----
-export function rows(list, rtl){ return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 4px">${list.filter(r=>r&&r[1]!==""&&r[1]!=null).map(([k,v,strong])=>`<tr><td style="padding:10px 0;border-bottom:1px solid #1d2758;color:#8E9BB8;font-size:13px;width:38%;vertical-align:top">${h(k)}</td><td style="padding:10px 0;border-bottom:1px solid #1d2758;color:${strong?"#fff":"#DCE3F0"};font-size:${strong?"17px":"14px"};font-weight:${strong?"bold":"normal"};text-align:${rtl?"right":"left"}">${v}</td></tr>`).join("")}</table>`; }
-export function steps(list){ return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 0">${list.map((s,i)=>`<tr><td style="vertical-align:top;padding:0 0 12px;width:26px"><div style="width:24px;height:24px;line-height:24px;border-radius:12px;background:#3FE0E8;color:#04061A;text-align:center;font:bold 12px/24px Arial">${i+1}</div></td><td style="padding:2px 12px 12px;color:#C3CEE2;font-size:14px;line-height:1.7">${h(s)}</td></tr>`).join("")}</table>`; }
+export function rows(list, rtl){ return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 4px">${list.filter(r=>r&&r[1]!==""&&r[1]!=null).map(([k,v,strong])=>`<tr><td style="padding:12px 0;border-bottom:1px solid #1B2556;color:#8E9BB8;font-size:13.5px;width:38%;vertical-align:top">${h(k)}</td><td style="padding:12px 0;border-bottom:1px solid #1B2556;color:${strong?"#fff":"#DCE3F0"};font-size:${strong?"17px":"14px"};font-weight:${strong?"bold":"normal"};text-align:${rtl?"right":"left"}">${v}</td></tr>`).join("")}</table>`; }
+export function steps(list){ return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 0">${list.map((s,i)=>`<tr><td style="vertical-align:top;padding:0 0 12px;width:26px"><div style="width:24px;height:24px;line-height:24px;border-radius:12px;background:#2A86E6;color:#FFFFFF;text-align:center;font:bold 12px/24px Arial">${i+1}</div></td><td style="padding:2px 12px 12px;color:#C3CEE2;font-size:14px;line-height:1.7">${h(s)}</td></tr>`).join("")}</table>`; }
 export async function mailReceived(env, o){
   if (!o.email) return;
   const en = o.lang === "en", link = SITE + (en ? "/en" : "") + "/account.html#" + o.code, rtl = !en;

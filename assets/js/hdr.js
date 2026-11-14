@@ -29,6 +29,8 @@
     return get('account?lite=1').then(function(j){
       if(!j||!j.ok){ S={u:null,unread:0}; save(); apply(); return; }
       S={u:j.user,unread:(S&&S.u&&S.u.email===j.user.email)?S.unread:0};
+      // e-mails go out in the language of the version the person uses: if this page's language differs from the account's, follow the page
+      var pl=document.documentElement.lang==='en'?'en':'ar'; if(j.user.lang&&j.user.lang!==pl){ post('account',{action:'lang',lang:pl}); j.user.lang=pl; }
       if(j.user.role!=='client'){ S.unread=0; save(); apply(); return; }
       return get('work?view=unread').then(function(w){ if(w&&w.ok) S.unread=w.unread; save(); apply(); });
     });

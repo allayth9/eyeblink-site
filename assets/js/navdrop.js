@@ -1,56 +1,17 @@
-/* Eyeblink — the menus' water drop (top bar on a computer, bottom dock on a phone).
-   The current page sits under a quiet drop of liquid glass, centred on its name. Pick another page and the
-   drop stretches toward it, splits into droplets on a long jump and merges back with a ripple; then the
-   usual blink takes you there. The bars keep their look: only the indicator moves.
-   Drawn by a tiny WebGL shader (only inside the menu, paused off screen); without WebGL a CSS drop does the
-   same move; with «reduce motion» the indicator stays still and pages open as before.
-   The water and physics follow «Liquid Navbar · Waterline» by guglielmogiannattasio.it, rewritten without React. */
+/* Eyeblink — the menus' moving indicator (top bar on a computer, bottom dock on a phone).
+   The current page sits on a quiet glass pill with a 1px metal edge (the same family as the top bar and the metal
+   buttons). Pick another page and the pill stretches toward it and settles there (spring physics); then the usual
+   blink takes you there. With «reduce motion» it stays still and pages open as before.
+   14 Nov: the WebGL water drop was removed (its look read as a bubble, and its shader slowed the first paint);
+   the motion is the same, drawn with one CSS element. */
 (function(){
   var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches, DPR=Math.min(window.devicePixelRatio||1,2), PAD=14;
   var nav=document.querySelector('header.nav');
 
-  /* ---------- the water shader: the drop only, a soft rim and one quiet highlight ---------- */
-  var FRAG=[
-'precision highp float;',
-'uniform vec2 uRes;uniform float uDpr;uniform float uTime;uniform float uA;',
-'uniform vec4 uBlob[6];uniform float uSy[6];uniform vec4 uRip[6];',
-'float sdCap(vec2 p,vec4 B,float sy){p-=B.xy;p.y/=sy;p.x=max(abs(p.x)-B.z,0.);return(length(p)-B.w)*min(1.,sy);}',
-'float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}',
-'float dropD(vec2 p){float d=1e4;for(int i=0;i<6;i++){if(uBlob[i].w>.5){d=smin(d,sdCap(p,uBlob[i],uSy[i]),13.);}}return d;}',
-'float lens(float d,float w){float t=clamp(-d/w,0.,1.);return sqrt(1.-(1.-t)*(1.-t));}',
-'float waves(vec2 p){float w=0.;for(int i=0;i<6;i++){vec4 R=uRip[i];if(R.w>0.){float x=length(p-R.xy)-R.z*240.;w+=R.w*exp(-R.z*1.7)*sin(x*.3)*exp(-x*x/700.);}}return w;}',
-'float H(vec2 p){return lens(dropD(p),11.)*7.5+waves(p);}',
-'void main(){',
-' vec2 p=vec2(gl_FragCoord.x,uRes.y*uDpr-gl_FragCoord.y)/uDpr;',
-' float dd=dropD(p);if(dd>3.){gl_FragColor=vec4(0.);return;}',
-' float h0=H(p);vec3 n=normalize(vec3(h0-H(p+vec2(1.,0.)),h0-H(p+vec2(0.,1.)),1.));vec3 V=vec3(0.,0.,1.);',
-' float spec=pow(max(dot(reflect(-normalize(vec3(-.45,-.8,.85)),n),V),0.),80.);',
-   // the edge's outward direction (screen, y down)
-' vec2 g=normalize(vec2(dropD(p+vec2(1.,0.))-dd,dropD(p+vec2(0.,1.))-dd)+1e-5);',
-' float dm=smoothstep(1.,-1.,dd);',
-   // iOS liquid glass: a clear teal-blue body, a soft inner glow round the edge, one thin bright rim
-   // (brightest at the top-left, a softer second light at the bottom-right)
-' vec3 c=vec3(.42,.74,.92)*.15*dm;float a=.15*dm;',
-' float la=dm*(1.-smoothstep(0.,10.,-dd))*.2;c=vec3(.85,.97,1.)*la+c*(1.-la);a=la+a*(1.-la);',
-' vec2 L=normalize(vec2(-1.,-1.));float key=pow(max(dot(g,L),0.),1.4),back=pow(max(dot(g,-L),0.),2.);',
-' la=clamp((1.-smoothstep(0.,1.3,abs(dd+.7)))*(.22+.55*key+.30*back),0.,1.);c=vec3(.9,.99,1.)*la+c*(1.-la);a=la+a*(1.-la);',
-' la=clamp(dm*spec*.55,0.,1.);c=vec3(1.)*la+c*(1.-la);a=la+a*(1.-la);',
-' gl_FragColor=vec4(c,a)*uA;}'].join('\n');
-
   function Drop(list,items,host,isOn){
-    var cv=document.createElement('canvas'); cv.className='nav-water'; cv.setAttribute('aria-hidden','true');
     var css=document.createElement('span'); css.className='nav-drop'; css.setAttribute('aria-hidden','true');
-    host.insertBefore(css,host.firstChild); host.insertBefore(cv,host.firstChild);
-    var G=null;
-    if(!reduce){ try{ var gl=cv.getContext('webgl',{premultipliedAlpha:true,alpha:true,antialias:false});
-      if(gl){ var sh=function(t,s){ var o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return gl.getShaderParameter(o,gl.COMPILE_STATUS)?o:null; };
-        var vs=sh(gl.VERTEX_SHADER,'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}'), fs=sh(gl.FRAGMENT_SHADER,FRAG);
-        if(vs&&fs){ var pr=gl.createProgram(); gl.attachShader(pr,vs); gl.attachShader(pr,fs); gl.linkProgram(pr);
-          if(gl.getProgramParameter(pr,gl.LINK_STATUS)){ gl.useProgram(pr); var b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-            var l=gl.getAttribLocation(pr,'a'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0);
-            var u={}; ['uRes','uDpr','uTime','uA','uBlob','uSy','uRip'].forEach(function(k){ u[k]=gl.getUniformLocation(pr,k); }); G={gl:gl,u:u}; } } } }catch(_){} }
-    host.classList.add('has-drop',G?'drop-gl':'drop-css');
-    cv.addEventListener('webglcontextlost',function(e){ e.preventDefault(); G=null; host.classList.remove('drop-gl'); host.classList.add('drop-css'); });
+    host.insertBefore(css,host.firstChild);
+    host.classList.add('has-drop','drop-css');
 
     var S={a:{x:0,v:0},b:{x:0,v:0},sy:{s:1,v:0},lead:0,lagFrom:0,sats:[],rips:[],t:{x:0,cy:0,q:0,r:20},q:0,
       moving:false,split:false,ready:false,w:0,h:0,ox:0,oy:0,lo:0,hi:0,vis:true,raf:0,last:0,time:0,alpha:0,alphaT:0,cur:-1};
@@ -61,13 +22,10 @@
       var cx=(tr.left+tr.right)/2, w=Math.min(er.width,Math.max(tr.width+30,er.height));
       return {cx:cx,cy:(er.top+er.bottom)/2,w:w,h:er.height-4}; }
     function measure(target,jump){
-      if(!isOn()){ cv.style.display=css.style.display='none'; S.ready=false; return false; }
-      cv.style.display=css.style.display='';
+      if(!isOn()){ css.style.display='none'; S.ready=false; return false; }
+      css.style.display='';
       var lr=list.getBoundingClientRect(), hr=host.getBoundingClientRect();
       S.w=lr.width; S.h=lr.height; S.ox=lr.left-hr.left; S.oy=lr.top-hr.top;
-      var W=S.w+PAD*2, H=S.h+PAD*2;
-      cv.style.left=(S.ox-PAD)+'px'; cv.style.top=(S.oy-PAD)+'px';
-      if(cv.width!==Math.round(W*DPR)||cv.height!==Math.round(H*DPR)){ cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); cv.style.width=W+'px'; cv.style.height=H+'px'; }
       var el=items[target]; if(!el) return true;
       var B=box(el), T=S.t;
       T.r=B.h/2; T.q=Math.max(0,B.w/2-T.r); T.cy=PAD+B.cy-lr.top;
@@ -102,17 +60,8 @@
     }
     function draw(){
       var T=S.t, sep=Math.abs(S.a.x-S.b.x), thin=Math.min(sep/(2*(S.q+T.r)||1),1), r=T.r*(1-.3*thin);
-      if(G){ var g=G.gl,u=G.u; g.viewport(0,0,g.drawingBufferWidth,g.drawingBufferHeight);
-        g.uniform2f(u.uRes,S.w+PAD*2,S.h+PAD*2); g.uniform1f(u.uDpr,DPR); g.uniform1f(u.uTime,S.time); g.uniform1f(u.uA,S.alpha);
-        var bl=new Float32Array(24), sy=new Float32Array(6); for(var i=0;i<6;i++) sy[i]=1;
-        var head=S.lead===0?S.a:S.b, tail=S.lead===0?S.b:S.a;
-        bl.set([head.x,T.cy,S.q*(1-.25*thin),T.r*(1-.12*thin),tail.x,T.cy,S.q*(1-.8*thin),T.r*(1-.5*thin)],0); sy[0]=sy[1]=S.sy.s;
-        S.sats.slice(0,4).forEach(function(d,i){ bl.set([d.x,d.y,0,d.r],8+i*4); });
-        g.uniform4fv(u.uBlob,bl); g.uniform1fv(u.uSy,sy);
-        var rp=new Float32Array(24); S.rips.slice(-6).forEach(function(p,i){ rp.set([p.x,p.y,p.age,p.amp],i*4); }); g.uniform4fv(u.uRip,rp);
-        g.clearColor(0,0,0,0); g.clear(g.COLOR_BUFFER_BIT); g.drawArrays(g.TRIANGLES,0,3);
-      } else { var left=Math.min(S.a.x,S.b.x)-S.q-r-PAD+S.ox, width=sep+2*(S.q+r);
-        css.style.width=width+'px'; css.style.opacity=S.alpha; css.style.transform='translateX('+left+'px) scaleY('+S.sy.s+')'; }
+      var left=Math.min(S.a.x,S.b.x)-S.q-r-PAD+S.ox, width=sep+2*(S.q+r);
+      css.style.width=width+'px'; css.style.opacity=S.alpha; css.style.transform='translateX('+left+'px) scaleY('+S.sy.s+')';
     }
     function loop(){ if(S.raf||!S.ready) return; S.last=performance.now();
       var tick=function(now){ var dt=Math.min((now-S.last)/1000,1/30); S.last=now; var rest=reduce?true:step(dt,now); if(reduce) S.alpha=S.alphaT; draw();

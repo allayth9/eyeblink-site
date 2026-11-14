@@ -8,7 +8,7 @@ export async function onRequestGet({ request, env }) {
   const u = await currentUser(request, env);
   if (!u) return json({ ok: false, guest: true });          // a visitor who is not signed in: not an error
   // the header on every page only needs who this is (no orders read)
-  if (new URL(request.url).searchParams.get("lite")) return json({ ok: true, user: { email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", mustChange: !!u.mustChange } });
+  if (new URL(request.url).searchParams.get("lite")) return json({ ok: true, user: { email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", mustChange: !!u.mustChange, lang: u.lang === "en" ? "en" : "ar" } });
   const orders = [];
   for (const k of (u.orders || []).slice(-60).reverse()) {
     const v = await env.EB.get(k); if (!v) continue; const o = JSON.parse(v); if (o.manual && !o.clientVisible) continue;
