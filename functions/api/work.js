@@ -109,6 +109,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS push_subs (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, ua TEXT, created_at TEXT NOT NULL, last_ok_at TEXT)`,
   `CREATE INDEX IF NOT EXISTS push_subs_email ON push_subs(email)`,
   `CREATE TABLE IF NOT EXISTS tg_links (email TEXT PRIMARY KEY, chat_id TEXT NOT NULL UNIQUE, username TEXT, linked_at TEXT NOT NULL)`,
+  // the two quiet first-visit hints (welcome strip, player tip): shown once per client
+  `CREATE TABLE IF NOT EXISTS client_tips (email TEXT NOT NULL, k TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (email, k))`,
 ];
 // columns added to tables that already exist on the live database (run once, in order; meta "schema" keeps the count)
 const MIGRATIONS = [
@@ -626,16 +628,24 @@ export async function onRequestGet(ctx) {
   }
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
-      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=?2 AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e, monthOf(now())).all()).results.map(parseP);
+      (SELECT MIN(t.confirmed_date) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open}) AND t.confirmed_date >= ?3) AS next_date,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=?2 AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e, monthOf(now()), today()).all()).results.map(parseP);
   const counts = {}; for (const r of (await D.prepare(`SELECT status, COUNT(*) AS n FROM tasks WHERE project_id IN ${MINE} GROUP BY status`).bind(e).all()).results) counts[r.status] = r.n;
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 12`).bind(e).all()).results.map(cparse);
   const upcoming = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.confirmed_date >= ?2 AND t.status IN (${open}) ORDER BY t.confirmed_date LIMIT 6`).bind(e, today()).all()).results;
-  const activity = (await D.prepare(`SELECT a.*, t.ref AS task_ref, t.title AS task_title FROM activity a LEFT JOIN tasks t ON t.id=a.task_id WHERE a.project_id IN ${MINE} ORDER BY a.id DESC LIMIT 20`).bind(e).all()).results.map(parseA);
+  // the home screen: what waits on the client, each project's pulse, the latest versions and what is coming
+  const due = (await D.prepare("SELECT id, no, title, currency, total, paid, status, due_date FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial') ORDER BY due_date IS NULL, due_date LIMIT 8").bind(e).all()).results;
+  const delivered = (await D.prepare(`SELECT d.id, d.label, d.is_final, d.status, d.created_at, t.ref, t.title, t.status AS task_status, p.name AS project_name FROM deliverables d JOIN tasks t ON t.id=d.task_id JOIN projects p ON p.id=d.project_id
+      WHERE d.project_id IN ${MINE} ORDER BY d.created_at DESC LIMIT 5`).bind(e).all()).results;
+  const recurring = (await D.prepare(`SELECT r.title, r.next_run, p.name AS project_name FROM recurring r JOIN projects p ON p.id=r.project_id WHERE r.project_id IN ${MINE} AND r.active=1 ORDER BY r.next_run LIMIT 4`).bind(e).all()).results;
+  const moves = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.change_request, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
+      AND t.change_request LIKE '%"pending"%' LIMIT 6`).bind(e).all()).results.map(cparse).filter(t => t.change_request && t.change_request.status === "pending");
+  const tips = (await D.prepare("SELECT k FROM client_tips WHERE email=?").bind(e).all()).results.map(r => r.k);
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
   const bills = await D.prepare("SELECT COUNT(*) AS open, SUM(CASE WHEN due_date<?2 THEN 1 ELSE 0 END) AS overdue FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(e, today()).first();
-  return json({ ok: true, projects, counts, tasks, upcoming, activity, waiting, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
+  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
 }
 
 export async function onRequestPost(ctx) {
@@ -651,6 +661,8 @@ export async function onRequestPost(ctx) {
   if (u.mustChange) return json({ ok: false, error: "password" }, 403);   // a temporary password: choose your own first
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), who = { actor: u.email, actor_name: u.name, client_email: u.email };
+  if (d.action === "tip") { if (!["welcome","player"].includes(d.k)) return json({ ok: false }, 400);
+    await D.prepare("INSERT OR IGNORE INTO client_tips (email, k, at) VALUES (?, ?, ?)").bind(u.email, d.k, at).run(); return json({ ok: true }); }
   if (d.action === "read") {
     if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient=? AND read_at IS NULL").bind(at, u.email).run();
     else for (const id of (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map(Number).filter(Number.isInteger))

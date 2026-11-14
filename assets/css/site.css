@@ -2089,7 +2089,13 @@ body[data-page="workspace"] .nav .brand{margin-inline-end:auto}
 .wstage.ex{box-shadow:inset 0 0 0 1px rgba(var(--k-gold-rgb),.55)}
 @media (max-width:600px){ .wtask .wtrack{display:none} .wstage{display:flex} }
 .sh-now,.sh-done,.sh-next,.sh-ex{flex:none;display:inline-block;width:12px;height:12px}
-.sh-now{border-radius:50%;background:var(--k-horizon)}
+/* the current stage is the same live red as the desktop track, with one small soft pulse */
+:root{--k-live:#FF3B5C;--k-live-rgb:255,59,92}
+.sh-now{position:relative;border-radius:50%;background:var(--k-live);box-shadow:0 0 8px rgba(var(--k-live-rgb),.7)}
+.sh-now::after{content:"";position:absolute;inset:0;border-radius:50%;background:rgba(var(--k-live-rgb),.45);animation:liveDot 1.8s ease-out infinite}
+@keyframes liveDot{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+.wstage:not(.ex){box-shadow:inset 0 0 0 1px rgba(var(--k-live-rgb),.4)}
+@media (prefers-reduced-motion:reduce){.sh-now::after{animation:none;opacity:0}}
 .sh-done{border-radius:50%;background:var(--k-horizon);opacity:.55;clip-path:polygon(14% 52%,0 66%,38% 100%,100% 22%,86% 8%,38% 72%)}
 .sh-next{border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--dim)}
 .sh-ex{width:11px;height:11px;transform:rotate(45deg);background:var(--k-gold)}
@@ -2101,3 +2107,45 @@ body[data-page="workspace"] .nav .brand{margin-inline-end:auto}
 .hp-cf{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
 .hp-cf button{min-height:32px;padding:0 12px;border:0;border-radius:999px;background:rgba(var(--k-white-rgb),.06);color:var(--mist);font:inherit;font-size:13px;cursor:pointer}
 .hp-cf button[aria-pressed="true"]{background:rgba(var(--k-horizon-rgb),.16);color:var(--light);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.5)}
+
+/* ===== the client workspace, phase 2: the home screen in three zones by priority ===== */
+.wz1{margin:0 0 26px;padding:20px 22px;border-radius:22px;background:rgba(var(--k-night-rgb),.55);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.6),0 18px 50px rgba(0,0,0,.25)}
+.wz-h h3{margin:0;font-size:19px;display:flex;align-items:center;gap:10px}.wz-h p{margin:4px 0 0}
+.wz-n{font-family:var(--latin);font-size:13px;min-width:26px;height:26px;padding:0 8px;display:inline-grid;place-items:center;border-radius:999px;background:rgba(var(--k-horizon-rgb),.16);color:var(--k-horizon)}
+.wz-l,.wz-l2{list-style:none;margin:14px 0 0;padding:0;display:grid}
+.wz-l li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:14px 2px;border-top:1px solid rgba(var(--k-white-rgb),.07)}
+.wz-l li:first-child{border-top:0}
+.wz-t{display:flex;flex-direction:column;gap:4px;min-width:0}.wz-t b{font-weight:600;overflow-wrap:anywhere}.wz-t .tpill,.wz-t .bpill{align-self:flex-start}
+.wz-go{white-space:nowrap;min-height:44px}
+/* the shape tells the kind, never the colour alone: circle = a version to review, square = information, diamond = an invoice */
+.wz-k{flex:none;width:12px;height:12px;border-radius:50%;background:var(--k-venus)}
+.wz-k.sk-info{border-radius:3px;background:none;box-shadow:inset 0 0 0 2px var(--k-amber)}
+.wz-k.sk-bill{border-radius:2px;transform:rotate(45deg);width:10px;height:10px;background:var(--k-amber)}.wz-k.sk-bill.late{background:var(--k-rose)}
+.wz1.calm{display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+.wz1.calm>div{flex:1;min-width:220px}.wz1.calm h3{margin:0;font-size:17px}.wz1.calm p{margin:4px 0 0}
+.wz-ok{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:rgba(127,240,192,.12);color:#7ff0c0}.wz-ok svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8}
+.wz1.calm .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+.wnext{margin:6px 0 0}.wnext b{color:var(--light);font-weight:600}
+.wz3{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+.wz-l2 li{border-top:1px solid rgba(var(--k-white-rgb),.07)}.wz-l2 li:first-child{border-top:0}
+.wz-l2 li>a,.wz-l2 .wz-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 4px;color:inherit;text-decoration:none;border-radius:12px}
+.wz-l2 li>a:hover{background:rgba(var(--k-white-rgb),.04)}.wz-l2 .wz-t{flex:1}
+.wz-d{flex:none;min-width:92px;font-size:13px;color:var(--k-gold);font-weight:600}
+.wz-rv{flex:none;font-size:13px;color:var(--k-horizon)}
+.wz-mv .wz-d{color:var(--mist)}
+/* layer 1 of the tour: one closable strip */
+.wwel{display:flex;align-items:center;gap:16px;margin:0 0 18px;padding:14px 16px 14px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(var(--k-horizon-rgb),.12),rgba(var(--k-hour-rgb),.08));box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.25)}
+.wwel>div{flex:1;min-width:0}.wwel b{display:block;font-size:15px}.wwel p{margin:3px 0 0;color:var(--mist);font-size:14px}
+.wwel-x{flex:none;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:none;color:var(--mist);cursor:pointer}
+.wwel-x:hover{background:rgba(var(--k-white-rgb),.06);color:var(--light)}.wwel-x svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+/* layer 2 of the tour: one hint under the player, once */
+.wrv-tip{position:relative;display:flex;align-items:center;gap:14px;margin:12px 0 0;padding:12px 16px;border-radius:14px;background:var(--k-card);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.4)}
+.wrv-tip::before{content:"";position:absolute;top:-6px;inset-inline-end:36px;width:12px;height:12px;background:var(--k-card);transform:rotate(45deg);box-shadow:-1px -1px 0 rgba(var(--k-horizon-rgb),.4)}
+.wrv-tip p{flex:1;margin:0;font-size:14px;color:var(--light)}.wrv-tip .linkbtn{flex:none;min-height:44px;color:var(--k-horizon)}
+@media (max-width:860px){
+  .wz3{grid-template-columns:1fr;gap:4px}
+  .wz1{padding:16px}
+  .wz-l li{grid-template-columns:auto 1fr;row-gap:10px}.wz-go{grid-column:1/-1;width:100%;justify-content:center}
+  .wz-l2 .wz-rv{display:none}
+  .wwel{flex-wrap:wrap;padding:14px}.wwel>div{flex-basis:calc(100% - 60px)}.wwel .btn{order:3;width:100%;justify-content:center}
+}

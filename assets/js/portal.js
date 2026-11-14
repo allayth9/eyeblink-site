@@ -251,24 +251,59 @@
     if(DASH&&DASH._at&&Date.now()-DASH._at<5000) return drawDash(DASH);
     loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; if('unread' in j) setUnread(j.unread); drawDash(j); });
   }
+  // home: three zones by priority (what waits on you, each project's pulse, the latest versions and what is coming)
+  var HM=AR?{z1:'بانتظار إجراء منك',z1P:'ابدأ من هنا: هذه البنود تنتظر ردّك.',calm:'لا يوجد ما يحتاج إلى إجراء منك الآن',calmP:'يتابع الاستوديو العمل على مهامك وفق المواعيد المؤكدة، وسيظهر هنا كل ما يحتاج إلى ردّك.',
+      z2:'المشاريع النشطة',z3a:'أحدث النسخ',z3b:'المواعيد القادمة',noV:'لم تُرفع أي نسخة بعد.',noD:'لا توجد مواعيد مؤكدة قادمة.',
+      act:{feedback:'راجع النسخة',final:'راجع التسليم النهائي',info:'أرسل المعلومات',bill:'اعرض الفاتورة',review:'مراجعة'},
+      bill:{pending:'بانتظار الدفع',partial:'مدفوعة جزئياً',overdue:'متأخرة'},inv:'فاتورة',left:'المتبقي',dueOn:'تستحق',
+      rec:'دورية',move:'طلب تغيير الموعد',moveP:'بانتظار ردّ الاستوديو',next:'أقرب تسليم مؤكد',
+      w:{h:'أهلاً بك في مساحة عملك',review:function(x){ return 'أهم خطوة الآن: مراجعة «'+x+'».'; },first:'أهم خطوة الآن: أرسل أول مهمة إلى الاستوديو.',info:function(x){ return 'أهم خطوة الآن: إرسال المعلومات التي تحتاجها مهمة «'+x+'».'; },bill:function(x){ return 'أهم خطوة الآن: مراجعة الفاتورة '+x+'.'; },calm:'كل ما يحتاج إلى إجراء منك يظهر أولاً في هذه الصفحة.',
+        go:'راجع النسخة',new:'أنشئ أول مهمة',x:'إغلاق'}}
+    :{z1:'Waiting on you',z1P:'Start here: these items need your reply.',calm:'Nothing needs your action right now',calmP:'The studio is working on your tasks to the confirmed dates. Anything that needs your reply will show up here.',
+      z2:'Active projects',z3a:'Latest versions',z3b:'Coming up',noV:'No version uploaded yet.',noD:'No confirmed dates coming up.',
+      act:{feedback:'Review version',final:'Review final delivery',info:'Send the information',bill:'View invoice',review:'Review'},
+      bill:{pending:'Awaiting payment',partial:'Partially paid',overdue:'Overdue'},inv:'Invoice',left:'Balance',dueOn:'Due',
+      rec:'Recurring',move:'Date change request',moveP:'Awaiting the studio',next:'Next confirmed delivery',
+      w:{h:'Welcome to your workspace',review:function(x){ return 'The one thing to do now: review “'+x+'”.'; },first:'The one thing to do now: send your first task to the studio.',info:function(x){ return 'The one thing to do now: send the information “'+x+'” needs.'; },bill:function(x){ return 'The one thing to do now: review invoice '+x+'.'; },calm:'Anything that needs your action appears first on this page.',
+        go:'Review version',new:'Create your first task',x:'Close'}};
+  // first-visit hints: D1 keeps them per client; localStorage answers at once and stops a repeat before the server replies
+  function seen(k){ try{ if(localStorage.getItem('eb-tip-'+k)) return true; }catch(_){} return !!(DASH&&(DASH.tips||[]).indexOf(k)>=0); }
+  function markSeen(k){ try{ localStorage.setItem('eb-tip-'+k,'1'); }catch(_){} if(DASH) (DASH.tips=DASH.tips||[]).push(k); api('',{action:'tip',k:k}); }
   function drawDash(j){
-    var c=j.counts||{}, n=function(a){ return a.reduce(function(s,k){ return s+(c[k]||0); },0); }, act=j.projects.filter(function(p){return p.status==='active'});
-    var first=firstName(window.EBHdr&&EBHdr.user());
-    var tiles=[['projects',T.k.active,act.length,'#A78BFA','#w/projects'],['fresh',T.k.fresh,n(['new','review']),'#6E8BFF','#w/tasks/fresh'],['progress',T.k.progress,n(['accepted','progress','revision']),'#3FE0E8','#w/tasks/progress'],
-      ['waiting',U2.f.waiting,n(['info','feedback','final']),'#E07BE0','#w/tasks/waiting'],['done',T.k.done,c.completed||0,'#5EF0B0','#w/tasks/done'],['dates',T.k.dates,(j.upcoming||[]).length,'#F5C66B','#w/tasks/upcoming']];
-    host.innerHTML=head('overview','WORKSPACE','<span class="wgreet">'+esc(greet(first))+'</span>',U2.hiP)+
-      '<div class="wkpis">'+tiles.map(function(t){ return '<a class="wkpi glass" href="'+t[4]+'" style="--k:'+t[3]+'"><span class="wk-ic">'+(ICO[t[0]]||'')+'</span><b>'+t[2]+'</b><span>'+esc(t[1])+'</span><i class="wk-go">'+ICO.arrow+'</i></a>'; }).join('')+'</div>'+
-      (j.bills&&j.bills.open?'<a class="wcard glass wbillstrip'+(j.bills.overdue?' late':'')+'" href="#w/invoices"><span class="ws-ic">'+ICO.invoices+'</span><b>'+T.bl.strip+' ('+j.bills.open+')</b><small class="muted">'+(j.bills.overdue?j.bills.overdue+' '+T.bl.overdue+' · ':'')+T.bl.stripP+'</small><span class="go">←</span></a>':'')+
-      ((j.waiting||[]).length?'<section class="wcard glass wwait"><div class="wwait-h"><span class="ws-ic">'+ICO.waiting+'</span><div><h3>'+T.waiting+' ('+j.waiting.length+')</h3><p class="muted small">'+T.waitingP+'</p></div></div><ul>'+j.waiting.map(function(w){ return '<li><a href="#w/t/'+esc(w.ref)+'">'+pill(w.status)+'<b><bdi>'+esc(w.title)+'</bdi></b><small class="muted"><bdi>'+esc(w.project_name)+'</bdi> · <bdi dir="ltr">'+esc(w.ref)+'</bdi></small><span class="go">←</span></a></li>'; }).join('')+'</ul></section>':'')+
-      (j.projects.length?'<section class="wsec">'+wh(T.projects,'#A78BFA','<a class="wh-more" href="#w/projects">'+U2.nav.projects+' '+(AR?'←':'→')+'</a>')+'<div class="wprojects">'+j.projects.filter(function(p){ return p.status==='active'||p.status==='paused'; }).slice(0,6).map(projCard).join('')+'</div></section>':'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>')+
-      (j.projects.length?'<div class="wcols"><section class="wsec">'+wh(T.recent,'#6E8BFF','<a class="wh-more" href="#w/tasks">'+U2.allTasks+' '+(AR?'←':'→')+'</a>')+taskTable((j.tasks||[]).slice(0,8),true)+'</section>'+
-        '<aside class="wside"><section class="wsec">'+wh(T.upcoming,'#F5C66B')+((j.upcoming||[]).length?'<ul class="wdates">'+j.upcoming.map(function(u){ return '<li><a href="#w/t/'+esc(u.ref)+'"><b>'+esc(d8(u.confirmed_date))+'</b><span>'+esc(u.title)+'</span><small class="muted">'+esc(u.project_name)+'</small></a></li>'; }).join('')+'</ul>':'<p class="muted small">'+T.noDates+'</p>')+'</section>'+
-        '<section class="wsec">'+wh(T.activity,'#3FE0E8')+((j.activity||[]).length?'<ul class="wact">'+j.activity.slice(0,10).map(actText).join('')+'</ul>':'<p class="muted small">'+T.noAct+'</p>')+'</section></aside></div>':'');
+    var act=j.projects.filter(function(p){return p.status==='active'}), c=j.counts||{}, today=new Date().toISOString().slice(0,10);
+    var first=firstName(window.EBHdr&&EBHdr.user()), ar=AR?'←':'→';
+    var wait=(j.waiting||[]).map(function(w){ return '<li><span class="wz-k sk-'+esc(w.status)+'" aria-hidden="true"></span><div class="wz-t">'+pill(w.status)+'<b><bdi>'+esc(w.title)+'</bdi></b><small class="muted"><bdi>'+esc(w.project_name)+'</bdi> · <bdi dir="ltr">'+esc(w.ref)+'</bdi></small></div>'+
+        '<a class="btn btn-primary wz-go" href="#w/t/'+esc(w.ref)+'">'+esc(HM.act[w.status]||HM.act.review)+'</a></li>'; })
+      .concat((j.due||[]).map(function(b){ var late=b.due_date&&b.due_date<today, st=late?'overdue':b.status;
+        return '<li><span class="wz-k sk-bill'+(late?' late':'')+'" aria-hidden="true"></span><div class="wz-t"><span class="bpill s-'+esc(st)+'">'+esc(HM.bill[st]||st)+'</span><b>'+esc(HM.inv)+' <bdi dir="ltr">'+esc(b.no)+'</bdi>'+(b.title?' · <bdi>'+esc(b.title)+'</bdi>':'')+'</b>'+
+          '<small class="muted">'+esc(HM.left)+' <bdi dir="ltr">'+esc(money((+b.total||0)-(+b.paid||0),b.currency))+'</bdi>'+(b.due_date?' · '+esc(HM.dueOn)+' '+esc(d8(b.due_date)):'')+'</small></div>'+
+          '<a class="btn btn-primary wz-go" href="#w/invoices/'+esc(b.id)+'">'+esc(HM.act.bill)+'</a></li>'; }));
+    var z1=!j.projects.length?'':wait.length?'<section class="wz1 glass" aria-labelledby="wz1h"><div class="wz-h"><h3 id="wz1h">'+HM.z1+' <span class="wz-n">'+wait.length+'</span></h3><p class="muted small">'+HM.z1P+'</p></div><ul class="wz-l">'+wait.join('')+'</ul></section>'
+      :'<section class="wz1 calm glass"><span class="wz-ok" aria-hidden="true">'+ICO.done+'</span><div><h3>'+HM.calm+'</h3><p class="muted small">'+HM.calmP+'</p></div>'+(act.length?'<a class="btn btn-glass glass" href="#w/new">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</section>';
+    var vers=(j.delivered||[]).map(function(d){ return '<li><a href="#w/t/'+esc(d.ref)+'"><span class="wver'+(d.is_final?' fin':'')+'" dir="ltr">'+esc(d.is_final?'Final':d.label)+'</span><span class="wz-t"><b><bdi>'+esc(d.title)+'</bdi></b><small class="muted"><bdi>'+esc(d.project_name)+'</bdi> · '+esc(d8(d.created_at))+'</small></span>'+
+        '<span class="dst s-'+esc(d.status)+'">'+esc(T.dl.st[d.status]||d.status)+'</span><span class="wz-rv">'+HM.act.review+' '+ar+'</span></a></li>'; });
+    var dates=(j.upcoming||[]).map(function(u){ return {d:u.confirmed_date,h:'<li><a href="#w/t/'+esc(u.ref)+'"><b class="wz-d">'+esc(d8(u.confirmed_date))+'</b><span class="wz-t"><b><bdi>'+esc(u.title)+'</bdi></b><small class="muted"><bdi>'+esc(u.project_name)+'</bdi></small></span></a></li>'}; })
+      .concat((j.recurring||[]).map(function(r){ return {d:r.next_run,h:'<li><span class="wz-row"><b class="wz-d">'+esc(d8(r.next_run))+'</b><span class="wz-t"><b><bdi>'+esc(r.title)+'</bdi> <span class="tprio p-rec">'+HM.rec+'</span></b><small class="muted"><bdi>'+esc(r.project_name)+'</bdi></small></span></span></li>'}; }))
+      .sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:0; }).map(function(x){ return x.h; })
+      .concat((j.moves||[]).map(function(t){ var cr=t.change_request||{}; return '<li class="wz-mv"><a href="#w/t/'+esc(t.ref)+'"><b class="wz-d">'+esc(d8(t.confirmed_date))+' '+ar+' '+esc(d8(cr.date))+'</b><span class="wz-t"><b>'+HM.move+': <bdi>'+esc(t.title)+'</bdi></b><small class="muted">'+HM.moveP+'</small></span></a></li>'; }));
+    host.innerHTML=head('overview','WORKSPACE','<span class="wgreet">'+esc(greet(first))+'</span>',U2.hiP)+welcome(j,c,act)+z1+
+      (j.projects.length?'<section class="wsec">'+wh(HM.z2,'#A78BFA','<a class="wh-more" href="#w/projects">'+U2.allProj+' '+ar+'</a>')+(act.length?'<div class="wprojects">'+act.slice(0,6).map(projCard).join('')+'</div>':'<p class="muted small">'+T.empty+'</p>')+'</section>'+
+        '<div class="wz3"><section class="wsec">'+wh(HM.z3a,'#E07BE0')+(vers.length?'<ul class="wz-l2">'+vers.join('')+'</ul>':'<p class="muted small">'+HM.noV+'</p>')+'</section>'+
+        '<section class="wsec">'+wh(HM.z3b,'#F5C66B')+(dates.length?'<ul class="wz-l2">'+dates.join('')+'</ul>':'<p class="muted small">'+HM.noD+'</p>')+'</section></div>'
+        :'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>');
+    var wb=host.querySelector('.wwel'); if(wb) wb.addEventListener('click',function(e){ if(e.target.closest('.wwel-x,.wwel a')){ markSeen('welcome'); wb.remove(); } });
     rise();
   }
+  // layer 1 of the tour: one short, closable strip that points at the single most useful action now
+  function welcome(j,c,act){ if(seen('welcome')||!j.projects.length) return '';
+    var rv=(j.waiting||[]).filter(function(w){ return w.status==='feedback'||w.status==='final'; })[0], none=!Object.keys(c).some(function(k){ return c[k]; });
+    var inf=(j.waiting||[]).filter(function(w){ return w.status==='info'; })[0], bill=(j.due||[])[0];
+    var line=rv?HM.w.review(rv.title):inf?HM.w.info(inf.title):bill?HM.w.bill(bill.no):none&&act.length?HM.w.first:HM.w.calm,
+      btn=rv?'<a class="btn btn-primary" href="#w/t/'+esc(rv.ref)+'">'+HM.w.go+'</a>':inf?'<a class="btn btn-primary" href="#w/t/'+esc(inf.ref)+'">'+HM.act.info+'</a>':bill?'<a class="btn btn-primary" href="#w/invoices/'+esc(bill.id)+'">'+HM.act.bill+'</a>':none&&act.length?'<a class="btn btn-primary" href="#w/new">'+HM.w.new+'</a>':'';
+    return '<aside class="wwel glass" role="note"><div><b>'+HM.w.h+'</b><p>'+esc(line)+'</p></div>'+btn+'<button type="button" class="wwel-x" aria-label="'+HM.w.x+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></aside>'; }
   function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
     return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
-      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
+      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
       (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
@@ -478,7 +513,7 @@
   var SHAPE={now:'<i class="sh-now" aria-hidden="true"></i>',done:'<i class="sh-done" aria-hidden="true"></i>',next:'<i class="sh-next" aria-hidden="true"></i>',ex:'<i class="sh-ex" aria-hidden="true"></i>'};
   var EXC={info:1,revision:1,rejected:1,cancelled:1};
   function stageCap(t,at,off){ var ex=!!EXC[t.status], n=Math.max(0,at)+1, done=t.status==='completed';
-    return '<button type="button" class="wstage'+(ex?' ex':'')+'" data-stage aria-haspopup="dialog">'+(ex?SHAPE.ex:done?SHAPE.done:SHAPE.now)+
+    return '<button type="button" class="wstage'+(ex&&off?' ex':'')+'" data-stage aria-haspopup="dialog">'+(ex&&off?SHAPE.ex:done?SHAPE.done:SHAPE.now)+
       '<span>'+esc(T.st[t.status]||t.status)+'</span>'+(off?'':'<small dir="ltr">'+n+' / '+PATH.length+'</small>')+'<em aria-hidden="true">⌄</em></button>'; }
   function stageSheet(t,at,off){ var ex=!!EXC[t.status], done=t.status==='completed';
     sheet(AR?'مراحل المهمة':'Task steps',(ex?'<p class="wsheet-ex">'+SHAPE.ex+'<b>'+esc(T.st[t.status])+'</b></p>':'')+
@@ -644,12 +679,12 @@
     return ''; }
   function vname(dl){ return dl.is_final?T.dl.fin:dl.label; }
   // review: our own player for files kept privately (R2); notes carry a time, a kind and a state
-  var RV=AR?{kind:{edit:'تعديل',ask:'سؤال',note:'ملاحظة',love:'أعجبني'},st:{open:'مفتوحة',progress:'قيد العمل',resolved:'تمت',na:'لا تنطبق'},here:'+ ملاحظة عند هذه اللحظة',dl:'تحميل الملف',stAct:'غيّر حالة ملاحظة على',addAct:'أضاف ملاحظة على',hint:'أوقف الفيديو عند اللحظة التي تريدها، ثم اختر نوع الملاحظة واكتبها'}
-                :{kind:{edit:'Change',ask:'Question',note:'Note',love:'Liked'},st:{open:'Open',progress:'In progress',resolved:'Resolved',na:'Not applicable'},here:'+ Note at this moment',dl:'Download file',stAct:'changed a note on',addAct:'added a note on',hint:'Pause where you want, pick the kind of note and write it'};
+  var RV=AR?{kind:{edit:'تعديل',ask:'سؤال',note:'ملاحظة',love:'أعجبني'},st:{open:'مفتوحة',progress:'قيد العمل',resolved:'تمت',na:'لا تنطبق'},here:'+ ملاحظة عند هذه اللحظة',dl:'تحميل الملف',stAct:'غيّر حالة ملاحظة على',addAct:'أضاف ملاحظة على',hint:'أوقف الفيديو عند اللحظة التي تريدها، ثم اختر نوع الملاحظة واكتبها',tip:'أوقف الفيديو عند أي ثانية واضغط «ملاحظة عند هذه اللحظة»: تُثبَّت الملاحظة على تلك الثانية، ثم تختار نوعها: تعديل أو سؤال أو ملاحظة أو أعجبني.',tipOk:'فهمت'}
+                :{kind:{edit:'Change',ask:'Question',note:'Note',love:'Liked'},st:{open:'Open',progress:'In progress',resolved:'Resolved',na:'Not applicable'},here:'+ Note at this moment',dl:'Download file',stAct:'changed a note on',addAct:'added a note on',hint:'Pause where you want, pick the kind of note and write it',tip:'Pause on any second and press “Note at this moment”: the note is pinned to that second, then you pick its kind: change, question, note or liked.',tipOk:'Got it'};
   function isVault(u){ return /\/api\/vault\/v\//.test(u||''); }
   function tcSec(t){ return String(t||'').split(':').map(Number).reduce(function(a,x){ return a*60+x; },0); }
   function secTc(s){ s=Math.max(0,Math.floor(s)); var m=Math.floor(s/60), r=s%60; return m+':'+(r<10?'0':'')+r; }
-  function player(dl){ return '<div class="wrv"><video src="'+esc(dl.url.replace(/^https?:\/\/[^\/]+/,''))+'" controls playsinline preload="metadata"></video><div class="wrv-mk" aria-hidden="true"></div></div>'; }
+  function player(dl){ return '<div class="wrv" dir="ltr"><video src="'+esc(dl.url.replace(/^https?:\/\/[^\/]+/,''))+'" controls playsinline preload="metadata"></video><div class="wrv-mk" aria-hidden="true"></div></div>'; }
   function points(list){ return '<ol class="wpl">'+list.map(function(p){ var st=p.status||(p.done?'resolved':'open'), k=p.kind||'edit';
     return '<li class="'+(p.done?'done ':'')+'pk-'+esc(k)+'">'+(p.t?'<button type="button" class="wtc" data-seek="'+esc(p.t)+'">'+esc(p.t)+'</button>':'')+'<span class="pkk">'+esc(RV.kind[k])+'</span><span>'+esc(p.text)+'</span><em class="pst s-'+esc(st)+'">'+esc(RV.st[st])+'</em></li>'; }).join('')+'</ol>'; }
   function dlCard(dl,t,latest){ var emb=embedOf(dl.url), canDecide=latest&&dl.status==='sent'&&(t.status==='feedback'||t.status==='final');
@@ -659,7 +694,7 @@
       (isVault(dl.url)?player(dl):'')+
       '<div class="wdl-a">'+(isVault(dl.url)?'<a class="btn btn-glass glass" href="'+esc(dl.url)+'?dl=1">↓ '+RV.dl+'</a>':'<a class="btn btn-glass glass" href="'+esc(dl.url)+'" target="_blank" rel="noopener noreferrer">↗ '+T.dl.open+'</a>')+(emb?'<button type="button" class="btn btn-glass glass" data-emb="'+esc(emb)+'">▶ '+T.dl.preview+'</button>':'')+
         ((dl.links||[]).length?linksHTML(dl.links):'')+'</div><div class="wembed" hidden></div>'+
-      (dl.status==='changes'?'<div class="wdl-fb"><small class="muted">'+T.dl.yours+'</small>'+((dl.points||[]).length?points(dl.points):'')+(dl.decision_note?'<p>'+para(dl.decision_note)+'</p>':'')+(latest&&t.status==='revision'?'<p class="muted small">⏳ '+T.dl.working+'</p>':'')+'</div>':'')+
+      (dl.status==='changes'?'<div class="wdl-fb"><small class="muted">'+T.dl.yours+'</small>'+((dl.points||[]).length?points(dl.points):'')+(dl.decision_note?'<p>'+para(dl.decision_note)+'</p>':'')+(latest&&t.status==='revision'?'<p class="muted small">'+T.dl.working+'</p>':'')+'</div>':'')+
       (dl.status==='approved'&&(dl.decision_note||(dl.points||[]).length)?'<div class="wdl-fb"><small class="muted">'+T.dl.yours+'</small>'+((dl.points||[]).length?points(dl.points):'')+(dl.decision_note?'<p>'+para(dl.decision_note)+'</p>':'')+'</div>':'')+
       (canDecide?'<div class="wdec"><div class="actions"><button type="button" class="btn btn-primary" data-ok>✓ '+(dl.is_final?T.dl.approveFinal:T.dl.approve)+'</button><button type="button" class="btn btn-glass glass" data-chg2>'+T.dl.changes+'</button></div>'+
         (dl.is_final?'<p class="muted small">'+T.dl.finalNote+'</p>':'')+
@@ -692,6 +727,9 @@
         mk.innerHTML=allP.concat(live).filter(function(p){ return p.t; }).map(function(p){ return '<i class="pk-'+esc(p.kind||'edit')+'" style="left:'+Math.min(100,tcSec(p.t)/vid.duration*100)+'%"></i>'; }).join(''); };
       vid.addEventListener('loadedmetadata',paint); rows.addEventListener('input',paint);
       var here=document.createElement('button'); here.type='button'; here.className='btn btn-glass glass wrv-here'; here.textContent=RV.here; card.querySelector('.wrv').appendChild(here);
+      // layer 2 of the tour: one hint, the first time the player opens
+      if(!seen('player')){ var tip=document.createElement('div'); tip.className='wrv-tip'; tip.setAttribute('role','note'); tip.innerHTML='<p>'+esc(RV.tip)+'</p><button type="button" class="linkbtn">'+esc(RV.tipOk)+'</button>';
+        card.querySelector('.wrv').after(tip); var tipDone=function(){ markSeen('player'); tip.remove(); }; tip.querySelector('button').onclick=tipDone; here.addEventListener('click',tipDone,{once:true}); }
       here.onclick=function(){ vid.pause(); f.hidden=false; var r=[].filter.call(rows.children,function(x){ return !x.children[2].value.trim(); })[0]||add(); if(!r) return; r.children[0].value=secTc(vid.currentTime); r.children[2].focus(); paint(); }; }
     ch.onclick=function(){ f.hidden=!f.hidden; if(!f.hidden) rows.querySelector('input[name=x]').focus(); };
     f.onsubmit=function(e){ e.preventDefault(); var msg=f.querySelector('.msg'), bad=null;
