@@ -9,9 +9,9 @@ BR = "Eyeblink Studio"
 P = {
  "index": (
   "Eyeblink Studio | آيبلينك استوديو",
-  "استوديو إبداعي مستقل: مونتاج فيديو احترافي، موشن غرافيك، إعلانات سوشال ميديا وريلز، وإنتاج سينمائي. نخدم العلامات والمبدعين في الخليج والوطن العربي.",
+  "استوديو إبداعي مستقل متخصص في صناعة المحتوى المرئي والمونتاج والموشن غرافيك وإعلانات السوشال ميديا والإنتاج السينمائي، للعلامات والمبدعين في الخليج والوطن العربي.",
   "Eyeblink Studio | آيبلينك استوديو",
-  "An independent creative studio for professional video editing, motion graphics, social media video ads and Reels, and cinematic film production for brands and creators in the Gulf and the Arab world."),
+  "An independent creative studio specialising in visual content, video editing, motion graphics, social media ads and cinematic production for brands and creators across the Gulf and the Arab world."),
  "services": (
   "خدمات مونتاج وموشن غرافيك وسوشال ميديا وأفلام — Eyeblink Studio",
   "مونتاج فيديو احترافي، موشن غرافيك، ريلز وإعلانات سوشال ميديا، وأفلام قصيرة وإعلانات سينمائية. اختر الخدمة وأرسل تفاصيل مشروعك.",
