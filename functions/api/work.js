@@ -111,6 +111,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS tg_links (email TEXT PRIMARY KEY, chat_id TEXT NOT NULL UNIQUE, username TEXT, linked_at TEXT NOT NULL)`,
   // the two quiet first-visit hints (welcome strip, player tip): shown once per client
   `CREATE TABLE IF NOT EXISTS client_tips (email TEXT NOT NULL, k TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (email, k))`,
+  // the client's brand library: colours, fonts, style and music here; logos and font files in brand_assets (files in R2 under b/…)
+  `CREATE TABLE IF NOT EXISTS brand_kits (email TEXT PRIMARY KEY, colors TEXT NOT NULL DEFAULT '[]', fonts TEXT NOT NULL DEFAULT '[]', style TEXT NOT NULL DEFAULT '', music TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS brand_assets (id TEXT PRIMARY KEY, email TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, key TEXT NOT NULL, size INTEGER, type TEXT, created_at TEXT NOT NULL, deleted_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS brand_assets_email ON brand_assets(email, created_at)`,
 ];
 // columns added to tables that already exist on the live database (run once, in order; meta "schema" keeps the count)
 const MIGRATIONS = [
@@ -195,7 +199,23 @@ const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة",
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
 const fmtDate = (d, lang) => { try { return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : "ar-u-nu-latn", { weekday:"long", year:"numeric", month:"long", day:"numeric" }); } catch { return d; } };
 // ==== extensions (phase 7) ====
-const BRIEF_KEYS = ["goal","audience","format","duration","tone","message","cta","music"];
+const BRIEF_KEYS = ["goal","audience","format","duration","tone","message","cta","music","brand"];
+// the brand library, read for the client page and for a task that uses it
+async function brandOf(D, email){
+  const k = await D.prepare("SELECT * FROM brand_kits WHERE email=?").bind(email).first() || {};
+  const j = v => { try { return JSON.parse(v || "[]"); } catch { return []; } };
+  const assets = (await D.prepare("SELECT id, kind, title, key, size, type, created_at FROM brand_assets WHERE email=? AND deleted_at IS NULL ORDER BY created_at").bind(email).all()).results.map(a => ({ ...a, url: SITE + "/api/up/" + a.key }));
+  return { colors: j(k.colors), fonts: j(k.fonts), style: k.style || "", music: k.music || "", assets, updated_at: k.updated_at || null };
+}
+// a task that uses the library carries a short summary in its brief and the library's files among its links (the studio sees both as they are today)
+function brandBrief(b, ar){
+  const out = [];
+  if (b.colors.length) out.push((ar ? "الألوان: " : "Colours: ") + b.colors.map(c => (c.name ? c.name + " " : "") + c.hex).join("، "));
+  if (b.fonts.length) out.push((ar ? "الخطوط: " : "Fonts: ") + b.fonts.map(f => f.name + (f.use ? " (" + f.use + ")" : "")).join("، "));
+  if (b.style) out.push((ar ? "الأسلوب: " : "Style: ") + b.style);
+  if (b.music) out.push((ar ? "الموسيقى: " : "Music: ") + b.music);
+  return out.join(" · ") || (ar ? "مكتبة الهوية المعتمدة" : "The approved brand library");
+}
 function cleanBrief(b){ if (!b || typeof b !== "object") return null; const o = {}; for (const k of BRIEF_KEYS) { const v = clip(b[k], 600); if (v) o[k] = v; } return Object.keys(o).length ? o : null; }
 const monthOf = d => String(d || "").slice(0, 7);
 const isMonth = m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m || "");
@@ -600,6 +620,7 @@ export async function onRequestGet(ctx) {
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
   if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(cparse),
     projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results });
+  if (q.get("view") === "brand") return json({ ok: true, brand: await brandOf(D, e) });
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
   if (q.get("report") || q.get("reportDoc")) {
     const p = await myProject(D, e, clip(q.get("report") || q.get("reportDoc"), 40)); if (!p) return q.get("reportDoc") ? htmlRes("not found", 404) : json({ ok: false }, 404);
@@ -642,10 +663,11 @@ export async function onRequestGet(ctx) {
   const moves = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.change_request, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.change_request LIKE '%"pending"%' LIMIT 6`).bind(e).all()).results.map(cparse).filter(t => t.change_request && t.change_request.status === "pending");
   const tips = (await D.prepare("SELECT k FROM client_tips WHERE email=?").bind(e).all()).results.map(r => r.k);
+  const brandN = (await D.prepare("SELECT (SELECT COUNT(*) FROM brand_assets WHERE email=?1 AND deleted_at IS NULL) + (SELECT COUNT(*) FROM brand_kits WHERE email=?1 AND (colors<>'[]' OR fonts<>'[]' OR style<>'' OR music<>'')) AS n").bind(e).first()).n;
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
   const bills = await D.prepare("SELECT COUNT(*) AS open, SUM(CASE WHEN due_date<?2 THEN 1 ELSE 0 END) AS overdue FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(e, today()).first();
-  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
+  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, brand_n: brandN, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
 }
 
 export async function onRequestPost(ctx) {
@@ -661,6 +683,20 @@ export async function onRequestPost(ctx) {
   if (u.mustChange) return json({ ok: false, error: "password" }, 403);   // a temporary password: choose your own first
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), who = { actor: u.email, actor_name: u.name, client_email: u.email };
+  if (d.action === "brand") {
+    const hex = /^#[0-9a-f]{6}$/i;
+    const colors = (Array.isArray(d.colors) ? d.colors : []).slice(0, 24).map(c => ({ name: clip(c && c.name, 40), hex: String(c && c.hex || "").trim().toUpperCase() })).filter(c => hex.test(c.hex));
+    const fonts = (Array.isArray(d.fonts) ? d.fonts : []).slice(0, 12).map(f => ({ name: clip(f && f.name, 60), use: clip(f && f.use, 60) })).filter(f => f.name);
+    await D.prepare("INSERT INTO brand_kits (email, colors, fonts, style, music, updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET colors=excluded.colors, fonts=excluded.fonts, style=excluded.style, music=excluded.music, updated_at=excluded.updated_at")
+      .bind(u.email, JSON.stringify(colors), JSON.stringify(fonts), clip(d.style, 1500), clip(d.music, 1500), at).run();
+    return json({ ok: true, brand: await brandOf(D, u.email) });
+  }
+  if (d.action === "brandDel") {
+    const a = await D.prepare("SELECT * FROM brand_assets WHERE id=? AND email=? AND deleted_at IS NULL").bind(clip(d.id, 40), u.email).first(); if (!a) return json({ ok: false }, 404);
+    await D.prepare("UPDATE brand_assets SET deleted_at=? WHERE id=?").bind(at, a.id).run();
+    if (env.R2) await env.R2.delete(a.key).catch(() => {});
+    return json({ ok: true });
+  }
   if (d.action === "tip") { if (!["welcome","player"].includes(d.k)) return json({ ok: false }, 400);
     await D.prepare("INSERT OR IGNORE INTO client_tips (email, k, at) VALUES (?, ?, ?)").bind(u.email, d.k, at).run(); return json({ ok: true }); }
   if (d.action === "read") {
@@ -720,12 +756,13 @@ export async function onRequestPost(ctx) {
     const n = (await D.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_email=? AND created_at>=?").bind(u.email, today()).first()).n;
     if (n + items.length > 40) return json({ ok: false, error: "too many attempts" }, 429);
     let used = p.quota ? await quotaUse(D, p.id) : 0; const made = [];
+    const lib = items.some(x => x.brand_lib) ? await brandOf(D, p.client_email) : null, libLinks = lib ? lib.assets.filter(a => a.kind !== "other").map(a => ({ label: (u.lang === "en" ? "Brand library · " : "مكتبة الهوية · ") + a.title, url: a.url })) : [];
     for (const x of items) {
-      const title = clip(x.title, 140), rd = clip(x.requested_date, 10), id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief);
+      const title = clip(x.title, 140), rd = clip(x.requested_date, 10), id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief && lib && x.brand_lib ? { ...x.brief, brand: brandBrief(lib, u.lang !== "en") } : lib && x.brand_lib ? { brand: brandBrief(lib, u.lang !== "en") } : x.brief);
       const over = p.quota && used >= p.quota ? 1 : 0; used++;   // flagged for the studio, never blocked
       await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(x.type, 60), clip(x.description, 4000), clip(x.details, 6000), clip(x.notes, 3000), pr, rd || null,
-        JSON.stringify(cleanLinks(x.links)), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
+        JSON.stringify(cleanLinks((Array.isArray(x.links) ? x.links : []).concat(x.brand_lib ? libLinks : []))), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
       await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
       made.push({ ref, title, rd, pr, over: !!over });
     }
@@ -752,6 +789,7 @@ export async function onRequestPost(ctx) {
     const f = await D.prepare(`SELECT * FROM files WHERE id=?2 AND deleted_at IS NULL AND added_by=?1 AND project_id IN ${MINE}`).bind(u.email, clip(d.id, 40)).first();
     if (!f) return json({ ok: false }, 404);
     await D.prepare("UPDATE files SET deleted_at=? WHERE id=?").bind(at, f.id).run();
+    if (env.R2 && f.url.startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
     await act(D, { ...who, client_email: f.client_email, project_id: f.project_id, kind: "file_removed", data: { title: f.title } });
     return json({ ok: true });
   }

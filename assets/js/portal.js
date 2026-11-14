@@ -28,7 +28,7 @@
         general:'ملاحظة عامة (اختياري)',send:'أرسل التعديلات',need:'اكتب تعديلاً واحداً على الأقل.',badTc:'اكتب التوقيت بهذا الشكل: 00:12 أو 1:02:30',round:'جولة التعديل',yours:'ملاحظاتك',studio:'من الاستوديو',
         okMsg:'وصلت موافقتك إلى الاستوديو.',chMsg:'وصلت التعديلات إلى الاستوديو.',done:'تم',finalNote:'الموافقة على التسليم النهائي تُغلق المهمة بوصفها مكتملة.',working:'يعمل الاستوديو على النسخة التالية.'},
       cm:{h:'التعليقات',talk:'نقاش المشروع',talkP:'لأي سؤال أو فكرة تخص المشروع ككل. أما التعليقات الخاصة بمهمة معيّنة فمكانها صفحة المهمة.',none:'لا توجد تعليقات بعد.',ph:'اكتب تعليقك…',send:'إرسال',del:'حذف',link:'رابط (اختياري)',you:'أنت'},
-      fl:{cats:{all:'الكل',brand:'الهوية البصرية',raw:'مواد خام',reference:'مراجع',document:'مستندات',delivered:'التسليمات',other:'أخرى'},add:'+ أضف ملفاً',title:'اسم الملف',url:'الرابط (Google Drive، Dropbox، WeTransfer…)',
+      fl:{cats:{all:'الكل',brand:'الهوية البصرية',raw:'مواد خام',reference:'مراجع',document:'مستندات',delivered:'التسليمات',other:'أخرى'},add:'+ أضف رابطاً خارجياً',title:'اسم الملف',url:'الرابط (Google Drive، Dropbox، WeTransfer…)',
         note:'ملاحظة (اختياري)',cat:'التصنيف',save:'أضف الملف',none:'لا توجد ملفات هنا بعد.',hint:'تُحفظ الملفات على شكل روابط: ارفعها على Google Drive (أو غيره) وألصق رابط المشاركة.',badUrl:'يجب أن يبدأ الرابط بـ https://',del:'حذف',studio:'الاستوديو'},
       tabs:{tasks:'المهام',talk:'النقاشات',files:'الملفات'},waiting:'بانتظار ردّك',waitingP:'تحتاج هذه المهام إلى موافقتك أو ملاحظاتك أو معلومات منك.',
       nt:{h:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',set:'إعدادات الإشعارات',bell:'الإشعارات'},
@@ -46,7 +46,7 @@
         dows:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],dom:'يوم ',report:'التقرير الشهري',repP:'ملخّص ما أُنجز في المشروع خلال الشهر.',
         k:{created:'مهام جديدة',completed:'مكتملة',versions:'نسخ مُسلّمة',rounds:'جولات تعديل',ontime:'في الموعد',open:'مفتوحة الآن'},doneList:'المهام المكتملة',none:'لا شيء خلال هذا الشهر.',inv:'الفواتير الصادرة',paid:'المدفوع خلال الشهر',pdf:'حفظ PDF',
         brief:'الموجز الإبداعي',briefHint:'اختياري، لكنه يختصر وقت المراجعة كثيراً.',
-        b:{goal:'الهدف من الفيديو',audience:'الجمهور المستهدف',format:'المقاس',duration:'المدة التقريبية',tone:'الأسلوب والإحساس',message:'الرسالة الأساسية',cta:'الدعوة إلى اتخاذ إجراء',music:'الموسيقى والصوت'},
+        b:{goal:'الهدف من الفيديو',audience:'الجمهور المستهدف',format:'المقاس',duration:'المدة التقريبية',tone:'الأسلوب والإحساس',message:'الرسالة الأساسية',cta:'الدعوة إلى اتخاذ إجراء',music:'الموسيقى والصوت',brand:'مكتبة الهوية'},
         fmts:['9:16 عمودي (ريلز وستوري)','16:9 أفقي (يوتيوب)','1:1 مربع','4:5 منشور']}},
     en:{ws:'Workspace',wsP:'Your projects, tasks and their dates in one place.',projects:'Projects',recent:'Recent tasks',activity:'Latest activity',upcoming:'Upcoming dates',
       k:{active:'Active projects',progress:'In progress',review:'Awaiting your review',fresh:'New requests',done:'Completed',dates:'Upcoming dates'},
@@ -71,7 +71,7 @@
         general:'General note (optional)',send:'Send changes',need:'Write at least one change.',badTc:'Write the timecode like 00:12 or 1:02:30',round:'Revision round',yours:'Your notes',studio:'From the studio',
         okMsg:'Your approval reached the studio.',chMsg:'Your changes reached the studio.',done:'Done',finalNote:'Approving the final delivery closes the task as completed.',working:'The studio is working on the next version.'},
       cm:{h:'Comments',talk:'Project discussion',talkP:'For questions and ideas about the project as a whole. Comments about one task go on that task.',none:'No comments yet.',ph:'Write a comment…',send:'Send',del:'Delete',link:'Link (optional)',you:'You'},
-      fl:{cats:{all:'All',brand:'Brand identity',raw:'Raw footage',reference:'References',document:'Documents',delivered:'Deliveries',other:'Other'},add:'+ Add a file',title:'File name',url:'Link (Google Drive, Dropbox, WeTransfer…)',
+      fl:{cats:{all:'All',brand:'Brand identity',raw:'Raw footage',reference:'References',document:'Documents',delivered:'Deliveries',other:'Other'},add:'+ Add an external link',title:'File name',url:'Link (Google Drive, Dropbox, WeTransfer…)',
         note:'Note (optional)',cat:'Category',save:'Add file',none:'No files here yet.',hint:'Files are kept as links: upload to Google Drive (or similar) and paste the share link.',badUrl:'The link must start with https://',del:'Delete',studio:'Studio'},
       tabs:{tasks:'Tasks',talk:'Discussion',files:'Files'},waiting:'Waiting for you',waitingP:'These tasks need your approval, notes or information.',
       nt:{h:'Notifications',all:'Mark all as read',none:'No notifications yet.',set:'Notification settings',bell:'Notifications'},
@@ -89,7 +89,7 @@
         dows:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],dom:'Day ',report:'Monthly report',repP:'A summary of what was done in the project during the month.',
         k:{created:'New tasks',completed:'Completed',versions:'Versions delivered',rounds:'Revision rounds',ontime:'On time',open:'Open now'},doneList:'Completed tasks',none:'Nothing this month.',inv:'Invoices issued',paid:'Paid this month',pdf:'Save PDF',
         brief:'Creative brief',briefHint:'Optional, but it saves a lot of review time.',
-        b:{goal:'Goal of the video',audience:'Target audience',format:'Format',duration:'Approximate length',tone:'Style and feel',message:'Key message',cta:'Call to action',music:'Music and sound'},
+        b:{goal:'Goal of the video',audience:'Target audience',format:'Format',duration:'Approximate length',tone:'Style and feel',message:'Key message',cta:'Call to action',music:'Music and sound',brand:'Brand library'},
         fmts:['9:16 vertical (Reels, Stories)','16:9 horizontal (YouTube)','1:1 square','4:5 feed post']}}
   }[lang];
   var OPEN=['new','review','info','accepted','progress','feedback','revision','final'];
@@ -218,6 +218,7 @@
     if((m=/^w\/invoices(?:\/(i_[a-f0-9]+))?$/.exec(h))){ setSec('invoices'); return invoices(m[1]); }
     if((m=/^w\/tasks(?:\/(all|fresh|progress|waiting|done|closed|upcoming))?$/.exec(h))){ setSec('tasks'); return allTasks(m[1]||'all'); }
     if(h==='w/projects'){ setSec('projects'); return projectsView(); }
+    if(h==='w/brand'){ setSec('projects'); return brandView(); }
     if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))){ setSec('tasks'); return task(m[1]); }
     if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files|report)(?:\/(\d{4}-\d{2}))?)?$/.exec(h))){ setSec('projects'); return project(m[1],m[2]||'tasks',false,m[3]); }
     if((m=/^w\/new(?:\/(p_[a-f0-9]+))?$/.exec(h))){ setSec('new'); return newTasks(m[1]); }
@@ -318,7 +319,7 @@
     api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; var all=false;
       var draw=function(){ var L2=j.projects.filter(function(p){ return all||p.status==='active'||p.status==='paused'; });
         host.querySelector('.wprojects').innerHTML=L2.length?L2.map(projCard).join(''):'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>'; };
-      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+'<div class="wprojects wprojects-lg"></div>';
+      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+seg('projects')+'<div class="wprojects wprojects-lg"></div>';
       var tg=host.querySelector('.wtoggle input'); if(tg) tg.onchange=function(){ all=tg.checked; draw(); };
       draw(); rise(); }); }
 
@@ -383,6 +384,7 @@
           '<label>'+T.f.date+'<input name="requested_date" type="date" min="'+minD+'" value="'+esc(prev?prev.date:'')+'"></label>'+
           '<fieldset class="wprio"><legend>'+T.f.prio+'</legend>'+['normal','high','urgent'].map(function(p){ var on=(prev?prev.prio:'normal')===p; return '<label class="chipb'+(on?' on':'')+'"><input type="radio" name="priority_'+i+'" value="'+p+'"'+(on?' checked':'')+'>'+esc(L((W.priorities||{})[p])||T.p[p])+'</label>'; }).join('')+'</fieldset></div>'+
           '<label>'+T.f.desc+'<textarea name="description" maxlength="4000" dir="auto" rows="2"></textarea></label>'+
+          (DASH&&DASH.brand_n?'<label class="wbrand-use"><input type="checkbox" name="brand_lib" checked><span><b>'+BR.use+'</b><small class="muted">'+BR.useP+'</small></span></label>':'')+
           '<details class="wm-more"><summary>'+U2.nw.more+'</summary><label>'+T.f.details+'<textarea name="details" maxlength="6000" dir="auto"></textarea></label>'+
             '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
             '<label>'+T.f.notes+'<textarea name="notes" maxlength="3000" dir="auto"></textarea></label>'+
@@ -397,6 +399,7 @@
         return {title:q('title').value.trim(),type:q('type').value.trim(),requested_date:q('requested_date').value,priority:(d.querySelector('.wprio input:checked')||{}).value||'normal',
           description:q('description').value.trim(),details:q('details').value.trim(),notes:q('notes').value.trim(),
           links:[].map.call(d.querySelectorAll('.lrow2'),function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); }),
+          brand_lib:!!(q('brand_lib')&&q('brand_lib').checked),
           brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
       var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
         f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
@@ -476,15 +479,115 @@
       api('',{action:'deleteComment',id:x.dataset.delc}).then(function(r){ if(r.ok) reload(); else toast(T.err); }); }; });
   }
 
+  /* ---- uploads: straight from the browser to R2 (presigned), progress from XMLHttpRequest ---- */
+  var BR=AR?{h:'مكتبة الهوية',p:'هويتك البصرية في مكان واحد. يعتمدها الاستوديو تلقائياً في كل مهمة جديدة.',seg:{projects:'المشاريع',brand:'مكتبة الهوية'},
+      logos:'الشعارات',dark:'على خلفية داكنة',light:'على خلفية فاتحة',vector:'ملفات متجهة',colors:'لوحة الألوان المعتمدة',fonts:'الخطوط المعتمدة',style:'الأسلوب والموسيقى',
+      styleL:'الأسلوب البصري',styleP:'مثال: هادئ وفاخر، لقطات قريبة، ألوان دافئة',musicL:'الموسيقى',musicP:'مثال: بيانو هادئ، بلا كلمات',
+      up:'رفع ملف',none:'لا يوجد شيء بعد.',del:'حذف',copy:'نسخ',copied:'نُسخ',add:'إضافة',name:'الاسم (اختياري)',hex:'الرمز',fname:'اسم الخط',fuse:'الاستخدام (عناوين، نص…)',
+      ffiles:'ملفات الخطوط',saved:'حُفظت مكتبة الهوية.',use:'اعتمد مكتبة الهوية في هذه المهمة',useP:'أزل التحديد إن كانت لهذه المهمة ملفات هوية خاصة، وأضفها في الروابط.',
+      drop:'اسحب الملفات وأفلتها هنا',dropOr:'أو',pick:'اختر من جهازك',dropCat:'التصنيف',stored:'محفوظ لدى الاستوديو',
+      st:{wait:'في الانتظار',up:'يُرفع',done:'اكتمل',fail:'تعذّر الرفع',type:'نوع غير مدعوم',size:'الحجم أكبر من 5 GB'},retry:'أعد المحاولة'}
+    :{h:'Brand library',p:'Your visual identity in one place. The studio applies it to every new task automatically.',seg:{projects:'Projects',brand:'Brand library'},
+      logos:'Logos',dark:'On dark',light:'On light',vector:'Vector files',colors:'Approved colours',fonts:'Approved fonts',style:'Style and music',
+      styleL:'Visual style',styleP:'e.g. calm and premium, close-ups, warm tones',musicL:'Music',musicP:'e.g. quiet piano, no vocals',
+      up:'Upload a file',none:'Nothing yet.',del:'Delete',copy:'Copy',copied:'Copied',add:'Add',name:'Name (optional)',hex:'Code',fname:'Font name',fuse:'Use (headings, body…)',
+      ffiles:'Font files',saved:'Brand library saved.',use:'Use the brand library for this task',useP:'Untick it if this task has its own brand files, and add them under links.',
+      drop:'Drag and drop files here',dropOr:'or',pick:'choose from your device',dropCat:'Category',stored:'Kept by the studio',
+      st:{wait:'Waiting',up:'Uploading',done:'Done',fail:'Upload failed',type:'File type not supported',size:'Larger than 5 GB'},retry:'Try again'};
+  function isUp(u){ return /\/api\/up\//.test(u||''); }
+  function rel(u){ return String(u||'').replace(/^https?:\/\/[^\/]+/,''); }
+  function upPost(b){ return fetch(API+'up',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(b)})
+    .then(function(r){ return r.json().catch(function(){ return {ok:false}; }).then(function(j){ j._s=r.status; return j; }); }).catch(function(){ return {ok:false,_net:true}; }); }
+  function xput(url,blob,type,onp){ return new Promise(function(res,rej){ var x=new XMLHttpRequest(); x.open('PUT',url); if(type) x.setRequestHeader('content-type',type);
+    x.upload.onprogress=function(e){ if(e.lengthComputable) onp(e.loaded); }; x.onload=function(){ if(x.status>=200&&x.status<300) res(x); else rej(x); }; x.onerror=x.onabort=function(){ rej(x); }; x.send(blob); }); }
+  // one file → R2. Under 100 MB: one signed PUT. Larger: parts (≥ 5 MiB), three at a time, each part signed just before it is sent,
+  // so a link never outlives its 15 minutes; a failed part is signed again and retried (3 times)
+  function upload(file,meta,onp){ var size=file.size;
+    var sign=function(){ return upPost(Object.assign({op:'sign',name:file.name,type:file.type,size:size},meta)).then(function(s){ if(!s.ok) throw s; return s; }); };
+    return sign().then(function(s){
+      if(s.mode==='put') return xput(s.url,file,s.type,function(l){ onp(l/size); })
+        .catch(function(x){ if(x&&x.status===403) return sign().then(function(s2){ s=s2; return xput(s2.url,file,s2.type,function(l){ onp(l/size); }); }); throw x; })
+        .then(function(){ return upPost({op:'done',key:s.key,name:file.name}); });
+      var P=s.part, n=Math.ceil(size/P), got=[], parts=[], next=1;
+      var urlOf=function(i){ return s.mode==='proxy'?Promise.resolve(API+'up?key='+encodeURIComponent(s.key)+'&uploadId='+encodeURIComponent(s.uploadId)+'&n='+i)
+        :upPost({op:'parts',key:s.key,uploadId:s.uploadId,numbers:[i]}).then(function(r){ if(!r.ok) throw r; return r.urls[i]; }); };
+      var one=function(i,tries){ var blob=file.slice((i-1)*P,Math.min(i*P,size));
+        return urlOf(i).then(function(u){ return xput(u,blob,'',function(l){ got[i]=l; onp(got.reduce(function(a,b){ return a+(b||0); },0)/size); }); })
+          .then(function(x){ var et=s.mode==='proxy'?JSON.parse(x.responseText).etag:x.getResponseHeader('ETag'); if(!et) throw x; parts.push({partNumber:i,etag:et}); })
+          .catch(function(e){ got[i]=0; if(tries<3) return one(i,tries+1); throw e; }); };
+      var lane=function(){ if(next>n) return Promise.resolve(); var i=next++; return one(i,0).then(lane); };
+      return Promise.all([lane(),lane(),lane()]).then(function(){ return upPost({op:'done',key:s.key,uploadId:s.uploadId,parts:parts,name:file.name}); })
+        .catch(function(e){ upPost({op:'abort',key:s.key,uploadId:s.uploadId}); throw e; });
+    }).then(function(r){ if(!r.ok) throw r; onp(1); return r.file; });
+  }
+  var UPEXT=/\.(mp4|mov|m4v|webm|mxf|avi|mp3|wav|aac|m4a|aif|aiff|flac|jpg|jpeg|png|webp|gif|heic|tif|tiff|psd|ai|eps|svg|pdf|doc|docx|ppt|pptx|xls|xlsx|txt|rtf|zip|rar|7z|ttf|otf|woff|woff2|prproj|aep|drp|srt|vtt|csv|json)$/i;
+  function upRow(list,file){ var li=document.createElement('li'); li.innerHTML='<span class="wu-n"><bdi>'+esc(file.name)+'</bdi></span><span class="wu-s">'+BR.st.wait+'</span><i class="wu-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="'+esc(file.name)+'"><b></b></i>'; list.appendChild(li);
+    return { set:function(f){ var pc=Math.round(f*100); li.querySelector('b').style.width=pc+'%'; li.querySelector('.wu-bar').setAttribute('aria-valuenow',pc); li.querySelector('.wu-s').textContent=pc>=100?BR.st.done:BR.st.up+' '+pc+'%'; },
+      fail:function(t){ li.classList.add('bad'); li.querySelector('.wu-s').textContent=t; }, done:function(){ li.classList.add('ok'); li.querySelector('.wu-s').textContent=BR.st.done; } }; }
+  // send several files, one after another (each file's own parts already run three at a time); files we cannot take are named at once,
+  // and if the list reloads afterwards, a short note keeps what failed in view
+  function sendFiles(files,meta,list,after){ var q=[], bad=[], okN=0;
+    [].forEach.call(files,function(f){ var why=!UPEXT.test(f.name)?BR.st.type:f.size>5*1024*1024*1024?BR.st.size:''; if(why){ upRow(list,f).fail(why); bad.push(f.name+' ('+why+')'); } else q.push(f); });
+    var step=function(){ var f=q.shift(); if(!f){ if(okN){ after(); if(bad.length) setTimeout(function(){ toast(BR.st.fail+': '+bad.join('، ')); },700); } return; } var row=upRow(list,f);
+      upload(f,typeof meta==='function'?meta():meta,row.set).then(function(){ okN++; row.done(); step(); },function(){ row.fail(BR.st.fail); bad.push(f.name); step(); }); };
+    step(); }
+  function dropZone(){ return '<div class="wdrop form" tabindex="0" role="button" aria-label="'+BR.drop+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'+
+    '<p><b>'+BR.drop+'</b> <span class="muted">'+BR.dropOr+'</span> <u>'+BR.pick+'</u></p><label class="wdrop-c" onclick="event.stopPropagation()">'+BR.dropCat+' <select>'+['raw','brand','reference','document'].map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label>'+
+    '<input type="file" multiple hidden></div><ul class="wupl"></ul>'; }
+  function bindDrop(box,meta,after){ var z=box.querySelector('.wdrop'); if(!z) return; var inp=z.querySelector('input'), sel=z.querySelector('select'), list=box.querySelector('.wupl');
+    var go=function(files){ if(files&&files.length) sendFiles(files,function(){ return Object.assign({category:sel.value},meta); },list,function(){ setTimeout(after,600); }); };
+    z.onclick=function(e){ if(!e.target.closest('select,label')) inp.click(); }; z.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); inp.click(); } };
+    inp.onchange=function(){ go(inp.files); inp.value=''; };
+    ['dragenter','dragover'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.add('over'); }); });
+    ['dragleave','drop'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.remove('over'); }); });
+    z.addEventListener('drop',function(e){ go(e.dataTransfer&&e.dataTransfer.files); }); }
+  function seg(on){ return '<nav class="wseg" aria-label="'+BR.h+'">'+['projects','brand'].map(function(k){ return '<a href="#w/'+k+'"'+(k===on?' class="on" aria-current="page"':'')+'>'+BR.seg[k]+'</a>'; }).join('')+'</nav>'; }
+
+  /* ---- the brand library: four dark cards; D1 keeps it, R2 keeps its files ---- */
+  function brandView(){ loading();
+    api('?view=brand').then(function(j){ if(!j.ok) return fail(j); var B=j.brand;
+      var save=function(){ return api('',{action:'brand',colors:B.colors,fonts:B.fonts,style:B.style,music:B.music}).then(function(r){ if(r.ok){ B=r.brand; if(DASH) DASH.brand_n=1; toast(BR.saved); } else toast(T.err); }); };
+      var files=function(kind){ var L3=B.assets.filter(function(a){ return a.kind===kind; });
+        return '<ul class="wbk-f">'+(L3.length?L3.map(function(a){ var img=/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(a.type||'');
+          return '<li>'+(img?'<span class="wbk-th"><img src="'+esc(rel(a.url))+'" alt="'+esc(a.title)+'" loading="lazy"></span>':'<span class="wbk-ext" dir="ltr">'+esc((a.title.split('.').pop()||'').toUpperCase().slice(0,5))+'</span>')+
+            '<a href="'+esc(rel(a.url))+'?dl=1"><bdi>'+esc(a.title)+'</bdi></a><button type="button" class="linkbtn" data-del="'+esc(a.id)+'">'+BR.del+'</button></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
+          '<button type="button" class="btn btn-glass glass wbk-up" data-kind="'+kind+'">'+ICO.plus+'<span>'+BR.up+'</span></button><input type="file" hidden multiple data-for="'+kind+'"'+(kind==='font'?' accept=".ttf,.otf,.woff,.woff2,.zip"':kind==='vector'?' accept=".svg,.ai,.eps,.pdf,.zip"':' accept=".png,.jpg,.jpeg,.webp,.svg"')+'><ul class="wupl"></ul>'; };
+      var draw=function(){
+        host.innerHTML=head('projects','BRAND',BR.h,BR.p)+seg('brand')+'<div class="wbk form">'+
+          '<section class="wbk-c wbk-logos glass"><h3>'+BR.logos+'</h3><div class="wbk-3">'+
+            '<div class="wbk-s on-dark"><h4>'+BR.dark+'</h4>'+files('logo_dark')+'</div><div class="wbk-s on-light"><h4>'+BR.light+'</h4>'+files('logo_light')+'</div><div class="wbk-s"><h4>'+BR.vector+'</h4>'+files('vector')+'</div></div></section>'+
+          '<section class="wbk-c glass"><h3>'+BR.colors+'</h3><ul class="wbk-sw">'+(B.colors.length?B.colors.map(function(c,i){ return '<li><span class="wbk-chip" style="background:'+esc(c.hex)+'"></span><span class="wbk-cn"><b dir="ltr">'+esc(c.hex)+'</b>'+(c.name?'<small class="muted"><bdi>'+esc(c.name)+'</bdi></small>':'')+'</span>'+
+              '<button type="button" class="wbk-copy" data-copy="'+esc(c.hex)+'" aria-label="'+BR.copy+' '+esc(c.hex)+'">'+BR.copy+'</button><button type="button" class="wbk-x" data-rmc="'+i+'" aria-label="'+BR.del+' '+esc(c.hex)+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
+            '<form class="wbk-add"><input type="color" value="#3FE0E8" aria-label="'+BR.hex+'"><input name="hex" dir="ltr" maxlength="7" value="#3FE0E8" aria-label="'+BR.hex+'"><input name="name" maxlength="40" dir="auto" placeholder="'+BR.name+'"><button class="btn btn-glass glass" type="submit">'+BR.add+'</button></form></section>'+
+          '<section class="wbk-c glass"><h3>'+BR.fonts+'</h3><ul class="wbk-fl">'+(B.fonts.length?B.fonts.map(function(f,i){ return '<li><b><bdi>'+esc(f.name)+'</bdi></b>'+(f.use?'<small class="muted"><bdi>'+esc(f.use)+'</bdi></small>':'')+'<button type="button" class="wbk-x" data-rmf="'+i+'" aria-label="'+BR.del+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
+            '<form class="wbk-addf"><input name="fn" maxlength="60" dir="auto" placeholder="'+BR.fname+'" required><input name="fu" maxlength="60" dir="auto" placeholder="'+BR.fuse+'"><button class="btn btn-glass glass" type="submit">'+BR.add+'</button></form>'+
+            '<h4>'+BR.ffiles+'</h4>'+files('font')+'</section>'+
+          '<section class="wbk-c glass"><h3>'+BR.style+'</h3><label>'+BR.styleL+'<textarea name="style" maxlength="1500" rows="3" dir="auto" placeholder="'+BR.styleP+'">'+esc(B.style)+'</textarea></label>'+
+            '<label>'+BR.musicL+'<textarea name="music" maxlength="1500" rows="3" dir="auto" placeholder="'+BR.musicP+'">'+esc(B.music)+'</textarea></label></section></div>';
+        host.querySelectorAll('[data-copy]').forEach(function(b){ b.onclick=function(){ var v=b.dataset.copy, ok=function(){ b.textContent=BR.copied; b.classList.add('on'); setTimeout(function(){ b.textContent=BR.copy; b.classList.remove('on'); },1400); };
+          if(navigator.clipboard) navigator.clipboard.writeText(v).then(ok,function(){ toast(v); }); else toast(v); }; });
+        host.querySelectorAll('[data-rmc]').forEach(function(b){ b.onclick=function(){ B.colors.splice(+b.dataset.rmc,1); save().then(draw); }; });
+        host.querySelectorAll('[data-rmf]').forEach(function(b){ b.onclick=function(){ B.fonts.splice(+b.dataset.rmf,1); save().then(draw); }; });
+        var cf=host.querySelector('.wbk-add'), pick=cf.querySelector('[type=color]');
+        pick.oninput=function(){ cf.elements.hex.value=pick.value.toUpperCase(); }; cf.elements.hex.oninput=function(){ if(/^#[0-9a-f]{6}$/i.test(this.value)) pick.value=this.value; };
+        cf.onsubmit=function(e){ e.preventDefault(); var hx=cf.elements.hex.value.trim().toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(hx)){ cf.elements.hex.focus(); return; } B.colors.push({hex:hx,name:cf.elements.name.value.trim()}); save().then(draw); };
+        var ff=host.querySelector('.wbk-addf'); ff.onsubmit=function(e){ e.preventDefault(); var n=ff.elements.fn.value.trim(); if(!n) return; B.fonts.push({name:n,use:ff.elements.fu.value.trim()}); save().then(draw); };
+        host.querySelectorAll('textarea').forEach(function(t){ t.onchange=function(){ B[t.name]=t.value.trim(); save(); }; });
+        host.querySelectorAll('.wbk-up').forEach(function(b){ var inp=b.nextElementSibling; b.onclick=function(){ inp.click(); };
+          inp.onchange=function(){ sendFiles(inp.files,{scope:'brand',kind:b.dataset.kind},inp.nextElementSibling,function(){ setTimeout(brandView,500); }); inp.value=''; }; });
+        host.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent=T.dl.sure; return; }
+          api('',{action:'brandDel',id:b.dataset.del}).then(function(r){ if(r.ok) brandView(); else toast(T.err); }); }; });
+        rise(); };
+      draw(); }); }
   /* ---- file center: links by category + everything the studio delivered ---- */
   var FCATS=['all','brand','raw','reference','document','delivered','other'];
   function hostOf(u){ var m=/^https?:\/\/([^\/?#]+)/i.exec(u||''), h=m?m[1].replace(/^www\./,''):'';
     return /drive\.google|docs\.google/.test(h)?'Google Drive':/dropbox/.test(h)?'Dropbox':/wetransfer|we\.tl/.test(h)?'WeTransfer':/youtu/.test(h)?'YouTube':/vimeo/.test(h)?'Vimeo':/figma/.test(h)?'Figma':/canva/.test(h)?'Canva':/frame\.io/.test(h)?'Frame.io':h; }
   function filesView(body,j){ var cat='all', p=j.project;
-    var items=(j.files||[]).map(function(f){ return {id:f.id,cat:f.category,title:f.title,url:f.url,note:f.note,at:f.created_at,who:f.added_by==='studio'?T.fl.studio:f.added_by===j.me?T.cm.you:f.added_name,mine:f.added_by===j.me}; })
+    var items=(j.files||[]).map(function(f){ return {id:f.id,cat:f.category,title:f.title,url:f.url,note:f.note,at:f.created_at,who:f.added_by==='studio'?T.fl.studio:f.added_by===j.me?T.cm.you:f.added_name,ours:isUp(f.url),mine:f.added_by===j.me}; })
       .concat((j.delivered||[]).map(function(d){ return {id:d.id,cat:'delivered',title:(d.title||d.task_title)+' — '+(d.is_final?T.dl.fin:d.label),url:d.url,at:d.created_at,ref:d.ref,who:T.fl.studio}; }));
     var cnt=function(c){ return c==='all'?items.length:items.filter(function(x){return x.cat===c}).length; };
-    body.innerHTML='<div class="wfhead"><div class="wfilt">'+FCATS.map(function(c){ var n=cnt(c); return (c==='all'||n)?'<button type="button" class="chipb'+(c===cat?' on':'')+'" data-c="'+c+'">'+T.fl.cats[c]+(n?' <small>'+n+'</small>':'')+'</button>':''; }).join('')+'</div>'+
+    body.innerHTML=dropZone()+'<div class="wfhead"><div class="wfilt">'+FCATS.map(function(c){ var n=cnt(c); return (c==='all'||n)?'<button type="button" class="chipb'+(c===cat?' on':'')+'" data-c="'+c+'">'+T.fl.cats[c]+(n?' <small>'+n+'</small>':'')+'</button>':''; }).join('')+'</div>'+
       '<button type="button" class="btn btn-glass glass" data-addf>'+T.fl.add+'</button></div>'+
       '<form class="wcard glass wfadd form" hidden novalidate><p class="muted small">'+T.fl.hint+'</p><div class="wgrid"><label>'+T.fl.title+'<input name="title" maxlength="140" dir="auto"></label>'+
         '<label>'+T.fl.cat+'<select name="category">'+FCATS.filter(function(c){return c!=='all'&&c!=='delivered'}).map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label></div>'+
@@ -492,7 +595,7 @@
         '<p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+T.fl.save+'</button></div></form><div class="wfiles"></div>';
     var grid=body.querySelector('.wfiles'), form=body.querySelector('.wfadd');
     var draw=function(){ var list=items.filter(function(x){ return cat==='all'||x.cat===cat; });
-      grid.innerHTML=list.length?list.map(function(f){ return '<div class="wfile glass"><a class="wf-main" href="'+esc(f.url)+'" target="_blank" rel="noopener noreferrer"><span class="wf-host">'+esc(hostOf(f.url))+'</span><b><bdi>'+esc(f.title)+'</bdi></b></a>'+
+      grid.innerHTML=list.length?list.map(function(f){ return '<div class="wfile glass"><a class="wf-main" href="'+esc(f.ours?rel(f.url):f.url)+'" target="_blank" rel="noopener noreferrer"><span class="wf-host">'+esc(f.ours?BR.stored:hostOf(f.url))+'</span><b><bdi>'+esc(f.title)+'</bdi></b></a>'+
         '<small class="muted">'+esc(T.fl.cats[f.cat]||f.cat)+' · '+esc(f.who||'')+' · '+esc(d8(f.at))+(f.ref?' · <a href="#w/t/'+esc(f.ref)+'"><bdi dir="ltr">'+esc(f.ref)+'</bdi></a>':'')+'</small>'+(f.note?'<p class="muted small">'+para(f.note)+'</p>':'')+
         (f.mine?'<button type="button" class="linkbtn wf-del" data-delf="'+esc(f.id)+'">'+T.fl.del+'</button>':'')+'</div>'; }).join(''):'<p class="muted small">'+T.fl.none+'</p>';
       grid.querySelectorAll('[data-delf]').forEach(function(x){ x.onclick=function(){ if(x.dataset.armed!=='1'){ x.dataset.armed='1'; x.textContent=T.dl.sure; return; }
@@ -503,7 +606,7 @@
       if(!/^https?:\/\/\S+$/i.test(u)){ msg.textContent=T.fl.badUrl; E.url.focus(); return; }
       var b=form.querySelector('button[type=submit]'); b.disabled=true;
       api('',{action:'file',project:p.id,category:E.category.value,title:E.title.value.trim(),url:u,note:E.note.value.trim()}).then(function(r){ if(r.ok){ toast(T.saved); project(p.id,'files',true); } else { b.disabled=false; msg.textContent=r.error==='url'?T.fl.badUrl:T.err; } }); };
-    draw();
+    draw(); bindDrop(body,{scope:'project',project:p.id},function(){ project(p.id,'files',true); });
   }
 
   /* ---- task ---- */

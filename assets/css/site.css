@@ -2169,3 +2169,49 @@ body[data-page="workspace"] .ws-page .btn-primary:disabled{animation:none;filter
 .wrv{width:min(100%,calc(70vh * var(--ar,1.7778)));margin-inline:auto}
 .wrv video{width:100%;height:auto;max-height:none}
 .wrv-here{justify-self:center}
+
+/* ===== the client workspace, phase 3: brand library, direct uploads ===== */
+/* projects | brand library */
+.wseg{display:flex;width:fit-content;max-width:100%;gap:4px;margin:0 0 18px;padding:4px;border-radius:999px;background:rgba(var(--k-white-rgb),.05);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+.wseg a{min-height:40px;display:inline-flex;align-items:center;padding:0 18px;border-radius:999px;color:var(--mist);text-decoration:none;font-size:14.5px}
+.wseg a.on{background:rgba(var(--k-horizon-rgb),.14);color:var(--light);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.4)}
+/* drop zone: quiet until a file is over it */
+.wdrop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 14px;padding:18px 20px;border-radius:18px;border:1.5px dashed rgba(var(--k-white-rgb),.16);background:rgba(var(--k-night-rgb),.35);cursor:pointer;transition:border-color .2s,background .2s}
+.wdrop:hover,.wdrop:focus-visible,.wdrop.over{border-color:rgba(var(--k-horizon-rgb),.7);background:rgba(var(--k-horizon-rgb),.06);outline:none}
+.wdrop>svg{flex:none;width:26px;height:26px;fill:none;stroke:var(--k-horizon);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.wdrop p{flex:1;min-width:200px;margin:0}.wdrop u{color:var(--k-horizon);text-underline-offset:3px}
+.wdrop-c{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--mist)}.wdrop-c select{min-height:40px}
+.wupl{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px}.wupl:empty{display:none}
+.wupl li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 14px;border-radius:12px;background:rgba(var(--k-white-rgb),.04);font-size:14px}
+.wu-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wu-s{color:var(--mist);font-size:13px;font-variant-numeric:tabular-nums}
+.wu-bar{grid-column:1/-1;height:4px;border-radius:4px;background:rgba(var(--k-white-rgb),.08);overflow:hidden}
+.wu-bar b{display:block;height:100%;width:0;background:var(--k-horizon);border-radius:inherit;transition:width .25s linear}
+.wupl li.ok .wu-s{color:#7ff0c0}.wupl li.bad .wu-s{color:var(--k-rose)}.wupl li.bad .wu-bar b{background:var(--k-rose)}
+/* the library: four dark cards */
+.wbk{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.wbk-c{padding:20px;border-radius:20px;background:rgba(var(--k-night-rgb),.55);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+.wbk-c h3{margin:0 0 14px;font-size:17px}.wbk-c h4{margin:14px 0 8px;font-size:14px;color:var(--mist);font-weight:500}
+.wbk-logos{grid-column:1/-1}.wbk-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wbk-s{padding:14px;border-radius:14px;background:rgba(var(--k-white-rgb),.03)}.wbk-s h4{margin-top:0}
+.wbk-s.on-dark .wbk-th{background:var(--k-night)}.wbk-s.on-light .wbk-th{background:var(--light)}
+.wbk-f,.wbk-sw,.wbk-fl{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.wbk-f li{display:flex;align-items:center;gap:10px;min-height:44px}.wbk-f a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--light)}
+.wbk-th{flex:none;width:56px;height:40px;display:grid;place-items:center;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.1)}.wbk-th img{max-width:48px;max-height:32px;object-fit:contain}
+.wbk-ext{flex:none;width:56px;height:40px;display:grid;place-items:center;border-radius:8px;background:rgba(var(--k-white-rgb),.06);font-family:var(--latin);font-size:12px;letter-spacing:.06em;color:var(--mist)}
+.wbk-up svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+.wbk-sw li,.wbk-fl li{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 0;border-bottom:1px solid rgba(var(--k-white-rgb),.06)}
+.wbk-chip{flex:none;width:36px;height:36px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.18)}
+.wbk-cn,.wbk-fl b{flex:1;display:flex;flex-direction:column;gap:2px}.wbk-cn b{font-family:var(--latin);letter-spacing:.04em}
+.wbk-fl li{flex-wrap:wrap}.wbk-fl small{flex:1}
+.wbk-copy{min-height:36px;padding:0 14px;border:0;border-radius:999px;background:rgba(var(--k-horizon-rgb),.12);color:var(--k-horizon);font:inherit;font-size:13px;cursor:pointer}
+.wbk-copy.on{background:rgba(127,240,192,.16);color:#7ff0c0}
+.wbk-x{flex:none;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:50%;background:none;color:var(--dim);cursor:pointer}.wbk-x:hover{color:var(--light);background:rgba(var(--k-white-rgb),.06)}
+.wbk-x svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+.wbk-add,.wbk-addf{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.wbk-add input,.wbk-addf input{min-height:44px;flex:1;min-width:110px}
+.wbk-add [type=color]{flex:none;width:48px;min-width:0;padding:4px;border-radius:12px;cursor:pointer}.wbk-add [name=hex]{flex:0 1 110px;font-family:var(--latin)}
+.wbk-c label{display:grid;gap:6px;margin:0 0 12px;font-size:14px;color:var(--mist)}
+.wbk textarea{min-height:84px}.wdrop.form select{padding:8px 12px}
+/* new task: use the library, or this task's own files */
+.wbrand-use{display:flex;align-items:flex-start;gap:12px;margin:4px 0 2px;padding:12px 14px;border-radius:14px;background:rgba(var(--k-horizon-rgb),.06);box-shadow:inset 0 0 0 1px rgba(var(--k-horizon-rgb),.22);cursor:pointer}
+.wbrand-use input{margin-top:3px;width:18px;height:18px;accent-color:var(--k-horizon)}.wbrand-use span{display:grid;gap:2px}
+@media (max-width:860px){ .wbk{grid-template-columns:1fr} .wbk-3{grid-template-columns:1fr} .wdrop{padding:16px} .wdrop-c{width:100%} .wdrop-c select{flex:1} }
