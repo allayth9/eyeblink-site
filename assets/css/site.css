@@ -2318,3 +2318,18 @@ html[data-bg="cinema"] .wnav.glass{background:linear-gradient(160deg,rgba(var(--
   html[data-bg="cinema"] .glass:not(.bar):not(.dock){background:linear-gradient(160deg,rgba(var(--k-white-rgb),.09),rgba(var(--k-white-rgb),.035) 42%,rgba(var(--k-white-rgb),.05)),rgba(var(--k-black-rgb),.55)}
 }
 @media (max-width:860px){ html[data-bg="cinema"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(var(--k-black-rgb),.92),0 12px 28px -8px rgba(var(--k-g3-rgb),.7)!important} }
+/* cinema: the metal button goes back to the graphite body of the original liquid-metal button (the blue was too loud on black);
+   the moving metal rim stays, the blue glow underneath goes */
+html[data-bg="cinema"] :is(.eb-metal,body[data-page="workspace"] .ws-page .btn-primary,.nav .bar>.btn.ws-new,.wnav a.wnav-new,.nav .links a.ws-link){
+  background:linear-gradient(180deg,rgba(var(--k-white-rgb),.17),rgba(var(--k-white-rgb),.05) 55%,rgba(var(--k-white-rgb),.02)) padding-box,
+    linear-gradient(var(--k-black),var(--k-black)) padding-box,
+    conic-gradient(from var(--lm),#e9edf3,#7c8696,#f7f9fc 12%,#c9d2de 18%,#5d6678 25%,#eef2f6 33%,#a3adbd 40%,#d9dde4 46%,#6f7a8a 52%,#f4f7fb 62%,#b9c4d2 70%,#5b6475 78%,#e9edf3 88%,#9aa6b8 94%,#e9edf3) border-box!important;
+  box-shadow:0 0 0 1px rgba(var(--k-black-rgb),.5),0 12px 22px -10px rgba(var(--k-black-rgb),.8)!important}
+@media (max-width:860px){ html[data-bg="cinema"] .wnav a.wnav-new{box-shadow:0 0 0 5px rgba(var(--k-black-rgb),.92),0 10px 22px -8px rgba(var(--k-black-rgb),.9)!important} }
+/* cinema: notifications in quiet greys; the kind still shows as a small coloured dot, without the glow */
+html[data-bg="cinema"] :is(.hp-i.new,.wni.new){background:rgba(var(--k-white-rgb),.045);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.08)}
+html[data-bg="cinema"] :is(.hp-i,.wni)>i{background:rgba(var(--k-white-rgb),.06);box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.1)}
+html[data-bg="cinema"] :is(.hp-i,.wni)>i::after{box-shadow:none;filter:saturate(.7)}
+html[data-bg="cinema"] .wni.new::before{box-shadow:none;opacity:.7}
+html[data-bg="cinema"] .wni.new>i::after{animation:none}
+html[data-bg="cinema"] .hbadge{background:var(--light);color:var(--k-black);box-shadow:none}
