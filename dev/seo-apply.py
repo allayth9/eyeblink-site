@@ -8,9 +8,9 @@ BR = "Eyeblink Studio"
 # page -> (ar title, ar description, en title, en description)
 P = {
  "index": (
-  "Eyeblink Studio — مونتاج فيديو وموشن غرافيك وإعلانات سوشال ميديا",
+  "Eyeblink Studio | آيبلينك استوديو",
   "استوديو إبداعي مستقل: مونتاج فيديو احترافي، موشن غرافيك، إعلانات سوشال ميديا وريلز، وإنتاج سينمائي. نخدم العلامات والمبدعين في الخليج والوطن العربي.",
-  "Eyeblink Studio — Video Editing, Motion Graphics & Social Media Ads",
+  "Eyeblink Studio | آيبلينك استوديو",
   "An independent creative studio for professional video editing, motion graphics, social media video ads and Reels, and cinematic film production for brands and creators in the Gulf and the Arab world."),
  "services": (
   "خدمات مونتاج وموشن غرافيك وسوشال ميديا وأفلام — Eyeblink Studio",
@@ -76,7 +76,7 @@ def org(lang):
     offers = [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": SERV[k][0 if ar else 1], "url": url(k, lang)}} for k in SERV]
     return {
         "@type": ["ProfessionalService", "Organization"], "@id": SITE + "/#studio", "name": BR,
-        "alternateName": (["إيبلينك ستوديو", "ايبلينك ستوديو", "Eyeblink"] if ar else ["Eyeblink"]),
+        "alternateName": (["آيبلينك استوديو", "إيبلينك ستوديو", "ايبلينك ستوديو", "Eyeblink"] if ar else ["Eyeblink"]),
         "url": SITE + "/", "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og.jpg",
         "slogan": "Every cut is a blink",
         "description": P["index"][1 if ar else 3],
