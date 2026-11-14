@@ -1,6 +1,8 @@
 /* Eyeblink — content renderer.
    Content comes from (in order): the seed baked into the page → a draft saved from /admin in this browser
    (preview only) → the live content from /api/content when the site runs on Cloudflare. */
+// the background theme the panel chose last time, before anything paints (render() confirms it from the content)
+try{ if(localStorage.getItem('eb-bg')==='cinema') document.documentElement.dataset.bg='cinema'; }catch(_){}
 (function(){
   var root=document.documentElement, lang=root.lang==='en'?'en':'ar', AR=lang==='ar';
   var BASE=document.body.getAttribute('data-base')||'';
@@ -181,6 +183,8 @@
     [].forEach.call(document.querySelectorAll('[data-list]'),function(el){ var f=R[el.dataset.list]; if(f) f(el,svc||{}); });
     [].forEach.call(document.querySelectorAll('[data-ig]'),function(el){ var h=(C.site&&C.site.instagram)||'eyeblnk'; if(el.tagName==='A') el.href='https://instagram.com/'+h; else el.textContent='@'+h; });
     var S=C.settings||{};
+    // the background theme from the panel ('' = blue hour, 'cinema'); remembered for the next page's first paint
+    var bgT=S.bgTheme==='cinema'?'cinema':''; if(bgT) document.documentElement.dataset.bg=bgT; else delete document.documentElement.dataset.bg; try{ localStorage.setItem('eb-bg',bgT); }catch(_){}
     // the studio sets how strongly the live background shows (0–100, from the panel)
     if(S.bgOpacity!=null&&S.bgOpacity!=='') document.documentElement.style.setProperty('--field-op',Math.max(0,Math.min(100,+S.bgOpacity))/100);
     [].forEach.call(document.querySelectorAll('[data-show]'),function(el){ el.hidden = S[el.dataset.show]===false; });

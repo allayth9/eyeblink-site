@@ -32,7 +32,7 @@
 
   var uniforms={
     uTime:{value:0}, uMouse:{value:new THREE.Vector2(9,9)}, uPress:{value:0}, uAspect:{value:1},
-    uSize:{value:2.7*DPR}, uAlpha:{value:1}, uWarp:{value:1}
+    uSize:{value:2.7*DPR}, uAlpha:{value:1}, uWarp:{value:1}, uSat:{value:1}
   };
   var noise=[
     'vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}',
@@ -53,7 +53,7 @@
   ].join('\n');
 
   var vert=[
-    'uniform float uTime,uPress,uAspect,uSize,uWarp;uniform vec2 uMouse;attribute float aSeed;',
+    'uniform float uTime,uPress,uAspect,uSize,uWarp,uSat;uniform vec2 uMouse;attribute float aSeed;',
     'varying vec3 vColor;varying float vAlpha;', noise,
     'void main(){',
     ' vec3 p=position;',
@@ -79,7 +79,7 @@
     ' col=mix(col,hour,smoothstep(0.18,0.45,h));',
     ' col=mix(col,horizon,smoothstep(0.55,0.95,h+n*0.15));',
     ' col+=vec3(0.25,0.3,0.35)*push;',
-    ' vColor=col;',
+    ' vColor=mix(vec3(dot(col,vec3(0.299,0.587,0.114)))*1.1,col,uSat);',
     ' vAlpha=(0.36+0.64*facing)*(0.8+0.2*aSeed);',
     '}'
   ].join('\n');
@@ -152,6 +152,8 @@
     pts.rotation.y=t*0.06+rot.y; pts.rotation.x=0.25+rot.x+Math.sin(t*0.2)*0.05;
     uniforms.uTime.value=reduce?8:t; uniforms.uMouse.value.set(mouse.x,mouse.y);
     uniforms.uPress.value=reduce?0:press; uniforms.uAlpha.value=p.a;
+    // the background theme chosen in the panel (html[data-bg]): cinema keeps only a trace of colour
+    uniforms.uSat.value=mat2.uniforms.uSat.value=root2.dataset.bg==='cinema'?0.32:1;
     if(endAnchor){
       var er=endAnchor.getBoundingClientRect(), vis=er.top<H && er.bottom>0;
       pts2.visible=vis;
