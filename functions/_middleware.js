@@ -42,7 +42,7 @@ async function withTitles(ctx) {
   let id = url.pathname.replace(/^\/en/, "").replace(/^\//, "").replace(/\.html$/, "").replace(/\/$/, "") || "index";
   if (!PAGES.includes(id)) return res;
   const T = await titles(env), v = T && T[id] && T[id][en ? "en" : "ar"];
-  if (!v) return res;
+  if (!v || String(v).trim() === "Eyeblink Studio") return res; // the bare brand name is the old default, keep the keyword title
   const t = String(v).trim().slice(0, 140);
   const set = { element(e) { e.setInnerContent(t); } }, meta = { element(e) { e.setAttribute("content", t); } };
   return new HTMLRewriter().on("title", set).on('meta[property="og:title"]', meta).on('meta[name="twitter:title"]', meta).transform(res);

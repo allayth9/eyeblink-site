@@ -1,0 +1,16 @@
+# Eyeblink Studio
+
+> Eyeblink Studio (إيبلينك ستوديو) is an independent creative studio for professional video editing, motion graphics, social media video ads and Reels, and cinematic film production, serving brands and creators in the Gulf and the Arab world. Arabic first, English available.
+
+## Services
+- [Video editing](https://eyeblinkstudio.com/service-editing): cutting, colour correction, sound mix, subtitles, exports for every platform
+- [Motion graphics](https://eyeblinkstudio.com/service-motion): logo animation, intros, animated infographics, kinetic type
+- [Social media ads and Reels](https://eyeblinkstudio.com/service-social): vertical 9:16 edits, hooks, captions, paid ads
+- [Film production](https://eyeblinkstudio.com/service-films): short films, cinematic ads, script, storyboard, grading
+
+## Pages
+- [Work](https://eyeblinkstudio.com/work)
+- [Packages and pricing](https://eyeblinkstudio.com/pricing)
+- [About](https://eyeblinkstudio.com/about)
+- [Contact](https://eyeblinkstudio.com/contact)
+- [English version](https://eyeblinkstudio.com/en/)

@@ -203,11 +203,11 @@
     {id:'backup', title:'نسخ احتياطي', backup:1}
   ];
 
-  var PAGES=[['index','الرئيسية','Eyeblink Studio — مونتاج وموشن غرافيك وأفلام','Eyeblink Studio — Editing, Motion & Film'],['services','الخدمات','الخدمات — Eyeblink Studio','Services — Eyeblink Studio'],
-    ['service-editing','خدمة المونتاج','المونتاج الاحترافي — Eyeblink Studio','Video Editing — Eyeblink Studio'],['service-motion','خدمة الموشن','الموشن غرافيك — Eyeblink Studio','Motion Graphics — Eyeblink Studio'],
-    ['service-social','خدمة السوشال','إعلانات السوشال ميديا — Eyeblink Studio','Social Media Ads — Eyeblink Studio'],['service-films','خدمة الأفلام','الأفلام والإنتاج السينمائي — Eyeblink Studio','Film Production — Eyeblink Studio'],
-    ['work','أعمالنا','أعمالنا — Eyeblink Studio','Work — Eyeblink Studio'],['pricing','الأسعار','الباقات والأسعار — Eyeblink Studio','Packages & Pricing — Eyeblink Studio'],
-    ['about','من نحن','من نحن — Eyeblink Studio','About — Eyeblink Studio'],['contact','تواصل','تواصل — Eyeblink Studio','Contact — Eyeblink Studio'],['account','حساب العميل','حسابي — Eyeblink Studio','My account — Eyeblink Studio'],['privacy','سياسة الخصوصية','سياسة الخصوصية — Eyeblink Studio','Privacy policy — Eyeblink Studio']];
+  var PAGES=[['index','الرئيسية','Eyeblink Studio — مونتاج فيديو وموشن غرافيك وإعلانات سوشال ميديا','Eyeblink Studio — Video Editing, Motion Graphics & Social Media Ads'],['services','الخدمات','خدمات مونتاج وموشن غرافيك وسوشال ميديا وأفلام — Eyeblink Studio','Video Editing, Motion Graphics, Social Ads & Film — Eyeblink Studio'],
+    ['service-editing','خدمة المونتاج','مونتاج فيديو احترافي للإعلانات والريلز — Eyeblink Studio','Professional Video Editing for Ads & Reels — Eyeblink Studio'],['service-motion','خدمة الموشن','موشن غرافيك: شعارات متحركة ومقدمات وإنفوغرافيك — Eyeblink Studio','Motion Graphics: Logo Animation, Intros & Explainers — Eyeblink Studio'],
+    ['service-social','خدمة السوشال','إعلانات سوشال ميديا وريلز بمونتاج عمودي 9:16 — Eyeblink Studio','Social Media Video Ads & Reels (9:16 Editing) — Eyeblink Studio'],['service-films','خدمة الأفلام','إنتاج أفلام قصيرة وإعلانات سينمائية — Eyeblink Studio','Short Film & Cinematic Ad Production — Eyeblink Studio'],
+    ['work','أعمالنا','أعمالنا: مونتاج وموشن غرافيك وأفلام — Eyeblink Studio','Our Work: Editing, Motion Graphics & Film — Eyeblink Studio'],['pricing','الأسعار','باقات وأسعار المونتاج والموشن غرافيك والسوشال ميديا — Eyeblink Studio','Video Editing & Motion Graphics Packages and Pricing — Eyeblink Studio'],
+    ['about','من نحن','من نحن: استوديو مونتاج وموشن غرافيك وإنتاج سينمائي — Eyeblink Studio','About: A Video Editing, Motion & Film Studio — Eyeblink Studio'],['contact','تواصل','تواصل لطلب مونتاج أو موشن غرافيك أو إعلان — Eyeblink Studio','Contact Us to Book Editing, Motion or an Ad — Eyeblink Studio'],['account','حساب العميل','حسابي — Eyeblink Studio','My account — Eyeblink Studio'],['privacy','سياسة الخصوصية','سياسة الخصوصية — Eyeblink Studio','Privacy policy — Eyeblink Studio']];
 
   /* ---------------- field widgets ---------------- */
   function fid(){ return 'f'+Math.random().toString(36).slice(2,9); }

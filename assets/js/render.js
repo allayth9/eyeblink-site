@@ -177,7 +177,7 @@
   function renderAll(){
     [].forEach.call(document.querySelectorAll('[data-t]'),function(el){ var v=L(get(C,el.dataset.t)); if(v!==undefined&&v!==null) el.innerHTML=v; });
     var svc=SVC_ID? (C.services||[]).filter(function(s){return s.id===SVC_ID})[0] : null;
-    if(svc){ [].forEach.call(document.querySelectorAll('[data-s]'),function(el){ el.innerHTML=esc(L(svc[el.dataset.s])); }); document.title=L(svc.name)+' — Eyeblink Studio'; }
+    if(svc){ [].forEach.call(document.querySelectorAll('[data-s]'),function(el){ el.innerHTML=esc(L(svc[el.dataset.s])); }); }
     [].forEach.call(document.querySelectorAll('[data-list]'),function(el){ var f=R[el.dataset.list]; if(f) f(el,svc||{}); });
     [].forEach.call(document.querySelectorAll('[data-ig]'),function(el){ var h=(C.site&&C.site.instagram)||'eyeblnk'; if(el.tagName==='A') el.href='https://instagram.com/'+h; else el.textContent='@'+h; });
     var S=C.settings||{};
@@ -189,7 +189,7 @@
     [].forEach.call(document.querySelectorAll('[data-contact-extra],[data-cta-links]'),function(el){ el.innerHTML=chips(S); });
     var of=document.getElementById('order'), oc=document.getElementById('orderClosed');
     if(of&&oc){ var open=S.ordersOpen!==false; of.hidden=!open; oc.hidden=open; }
-    var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt) document.title=tt;
+    var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt && tt!=='Eyeblink Studio') document.title=tt;
     applyLayout(pg);
     window.EBC=C;
     // floating WhatsApp button (only when a number is set; not on the account page, nor in the workspace: it has WhatsApp in its help sheet)
