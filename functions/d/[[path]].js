@@ -82,7 +82,7 @@ function page(status, lang, title, main, doc){
     const expired = q && !doc.accepted && Date.now() > Date.parse(doc.updatedAt) + b.valid * 864e5;
     const st = doc.accepted ? (q ? "accepted" : "signed") : expired ? "expired" : "sent";
     head = (en ? "Eyeblink " : "Eyeblink · ") + L[type] + " " + doc.no + (b.client.name ? " · " + b.client.name : "");
-    og = `<meta property="og:title" content="${h(L[type] + " · " + b.title)}"><meta property="og:description" content="${h("Eyeblink Studio · " + doc.no)}"><meta property="og:image" content="${SITE}/assets/img/og-home.jpg">`;
+    og = `<meta property="og:title" content="${h(L[type] + " · " + b.title)}"><meta property="og:description" content="${h("Eyeblink Studio · " + doc.no)}"><meta property="og:image" content="${SITE}/assets/img/og-home.jpg?v=2">`;
     const meta = [[L.no[type], doc.no, 1], [L.date, dateOf(doc.updatedAt, en)], q ? [L.valid, dateOf(Date.parse(doc.updatedAt) + b.valid * 864e5, en)] : (b.quoteNo ? [L.ref, b.quoteNo, 1] : null), doc.code ? [L.order, doc.code, 1] : null].filter(Boolean);
     const party = (lab, name, lines) => `<div class="party"><div class="lab">${h(lab)}</div><div class="pname">${h(name)}</div>${lines.filter(Boolean).map(x => `<div class="pline">${x}</div>`).join("")}</div>`;
     const studioLines = [h(L.svc), b.studio.place && h(b.studio.place), b.studio.contact && `<bdi>${nl(b.studio.contact)}</bdi>`, `<bdi>eyeblinkstudio.com</bdi>`];

@@ -1,0 +1,35 @@
+<!doctype html><meta charset=utf-8><style>
+@font-face{font-family:E;src:url(../fonts/eyen-ammon-bold.woff2)}
+@font-face{font-family:O;src:url(../fonts/oswald-300.woff2);font-weight:300}@font-face{font-family:O;src:url(../fonts/oswald-400.woff2);font-weight:400}
+@font-face{font-family:M;src:url(../fonts/manrope-600.woff2);font-weight:600}@font-face{font-family:M;src:url(../fonts/manrope-300.woff2);font-weight:300}
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;overflow:hidden;background:#04061A;color:#EEF2F6;position:relative}
+.bg{position:absolute;inset:0;opacity:.7;background:radial-gradient(900px 520px at 50% 30%,#1C45E6 0%,rgba(28,69,230,0) 70%),radial-gradient(700px 500px at 0% 100%,rgba(47,196,216,.45),rgba(47,196,216,0) 70%),linear-gradient(135deg,#0B1B8A 0%,#0E1A5C 55%,#04061A 100%)}
+.ph{position:absolute;inset:0;mix-blend-mode:screen;background-size:cover;background-position:center}
+.fade{position:absolute;left:0;right:0;bottom:0;height:260px;background:linear-gradient(to bottom,rgba(4,6,26,0),rgba(4,6,26,.92) 62%,#04061A)}
+.grain{position:absolute;inset:0;opacity:.18;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>")}
+/* editorial frame: four corners, one size, one tracking */
+.c{position:absolute;font:300 13px O;letter-spacing:.32em;color:#AEBBD2;text-transform:uppercase;direction:ltr}
+.tl{top:44px;left:56px}.tr{top:44px;right:56px}.bl{bottom:44px;left:56px;text-transform:lowercase;letter-spacing:.18em}.br{bottom:44px;right:56px}
+.tl b{font:600 13px M;letter-spacing:.36em;color:#EEF2F6}.tl b i{font-style:normal;font-weight:300;color:#AEBBD2}
+/* bilingual lockup, centred under the stage */
+.lock{position:absolute;left:0;right:0;bottom:78px;text-align:center}
+.ar{font:400 50px/1.2 E;direction:rtl;color:#EEF2F6}
+.la{font:400 13px O;letter-spacing:.62em;padding-left:.62em;color:#3FE0E8;margin-top:12px;direction:ltr}
+.logo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.logo .m{width:340px;margin:0 auto;filter:drop-shadow(0 0 26px rgba(63,224,232,.4))}.eb-mark path{fill:#EEF2F6}
+.logo .w{font:600 60px M;letter-spacing:.36em;padding-left:.36em;margin-top:34px;line-height:1}.logo .w i{font-style:normal;font-weight:300;color:#AEBBD2}
+</style>
+<div class=bg></div><div class=ph id=ph></div><div class=fade id=fade></div><div class=grain></div>
+<div class="c tl"><b>EYEBLINK <i>STUDIO</i></b></div><div class="c tr" id=ix></div><div class="c bl">eyeblinkstudio.com</div><div class="c br">2026</div>
+<div class=lock id=lock><div class=ar id=ar></div><div class=la id=la></div></div><div class=logo id=logo></div>
+<script>
+const K=new URLSearchParams(location.search).get('k')||'home';
+// one kashida at most, in its natural calligraphic place
+const D={editing:['المونتــاج','VIDEO EDITING','01'],motion:['الموشن جرافيك','MOTION GRAPHICS','02'],social:['إعلانات السوشال ميديا','SOCIAL ADS','03'],films:['الإنتاج السينمائي','FILM PRODUCTION','04'],join:['انضم إلى الفريق','JOIN THE TEAM','']};
+(async()=>{
+ if(K=='home'){ph.style.backgroundImage='url(bg/stage.png)';lock.remove();fade.remove();ix.textContent='';
+  const m=await (await fetch('../img/mark.svg')).text();logo.innerHTML='<div class=m>'+m+'</div><div class=w>EYEBLINK <i>STUDIO</i></div>'}
+ else{const d=D[K];ph.style.backgroundImage=`url(bg/c-${K}.png)`;ph.style.backgroundSize='1200px auto';ph.style.backgroundPosition='center -120px';ph.style.backgroundRepeat='no-repeat';ar.textContent=d[0];la.textContent=d[1];ix.textContent=d[2]?d[2]+' / 04':'';logo.remove()}
+ await document.fonts.ready;document.body.dataset.r=1})();
+</script>

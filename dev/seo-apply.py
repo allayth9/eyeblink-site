@@ -77,7 +77,7 @@ def org(lang):
     return {
         "@type": ["ProfessionalService", "Organization"], "@id": SITE + "/#studio", "name": BR,
         "alternateName": (["آيبلينك استوديو", "إيبلينك ستوديو", "ايبلينك ستوديو", "Eyeblink"] if ar else ["Eyeblink"]),
-        "url": SITE + "/", "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og-home.jpg",
+        "url": SITE + "/", "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og-home.jpg?v=2",
         "slogan": "Every cut is a blink",
         "description": P["index"][1 if ar else 3],
         "sameAs": ["https://instagram.com/eyeblnk"],
@@ -103,7 +103,7 @@ def crumbs(page, lang):
     return {"@type": "BreadcrumbList", "@id": url(page, lang) + "#breadcrumb",
             "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "item": u} for i, (n, u) in enumerate(items)]}
 
-def img(page): return SITE + "/assets/img/og-" + (page[8:] if page.startswith("service-") else "home") + ".jpg"
+def img(page): return SITE + "/assets/img/og-" + (page[8:] + ".jpg" if page.startswith("service-") else "home.jpg?v=2")
 
 def graph(page, lang):
     ar = lang == "ar"; i = 0 if ar else 2
