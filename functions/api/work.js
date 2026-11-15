@@ -646,7 +646,8 @@ export async function onRequestGet(ctx) {
   if (q.get("task")) {
     const t = cparse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
     const activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA).filter(a => !(a.data && a.data.internal));
-    return json({ ok: true, me: e, task: t, activity, deliverables: forClient(await deliverablesOf(D, t.id)), comments: await commentsOf(D, "task", t.id) });
+    const files = (await D.prepare("SELECT id, category, title, url, created_at FROM files WHERE task_id=? ORDER BY created_at").bind(t.id).all()).results;   // the client's own attachments to this task
+    return json({ ok: true, me: e, task: t, activity, files, deliverables: forClient(await deliverablesOf(D, t.id)), comments: await commentsOf(D, "task", t.id) });
   }
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
@@ -765,13 +766,13 @@ export async function onRequestPost(ctx) {
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(x.type, 60), clip(x.description, 4000), clip(x.details, 6000), clip(x.notes, 3000), pr, rd || null,
         JSON.stringify(cleanLinks((Array.isArray(x.links) ? x.links : []).concat(x.brand_lib ? libLinks : []))), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
       await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
-      made.push({ ref, title, rd, pr, over: !!over });
+      made.push({ id, ref, title, rd, pr, over: !!over });
     }
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
     const line = m => m.ref + " — " + m.title + (m.rd ? " · " + m.rd : "") + (m.pr !== "normal" ? " · " + ({ high: "عالية", urgent: "عاجلة" })[m.pr] : "") + (m.over ? " · ⚠️ خارج الحصة" : "");
     if (made.length === 1) toStudio(ctx, env, "مهمة جديدة " + made[0].ref + " — " + u.name, made[0].title + "\nالمشروع: " + p.name + (made[0].rd ? "\nالموعد المطلوب: " + made[0].rd : "") + (made[0].pr !== "normal" ? "\nالأولوية: " + ({ high: "عالية", urgent: "عاجلة" })[made[0].pr] : "") + (made[0].over ? "\n⚠️ خارج الحصة الشهرية (" + used + " من " + p.quota + ")" : "") + "\n\nافتحها: " + adminLink(made[0].ref));
     else toStudio(ctx, env, made.length + " مهام جديدة " + made[0].ref + " — " + u.name, "المشروع: " + p.name + "\n\n" + made.map(line).join("\n") + "\n\n" + SITE + "/admin/#tasks");
-    return d.action === "task" ? json({ ok: true, ref: made[0].ref, over_quota: made[0].over }) : json({ ok: true, refs: made.map(m => m.ref), over_quota: made.filter(m => m.over).length });
+    return d.action === "task" ? json({ ok: true, ref: made[0].ref, over_quota: made[0].over }) : json({ ok: true, refs: made.map(m => m.ref), ids: made.map(m => m.id), over_quota: made.filter(m => m.over).length });
   }
   if (d.action === "comment" && d.scope === "project") {
     const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);

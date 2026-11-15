@@ -439,6 +439,7 @@
           '<label>'+T.f.date+'<input name="requested_date" type="date" min="'+minD+'" value="'+esc(prev?prev.date:'')+'"></label>'+
           '<fieldset class="wprio"><legend>'+T.f.prio+'</legend>'+['normal','high','urgent'].map(function(p){ var on=(prev?prev.prio:'normal')===p; return '<label class="chipb'+(on?' on':'')+'"><input type="radio" name="priority_'+i+'" value="'+p+'"'+(on?' checked':'')+'>'+esc(L((W.priorities||{})[p])||T.p[p])+'</label>'; }).join('')+'</fieldset></div>'+
           '<label>'+T.f.desc+'<textarea name="description" maxlength="4000" dir="auto" rows="2"></textarea></label>'+
+          '<div class="watt"><span class="olab">'+AT.h+' <small class="muted">'+AT.hint+'</small></span><label class="watt-drop"><input type="file" multiple hidden><b>'+AT.drop+'</b> '+AT.or+'<span>'+AT.types+'</span></label><div class="watt-list"></div></div>'+
           (DASH&&DASH.brand_n?'<label class="wbrand-use"><input type="checkbox" name="brand_lib" checked><span><b>'+BR.use+'</b><small class="muted">'+BR.useP+'</small></span></label>':'')+
           '<details class="wm-more"><summary>'+U2.nw.more+'</summary><label>'+T.f.details+'<textarea name="details" maxlength="6000" dir="auto"></textarea></label>'+
             '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
@@ -446,7 +447,7 @@
             '<div class="wbrief-in"><b>'+T.x.brief+'</b> <small class="muted">'+T.x.briefHint+'</small><div class="wgrid">'+['goal','audience','format','duration','tone','message','cta','music'].map(function(b){ return '<label>'+T.x.b[b]+'<input name="b_'+b+'" maxlength="'+(b==='format'?120:600)+'" dir="auto"'+(b==='format'?' list="wFmts"':'')+'></label>'; }).join('')+'</div></div></details>';
         d.addEventListener('input',function(){ if(d.classList.contains('err')){ d.classList.remove('err'); f.querySelector('.msg').textContent=''; } });
         list.appendChild(d); var rows=d.querySelector('.rows'), addRow=function(){ if(rows.children.length>=10) return; var r=document.createElement('div'); r.className='lrow2'; r.innerHTML='<input name="ll" placeholder="'+T.f.linkLabel+'" maxlength="80" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'">'; rows.appendChild(r); };
-        addRow(); d.querySelector('.addl').onclick=addRow;
+        addRow(); d.querySelector('.addl').onclick=addRow; attach(d);
         d.querySelector('.wprio').onchange=function(){ [].forEach.call(this.querySelectorAll('label'),function(l){ l.classList.toggle('on',l.querySelector('input').checked); }); };
         d.querySelector('.wm-rm').onclick=function(){ if(list.children.length<2) return; d.classList.add('out'); setTimeout(function(){ d.remove(); sync(); },180); };
         sync(); return d; };
@@ -454,7 +455,7 @@
         return {title:q('title').value.trim(),type:q('type').value.trim(),requested_date:q('requested_date').value,priority:(d.querySelector('.wprio input:checked')||{}).value||'normal',
           description:q('description').value.trim(),details:q('details').value.trim(),notes:q('notes').value.trim(),
           links:[].map.call(d.querySelectorAll('.lrow2'),function(r){ return {label:r.children[0].value.trim(),url:r.children[1].value.trim()}; }).filter(function(l){ return /^https?:\/\//i.test(l.url); }),
-          brand_lib:!!(q('brand_lib')&&q('brand_lib').checked),
+          brand_lib:!!(q('brand_lib')&&q('brand_lib').checked),files:(d._files||[]).slice(),
           brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
       var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
         f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
@@ -469,6 +470,23 @@
     };
     if(DASH&&DASH.projects) go(DASH.projects); else { loading(); api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; go(j.projects); }); }
   }
+  var AT=AR?{h:'المرفقات',hint:'مراجع أو مواد خام · حتى 5GB للملف',drop:'اسحب الملفات هنا',or:'أو اضغط للاختيار',types:'فيديو، صور، صوت، PDF، أو ملف مضغوط',
+      cat:{raw:'مواد خام',reference:'مرجع'},rm:'إزالة',up:function(i,n){ return 'يُرفع الملف '+i+' من '+n+'…'; },failed:function(n){ return 'تعذّر رفع '+n+' من الملفات، ويمكنك رفعها من صفحة المشروع'; }}
+    :{h:'Attachments',hint:'References or raw footage · up to 5GB per file',drop:'Drop files here',or:'or click to choose',types:'Video, images, audio, PDF or an archive',
+      cat:{raw:'Raw footage',reference:'Reference'},rm:'Remove',up:function(i,n){ return 'Uploading file '+i+' of '+n+'…'; },failed:function(n){ return n+' file(s) could not be uploaded; you can add them from the project page'; }};
+  function fsize(n){ return n>=1073741824?(n/1073741824).toFixed(1)+'GB':n>=1048576?(n/1048576).toFixed(1)+'MB':Math.max(1,Math.round(n/1024))+'KB'; }
+  var ATX=/\.(mp4|mov|m4v|webm|mxf|avi|mp3|wav|aac|m4a|aif|aiff|flac|jpg|jpeg|png|webp|gif|heic|tif|tiff|psd|ai|eps|svg|pdf|doc|docx|ppt|pptx|xls|xlsx|txt|rtf|zip|rar|7z|ttf|otf|woff|woff2|prproj|aep|drp|srt|vtt|csv|json)$/i;
+  // the attachments of one task card: files wait in the card and go up only after the task exists (so each lands in its own task)
+  function attach(d){ d._files=[]; var box=d.querySelector('.watt'), drop=box.querySelector('.watt-drop'), inp=drop.querySelector('input'), list=box.querySelector('.watt-list');
+    var draw=function(){ list.innerHTML=d._files.map(function(x,i){ var ext=(x.file.name.split('.').pop()||'').slice(0,4).toUpperCase();
+      return '<div class="watt-f"><span class="ic">'+esc(ext)+'</span><span class="nm">'+esc(x.file.name)+'<small>'+esc(fsize(x.file.size))+'</small></span><span class="seg">'+
+        ['raw','reference'].map(function(c){ return '<button type="button" data-i="'+i+'" data-c="'+c+'"'+(x.cat===c?' class="on"':'')+'>'+AT.cat[c]+'</button>'; }).join('')+
+        '</span><button type="button" class="x" data-x="'+i+'" aria-label="'+AT.rm+'">×</button></div>'; }).join(''); };
+    var add=function(fl){ [].forEach.call(fl||[],function(f){ if(d._files.length<20&&ATX.test(f.name)&&f.size>0&&f.size<=5*1073741824) d._files.push({file:f,cat:/^(video|audio)\//.test(f.type)?'raw':'reference'}); }); draw(); };
+    inp.onchange=function(){ add(inp.files); inp.value=''; };
+    drop.ondragover=function(e){ e.preventDefault(); drop.classList.add('on'); }; drop.ondragleave=function(){ drop.classList.remove('on'); };
+    drop.ondrop=function(e){ e.preventDefault(); drop.classList.remove('on'); add(e.dataTransfer.files); };
+    list.onclick=function(e){ var t=e.target; if(t.dataset.x!=null){ d._files.splice(+t.dataset.x,1); draw(); } else if(t.dataset.c){ d._files[+t.dataset.i].cat=t.dataset.c; draw(); } }; }
   function briefHTML(b){ if(!b) return ''; var k=Object.keys(b).filter(function(x){ return b[x]; }); if(!k.length) return '';
     return '<h4>'+T.x.brief+'</h4><dl class="wbriefl">'+k.map(function(x){ return '<div><dt>'+esc(T.x.b[x]||x)+'</dt><dd>'+esc(b[x])+'</dd></div>'; }).join('')+'</dl>'; }
   function previewAll(pid,items,form,act){
@@ -477,12 +495,20 @@
       items.map(function(d,i){ return '<article class="wcard glass wpreview" style="--k:'+PAL[i%PAL.length]+'"><div class="wm-h"><span class="wm-n">'+(i+1)+'</span><h3>'+esc(d.title)+'</h3></div><dl class="wmeta">'+
         (d.type?'<div><dt>'+T.f.type+'</dt><dd>'+esc(d.type)+'</dd></div>':'')+'<div><dt>'+T.req+'</dt><dd>'+esc(d.requested_date?d8(d.requested_date):T.reqNone)+'</dd></div><div><dt>'+T.f.prio+'</dt><dd>'+esc(T.p[d.priority])+'</dd></div></dl>'+
         (d.description?'<h4>'+T.desc+'</h4><p>'+para(d.description)+'</p>':'')+(d.details?'<h4>'+T.details+'</h4><p>'+para(d.details)+'</p>':'')+
-        (d.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(d.links)+'</div>':'')+(d.notes?'<h4>'+T.notes+'</h4><p>'+para(d.notes)+'</p>':'')+briefHTML(d.brief)+'</article>'; }).join('')+
+        (d.links.length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(d.links)+'</div>':'')+(d.notes?'<h4>'+T.notes+'</h4><p>'+para(d.notes)+'</p>':'')+briefHTML(d.brief)+
+        (d.files.length?'<h4>'+AT.h+'</h4><ul class="watt-pv">'+d.files.map(function(x){ return '<li>'+esc(x.file.name)+' <small class="muted">'+esc(AT.cat[x.cat])+' · '+esc(fsize(x.file.size))+'</small></li>'; }).join('')+'</ul>':'')+'</article>'; }).join('')+
       '<div class="wm-bar glass"><span class="wm-count">'+U2.nw.count(items.length)+'</span><p class="msg" role="alert"></p><button class="btn btn-glass glass" type="button" data-edit>'+T.f.edit+'</button><button class="btn btn-primary" type="button" data-send>'+U2.nw.sendAll(items.length)+'</button></div>';
     form.hidden=true; form.parentNode.insertBefore(box,form.nextSibling); var top=host.getBoundingClientRect().top+scrollY-120; scrollTo({top:top,behavior:'smooth'});
     box.querySelector('[data-edit]').onclick=function(){ box.remove(); form.hidden=false; };
     box.querySelector('[data-send]').onclick=function(){ var b=this; b.disabled=true; b.textContent=T.f.sending;
-      api('',{action:'tasks',project:pid,items:items}).then(function(j){ if(j.ok){ DASH=null; PC=null; TC=null; toast(U2.nw.sentAll(j.refs.length)); location.hash=j.refs.length===1?'#w/t/'+j.refs[0]:'#w/p/'+pid; return; }
+      api('',{action:'tasks',project:pid,items:items.map(function(x){ var y=Object.assign({},x); delete y.files; return y; })}).then(function(j){ if(j.ok){ DASH=null; PC=null; TC=null;
+          var go=function(){ toast(U2.nw.sentAll(j.refs.length)); location.hash=j.refs.length===1?'#w/t/'+j.refs[0]:'#w/p/'+pid; };
+          var q=[]; items.forEach(function(x,i){ (x.files||[]).forEach(function(a){ q.push({f:a.file,cat:a.cat,task:(j.ids||[])[i]}); }); });
+          if(!q.length) return go();
+          var k=0, bad=0, next=function(){ if(k>=q.length){ if(bad) toast(AT.failed(bad)); return go(); } var it=q[k++];
+            b.textContent=AT.up(k,q.length);
+            upload(it.f,{scope:'project',project:pid,category:it.cat,task:it.task},function(){}).then(next,function(){ bad++; next(); }); };
+          return next(); }
         b.disabled=false; b.textContent=U2.nw.sendAll(items.length); box.querySelector('.msg').textContent=j.error==='date'?T.f.bad:j.error==='too many attempts'?(AR?'وصلت إلى الحد اليومي للمهام.':'Daily task limit reached.'):T.err; }); };
   }
 
@@ -675,7 +701,8 @@
         (t.status==='rejected'&&t.studio_note?'<div class="wnote bad"><b>'+T.rejH+'</b><p>'+para(t.studio_note)+'</p></div>':'')+
         (t.status!=='info'&&t.status!=='rejected'&&t.studio_note?'<div class="wnote"><b>'+T.noteH+'</b><p>'+para(t.studio_note)+'</p></div>':'')+
         '<div class="wbody">'+(t.description?'<h4>'+T.desc+'</h4><p>'+para(t.description)+'</p>':'')+(t.details?'<h4>'+T.details+'</h4><p>'+para(t.details)+'</p>':'')+
-          ((t.links||[]).length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(t.links)+'</div>':'')+(t.notes?'<h4>'+T.notes+'</h4><p>'+para(t.notes)+'</p>':'')+briefHTML(t.brief)+'</div>'+
+          ((t.links||[]).length?'<h4>'+T.links+'</h4><div class="wlinkset">'+linksHTML(t.links)+'</div>':'')+
+          ((j.files||[]).length?'<h4>'+AT.h+'</h4><ul class="watt-pv">'+j.files.map(function(x){ return '<li><a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+esc(x.title)+'</a> <small class="muted">'+esc(AT.cat[x.category]||'')+'</small></li>'; }).join('')+'</ul>':'')+(t.notes?'<h4>'+T.notes+'</h4><p>'+para(t.notes)+'</p>':'')+briefHTML(t.brief)+'</div>'+
         '<div class="actions wtact">'+(canChange?'<button type="button" class="btn btn-glass glass" data-chg>'+T.change+'</button>':'')+(['new','review','info'].indexOf(t.status)>=0?'<button type="button" class="btn btn-glass glass danger" data-cancel>'+T.cancel+'</button>':'')+'</div>'+
         '<form class="form wchange" hidden><b>'+T.changeH+'</b><label>'+T.newDate+'<input name="date" type="date" min="'+new Date().toISOString().slice(0,10)+'" required></label><label>'+T.why+'<textarea name="reason" dir="auto" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">'+T.changeSend+'</button></form>'+
         '</div>'+deliveries(j)+'<section class="wsec">'+wh(T.cm.h+((j.comments||[]).length?' ('+j.comments.length+')':''),'#8FA2FF')+thread(j.comments,j.me)+'</section>'+

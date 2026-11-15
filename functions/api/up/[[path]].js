@@ -85,10 +85,12 @@ async function record(env, key, obj, who, d){
     return { id, kind: parts[2], title, url, size: obj.size };
   }
   const p = await D.prepare("SELECT id, client_email FROM projects WHERE id=?").bind(parts[1]).first();
-  await D.prepare("INSERT INTO files (id, project_id, client_email, category, title, url, note, added_by, added_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-    .bind(id, p.id, p.client_email, parts[2], title, url, "", who.by, who.name, at).run();
-  await D.prepare("INSERT INTO activity (at, actor, actor_name, client_email, project_id, kind, data) VALUES (?,?,?,?,?,?,?)").bind(at, who.by, who.name, p.client_email, p.id, "file_added", JSON.stringify({ title, category: parts[2] })).run();
-  return { id, category: parts[2], title, url, size: obj.size };
+  // an attachment to a task (reference or raw material): the task must belong to this same project, otherwise it stays a plain project file
+  const t = d.task ? await D.prepare("SELECT id FROM tasks WHERE id=? AND project_id=?").bind(String(d.task).slice(0, 40), p.id).first() : null, tid = t ? t.id : null;
+  await D.prepare("INSERT INTO files (id, project_id, client_email, task_id, category, title, url, note, added_by, added_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(id, p.id, p.client_email, tid, parts[2], title, url, "", who.by, who.name, at).run();
+  await D.prepare("INSERT INTO activity (at, actor, actor_name, client_email, project_id, task_id, kind, data) VALUES (?,?,?,?,?,?,?,?)").bind(at, who.by, who.name, p.client_email, p.id, tid, "file_added", JSON.stringify({ title, category: parts[2] })).run();
+  return { id, category: parts[2], task_id: tid, title, url, size: obj.size };
 }
 // only without the S3 keys (local dev): one part through the Function, ≤ 50 MB
 export async function onRequestPut({ request, env }){

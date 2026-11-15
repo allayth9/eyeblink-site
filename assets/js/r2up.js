@@ -13,7 +13,7 @@
     return sign().then(function(s){
       if(s.mode==='put') return xput(s.url,file,s.type,function(l){ onp(l/size); })
         .catch(function(x){ if(x&&x.status===403) return sign().then(function(s2){ s=s2; return xput(s2.url,file,s2.type,function(l){ onp(l/size); }); }); throw x; })
-        .then(function(){ return upPost({op:'done',key:s.key,name:file.name,client_email:meta.client_email}); });
+        .then(function(){ return upPost({op:'done',key:s.key,name:file.name,client_email:meta.client_email,task:meta.task}); });
       var P=s.part, n=Math.ceil(size/P), got=[], parts=[], next=1;
       var urlOf=function(i){ return s.mode==='proxy'?Promise.resolve(U+'?key='+encodeURIComponent(s.key)+'&uploadId='+encodeURIComponent(s.uploadId)+'&n='+i)
         :upPost({op:'parts',key:s.key,uploadId:s.uploadId,numbers:[i]}).then(function(r){ if(!r.ok) throw r; return r.urls[i]; }); };
@@ -22,7 +22,7 @@
           .then(function(x){ var et=s.mode==='proxy'?JSON.parse(x.responseText).etag:x.getResponseHeader('ETag'); if(!et) throw x; parts.push({partNumber:i,etag:et}); })
           .catch(function(e){ got[i]=0; if(tries<3) return one(i,tries+1); throw e; }); };
       var lane=function(){ if(next>n) return Promise.resolve(); var i=next++; return one(i,0).then(lane); };
-      return Promise.all([lane(),lane(),lane()]).then(function(){ return upPost({op:'done',key:s.key,uploadId:s.uploadId,parts:parts,name:file.name,client_email:meta.client_email}); })
+      return Promise.all([lane(),lane(),lane()]).then(function(){ return upPost({op:'done',key:s.key,uploadId:s.uploadId,parts:parts,name:file.name,client_email:meta.client_email,task:meta.task}); })
         .catch(function(e){ upPost({op:'abort',key:s.key,uploadId:s.uploadId}); throw e; });
     }).then(function(r){ if(!r.ok) throw r; onp(1); return r.file; });
   }
