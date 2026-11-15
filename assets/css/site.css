@@ -2377,3 +2377,5 @@ nav.dock{view-transition-name:eb-dock}
 .watt-f .x{border:0;background:none;cursor:pointer;color:var(--dim);font-size:18px;padding:0 4px}
 .watt-pv{margin:0;padding:0;list-style:none;display:grid;gap:6px}.watt-pv li{font-size:14px}.watt-pv a{color:var(--light)}
 @media (max-width:600px){ .watt-f{flex-wrap:wrap} .watt-f .nm{flex:1 1 calc(100% - 90px)} .watt-f .seg{order:3;margin-inline-start:46px} }
+/* 16 Nov · «About» in the phone dock is the logo's own eye (the exact mark file, recoloured through a mask) — the studio, not a person */
+.dock a .dmk{display:block;width:40px;height:22px;margin-block:0;background:currentColor;-webkit-mask:url(../img/mark.svg) center/contain no-repeat;mask:url(../img/mark.svg) center/contain no-repeat}
