@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env, params }) {
   const svc = (c.services || []).find(s => s.id === p.service) || {};
   const title = pick(p.title), sum = pick(p.summary), client = pick(p.client);
   const full = title + " · Eyeblink Studio", desc = sum || (en ? "A work by Eyeblink Studio" : "عمل من Eyeblink Studio");
-  const img = p.poster ? new URL(p.poster, url.origin + "/").toString() : url.origin + "/assets/img/og.jpg";
+  const img = p.poster ? new URL(p.poster, url.origin + "/").toString() : url.origin + "/assets/img/og-home.jpg";
   const self = url.origin + "/w/" + slug + (en ? "?l=en" : "");
   const ar = await filmSize(p);
 

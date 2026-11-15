@@ -77,7 +77,7 @@ def org(lang):
     return {
         "@type": ["ProfessionalService", "Organization"], "@id": SITE + "/#studio", "name": BR,
         "alternateName": (["آيبلينك استوديو", "إيبلينك ستوديو", "ايبلينك ستوديو", "Eyeblink"] if ar else ["Eyeblink"]),
-        "url": SITE + "/", "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og.jpg",
+        "url": SITE + "/", "logo": SITE + "/assets/img/email-logo.png", "image": SITE + "/assets/img/og-home.jpg",
         "slogan": "Every cut is a blink",
         "description": P["index"][1 if ar else 3],
         "sameAs": ["https://instagram.com/eyeblnk"],
@@ -103,12 +103,14 @@ def crumbs(page, lang):
     return {"@type": "BreadcrumbList", "@id": url(page, lang) + "#breadcrumb",
             "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "item": u} for i, (n, u) in enumerate(items)]}
 
+def img(page): return SITE + "/assets/img/og-" + (page[8:] if page.startswith("service-") else "home") + ".jpg"
+
 def graph(page, lang):
     ar = lang == "ar"; i = 0 if ar else 2
     g = [org(lang), website(lang)]
     wp = {"@type": "CollectionPage" if page in ("services", "work") else "ContactPage" if page == "contact" else "AboutPage" if page == "about" else "WebPage",
           "@id": url(page, lang), "url": url(page, lang), "name": P[page][i], "description": P[page][i + 1], "inLanguage": lang,
-          "isPartOf": {"@id": SITE + "/#site"}, "about": {"@id": SITE + "/#studio"}, "primaryImageOfPage": {"@type": "ImageObject", "url": SITE + "/assets/img/og.jpg", "width": 1200, "height": 630}}
+          "isPartOf": {"@id": SITE + "/#site"}, "about": {"@id": SITE + "/#studio"}, "primaryImageOfPage": {"@type": "ImageObject", "url": img(page), "width": 1200, "height": 630}}
     if page != "index": wp["breadcrumb"] = {"@id": url(page, lang) + "#breadcrumb"}
     g.append(wp)
     if page != "index": g.append(crumbs(page, lang))
