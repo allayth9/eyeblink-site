@@ -289,6 +289,49 @@ ${R.invoices.length || paid ? `<tr><td style="padding:20px 30px 0"><div style="$
  ${paid ? `<div style="${F}font-size:12px;color:${ink};padding:8px 0">${L.paid}: <b style="${nb}">${paid}</b></div>` : ""}</td></tr>` : ""}
 <tr><td style="padding:18px 30px 24px;${F}font-size:10.5px;color:${grey};text-align:${s}">${L.foot}</td></tr></table>`;
 }
+// the monthly report inside an e-mail: a dark scoreboard in the invoice ticket's family (one frame, white logo, the numbers first);
+// the printable report page keeps the white document above. Tables and inline styles only.
+function reportCard(R, lang, intro, link){
+  const en = lang === "en", L = REP_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], rtl = !en, dr = rtl ? "rtl" : "ltr", s = rtl ? "right" : "left", e = rtl ? "left" : "right", D = `dir="${dr}"`;
+  const F = rtl ? "font-family:'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif;" : "font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;";
+  const nb = "direction:ltr;unicode-bidi:isolate;white-space:nowrap;", line = "#1B2556";
+  const mname = new Date(R.month + "-15T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { month:"long", year:"numeric" });
+  const dt = v => v ? new Date(String(v).length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day:"numeric", month:"long" }) : "—";
+  const pct = R.on_time === null ? null : R.on_time;
+  const bar = (w, col) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:9px"><tr>${w > 0 ? `<td width="${w}%" height="4" bgcolor="${col}" style="height:4px;background:${col};border-radius:4px;font-size:0;line-height:0">&nbsp;</td>` : ""}${w < 100 ? `<td height="4" bgcolor="#24306A" style="height:4px;background:#24306A;border-radius:4px;font-size:0;line-height:0">&nbsp;</td>` : ""}</tr></table>`;
+  const tile = (v, k) => `<td ${D} width="50%" bgcolor="#070C2A" style="${F}padding:12px 14px;background:#070C2A;border:1px solid ${line};border-radius:14px;text-align:${s};vertical-align:top"><div style="font-size:24px;font-weight:300;color:#EEF2F6;${nb}">${v}</div><div style="font-size:12px;color:#9FB0CC;margin-top:2px">${k}</div></td>`;
+  const sec = t => `<div ${D} style="${F}margin:22px 0 2px;font-size:12px;color:#6F7FA0;text-align:${s}">${t}</div>`;
+  const q = R.project.quota, used = R.created;
+  return `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" bgcolor="#0A1033" style="background:#0A1033;border:1px solid ${line};border-radius:22px;border-collapse:separate;overflow:hidden">
+<tr><td ${D} bgcolor="#12298E" style="background-color:#12298E;background-image:radial-gradient(120% 140% at ${rtl?"0%":"100%"} 0%,#1C45E6 0%,#12298E 38%,#0A1033 82%);border-radius:21px 21px 0 0;padding:24px 24px 22px;text-align:${s}">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  <td style="text-align:${s};vertical-align:middle"><img src="${SITE}/assets/img/email-logo.png" width="132" alt="EYEBLINK STUDIO" style="display:inline-block;width:132px;height:auto;border:0"></td>
+  <td style="text-align:${e};vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:10.5px;font-weight:bold;letter-spacing:.3em;color:#9FDCFF;${nb}">MONTHLY REPORT</td>
+ </tr></table>
+ <div ${D} style="${F}margin:22px 0 2px;font-size:30px;line-height:1.2;font-weight:300;color:#FFFFFF;text-align:${s}">${h(mname)}</div>
+ <div ${D} style="${F}font-size:13.5px;color:#C3CEE2;text-align:${s}">${h(L.project)} <b style="color:#fff">${h(R.project.name)}</b></div>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;border-top:1px solid #2B3C8F"><tr>
+  <td ${D} width="50%" style="${F}padding-top:14px;vertical-align:top;text-align:${s}"><div style="font-size:46px;line-height:1;font-weight:200;color:#fff;${nb}">${R.completed.length}</div><div style="font-size:12px;color:#9FB0CC;margin-top:6px">${h(L.completed)}</div></td>
+  <td ${D} width="50%" style="${F}padding-top:14px;vertical-align:top;text-align:${s}"><div style="font-size:46px;line-height:1;font-weight:200;color:#fff;${nb}">${pct === null ? "—" : pct + '<span style="font-size:22px">%</span>'}</div><div style="font-size:12px;color:#9FB0CC;margin-top:6px">${h(L.ontime)}</div>${pct === null ? "" : bar(pct, "#3DDC97")}</td>
+ </tr></table>
+</td></tr>
+<tr><td ${D} style="padding:20px 24px 24px;text-align:${s}">
+ ${intro ? `<p ${D} style="${F}margin:0 0 14px;font-size:14px;line-height:1.8;color:#C3CEE2">${intro}</p>` : ""}
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="8" style="border-collapse:separate;margin:0 -8px">
+  <tr>${tile(R.created, h(L.created))}${tile(R.versions, h(L.versions))}</tr>
+  <tr>${tile(R.rounds, h(L.rounds))}${tile(R.open, h(L.open))}</tr>
+ </table>
+ ${q ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px"><tr><td ${D} style="${F}font-size:12.5px;color:#AEBBD2;text-align:${s}">${h(L.quota)}${R.over_quota ? " · " + R.over_quota + " " + h(L.over) : ""}</td><td style="${F}font-size:12.5px;color:#AEBBD2;text-align:${e};${nb}">${used} / ${q}</td></tr></table>${bar(Math.min(100, Math.round(used * 100 / q)), "#2A86E6")}` : ""}
+ ${sec(h(L.list))}
+ ${R.completed.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${R.completed.map(t => `<tr><td ${D} style="${F}padding:11px 0;border-bottom:1px solid ${line};font-size:14px;color:#C3CEE2;text-align:${s}"><span style="color:#6F7FA0;font-size:11.5px;${nb}">${h(t.ref)}</span>&nbsp; ${h(t.title)}</td><td style="${F}padding:11px 0;border-bottom:1px solid ${line};font-size:12.5px;color:${t.on_time ? "#3DDC97" : "#F0B43C"};text-align:${e};white-space:nowrap">● ${h(dt(t.completed_at))}</td></tr>`).join("")}</table>`
+   : `<div ${D} style="${F}font-size:13px;color:#6F7FA0;padding:10px 0;text-align:${s}">${h(L.none)}</div>`}
+ ${R.invoices.length ? sec(h(L.inv)) + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${R.invoices.map(x => `<tr><td ${D} style="${F}padding:10px 0;border-bottom:1px solid ${line};font-size:13.5px;color:#C3CEE2;text-align:${s}"><span style="${nb}">${h(x.no)}</span>${x.title ? " · " + h(x.title) : ""}</td><td style="${F}padding:10px 0;border-bottom:1px solid ${line};font-size:13.5px;color:#EEF2F6;text-align:${e};white-space:nowrap"><span style="${nb}">${fmt(x.total, x.currency)}</span> · ${h(S[x.state] || x.state)}</td></tr>`).join("")}</table>` : ""}
+ ${Object.keys(R.paid).length ? `<div ${D} style="${F}font-size:13px;color:#AEBBD2;padding:10px 0 0;text-align:${s}">${h(L.paid)}: <b style="color:#fff;${nb}">${Object.keys(R.paid).map(c => fmt(R.paid[c], c)).join(" · ")}</b></div>` : ""}
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px"><tr><td align="center" bgcolor="#2A86E6" style="border-radius:999px;background:#2A86E6;background-image:linear-gradient(180deg,#2A86E6,#1C45E6);border:1px solid #9FB6D6">
+  <a href="${link}" style="display:block;padding:15px 20px;${F}font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px">${en ? "Open the report in my workspace" : "افتح التقرير في مساحة العمل"}</a></td></tr></table>
+ <p ${D} style="${F}margin:16px 0 0;font-size:12px;line-height:1.75;color:#6F7FA0;text-align:${s}">${h(L.foot)}</p>
+</td></tr></table>`;
+}
 function reportPage(R, cl, lang){ return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(R.project.name)} · ${R.month}</title>
 <style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}@media print{html,body{background:#fff}table{max-width:none!important;border:0!important}}</style></head><body>${reportHTML(R, cl, lang).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`; }
 const prevMonth = () => { const x = new Date(); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 7); };
@@ -538,9 +581,10 @@ async function tellClient(env, t, kind, extra){
                 : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const invHtml = extra.inv ? "" : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
+    const invHtml = "";   // invoices and the monthly report are their own dark frame (bare e-mail) below
     const wsLink = SITE + (en ? "/en" : "") + "/workspace" + hash;
     const subject = T[0], html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
+      : extra.report ? mail(lang, T[0], reportCard(extra.report, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // the monthly report: the scoreboard
       : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", wsLink, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
