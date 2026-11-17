@@ -101,9 +101,9 @@ export function mail(lang, title, bodyHtml, cta, link, hi, opt){
 <table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:580px">
 <tr><td bgcolor="#0A1033" style="background:#0A1033;border:1px solid #1B2556;border-radius:22px;overflow:hidden">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td ${D} bgcolor="#12298E" style="${DS}background-color:#12298E;background-image:radial-gradient(120% 160% at ${rtl?"0%":"100%"} 0%,#1C45E6 0%,#12298E 40%,#0A1033 85%);border-radius:21px 21px 0 0;padding:22px 24px">
+<tr><td ${D} bgcolor="#12298E" style="${DS}background-color:#12298E;background-image:radial-gradient(120% 160% at ${rtl?"0%":"100%"} 0%,#1C45E6 0%,#12298E 40%,#0A1033 85%);border-radius:21px 21px 0 0;padding:26px 24px">
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-  <td style="text-align:${al};vertical-align:middle"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="132" alt="EYEBLINK STUDIO" style="display:inline-block;width:132px;height:auto;border:0"></a></td>
+  <td style="text-align:${al};vertical-align:middle"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="180" alt="EYEBLINK STUDIO" style="display:inline-block;width:180px;max-width:62%;height:auto;border:0"></a></td>
   ${opt && opt.label ? `<td style="text-align:${rtl?"left":"right"};vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:10.5px;font-weight:bold;letter-spacing:.3em;color:#9FDCFF;direction:ltr;white-space:nowrap">${h(opt.label)}</td>` : ""}
  </tr></table>
 </td></tr>
