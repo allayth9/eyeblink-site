@@ -218,7 +218,7 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
 
   <div id="done" class="done glass" hidden role="status"><span class="okc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h2>تم استلام طلبك بنجاح</h2><p>أرسلنا رسالة تأكيد إلى بريدك الإلكتروني</p><a class="back" href="/">العودة إلى الموقع</a></div>
 </div>
-<script src="assets/js/flags.js?v=1678e6bc"></script><script src="assets/js/tools.js?v=1"></script>
+<script src="assets/js/flags.js?v=1678e6bc"></script><script src="assets/js/tools.js?v=6576414f"></script>
 <script>
 (function(){
   var RA={support:'دعم العملاء',marketing:'مدير تسويق',voice:'معلّق صوتي',illustrator:'رسّام',social:'مدير سوشال ميديا',subtitles:'مترجم ومحرّر نصوص',editor:'مونتير',motion:'موشن ديزاينر',color:'كولوريست',sound:'مهندس صوت',writer:'كاتب محتوى',shooter:'مصوّر',designer:'مصمم',producer:'منسّق إنتاج'};
@@ -226,7 +226,7 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
     
-    STAFF=j.staff||[];
+    STAFF=j.staff||[]; TOOLSET=j.tools||{}; TF=(j.fields||{}).tools||'optional';
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
     // the admin decides which fields show and which must be filled
@@ -243,13 +243,14 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
   var COPY={"editor":["مونتير يعرف متى يترك للصورة أن تتنفس","الإيقاع عندنا قرار قبل أن يكون مهارة: أين تبدأ اللقطة، ومتى تنتهي، وما الذي لا ينبغي أن يظهر أصلاً. نعمل على إعلانات وأفلام قصيرة ومحتوى لعلامات في الخليج والمنطقة"],"motion":["موشن ديزاينر يمنح الفكرة حركة تشبهها","لكل فكرة سرعتها ووزنها. نبحث عمّن يقرأ الفكرة قبل أن يحرّكها، فيختار المنحنى والتوقيت اللذين يقولانها بأوضح صورة"],"color":["كولوريست يصنع للمشهد مزاجه الخاص","اللون عندنا جزء من السرد: دفء لحظة، أو برودة مسافة. نعمل بلقطات من كاميرات مختلفة، ونريدها أن تبدو عالماً واحداً"],"sound":["مهندس صوت يمنح ما لا نراه صوتاً","نصف الإحساس يصل عبر الأذن: تصميم صوتي، وتنظيف للحوار، وميكس يحفظ المسافة بين الصوت والصورة على كل منصة"],"writer":["كاتب يعرف أن الفكرة الكبيرة قد تبدأ بسطر","سكريبتات إعلانات ونصوص على الشاشة، بالعربية أولاً. جملة تعرف مكانها في الإيقاع، ونبرة تشبه العلامة التي تتحدث بها"],"shooter":["مصوّر يرى الحكاية داخل الإطار","تصوير في مدن الخليج لإعلانات ومحتوى علامات تجارية. ضوء يُقرأ، وحركة هادئة، ولقطات تعرف أنها ستُقطع في المونتاج"],"designer":["مصمم يمنح الفكرة شكلاً يليق بها","هويات وبوسترات ومواد للسوشال على شبكة واحدة ومسافات منتظمة. نرى البساطة قراراً، لا فراغاً"],"producer":["منسّق إنتاج يحفظ للعمل إيقاعه خارج الشاشة","جداول، ومواعيد، وتواصل بين الفريق والعملاء. هدوؤك تحت الضغط هو ما يتيح للآخرين أن يبدعوا"],"voice":["معلّق صوتي يُصدَّق من الجملة الأولى","تعليق لإعلانات وأفلام تعريفية بالخليجية والشامية والفصحى. أداء طبيعي يخدم النص ولا يعلو عليه"],"illustrator":["رسّام يرسم ما لا تصل إليه الكاميرا","ستوري بورد، ورسوم للموشن والحملات. خط واثق، وفكرة تُفهم من النظرة الأولى"],"social":["مدير سوشال يعرف ما الذي يستوقف المشاهد","خطط محتوى، وقراءة للأرقام، وحوار مع الجمهور باسم العلامة. ذوق في الاختيار، ونَفَس طويل في المتابعة"],"subtitles":["مترجم يحفظ نبرة الجملة قبل كلماتها","ترجمة على الشاشة بين العربية والإنجليزية، بتوقيت يتبع الإيقاع ولغة تشبه جمهورها"],"support":["دعم يجعل كل مشكلة أبسط مما بدت","ترد على عملائنا وزوارنا بلغة واضحة وهادئة، وتتابع كل طلب حتى يُحل، وتنقل للفريق ما يحتاج إليه بدقة. أول من يسمع صوت العميل، وآخر من يطمئن عليه"],"marketing":["مدير تسويق يعرف أين تُروى الحكاية","تبني طريق Eyeblink إلى العلامات في الخليج والمنطقة: تقرأ السوق والأرقام، وتختار القنوات والرسائل، وتحوّل أعمالنا إلى حضور يجذب العملاء المناسبين"]};
 
   // the tools a role uses, as choices with their marks; the picked names fill the hidden «tools» field
-  function tools(r){ var box=$('#tchips'), v=f.elements.tools, T=window.EB_TOOLS||{}, list=(window.EB_ROLE_TOOLS||{})[r]||[];
+  function tools(r){ var box=$('#tchips'), v=f.elements.tools, T=window.EB_TOOLS||{}, list=(TOOLSET.hasOwnProperty(r)?TOOLSET[r]:(window.EB_ROLE_TOOLS||{})[r])||[];
+    var lbl=box.closest('[data-f]'); lbl.hidden=TF==='hidden'||!list.length; v.required=!lbl.hidden&&TF==='required';   // a role with no tools set: the question is not asked
     var on=v.value?v.value.split('، '):[]; on=on.filter(function(n){ return list.some(function(k){ return T[k]&&T[k].t===n; }); });
     box.innerHTML=list.filter(function(k){ return T[k]; }).map(function(k){ var t=T[k]; return '<button type="button" aria-pressed="'+(on.indexOf(t.t)>=0)+'" data-t="'+t.t+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+t.p+'"/></svg>'+t.t.replace(/^Adobe /,'')+'</button>'; }).join('');
     v.value=on.join('، ');
     box.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var p=b.getAttribute('aria-pressed')!=='true'; b.setAttribute('aria-pressed',p);
       v.value=[].map.call(box.querySelectorAll('[aria-pressed="true"]'),function(x){ return x.dataset.t; }).join('، '); }; }
-  var STAFF=[];
+  var STAFF=[], TOOLSET={}, TF='optional';
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r; tools(r); }
   $('#roleSel').onchange=function(){ pick(this.value); };
   // a glass dropdown in place of the browser's grey one; the real <select> stays for the form

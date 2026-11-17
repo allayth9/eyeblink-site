@@ -218,7 +218,7 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
 
   <div id="done" class="done glass" hidden role="status"><span class="okc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h2>Your application was received</h2><p>We sent a confirmation to your email</p><a class="back" href="/en/">Back to the site</a></div>
 </div>
-<script src="../assets/js/flags.js?v=1678e6bc"></script><script src="../assets/js/tools.js?v=1"></script>
+<script src="../assets/js/flags.js?v=1678e6bc"></script><script src="../assets/js/tools.js?v=6576414f"></script>
 <script>
 (function(){
   var RA={support:'Customer support',marketing:'Marketing manager',voice:'Voice-over artist',illustrator:'Illustrator',social:'Social media manager',subtitles:'Translator & subtitler',editor:'Video editor',motion:'Motion designer',color:'Colorist',sound:'Sound engineer',writer:'Copywriter',shooter:'Videographer',designer:'Designer',producer:'Production coordinator'};
@@ -226,7 +226,7 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
   fetch('/api/team?open=1').then(function(r){return r.json()}).then(function(j){
     if(!j.open){ $('#closed').hidden=false; return; }
     
-    STAFF=j.staff||[];
+    STAFF=j.staff||[]; TOOLSET=j.tools||{}; TF=(j.fields||{}).tools||'optional';
     $('#roleSel').innerHTML=j.roles.map(function(r){return '<option value="'+r+'">'+(RA[r]||r)+'</option>'}).join('');
     f.hidden=false;
     // the admin decides which fields show and which must be filled
@@ -243,13 +243,14 @@ input:autofill{-webkit-text-fill-color:var(--light);box-shadow:0 0 0 1000px rgba
   var COPY={"editor":["An editor who knows when to let an image breathe","Rhythm is a decision before it is a skill: where a shot begins, when it ends, and what should never appear at all. We work on ads, short films and content for brands across the Gulf and the region"],"motion":["A motion designer who gives an idea the movement it deserves","Every idea has its own speed and weight. We look for someone who reads the idea before animating it, and picks the curve and timing that say it most clearly"],"color":["A colorist who gives each scene its own mood","Color is part of the story for us: the warmth of a moment, the cold of a distance. Footage comes from different cameras, and we want it to feel like one world"],"sound":["A sound engineer who gives a voice to what we cannot see","Half of what we feel arrives through the ear: sound design, clean dialogue, and a mix that keeps sound and picture together on every platform"],"writer":["A writer who knows a big idea can start with one line","Ad scripts and on-screen text, Arabic first. Lines that know their place in the rhythm, in a voice that sounds like the brand"],"shooter":["A photographer who sees the story inside the frame","Shoots across Gulf cities for ads and brand content. Readable light, calm movement, and shots that know they will be cut"],"designer":["A designer who gives an idea the shape it deserves","Identities, posters and social material on one grid with steady spacing. Simplicity, for us, is a decision, not emptiness"],"producer":["A production coordinator who keeps the work's rhythm off screen","Schedules, deadlines, and the line between the team and clients. Your calm under pressure is what lets everyone else create"],"voice":["A voice that is believed from the first line","Voice-over for ads and brand films in Gulf, Levantine and Standard Arabic. Natural delivery that serves the script and never rises above it"],"illustrator":["An illustrator who draws what the camera cannot reach","Storyboards and illustration for motion and campaigns. A confident line, and an idea understood at first glance"],"social":["A social media manager who knows what makes people stop","Content plans, reading the numbers, and talking with the audience in the brand's voice. Taste in choosing, and stamina in following through"],"subtitles":["A translator who keeps a sentence's tone before its words","On-screen translation between Arabic and English, timed to the rhythm, in language that sounds like its audience"],"support":["Support that makes every problem simpler than it looked","You answer our clients and visitors in calm, clear language, follow every request until it is solved, and pass the team exactly what it needs. The first to hear a client, and the last to check they are fine"],"marketing":["A marketing manager who knows where the story should be told","You build Eyeblink's way to brands across the Gulf and the region: reading the market and the numbers, choosing channels and messages, and turning our work into a presence that draws the right clients"]};
 
   // the tools a role uses, as choices with their marks; the picked names fill the hidden «tools» field
-  function tools(r){ var box=$('#tchips'), v=f.elements.tools, T=window.EB_TOOLS||{}, list=(window.EB_ROLE_TOOLS||{})[r]||[];
+  function tools(r){ var box=$('#tchips'), v=f.elements.tools, T=window.EB_TOOLS||{}, list=(TOOLSET.hasOwnProperty(r)?TOOLSET[r]:(window.EB_ROLE_TOOLS||{})[r])||[];
+    var lbl=box.closest('[data-f]'); lbl.hidden=TF==='hidden'||!list.length; v.required=!lbl.hidden&&TF==='required';   // a role with no tools set: the question is not asked
     var on=v.value?v.value.split('، '):[]; on=on.filter(function(n){ return list.some(function(k){ return T[k]&&T[k].t===n; }); });
     box.innerHTML=list.filter(function(k){ return T[k]; }).map(function(k){ var t=T[k]; return '<button type="button" aria-pressed="'+(on.indexOf(t.t)>=0)+'" data-t="'+t.t+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+t.p+'"/></svg>'+t.t.replace(/^Adobe /,'')+'</button>'; }).join('');
     v.value=on.join('، ');
     box.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var p=b.getAttribute('aria-pressed')!=='true'; b.setAttribute('aria-pressed',p);
       v.value=[].map.call(box.querySelectorAll('[aria-pressed="true"]'),function(x){ return x.dataset.t; }).join('، '); }; }
-  var STAFF=[];
+  var STAFF=[], TOOLSET={}, TF='optional';
   function pick(r){ var c=COPY[r]; if(c){ $('#headline').textContent=c[0]; $('#intro').textContent=c[1]; } $('#roleSel').value=r; tools(r); }
   $('#roleSel').onchange=function(){ pick(this.value); };
   // a glass dropdown in place of the browser's grey one; the real <select> stays for the form

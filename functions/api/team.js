@@ -18,6 +18,9 @@ const cleanProb = p => [1, 2, 3].includes(+p) ? +p : null, cleanHours = n => +n 
 const cleanSalary = s => s && +s.amount > 0 ? { amount: Math.round(+s.amount * 100) / 100, cur: C_(s.cur, 8) || "$" } : null;
 // the application fields the studio can show as optional, require, or hide (name and e-mail are always asked)
 const FIELDS = ["gender", "phone", "city", "langs", "reel", "links", "tools", "about"];
+// the tools each role picks from on the join page (keys of assets/js/tools.js); a role left out keeps the page's default list
+const TOOL_KEYS = ["aftereffects", "asana", "audacity", "audition", "blender", "canva", "cinema4d", "davinci", "figma", "gmail", "googleads", "googleanalytics", "googledocs", "googledrive", "googlesheets", "hubspot", "illustrator", "indesign", "intercom", "krita", "lightroom", "meta", "notion", "openai", "photoshop", "premiere", "protools", "slack", "trello", "whatsapp", "zendesk"];
+const cleanTools = x => Object.fromEntries(Object.entries(x && typeof x === "object" ? x : {}).filter(([r, v]) => ROLES.includes(r) && Array.isArray(v)).map(([r, v]) => [r, [...new Set(v.filter(k => TOOL_KEYS.includes(k)))].slice(0, 16)]));
 const cleanFields = x => Object.fromEntries(FIELDS.map(k => [k, ["hidden", "optional", "required"].includes((x || {})[k]) ? x[k] : "optional"]));
 const ROLE_AR = { editor: "مونتير", motion: "موشن ديزاينر", color: "كولوريست", sound: "مهندس صوت", writer: "كاتب محتوى", shooter: "مصوّر", designer: "مصمم", producer: "منسّق إنتاج", voice: "معلّق صوتي", illustrator: "رسّام", social: "مدير سوشال ميديا", subtitles: "مترجم ومحرّر نصوص", support: "دعم العملاء", marketing: "مدير تسويق" };
 // how a member's fee is paid, as agreed with them (studio only; it also goes into their agreement)
@@ -55,7 +58,7 @@ async function sessionCookie(env, email, remember = true){ const t = randHex(24)
 
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
-  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], staff: STAFF_ROLES, intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields) }); }
+  if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], staff: STAFF_ROLES, intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields), tools: cleanTools(s.tools) }); }
   if (q.get("me")) {
     const u = await member(request, env); if (!u) return json({ ok: false }, 401);
     // shortcut: reads every task to find this member’s (one KV read each), fine up to a few hundred tasks; past that keep task ids on the member record
@@ -207,7 +210,7 @@ async function memberAction(ctx, u, d){
 async function adminAction(ctx, d){
   const { env } = ctx, now = new Date().toISOString();
   if (d.action === "settings") {
-    const s = { open: !!d.open, roles: (Array.isArray(d.roles) ? d.roles : []).filter(r => ROLES.includes(r)), intro: C_(d.intro, 1200), fields: cleanFields(d.fields) };
+    const s = { open: !!d.open, roles: (Array.isArray(d.roles) ? d.roles : []).filter(r => ROLES.includes(r)), intro: C_(d.intro, 1200), fields: cleanFields(d.fields), tools: cleanTools(d.tools) };
     await env.EB.put("team:settings", JSON.stringify(s)); return json({ ok: true, settings: s });
   }
   if (d.action === "appReject") {
