@@ -99,16 +99,20 @@ export function mail(lang, title, bodyHtml, cta, link, hi, opt){
 <body ${D} style="${DS}margin:0;padding:0;background:#04061A;font-family:${font};-webkit-text-size-adjust:100%">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#04061A" style="background:#04061A"><tr><td align="center" style="padding:36px 14px 28px">
 <table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:580px">
-<tr><td align="center" style="padding:0 0 26px"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="170" alt="EYEBLINK STUDIO" style="display:block;width:170px;max-width:60%;height:auto;border:0;margin:0 auto"></a></td></tr>
-<tr><td style="background:#0A1033;border:1px solid #1B2556;border-radius:24px;overflow:hidden">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td style="height:3px;line-height:3px;font-size:0;background:#2A86E6;background-image:linear-gradient(90deg,#2FC4D8,#2A86E6 40%,#1C45E6 75%,#0E1A5C)">&nbsp;</td></tr>
-<tr><td ${D} align="${al}" style="${DS}padding:34px 36px 38px;text-align:${al}">
-${hi?`<p ${D} style="${DS}margin:0 0 20px;font-size:16px;line-height:1.7;color:#AEBBD2">${h(hi)}</p>`:""}
-<h1 ${D} style="${DS}margin:0 0 14px;font-size:22px;line-height:1.5;font-weight:700;color:#EEF2F6">${h(title)}</h1>
-<div ${D} style="${DS}font-size:15.5px;line-height:1.85;color:#C3CEE2;text-align:${al}">${bodyHtml}</div>
-${cta?`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px 0 0;${rtl?"margin-right:0;margin-left:auto":""}"><tr><td align="center" bgcolor="#2A86E6" style="border-radius:999px;background:#2A86E6;background-image:linear-gradient(180deg,#2A86E6,#1C45E6);border:1px solid #9FB6D6">
-<a href="${link}" style="display:inline-block;padding:14px 34px;font-family:${font};font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px">${h(cta)}</a></td></tr></table>`:""}
+<tr><td bgcolor="#0A1033" style="background:#0A1033;border:1px solid #1B2556;border-radius:22px;overflow:hidden">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td ${D} bgcolor="#12298E" style="${DS}background-color:#12298E;background-image:radial-gradient(120% 160% at ${rtl?"0%":"100%"} 0%,#1C45E6 0%,#12298E 40%,#0A1033 85%);border-radius:21px 21px 0 0;padding:22px 24px">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  <td style="text-align:${al};vertical-align:middle"><a href="${SITE}" style="text-decoration:none"><img src="${SITE}/assets/img/email-logo.png" width="132" alt="EYEBLINK STUDIO" style="display:inline-block;width:132px;height:auto;border:0"></a></td>
+  ${opt && opt.label ? `<td style="text-align:${rtl?"left":"right"};vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:10.5px;font-weight:bold;letter-spacing:.3em;color:#9FDCFF;direction:ltr;white-space:nowrap">${h(opt.label)}</td>` : ""}
+ </tr></table>
+</td></tr>
+<tr><td ${D} align="${al}" style="${DS}padding:26px 24px 28px;text-align:${al}">
+${hi?`<p ${D} style="${DS}margin:0 0 10px;font-size:15px;line-height:1.7;color:#AEBBD2">${h(hi)}</p>`:""}
+<h1 ${D} style="${DS}margin:0 0 12px;font-size:21px;line-height:1.5;font-weight:700;color:#EEF2F6">${h(title)}</h1>
+<div ${D} style="${DS}font-size:15px;line-height:1.85;color:#C3CEE2;text-align:${al}">${bodyHtml}</div>
+${cta?`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0"><tr><td align="center" bgcolor="#2A86E6" style="border-radius:999px;background:#2A86E6;background-image:linear-gradient(180deg,#2A86E6,#1C45E6);border:1px solid #9FB6D6">
+<a href="${link}" style="display:block;padding:15px 20px;font-family:${font};font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px">${h(cta)}</a></td></tr></table>`:""}
 </td></tr></table></td></tr>
 <tr><td align="center" style="padding:28px 12px 0">
 <p style="margin:0;color:#6F7FA0;font-size:12px;line-height:1.8;direction:ltr;letter-spacing:.04em"><a href="${SITE}" style="color:#AEBBD2;text-decoration:none">eyeblinkstudio.com</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://instagram.com/eyeblnk" style="color:#AEBBD2;text-decoration:none">@eyeblnk</a></p>
