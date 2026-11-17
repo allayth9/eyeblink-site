@@ -3,3 +3,6 @@ __pycache__/
 .env
 .wrangler/
 node_modules/
+dev/.e2e-state/
+dev/test-results/
+dev/playwright-report/

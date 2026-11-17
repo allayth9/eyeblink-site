@@ -1,4 +1,6 @@
-# Runs the privacy and security tests in dev/ on every push and pull request (no dependencies to install)
+# Runs on every push and pull request. Nothing here touches the live site.
+#   tests: the privacy and security checks in dev/test-*.mjs (no dependencies)
+#   e2e:   the site on a local, empty copy (wrangler) driven by Playwright on desktop and phone sizes
 name: tests
 on: [push, pull_request]
 permissions:
@@ -15,3 +17,22 @@ jobs:
         run: |
           set -e
           for t in dev/test-*.mjs; do echo "== $t"; node "$t"; done
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: dev/test-results
+          retention-days: 7

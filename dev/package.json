@@ -1,0 +1,13 @@
+{
+  "name": "eyeblink-site",
+  "private": true,
+  "description": "Developer tools only: the site itself has no dependencies and no build step",
+  "scripts": {
+    "test": "cd .. && for t in dev/test-*.mjs; do node \"$t\" || exit 1; done",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "wrangler": "4.157.0"
+  }
+}
