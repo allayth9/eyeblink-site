@@ -69,7 +69,7 @@
       .then(function(j){ WORK= j.ok? j : {err:j.error||'fail'}; renderTabs(); if(TAB==='tasks') renderWork(); }).catch(function(){ WORK={err:'net'}; if(TAB==='tasks') renderWork(); });
   }
   function wreq(body,btn,ok){
-    if(btn) btn.disabled=true;
+    if(btn) btn.disabled=true; if(NEXT_NOTIFY){ body.notify=NEXT_NOTIFY; ok=sndSay(NEXT_NOTIFY,ok); }   // the send sheet's choice
     return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ if(ok) toast(ok); loadWork(); return j; })
       .catch(function(e){ if(btn) btn.disabled=false; toast(({date:'اختر تاريخاً صحيحاً',note:'اكتب المعلومات المطلوبة','not client':'هذا العميل ليس متعاقداً بعد — رقِّه أولاً من تبويب العملاء','no account':'لا يوجد حساب بهذا البريد',name:'اكتب اسم المشروع','date first':'حدّد الموعد المؤكد أولاً','no request':'لم يعد الطلب موجوداً'})[e.message]||'تعذّر التنفيذ',true); throw e; });

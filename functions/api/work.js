@@ -88,6 +88,7 @@ const SCHEMA = [
      status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 1, error TEXT, next_try_at TEXT, provider_id TEXT, delivery TEXT, payload TEXT)`,
   `CREATE INDEX IF NOT EXISTS notify_log_retry ON notify_log(status, next_try_at)`,
   `CREATE INDEX IF NOT EXISTS notify_log_provider ON notify_log(provider_id)`,
+  `CREATE TABLE IF NOT EXISTS scheduled_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, recipient TEXT NOT NULL, kind TEXT NOT NULL, t TEXT NOT NULL, extra TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT, cancelled_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, no TEXT NOT NULL UNIQUE, client_email TEXT NOT NULL, project_id TEXT, title TEXT NOT NULL DEFAULT '', period TEXT NOT NULL DEFAULT '',
      items TEXT NOT NULL DEFAULT '[]', currency TEXT NOT NULL DEFAULT '$', discount REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, paid REAL NOT NULL DEFAULT 0, refunded REAL NOT NULL DEFAULT 0,
      status TEXT NOT NULL DEFAULT 'pending', issue_date TEXT NOT NULL, due_date TEXT, note TEXT NOT NULL DEFAULT '', payments TEXT NOT NULL DEFAULT '[]', sent_at TEXT, reminded_at TEXT,
@@ -239,7 +240,7 @@ async function runRecurring(ctx, env, D, r, on){
   await act(D, { actor: "studio", actor_name: "Eyeblink Studio", client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, recurring: true, confirmed_date: due } });
   let nx = nextRun(on, r.every, r.dow, r.dom); while (nx <= today()) nx = nextRun(nx, r.every, r.dow, r.dom);   // missed runs are not replayed
   await D.prepare("UPDATE recurring SET next_run=?, runs=runs+1, last_ref=?, updated_at=? WHERE id=?").bind(nx, ref, at, r.id).run();
-  const pr = later(ctx, tellClient(env, { client_email: p.client_email, ref, title, confirmed_date: due, status: "accepted" }, "recurring", {})); if (pr) await pr;   // the sweep has no waitUntil of its own
+  const pr = later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref, title, confirmed_date: due, status: "accepted" }, "recurring", {})); if (pr) await pr;   // the sweep has no waitUntil of its own
   return ref;
 }
 async function monthReport(D, p, month){
@@ -337,7 +338,7 @@ function reportPage(R, cl, lang){ return `<!doctype html><html lang="${lang === 
 const prevMonth = () => { const x = new Date(); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 7); };
 async function sendReport(ctx, env, D, p, month){
   const R = await monthReport(D, p, month);
-  await tellClient(env, { client_email: p.client_email, ref: "", title: p.name }, "report", { hash: "#w/p/" + p.id + "/report/" + month, report: R, name: p.name, month });
+  await tellAdmin(ctx, env, { client_email: p.client_email, ref: "", title: p.name }, "report", { hash: "#w/p/" + p.id + "/report/" + month, report: R, name: p.name, month });
   await D.prepare("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind("rep:" + p.id + ":" + month, now()).run();
   return R;
 }
@@ -405,7 +406,7 @@ function billTicket(x, lang, intro, link){
   const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], c = x.currency || "$", st = x.state || x.status;
   const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
   const open = st === "pending" || st === "partial" || st === "overdue", B = s => '<b style="color:#fff">' + h(s) + "</b>";
-  const cap = open ? (st === "overdue" ? (en ? "Past due since " : "متأخرة منذ ") + B(dt(x.due_date)) : (en ? "Amount due · by " : "المبلغ المستحق · حتى ") + B(dt(x.due_date)))
+  const cap = open ? (st === "overdue" ? (en ? "Due since " : "مستحقة منذ ") + B(dt(x.due_date)) : (en ? "Amount due · by " : "المبلغ المستحق · حتى ") + B(dt(x.due_date)))
             : st === "paid" ? (en ? "Paid in full · thank you" : "مدفوعة بالكامل · شكراً لك") : h(S[st] || st);
   const items = x.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })).concat(x.discount ? [{ name: L.disc, qty: 1, amount: "−" + fmt(x.discount, c) }] : []);
   const totals = [[L.total, fmt(x.total, c)]].concat(x.paid ? [[L.paid, fmt(x.paid, c)]] : []).concat(x.refunded ? [[L.refunded, "−" + fmt(x.refunded, c)]] : [])
@@ -422,8 +423,8 @@ function billPage(x, cl, lang, opt){
 }
 const htmlRes = (t, st) => new Response(t, { status: st || 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "SAMEORIGIN" } });
 async function invoiceOf(D, id){ return parseI(await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=?").bind(clip(id, 40)).first()); }
-function invoiceMail(env, x, kind){ const s = { client_email: x.client_email, ref: "", title: x.title || x.no };
-  return tellClient(env, s, kind, { hash: "#w/invoices/" + x.id, inv: x, no: x.no, amount: fmt(x.total, x.currency), balance: fmt(x.balance, x.currency), paidNow: kind === "invoicePaid" && x.payments.length ? fmt(x.payments[x.payments.length - 1].amount, x.currency) : undefined, due: x.due_date }); }
+function invoiceMail(env, x, kind, ctx){ const a = invoiceArgs(x, kind); return tellAdmin(ctx, env, a.t, kind, a.extra); }
+function invoiceArgs(x, kind){ return { t: { client_email: x.client_email, ref: "", title: x.title || x.no }, extra: { hash: "#w/invoices/" + x.id, inv: x, no: x.no, amount: fmt(x.total, x.currency), balance: fmt(x.balance, x.currency), paidNow: kind === "invoicePaid" && x.payments.length ? fmt(x.payments[x.payments.length - 1].amount, x.currency) : undefined, due: x.due_date } }; }
 
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
@@ -494,8 +495,8 @@ async function tgSend(env, chat, text, url, label){
   return r && r.ok ? { ok: true, id: r.result && String(r.result.message_id) } : { ok: false, error: (r && r.description) || "telegram", retry: !r || r.error_code === 429 || r.error_code >= 500 };
 }
 // what goes to the phone: the same one-line text as the WhatsApp template
-function shortText(lang, kind, data, L){ const f = WA_TXT[lang][kind]; if (!f) return "";
-  return oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", dueText: data.due ? fmtDate(data.due, lang) : "", statusText: L[data.status] || data.status || "" }), 400); }
+function shortText(lang, kind, data, L, max){ const f = WA_TXT[lang][kind]; if (!f) return "";
+  return oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", dueText: data.due ? fmtDate(data.due, lang) : "", statusText: L[data.status] || data.status || "" }), max || 400); }
 async function logSend(D, r){ if (!D) return; try {
   await D.prepare("INSERT INTO notify_log (at, channel, recipient, target, kind, status, attempts, error, next_try_at, provider_id, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
     .bind(now(), r.channel, r.recipient, r.target || null, r.kind, r.status, r.attempts || 1, r.error || null, r.next || null, r.provider_id || null, r.payload ? JSON.stringify(r.payload) : null).run(); } catch {} }
@@ -527,7 +528,7 @@ const WA_TXT = {
         completed: d => `اكتملت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
         comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
         invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
-        invoiceDue: d => `تذكير: الفاتورة ${d.no} تجاوزت تاريخ استحقاقها، والمبلغ المتبقي ${d.balance}.`,
+        invoiceDue: d => `نودّ أن نذكّرك بلطف بالفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
         recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو مهمة «${d.title}» (${d.ref}) إلى مشروعك${d.date ? "، وموعد تسليمها المؤكد " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
@@ -535,20 +536,11 @@ const WA_TXT = {
         completed: d => `"${d.title}" (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}" (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}" (${d.ref}) is ready for review.`,
         comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
         invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
-        invoiceDue: d => `Reminder: invoice ${d.no} is past its due date; ${d.balance} is still due.`,
+        invoiceDue: d => `A gentle reminder about invoice ${d.no}; the remaining balance is ${d.balance}. If you have already settled it, thank you.`,
         recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added "${d.title}" (${d.ref}) to your project${d.date ? "; confirmed delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
-async function tellClient(env, t, kind, extra){
-  extra = extra || {};
-  const u = await userOf(env, t.client_email); if (!u) return;
-  const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
-  const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
-  const data = { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
-    no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined, month: extra.month };
-  // 1) in-app — always on
-  if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
-  const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
-  // 2) e-mail — unless the client switched this category off
-  if (!P || P.email_cats[cat] || ESSENTIAL.includes(cat)) jobs.push((async () => {
+// the e-mail for one event, built once: tellClient sends it, the admin's send sheet previews it
+function composeMail(u, t, kind, extra, hash){
+  extra = extra || {}; const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const T = {
     accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                 : ["قُبلت مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
@@ -568,8 +560,8 @@ async function tellClient(env, t, kind, extra){
                  : ["فاتورة " + extra.no + " · Eyeblink Studio", `تجد أدناه فاتورتك <b style="color:#fff">${h(extra.no)}</b> بقيمة <b style="color:#3FE0E8">${h(extra.amount)}</b>${extra.due ? "، وتاريخ استحقاقها <b style=\"color:#fff\">" + h(fmtDate(extra.due, lang)) + "</b>" : ""}.`],
     invoicePaid: en ? ["Payment received · " + extra.no, `We received <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> for invoice <b style="color:#fff">${h(extra.no)}</b>. Thank you! The updated invoice is below.`]
                     : ["وصلت دفعتك · " + extra.no, `وصلتنا دفعتك <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> للفاتورة <b style="color:#fff">${h(extra.no)}</b>. شكراً لك! تجد الفاتورة المحدّثة أدناه.`],
-    invoiceDue: en ? ["Reminder: invoice " + extra.no, `Invoice <b style="color:#fff">${h(extra.no)}</b> is past its due date. The balance due is <b style="color:#3FE0E8">${h(extra.balance)}</b>.`]
-                   : ["تذكير بالفاتورة " + extra.no, `تجاوزت الفاتورة <b style="color:#fff">${h(extra.no)}</b> تاريخ استحقاقها، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>.`],
+    invoiceDue: en ? ["A gentle reminder · invoice " + extra.no, `A gentle reminder about invoice <b style="color:#fff">${h(extra.no)}</b>; the remaining balance is <b style="color:#3FE0E8">${h(extra.balance)}</b>. If you have already settled it, thank you, and please disregard this note. We are always happy to help with any question.`]
+                   : ["تذكير ودّي · الفاتورة " + extra.no, `نودّ أن نذكّرك بلطف بالفاتورة <b style="color:#fff">${h(extra.no)}</b>، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كنت قد أتممت الدفع فلك جزيل الشكر، ويسعدنا دائماً الإجابة عن أي استفسار.`],
     recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                   : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
     added:   en ? ["New task from the studio · " + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to your project${t.confirmed_date ? `. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
@@ -579,18 +571,44 @@ async function tellClient(env, t, kind, extra){
                  : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
     project: en ? ["New project in your workspace", `The studio opened <b style="color:#fff">${h(extra && extra.name)}</b> for you. You can send tasks to it from your workspace.`]
                 : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
-  }[kind]; if (!T) return;
+  }[kind]; if (!T) return null;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const invHtml = "";   // invoices and the monthly report are their own dark frame (bare e-mail) below
     const wsLink = SITE + (en ? "/en" : "") + "/workspace" + hash;
-    const subject = T[0], html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
+    const html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
       : extra.report ? mail(lang, T[0], reportCard(extra.report, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // the monthly report: the scoreboard
-      : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", wsLink, greet({ name: u.name, lang }));
+      : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح في مساحة العمل", wsLink, greet({ name: u.name, lang }));
+    return { subject: T[0], html };
+}
+function tellData(t, extra){ return { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
+    no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined, month: extra.month }; }
+// the admin's choice from the send sheet: { ch:{ email, push, wa }, at } — at = a later time (kept in scheduled_sends until then)
+function cleanNotify(v){ if (!v || typeof v !== "object") return null;
+  const ch = { email: !!(v.ch && v.ch.email), push: !!(v.ch && v.ch.push), wa: !!(v.ch && v.ch.wa) };
+  const t = v.at ? new Date(v.at) : null, at = t && !isNaN(t) && t > Date.now() + 60000 && t < Date.now() + 90 * 864e5 ? t.toISOString() : null;
+  return { ch, at }; }
+async function tellAdmin(ctx, env, t, kind, extra){
+  const n = ctx && ctx.notify; extra = n ? { ...(extra || {}), ch: n.ch } : extra;
+  if (n && n.at) { const D = await db(env); if (D) { await D.prepare("INSERT INTO scheduled_sends (at, recipient, kind, t, extra, created_at) VALUES (?,?,?,?,?,?)")
+    .bind(n.at, String(t.client_email || "").toLowerCase(), kind, JSON.stringify(t), JSON.stringify(extra), now()).run(); return; } }
+  return tellClient(env, t, kind, extra);
+}
+async function tellClient(env, t, kind, extra){
+  extra = extra || {};
+  const u = await userOf(env, t.client_email); if (!u) return;
+  const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
+  const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
+  const data = tellData(t, extra), ch = extra.ch;   // ch: the admin's channel choice (in-app is always kept)
+  // 1) in-app — always on
+  if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
+  const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
+  // 2) e-mail — unless the client switched this category off
+  if ((!ch || ch.email) && (!P || P.email_cats[cat] || ESSENTIAL.includes(cat))) jobs.push((async () => {
+    const m = composeMail(u, t, kind, extra, hash); if (!m) return; const { subject, html } = m;
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
   // 3) WhatsApp — only with explicit consent, a confirmed number, the category on, and the studio's WhatsApp switched on
-  if (P && P.consent && P.wa_cats[cat]) jobs.push((async () => {
+  if ((!ch || ch.wa) && P && P.consent && P.wa_cats[cat]) jobs.push((async () => {
     const cfg = await waConfig(env); if (!waReady(env, cfg)) return;
     const f = WA_TXT[lang][kind]; if (!f) return;
     const text = oneLine(f({ ...data, dateText: data.date ? fmtDate(data.date, lang) : "—", dueText: data.due ? fmtDate(data.due, lang) : "", statusText: L[data.status] || data.status || "" }), 700);
@@ -599,7 +617,7 @@ async function tellClient(env, t, kind, extra){
     await logSend(D, { channel: "whatsapp", recipient: u.email, target: P.wa_phone, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok ? null : { phone: P.wa_phone, lang, p: pl } });
   })());
   // 4) this device (Web Push) — every device the client switched on, for the categories left on
-  if (D && (!P || P.push_cats[cat])) jobs.push((async () => {
+  if ((!ch || ch.push) && D && (!P || P.push_cats[cat])) jobs.push((async () => {
     const subs = (await D.prepare("SELECT * FROM push_subs WHERE email=?").bind(u.email).all()).results; if (!subs.length) return;
     const body = shortText(lang, kind, data, L); if (!body) return;
     const url = SITE + (en ? "/en" : "") + "/workspace" + hash;
@@ -607,7 +625,7 @@ async function tellClient(env, t, kind, extra){
       await logSend(D, { channel: "push", recipient: u.email, target: new URL(sub.endpoint).hostname, kind, status: r.ok ? "sent" : "failed", error: r.error }); }
   })());
   // 5) Telegram — once the client linked their chat with the studio's bot
-  if (D && (!P || P.tg_cats[cat])) jobs.push((async () => {
+  if ((!ch || ch.push) && D && (!P || P.tg_cats[cat])) jobs.push((async () => {
     const link = await D.prepare("SELECT * FROM tg_links WHERE email=?").bind(u.email).first(); if (!link || !tgTok(env)) return;
     const body = shortText(lang, kind, data, L); if (!body) return;
     const r = await tgSend(env, link.chat_id, "✦ Eyeblink Studio\n\n" + body, SITE + (en ? "/en" : "") + "/workspace" + hash, en ? "Open in my workspace" : "افتح في مساحة العمل");
@@ -636,6 +654,10 @@ async function sweepNotify(env){ try {
   await D.prepare("INSERT INTO meta (k, v) VALUES ('nsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
   const rows = (await D.prepare("SELECT * FROM notify_log WHERE status='retry' AND next_try_at<=? ORDER BY id LIMIT 10").bind(now()).all()).results;
   for (const r of rows) await retryRow(env, D, r);
+  // sends the admin scheduled for later (claimed first, so two sweeps never send twice)
+  const sch = (await D.prepare("SELECT * FROM scheduled_sends WHERE sent_at IS NULL AND cancelled_at IS NULL AND at<=? ORDER BY at LIMIT 10").bind(now()).all()).results;
+  for (const r of sch) { const c = await D.prepare("UPDATE scheduled_sends SET sent_at=? WHERE id=? AND sent_at IS NULL").bind(now(), r.id).run();
+    if (c.meta && c.meta.changes) await tellClient(env, JSON.parse(r.t), r.kind, JSON.parse(r.extra)).catch(() => {}); }
   // one reminder per invoice once it passes its due date
   const due = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.status IN ('pending','partial') AND i.due_date<? AND i.reminded_at IS NULL AND i.sent_at IS NOT NULL LIMIT 10").bind(today()).all()).results;
   for (const x of due) { await D.prepare("UPDATE invoices SET reminded_at=? WHERE id=?").bind(now(), x.id).run(); await invoiceMail(env, parseI(x), "invoiceDue"); }
@@ -738,8 +760,9 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+    ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
   }
   const u = await currentUser(request, env); if (!u) return json({ ok: false, error: "login" }, 401);
@@ -928,7 +951,7 @@ async function addComment(ctx, D, o){
   const env = ctx.env, where = o.task ? "«" + o.task.title + "» " + o.task.ref : "نقاش مشروع «" + p.name + "»";
   if (o.client) toStudio(ctx, env, "تعليق جديد من " + o.author_name + " · " + (o.task ? o.task.ref : p.name), where + "\n\n" + body + "\n\n" + (o.task ? adminLink(o.task.ref) : SITE + "/admin/#tasks"));
   else {
-    later(ctx, tellClient(env, o.task ? o.task : { client_email: p.client_email, ref: "", title: p.name }, "comment", { note: body, hash: o.task ? undefined : "#w/p/" + p.id + "/talk" })); }
+    later(ctx, tellAdmin(ctx, env, o.task ? o.task : { client_email: p.client_email, ref: "", title: p.name }, "comment", { note: body, hash: o.task ? undefined : "#w/p/" + p.id + "/talk" })); }
   return json({ ok: true, id });
 }
 async function addFile(ctx, D, o){
@@ -939,7 +962,7 @@ async function addFile(ctx, D, o){
   await D.prepare("INSERT INTO files (id, project_id, client_email, category, title, url, note, added_by, added_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
     .bind(id, o.project.id, o.project.client_email, cat, title, url, clip(d.note, 1000), o.by, o.by_name || "", now()).run();
   await act(D, { actor: o.by, actor_name: o.by_name, client_email: o.project.client_email, project_id: o.project.id, kind: "file_added", data: { title, category: cat } });
-  if (o.by === "studio") later(ctx, tellClient(ctx.env, { client_email: o.project.client_email, ref: "", title: o.project.name }, "file", { file: title, name: o.project.name, hash: "#w/p/" + o.project.id + "/files" }));
+  if (o.by === "studio") later(ctx, tellAdmin(ctx, ctx.env, { client_email: o.project.client_email, ref: "", title: o.project.name }, "file", { file: title, name: o.project.name, hash: "#w/p/" + o.project.id + "/files" }));
   else toStudio(ctx, ctx.env, "ملف جديد من " + o.by_name + " · " + o.project.name, title + "\n" + url);
   return json({ ok: true, id });
 }
@@ -1098,17 +1121,17 @@ async function adminPost(ctx, d){
       await D.prepare("UPDATE invoices SET client_email=?, project_id=?, title=?, period=?, items=?, currency=?, discount=?, total=?, status=?, issue_date=?, due_date=?, note=?, reminded_at=CASE WHEN due_date IS ? THEN reminded_at ELSE NULL END, updated_at=? WHERE id=?")
         .bind(email, pid, title, period, JSON.stringify(items), cur, disc, total, st, issue, due, note, due, at, x.id).run();
       await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_updated", data: { no: x.no, total, cur } });
-      if (d.send) { await D.prepare("UPDATE invoices SET sent_at=? WHERE id=?").bind(at, x.id).run(); later(ctx, invoiceMail(env, await invoiceOf(D, x.id), "invoice")); }
+      if (d.send) { await D.prepare("UPDATE invoices SET sent_at=? WHERE id=?").bind(at, x.id).run(); later(ctx, invoiceMail(env, await invoiceOf(D, x.id), "invoice", ctx)); }
       return json({ ok: true, id: x.id, no: x.no });
     }
     const n = await newInvoice(env, "bill", total), id = "i_" + randHex(6);
     await D.prepare("INSERT INTO invoices (id, no, client_email, project_id, title, period, items, currency, discount, total, paid, refunded, status, issue_date, due_date, note, payments, sent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,'pending',?,?,?,'[]',?,?,?)")
       .bind(id, n.no, email, pid, title, period, JSON.stringify(items), cur, disc, total, issue, due, note, d.send ? at : null, at, at).run();
     await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_issued", data: { no: n.no, total, cur, sent: !!d.send } });
-    if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice"));
+    if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice", ctx));
     return json({ ok: true, id, no: n.no });
   }
-  if (["invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceDelete"].includes(d.action)) {
+  if (["invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete"].includes(d.action)) {
     const x = await invoiceOf(D, d.id); if (!x) return json({ ok: false }, 404);
     const save = async (patch, kind, data) => {
       const y = { ...x, ...patch }; await D.prepare("UPDATE invoices SET paid=?, refunded=?, status=?, payments=?, sent_at=?, updated_at=? WHERE id=?").bind(money(y.paid), money(y.refunded), y.status, JSON.stringify(y.payments), y.sent_at || null, at, x.id).run();
@@ -1121,7 +1144,7 @@ async function adminPost(ctx, d){
       const amt = money(d.amount); if (amt <= 0) return json({ ok: false, error: "amount" }, 400); if (amt > x.balance + 0.009) return json({ ok: false, error: "too much" }, 400);
       const pay = { amount: amt, method: clip(d.method, 80), date: isDate(d.date) ? d.date : today(), note: clip(d.note, 300), at };
       const paid = money(x.paid + amt), y = await save({ paid, payments: x.payments.concat([pay]), status: byPaid(paid) }, "invoice_paid", { amount: amt, cur: x.currency });
-      if (y.sent_at) later(ctx, invoiceMail(env, y, "invoicePaid"));
+      if (y.sent_at) later(ctx, invoiceMail(env, y, "invoicePaid", ctx));
       return json({ ok: true, status: y.state, balance: y.balance });
     }
     if (d.action === "invoiceUnpay") {
@@ -1137,9 +1160,36 @@ async function adminPost(ctx, d){
       if (d.status === "reopen") { if (x.status !== "cancelled" && x.status !== "refunded") return json({ ok: false, error: "state" }, 409); const y = await save({ status: byPaid(x.paid), refunded: 0 }, "invoice_status", { to: "reopened" }); return json({ ok: true, status: y.state }); }
       return json({ ok: false }, 400);
     }
-    if (d.action === "invoiceSend") { if (x.status === "cancelled") return json({ ok: false, error: "state" }, 409); const y = await save({ sent_at: x.sent_at || at }, "invoice_sent", {}); later(ctx, invoiceMail(env, y, y.status === "paid" ? "invoicePaid" : "invoice")); return json({ ok: true }); }
+    if (d.action === "invoiceRemind") { if (!["pending","partial"].includes(x.status) || !x.sent_at) return json({ ok: false, error: "state" }, 409);
+      await D.prepare("UPDATE invoices SET reminded_at=? WHERE id=?").bind(at, x.id).run();
+      await act(D, { ...studio, client_email: x.client_email, project_id: x.project_id, kind: "invoice_reminded", data: { no: x.no } });
+      later(ctx, invoiceMail(env, x, "invoiceDue", ctx)); return json({ ok: true, scheduled: !!(ctx.notify && ctx.notify.at) }); }
+    if (d.action === "invoiceSend") { if (x.status === "cancelled") return json({ ok: false, error: "state" }, 409); const y = await save({ sent_at: x.sent_at || at }, "invoice_sent", {}); later(ctx, invoiceMail(env, y, y.status === "paid" ? "invoicePaid" : "invoice", ctx)); return json({ ok: true }); }
     if (d.action === "invoiceDelete") { if (x.sent_at || x.paid > 0) return json({ ok: false, error: "sent" }, 409); await D.prepare("DELETE FROM invoices WHERE id=?").bind(x.id).run(); return json({ ok: true }); }
   }
+  if (d.action === "notifyPreview") {   // the send sheet: the exact e-mail, the WhatsApp text to copy, and which channels reach this client
+    const kind = clip(d.kind, 20); let t, extra = {};
+    if (d.invoice) { const x = await invoiceOf(D, d.invoice); if (!x) return json({ ok: false }, 404); ({ t, extra } = invoiceArgs(x, kind)); }
+    else if (d.ref) { const row = await D.prepare("SELECT * FROM tasks WHERE ref=? OR id=?").bind(clip(d.ref, 40), clip(d.ref, 40)).first(); if (!row) return json({ ok: false }, 404);
+      const o = d.over || {}; t = { ...parse(row), ...(STATUSES.includes(o.status) ? { status: o.status } : {}), ...(isDate(o.confirmed_date) ? { confirmed_date: o.confirmed_date } : {}) };
+      extra = { label: clip(d.label, 20), final: !!d.final, note: clip(d.note, 4000) };
+      if (kind === "deliver" && !extra.label) extra.label = d.final ? "Final" : "V" + (((await D.prepare("SELECT MAX(version) AS v FROM deliverables WHERE task_id=?").bind(row.id).first()).v || 0) + 1); }
+    else if (d.project) { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
+      t = { client_email: p.client_email, ref: "", title: p.name }; extra = { id: p.id, name: p.name, file: clip(d.file, 120), note: clip(d.note, 4000), hash: "#w/p/" + p.id + (kind === "file" ? "/files" : kind === "comment" ? "/talk" : "") };
+      if (kind === "report") { const month = isMonth(d.month) ? d.month : prevMonth(); Object.assign(extra, { report: await monthReport(D, p, month), month, hash: "#w/p/" + p.id + "/report/" + month }); } }
+    else return json({ ok: false }, 400);
+    const u = await userOf(env, t.client_email); if (!u) return json({ ok: true, account: false });
+    const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
+    const m = composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
+    const P = await prefsOf(D, u.email).catch(() => null), cfg = await waConfig(env), cl = await D.prepare("SELECT phone FROM clients WHERE email=?").bind(u.email).first();
+    const devices = (await D.prepare("SELECT (SELECT COUNT(*) FROM push_subs WHERE email=?) + (SELECT COUNT(*) FROM tg_links WHERE email=?) AS n").bind(u.email, u.email).first()).n;
+    const line = shortText(lang, kind, tellData(t, extra), ST_LABEL[lang], 700), link = SITE + (en ? "/en" : "") + "/workspace" + hash, first = String(u.name || "").trim().split(/\s+/)[0];
+    const wa = (en ? "Hello" + (first ? " " + first : "") + "," : "مرحباً" + (first ? " " + first : "") + "،") + "\n\n*" + m.subject.replace(/\*/g, "") + "*\n" + line + "\n\n" + link + "\n\n" + (en ? "With our regards,\n*Eyeblink Studio*" : "مع خالص التقدير،\n*Eyeblink Studio*");
+    return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, phone: (P && P.wa_phone) || (cl && cl.phone) || "",
+      channels: { email: !!(P ? (P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) : true), push: devices > 0, wa: !!(P && P.consent && P.wa_phone && waReady(env, cfg)) },
+      why: { email: P && !(P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) ? "off" : "", push: devices > 0 ? "" : "none", wa: !waReady(env, cfg) ? "meta" : !(P && P.consent && P.wa_phone) ? "consent" : "" } });
+  }
+  if (d.action === "scheduledCancel") { await D.prepare("UPDATE scheduled_sends SET cancelled_at=? WHERE id=? AND sent_at IS NULL").bind(at, +d.id || 0).run(); return json({ ok: true }); }
   if (d.action === "studioRead") {
     if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient='studio' AND read_at IS NULL").bind(at).run();
     else for (const id of (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map(Number).filter(Number.isInteger)) await D.prepare("UPDATE notifications SET read_at=? WHERE id=? AND recipient='studio'").bind(at, id).run();
@@ -1183,7 +1233,7 @@ async function adminPost(ctx, d){
     await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
       .bind(id, email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, at).run();
     await act(D, { ...studio, client_email: email, project_id: id, kind: "project_created", data: { name: f.name } });
-    later(ctx, tellClient(env, { client_email: email }, "project", { id, name: f.name }));
+    later(ctx, tellAdmin(ctx, env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
   }
   if (d.action === "tgSetup") {
@@ -1241,7 +1291,7 @@ async function adminPost(ctx, d){
       .bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, at, at).run();
     await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, by_studio: true, confirmed_date: cd || null, priority: pr } });
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
-    later(ctx, tellClient(env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
+    later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
     return json({ ok: true, ref });
   }
   if (d.action === "point" || d.action === "pointAdd") {
@@ -1301,7 +1351,7 @@ async function adminPost(ctx, d){
     await D.prepare("UPDATE tasks SET status=?, updated_at=? WHERE id=?").bind(to, at, t.id).run();
     await act(D, { ...tw, kind: "delivered", data: { label, version: v, final: fin, note: note || undefined } });
     if (t.status !== to) await act(D, { ...tw, kind: "status", data: { from: t.status, to } });
-    t.status = to; later(ctx, tellClient(env, t, "deliver", { label, final: fin, note }));
+    t.status = to; later(ctx, tellAdmin(ctx, env, t, "deliver", { label, final: fin, note }));
     return json({ ok: true, id, label });
   }
   const setStatus = async (to, extra) => {
@@ -1315,10 +1365,10 @@ async function adminPost(ctx, d){
       const cd = clip(d.confirmed_date, 10); if (!isDate(cd)) return json({ ok: false, error: "date" }, 400);
       await D.prepare("UPDATE tasks SET confirmed_date=? WHERE id=?").bind(cd, t.id).run(); t.confirmed_date = cd;
       await setStatus("accepted", { confirmed_date: cd });
-      later(ctx, tellClient(env, t, "accept", { note })); return json({ ok: true });
+      later(ctx, tellAdmin(ctx, env, t, "accept", { note })); return json({ ok: true });
     }
-    if (d.decision === "info") { if (!note) return json({ ok: false, error: "note" }, 400); await setStatus("info"); later(ctx, tellClient(env, t, "info", { note })); return json({ ok: true }); }
-    if (d.decision === "reject") { await setStatus("rejected"); later(ctx, tellClient(env, t, "reject", { note })); return json({ ok: true }); }
+    if (d.decision === "info") { if (!note) return json({ ok: false, error: "note" }, 400); await setStatus("info"); later(ctx, tellAdmin(ctx, env, t, "info", { note })); return json({ ok: true }); }
+    if (d.decision === "reject") { await setStatus("rejected"); later(ctx, tellAdmin(ctx, env, t, "reject", { note })); return json({ ok: true }); }
     return json({ ok: false }, 400);
   }
   if (d.action === "status") {
@@ -1326,7 +1376,7 @@ async function adminPost(ctx, d){
     if (d.status === "accepted" && !t.confirmed_date) return json({ ok: false, error: "date first" }, 400);
     if (d.status === t.status) return json({ ok: true });
     await setStatus(d.status);
-    later(ctx, tellClient(env, t, d.status === "progress" ? "progress" : d.status === "completed" ? "completed" : "status", { note }));
+    later(ctx, tellAdmin(ctx, env, t, d.status === "progress" ? "progress" : d.status === "completed" ? "completed" : "status", { note }));
     return json({ ok: true });
   }
   if (d.action === "date") {
@@ -1335,7 +1385,7 @@ async function adminPost(ctx, d){
     await D.prepare("UPDATE tasks SET confirmed_date=?, updated_at=? WHERE id=?").bind(cd, at, t.id).run();
     await act(D, { ...tw, kind: "date_changed", data: { from: t.confirmed_date, to: cd, note: note || undefined } });
     const had = !!t.confirmed_date; t.confirmed_date = cd;
-    if (had) later(ctx, tellClient(env, t, "date", { note }));
+    if (had) later(ctx, tellAdmin(ctx, env, t, "date", { note }));
     return json({ ok: true });
   }
   if (d.action === "dateDecision") {
@@ -1344,7 +1394,7 @@ async function adminPost(ctx, d){
     const to = d.approve ? (isDate(d.date) ? d.date : cr.date) : t.confirmed_date;
     await D.prepare("UPDATE tasks SET change_request=?, confirmed_date=?, updated_at=? WHERE id=?").bind(JSON.stringify(cr), to, at, t.id).run();
     await act(D, { ...tw, kind: "date_change_decided", data: { approved: !!d.approve, from: t.confirmed_date, to } });
-    t.confirmed_date = to; later(ctx, tellClient(env, t, d.approve ? "date" : "dateNo", { note }));
+    t.confirmed_date = to; later(ctx, tellAdmin(ctx, env, t, d.approve ? "date" : "dateNo", { note }));
     return json({ ok: true });
   }
   return json({ ok: false }, 400);

@@ -87,8 +87,7 @@
     ['[data-del]',DEL('يُزال من الموقع بعد النشر، ويمكنك استعادته بـ«تراجع» قبل النشر')],
     ['#publishBtn,[data-pbpub]',function(){ var n=changes(); return n?{tone:'go',title:'نشر التعديلات على الموقع',text:'تظهر للزوار فوراً',rows:[['عدد التعديلات',n]],ok:'انشر'}:null; }],
     ['[data-pbundo]',function(){ return {tone:'bad',title:'رجوع لآخر نسخة منشورة',text:'تُحذف التعديلات غير المنشورة',rows:[['عدد التعديلات',changes()]],ok:'ارجع'}; }],
-    ['[data-bsend]',function(b){ var i=cfInv(b.dataset.bsend); return {tone:'warn',title:i&&i.x.sent_at?'إعادة إرسال الفاتورة':'إرسال الفاتورة للعميل',text:'تصله بالبريد الإلكتروني وبإشعار في مساحة عمله',rows:i?i.rows:[],ok:'أرسلها'}; }],
-    ['[data-bpay]',function(b){ var i=cfInv(b.dataset.bpay), bx=b.closest('.bpay'), g=function(k){ var e=bx.querySelector(k); return e?e.value.trim():''; };
+    ['[data-bpay]',function(b){ var i=cfInv(b.dataset.bpay); if(i&&i.x.sent_at) return null; var bx=b.closest('.bpay'), g=function(k){ var e=bx.querySelector(k); return e?e.value.trim():''; };
       return {tone:'warn',title:'تسجيل دفعة وصلت',text:'يصل العميلَ إشعارٌ بالدفعة، وتتغيّر الحالة تلقائياً',rows:[['الفاتورة',i&&i.x.no],['المبلغ',i?mny(nn(g('[data-pamt]')),i.x.currency):g('[data-pamt]')],['الطريقة',g('[data-pmeth]')],['التاريخ',g('[data-pdate]')&&wd(g('[data-pdate]'))]],ok:'سجّلها'}; }],
     ['[data-bst]',function(b){ var st=b.dataset.bst, i=cfInv(b.dataset.id), ri=b.parentNode.querySelector('[data-ramt]');
       if(st==='refunded'&&ri&&ri.hidden) return null;   // the first click only shows the amount box
@@ -96,12 +95,6 @@
         st==='refunded'?{tone:'bad',title:'تسجيل استرداد',rows:(i?i.rows.slice(0,2):[]).concat([['المبلغ المسترد',i?mny(nn(ri.value),i.x.currency):ri.value]]),ok:'سجّل الاسترداد'}:
         {tone:'go',title:'إعادة فتح الفاتورة',rows:i?i.rows:[],ok:'افتحها'}; }],
     ['[data-bdel],[data-bunpay]',DEL()],
-    ['[data-wacc]',function(b){ var k=cfTask(b.dataset.wacc), d=(b.closest('.wtb')||document).querySelector('[data-wcd]'); if(!d||!d.value) return null;
-      return {tone:'warn',title:'قبول المهمة',text:'يصل العميلَ بريدٌ بالموعد المؤكد',rows:(k?k.rows:[]).concat([['الموعد المؤكد',wd(d.value)]]),ok:'اقبلها'}; }],
-    ['[data-wrjt]',function(b){ var k=cfTask(b.dataset.wrjt), r=(b.closest('.wtb')||document).querySelector('[data-wrej]');
-      return {tone:'bad',title:'رفض المهمة',text:'يصل العميلَ بريدٌ بالرفض'+(r&&r.value.trim()?' وبالسبب':''),rows:(k?k.rows:[]).concat([['السبب',r?r.value.trim():'']]),ok:'ارفضها'}; }],
-    ['[data-wdl]',function(b){ var k=cfTask(b.dataset.wdl), bx=b.closest('.wtb')||document, f=bx.querySelector('[data-wdf]');
-      return {tone:'warn',title:f&&f.checked?'إرسال التسليم النهائي':'إرسال نسخة للعميل',text:'تصله بالبريد الإلكتروني وفي مساحة عمله ليراجعها',rows:k?k.rows:[],ok:'أرسلها'}; }],
     ['[data-aaccept]',function(b){ var a=((TEAM&&TEAM.apps)||[]).filter(function(x){ return x.id===b.dataset.aaccept; })[0];
       return {tone:'warn',title:'قبول '+(a?a.name:'المتقدّم')+' بالفريق',text:'يُنشأ له حساب في الفريق ويصله بريد ترحيب',rows:a?[['الدور',TROLE[a.role]||a.role],['الإيميل',a.email]]:[],ok:'اقبله'}; }],
     ['[data-areject]',function(b){ var a=((TEAM&&TEAM.apps)||[]).filter(function(x){ return x.id===b.dataset.areject; })[0];

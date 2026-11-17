@@ -60,3 +60,94 @@
     if(b.hasAttribute('data-watest')){ var out=$('#waOut'); out.textContent='جارٍ الإرسال…';
       npost({action:'waTest',phone:document.querySelector('[data-watp]').value.trim(),lang:document.querySelector('[data-watl]').value},b).then(function(j){ WATEST=j.ok?'✓ أُرسلت. المعرّف: '+(j.id||''):'✗ '+(j.error==='phone'?'الرقم غير صحيح — اكتبه مع رمز الدولة':(j.error||'فشل')); out.textContent=WATEST; loadNotify(); }); return; }
   });
+
+  /* ---------------- the send sheet: before anything reaches a client, choose how and when ----------------
+     It sits in front of the action buttons (a capture listener, like the confirm window), shows the exact e-mail and the
+     WhatsApp text, then clicks the button again; wreq/bpost pick the choice up from NEXT_NOTIFY. In-app is always kept. */
+  var NEXT_NOTIFY=null, SNDWHY={off:'أوقف العميل هذا النوع من الرسائل',none:'لم يفعّل الإشعارات على أجهزته',meta:'غير متاح بعد: بانتظار توثيق Meta',consent:'لم يفعّله العميل في مساحة عمله'};
+  function sndBox(b,k){ return (b.closest('.wtb,.wcmp,#wspace,.bpay')||document).querySelector(k); }
+  function sndVal(b,k){ var e=sndBox(b,k); return e?e.value.trim():''; }
+  var SND=[
+    ['[data-wacc]',function(b){ var k=cfTask(b.dataset.wacc), d=sndVal(b,'[data-wcd]'); if(!d) return null;
+      return {title:'قبول المهمة',rows:(k?k.rows:[]).concat([['الموعد المؤكد',wd(d)]]),pv:{kind:'accept',ref:b.dataset.wacc,over:{status:'accepted',confirmed_date:d},note:sndVal(b,'[data-wnote]')}}; }],
+    ['[data-winq]',function(b){ var k=cfTask(b.dataset.winq), n=sndVal(b,'[data-winfo]'); if(!n) return null;
+      return {title:'طلب معلومات من العميل',rows:k?k.rows:[],pv:{kind:'info',ref:b.dataset.winq,over:{status:'info'},note:n}}; }],
+    ['[data-wrjt]',function(b){ var k=cfTask(b.dataset.wrjt);
+      return {tone:'bad',title:'الاعتذار عن المهمة',rows:k?k.rows:[],pv:{kind:'reject',ref:b.dataset.wrjt,over:{status:'rejected'},note:sndVal(b,'[data-wrej]')}}; }],
+    ['[data-wsts]',function(b){ var k=cfTask(b.dataset.wsts), st=sndVal(b,'[data-wst]'); if(!st||(k&&k.t.status===st)) return null;
+      return {title:'تحديث حالة المهمة',rows:(k?k.rows:[]).concat([['الحالة الجديدة',WST[st]||st]]),pv:{kind:st==='progress'?'progress':st==='completed'?'completed':'status',ref:b.dataset.wsts,over:{status:st},note:sndVal(b,'[data-wnote2]')}}; }],
+    ['[data-wdt]',function(b){ var k=cfTask(b.dataset.wdt), d=sndVal(b,'[data-wcd2]'); if(!d||!k||!k.t.confirmed_date) return null;
+      return {title:'تغيير موعد التسليم',rows:k.rows.concat([['الموعد الجديد',wd(d)]]),pv:{kind:'date',ref:b.dataset.wdt,over:{confirmed_date:d}}}; }],
+    ['[data-wdd]',function(b){ var k=cfTask(b.dataset.wdd), ok=b.dataset.ok==='1';
+      return {title:ok?'اعتماد الموعد الجديد':'الإبقاء على الموعد',rows:k?k.rows:[],pv:{kind:ok?'date':'dateNo',ref:b.dataset.wdd}}; }],
+    ['[data-wdl]',function(b){ var k=cfTask(b.dataset.wdl), f=sndBox(b,'[data-wdf]'); if(!/^https?:\/\//i.test(sndVal(b,'[data-wdu]'))) return null;
+      return {title:f&&f.checked?'إرسال التسليم النهائي':'إرسال نسخة للمراجعة',rows:k?k.rows:[],pv:{kind:'deliver',ref:b.dataset.wdl,final:!!(f&&f.checked),note:sndVal(b,'[data-wdn]')}}; }],
+    ['[data-wtcm],[data-wpcm]',function(b){ var t=sndVal(b,'[data-wcm]'), l=sndVal(b,'[data-wcml]'); if(!t&&!/^https?:\/\//i.test(l)) return null;
+      var k=b.dataset.wtcm?cfTask(b.dataset.wtcm):null;
+      return {title:'تعليق إلى العميل',rows:k?k.rows:[],pv:b.dataset.wtcm?{kind:'comment',ref:b.dataset.wtcm,note:t}:{kind:'comment',project:b.dataset.wpcm,note:t}}; }],
+    ['[data-wfa]',function(b){ if(!/^https?:\/\//i.test(sndVal(b,'[data-wfu]'))) return null; var t=sndVal(b,'[data-wft]');
+      return {title:'مشاركة ملف مع العميل',rows:[['الملف',t]],pv:{kind:'file',project:b.dataset.wfa,file:t||'ملف'}}; }],
+    ['[data-rsend]',function(b){ var m=sndVal(b,'[data-rmonth]');
+      return {title:'إرسال التقرير الشهري',rows:[['الشهر',m]],pv:{kind:'report',project:b.dataset.rsend,month:m}}; }],
+    ['[data-bsend]',function(b){ var i=cfInv(b.dataset.bsend); if(!i) return null;
+      return {title:i.x.sent_at?'إعادة إرسال الفاتورة':'إرسال الفاتورة',rows:i.rows,pv:{kind:i.x.status==='paid'?'invoicePaid':'invoice',invoice:i.x.id}}; }],
+    ['[data-bpay]',function(b){ var i=cfInv(b.dataset.bpay); if(!i||!i.x.sent_at) return null; var a=sndVal(b,'[data-pamt]');
+      return {title:'تسجيل دفعة وإشعار العميل',rows:[['الفاتورة',i.x.no],['المبلغ',mny(nn(a),i.x.currency)],['الطريقة',sndVal(b,'[data-pmeth]')]],pv:{kind:'invoicePaid',invoice:i.x.id},nopv:true}; }],
+    ['[data-bremind]',function(b){ var i=cfInv(b.dataset.bremind); if(!i) return null;
+      return {title:'تذكير لطيف بالفاتورة',rows:i.rows.concat([['المتبقي',mny(i.x.balance,i.x.currency)]]),pv:{kind:'invoiceDue',invoice:i.x.id}}; }] ];
+  function sndWa(t){ return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/\n/g,'<br>'); }
+  var SNDIC={email:'<path d="M3 6.5h18v11H3z"/><path d="M3.5 7l8.5 6.5L20.5 7"/>',push:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',wa:'<path d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/><path d="M9.5 9.5c.3 2 1.9 3.8 4 4.4"/>',app:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>'};
+  function sendSheet(o){ return new Promise(function(res){ var last=document.activeElement, ov=document.createElement('div'), PV=null, WHEN='now'; ov.className='snd-ov';
+    var rows=(o.rows||[]).filter(function(r){ return r[1]!=null&&r[1]!==''; });
+    var ch=function(k,t){ return '<label class="snd-c" data-c="'+k+'"><input type="checkbox" data-ch="'+k+'" checked><span class="snd-i"><svg viewBox="0 0 24 24" aria-hidden="true">'+SNDIC[k]+'</svg></span><span class="snd-tx"><b>'+t+'</b><small data-why></small></span><i class="snd-tg" aria-hidden="true"></i></label>'; };
+    ov.innerHTML='<div class="snd'+(o.nopv?' nopv':'')+(o.tone==='bad'?' bad':'')+'" role="dialog" aria-modal="true" aria-labelledby="sndT">'+
+      '<div class="snd-hd"><span class="snd-k">إلى العميل</span><h4 id="sndT">'+esc(o.title)+'</h4><p class="snd-to" data-to>جارٍ تجهيز الرسالة…</p></div>'+
+      '<div class="snd-bd"><div class="snd-sd">'+
+        (rows.length?'<div class="cfm-rows">'+rows.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div>':'')+
+        '<div class="snd-l">القنوات</div><div class="snd-chs">'+ch('email','البريد الإلكتروني')+ch('push','إشعار على أجهزته')+ch('wa','واتساب')+
+          '<div class="snd-c on fixed"><span class="snd-i"><svg viewBox="0 0 24 24" aria-hidden="true">'+SNDIC.app+'</svg></span><span class="snd-tx"><b>مساحة العمل</b><small>تُسجَّل دائماً في إشعاراته</small></span></div></div>'+
+        '<div class="snd-l">التوقيت</div><div class="snd-seg" role="radiogroup"><button type="button" role="radio" aria-checked="true" data-when="now" class="on">الآن</button><button type="button" role="radio" aria-checked="false" data-when="later">لاحقاً</button><button type="button" role="radio" aria-checked="false" data-when="none">دون إشعار</button></div>'+
+        '<input type="datetime-local" class="snd-at" data-at hidden aria-label="موعد الإرسال">'+
+      '</div>'+
+      (o.nopv?'':'<div class="snd-pv"><div class="snd-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-pv="mail" class="on">البريد</button><button type="button" role="tab" aria-selected="false" data-pv="wa">واتساب</button></div>'+
+        '<div class="snd-fr" data-pvmail><div class="snd-load">جارٍ تجهيز المعاينة…</div></div>'+
+        '<div class="snd-wa" data-pvwa hidden><div class="snd-bub" data-wtxt></div><p class="snd-nt">للإرسال اليدوي ريثما يُفعَّل واتساب تلقائياً: انسخها وأرسلها من رقم الاستوديو</p><div class="snd-wact"><button type="button" class="btn sm" data-wcopy>انسخ الرسالة</button><a class="btn sm" data-wopen target="_blank" rel="noopener" hidden>افتح المحادثة</a></div></div></div>')+
+      '</div><div class="snd-ft"><button type="button" class="btn primary" data-sok>أرسل الآن</button><button type="button" class="btn" data-sno>إلغاء</button></div></div>';
+    document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('on'); });
+    var Q=function(s){ return ov.querySelector(s); }, ok=Q('[data-sok]'), at=Q('[data-at]');
+    function sync(){ var any=[].some.call(ov.querySelectorAll('[data-ch]'),function(c){ return c.checked&&!c.disabled; });
+      ov.querySelectorAll('.snd-c[data-c]').forEach(function(l){ var c=l.querySelector('input'); l.classList.toggle('on',c.checked&&!c.disabled); l.classList.toggle('dis',c.disabled); });
+      Q('.snd-chs').classList.toggle('mute',WHEN==='none');
+      ok.textContent=WHEN==='none'||!any?'نفّذ دون إشعار':WHEN==='later'?'جدوِل الإرسال':'أرسل الآن'; }
+    fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(Object.assign({action:'notifyPreview'},o.pv))}).then(function(r){ return r.json(); }).then(function(j){ PV=j;
+      if(!j.ok||!j.account){ Q('[data-to]').textContent=j.ok?'لا يملك العميل حساباً بعد، فيُنفَّذ الإجراء دون رسائل':'تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; if(j.ok) ov.querySelectorAll('[data-ch]').forEach(function(c){ c.checked=false; c.disabled=true; }); sync(); return; }
+      Q('[data-to]').innerHTML=esc(j.name||'العميل')+' <span>·</span> '+esc(j.subject);
+      ['email','push','wa'].forEach(function(k){ var c=Q('[data-ch="'+k+'"]'); if(!j.channels[k]){ c.checked=false; c.disabled=true; c.closest('label').querySelector('[data-why]').textContent=SNDWHY[j.why[k]]||''; } });
+      if(!o.nopv){ var fr=document.createElement('iframe'); fr.title='معاينة البريد'; fr.setAttribute('sandbox','allow-same-origin allow-popups'); fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>');
+        fr.onload=function(){ try{ fr.style.height=fr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var box=Q('[data-pvmail]'); box.innerHTML=''; box.appendChild(fr);
+        Q('[data-wtxt]').innerHTML=sndWa(j.wa); var ph=String(j.phone||'').replace(/\D/g,''); if(ph){ var a=Q('[data-wopen]'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(j.wa); a.hidden=false; } }
+      sync(); }).catch(function(){ Q('[data-to]').textContent='تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; });
+    function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
+    function go(){ var c={}; ov.querySelectorAll('[data-ch]').forEach(function(x){ c[x.dataset.ch]=x.checked&&!x.disabled; });
+      if(WHEN==='none') c={email:false,push:false,wa:false};
+      var n={ch:c}; if(WHEN==='later'){ var t=at.value?new Date(at.value):null; if(!t||isNaN(t)||t<Date.now()+60000){ toast('اختر موعداً لاحقاً للإرسال',true); at.focus(); return; } n.at=t.toISOString(); }
+      done(n); }
+    function key(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); done(false); } }
+    ov.addEventListener('change',sync);
+    ov.addEventListener('click',function(e){ var t=e.target;
+      if(t===ov||t.closest('[data-sno]')){ done(false); return; }
+      if(t.closest('[data-sok]')){ go(); return; }
+      var w=t.closest('[data-when]'); if(w){ WHEN=w.dataset.when; ov.querySelectorAll('[data-when]').forEach(function(x){ x.classList.toggle('on',x===w); x.setAttribute('aria-checked',x===w); });
+        at.hidden=WHEN!=='later'; if(WHEN==='later'){ if(!at.value){ var d=new Date(Date.now()+864e5); d.setHours(10,0,0,0); at.value=new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16); } at.focus(); } sync(); return; }
+      var p=t.closest('[data-pv]'); if(p){ ov.querySelectorAll('[data-pv]').forEach(function(x){ x.classList.toggle('on',x===p); x.setAttribute('aria-selected',x===p); }); Q('[data-pvmail]').hidden=p.dataset.pv!=='mail'; Q('[data-pvwa]').hidden=p.dataset.pv!=='wa'; return; }
+      if(t.closest('[data-wcopy]')&&PV&&PV.wa){ (navigator.clipboard?navigator.clipboard.writeText(PV.wa):Promise.reject()).then(function(){ toast('نُسخت الرسالة، وهي جاهزة للّصق في واتساب'); },function(){ toast('تعذّر النسخ',true); }); } });
+    addEventListener('keydown',key,true); ok.focus(); sync(); }); }
+  // what the action's own toast says once the choice is known
+  function sndSay(n,okText){ if(!n||!okText) return okText; var c=n.ch||{};
+    if(!(c.email||c.push||c.wa)) return 'تم، دون إشعار العميل خارج مساحة عمله';
+    if(n.at) return 'تم، وتُرسل الرسالة '+new Date(n.at).toLocaleString('ar-u-nu-latn',{weekday:'long',day:'numeric',month:'long',hour:'numeric',minute:'2-digit'});
+    return okText; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||b._sndOk||b.disabled) return;
+    for(var i=0;i<SND.length;i++){ if(!b.matches(SND[i][0])) continue; var o=SND[i][1](b); if(!o) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      sendSheet(o).then(function(n){ if(!n||!b.isConnected) return; NEXT_NOTIFY=n; b.dataset.armed='1'; b._sndOk=b._cfOk=true; b.click(); b._sndOk=b._cfOk=false; NEXT_NOTIFY=null; }); return; } },true);
