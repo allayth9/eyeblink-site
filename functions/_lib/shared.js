@@ -91,7 +91,8 @@ export function greet(o){ const f = String((o && o.name) || "").trim().split(/\s
 // one layout for every e-mail (14 Nov redesign): the identity's night, one quiet card, the identity gradient as a hairline
 // (cyan → blue → navy, not the old cyan → violet), a blue pill button with a light metal edge, generous spacing.
 // Table-based and inline-styled so Gmail, Outlook and Apple Mail draw it the same; RTL for Arabic, LTR for English
-export function mail(lang, title, bodyHtml, cta, link, hi){
+export function mail(lang, title, bodyHtml, cta, link, hi, opt){
+  if (opt && opt.bare) return mailBare(lang, title, bodyHtml, hi);
   const rtl = lang !== "en", al = rtl ? "right" : "left", dr = rtl ? "rtl" : "ltr", D = `dir="${dr}"`, DS = `direction:${dr};unicode-bidi:embed;`;
   const font = rtl ? "'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif" : "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
   return `<!doctype html><html dir="${dr}" lang="${rtl?"ar":"en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${h(title)}</title></head>
@@ -114,6 +115,65 @@ ${cta?`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:
 <p ${D} style="${DS}margin:8px 0 0;color:#6F7FA0;font-size:12px;line-height:1.8">${rtl?"مشكلة تقنية أو سؤال عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#AEBBD2;text-decoration:none">support@eyeblinkstudio.com</a></p>
 </td></tr></table></td></tr></table></body></html>`;
 }
+// an e-mail whose body is its own frame (the invoice ticket): greeting and title on the night, then the body, then the usual footer
+function mailBare(lang, title, bodyHtml, hi){
+  const rtl = lang !== "en", al = rtl ? "right" : "left", dr = rtl ? "rtl" : "ltr", D = `dir="${dr}"`, DS = `direction:${dr};unicode-bidi:embed;`;
+  const font = rtl ? "'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif" : "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+  return `<!doctype html><html dir="${dr}" lang="${rtl?"ar":"en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${h(title)}</title></head>
+<body ${D} style="${DS}margin:0;padding:0;background:#04061A;font-family:${font};-webkit-text-size-adjust:100%">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#04061A" style="background:#04061A"><tr><td align="center" style="padding:30px 14px 28px">
+<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="${DS}max-width:560px">
+<tr><td ${D} align="${al}" style="${DS}padding:0 6px 18px;text-align:${al}">
+${hi?`<p ${D} style="${DS}margin:0 0 6px;font-size:15px;line-height:1.7;color:#AEBBD2">${h(hi)}</p>`:""}
+<h1 ${D} style="${DS}margin:0;font-size:19px;line-height:1.5;font-weight:700;color:#EEF2F6">${h(title)}</h1>
+</td></tr>
+<tr><td style="padding:0">${bodyHtml}</td></tr>
+<tr><td align="center" style="padding:26px 12px 0">
+<p style="margin:0;color:#6F7FA0;font-size:12px;line-height:1.8;direction:ltr;letter-spacing:.04em"><a href="${SITE}" style="color:#AEBBD2;text-decoration:none">eyeblinkstudio.com</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://instagram.com/eyeblnk" style="color:#AEBBD2;text-decoration:none">@eyeblnk</a></p>
+<p ${D} style="${DS}margin:8px 0 0;color:#6F7FA0;font-size:12px;line-height:1.8">${rtl?"مشكلة تقنية أو سؤال عن حسابك؟ ":"A technical issue or a question about your account? "}<a href="mailto:support@eyeblinkstudio.com" style="color:#AEBBD2;text-decoration:none">support@eyeblinkstudio.com</a></p>
+</td></tr></table></td></tr></table></body></html>`;
+}
+// ---- the invoice in an e-mail: a cinema ticket (16 Nov) — a stub with the amount, a perforated tear, then the details.
+// Dark on purpose: a white invoice gets inverted by Gmail's dark mode (and the navy logo vanishes); tables and inline styles only.
+// t = { lang, label, amount, caption(html), meta:[[k,v,ltr]], lines:[{name,qty,amount}], totals:[[k,v,strong,colour]], status:[label,colour], intro(html), cta:[text,link], pdf:[text,link], note(html) }
+export function ticketHTML(t){
+  const rtl = t.lang !== "en", dr = rtl ? "rtl" : "ltr", s = rtl ? "right" : "left", e = rtl ? "left" : "right", D = `dir="${dr}"`;
+  const F = rtl ? "font-family:'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif;" : "font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;";
+  const nb = "direction:ltr;unicode-bidi:isolate;white-space:nowrap;", line = "#1B2556", night = "#04061A";
+  const row = (k, v, strong, col) => `<tr><td ${D} style="${F}padding:${strong?"12px 0 0":"6px 0"};font-size:${strong?15:13.5}px;font-weight:${strong?700:400};color:${strong?"#EEF2F6":"#AEBBD2"};text-align:${s}">${k}</td><td style="${F}padding:${strong?"12px 0 0":"6px 0"};font-size:${strong?15:13.5}px;font-weight:${strong?700:400};color:${col||"#EEF2F6"};text-align:${e};${nb}">${v}</td></tr>`;
+  return `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" bgcolor="#0A1033" style="background:#0A1033;border:1px solid ${line};border-radius:22px;border-collapse:separate;overflow:hidden">
+<tr><td ${D} bgcolor="#12298E" style="background-color:#12298E;background-image:radial-gradient(120% 140% at ${rtl?"0%":"100%"} 0%,#1C45E6 0%,#12298E 38%,#0A1033 82%);border-radius:21px 21px 0 0;padding:24px 24px 22px;text-align:${s}">
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  <td style="text-align:${s};vertical-align:middle"><img src="${SITE}/assets/img/email-logo.png" width="132" alt="EYEBLINK STUDIO" style="display:inline-block;width:132px;height:auto;border:0"></td>
+  <td style="text-align:${e};vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:10.5px;font-weight:bold;letter-spacing:.3em;color:#9FDCFF;${nb}">${h(t.label)}</td>
+ </tr></table>
+ <div style="${F}margin:24px 0 6px;font-size:54px;line-height:1;font-weight:200;letter-spacing:-.01em;color:#FFFFFF;text-align:${s};${nb}">${h(t.amount)}</div>
+ <div ${D} style="${F}font-size:13.5px;line-height:1.7;color:#C3CEE2;text-align:${s}">${t.caption}</div>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border-top:1px solid #2B3C8F"><tr>
+  ${t.meta.map(m => `<td ${D} style="${F}vertical-align:top;padding-top:12px;text-align:${s};width:${Math.floor(100 / t.meta.length)}%"><div style="font-size:11px;color:#9FB0CC">${h(m[0])}</div><div style="font-size:13.5px;color:#FFFFFF;margin-top:3px;${m[2]?nb:""}">${h(m[1])}</div></td>`).join("")}
+ </tr></table>
+</td></tr>
+<tr><td style="padding:0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+ <td width="14" height="28" bgcolor="${night}" style="width:14px;height:28px;background:${night};border-radius:${rtl?"14px 0 0 14px":"0 14px 14px 0"};font-size:0;line-height:0">&nbsp;</td>
+ <td style="padding:0 10px"><div style="height:13px;border-bottom:2px dashed #24306A;font-size:0;line-height:0">&nbsp;</div></td>
+ <td width="14" height="28" bgcolor="${night}" style="width:14px;height:28px;background:${night};border-radius:${rtl?"0 14px 14px 0":"14px 0 0 14px"};font-size:0;line-height:0">&nbsp;</td>
+</tr></table></td></tr>
+<tr><td ${D} style="padding:8px 24px 24px;text-align:${s}">
+ ${t.intro ? `<p ${D} style="${F}margin:0 0 10px;font-size:14px;line-height:1.8;color:#C3CEE2">${t.intro}</p>` : ""}
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  ${t.lines.map(x => `<tr><td ${D} style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#C3CEE2;text-align:${s}">${h(x.name)}${x.qty && x.qty !== 1 ? ` <span style="color:#6F7FA0;font-size:12.5px;${nb}">× ${x.qty}</span>` : ""}</td><td style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#EEF2F6;text-align:${e};${nb}">${h(x.amount)}</td></tr>`).join("")}
+ </table>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px">${t.totals.map(x => row(x[0], x[1], x[2], x[3])).join("")}</table>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#070C2A" style="margin-top:18px;background:#070C2A;border:1px solid ${line};border-radius:14px;border-collapse:separate"><tr>
+  <td ${D} style="${F}padding:12px 14px;font-size:13px;color:#AEBBD2;text-align:${s}">${rtl?"الحالة":"Status"}</td>
+  <td style="${F}padding:12px 14px;font-size:13px;font-weight:700;color:${t.status[1]};text-align:${e}">● ${h(t.status[0])}</td>
+ </tr></table>
+ ${t.cta ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px"><tr><td align="center" bgcolor="#2A86E6" style="border-radius:999px;background:#2A86E6;background-image:linear-gradient(180deg,#2A86E6,#1C45E6);border:1px solid #9FB6D6">
+  <a href="${t.cta[1]}" style="display:block;padding:15px 20px;${F}font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px">${h(t.cta[0])}</a></td></tr></table>` : ""}
+ ${t.pdf ? `<div style="${F}text-align:center;margin-top:12px;font-size:13px"><a href="${t.pdf[1]}" style="color:#AEBBD2;text-decoration:none">${h(t.pdf[0])}</a></div>` : ""}
+ ${t.note ? `<p ${D} style="${F}margin:16px 0 0;font-size:12px;line-height:1.75;color:#6F7FA0;text-align:${s}">${t.note}</p>` : ""}
+</td></tr></table>`;
+}
 // to the studio: e-mail (to the address in the site settings) + Telegram
 export async function notifyStudio(env, subject, text){
   const s = await siteSettings(env), to = env.NOTIFY_EMAIL || s.email;
@@ -247,8 +307,18 @@ export async function mailInvoice(env, o, kind){
                : { deposit:"وصل العربون ✓", final:"وصلت الدفعة النهائية ✓", full:"وصلت دفعتك ✓",
                    depositP:"تأكّد وصول العربون وبدأنا التنفيذ. يُدفع المتبقي "+fmt(Math.max(0,totalOf(o)-num(inv.amount)),c)+" قبل التسليم النهائي. تجد الفاتورة أدناه.",
                    finalP:"أصبح طلبك مدفوعاً بالكامل، شكراً لك! تجد الفاتورة أدناه.", fullP:"تأكّد وصول دفعتك وبدأنا التنفيذ، ويمكنك متابعة كل مرحلة من حسابك. تجد الفاتورة أدناه.", cta:"عرض طلبي" };
-  const k = inv.kind || "full", body = `<p style="margin:0 0 18px">${h(T[k+"P"])}</p>` + invoiceHTML(o, inv, { email: s.email });
-  await sendMail(env, o.email, (en ? "Invoice " : "فاتورة ") + inv.no + " · Eyeblink Studio", mail(en?"en":"ar", T[k] + " · " + o.code, body, T.cta, link, greet(o)));
+  // the e-mail shows the receipt as a ticket (dark, survives Gmail's dark mode); the printable invoice page stays the white document
+  const k = inv.kind || "full", L = INV_T[en ? "en" : "ar"], total = totalOf(o), paidNow = num(inv.amount) || total, dep = num((o.deposit || {}).amount);
+  const date = new Date(inv.at || Date.now()).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" });
+  let lines = (o.items || []).filter(x => x && x.name).map(x => ({ name: x.name, qty: num(x.qty) || 1, unit: num(x.unit) }));
+  if (!lines.length) lines = [{ name: o.packageName || o.package || "Service", qty: o.qty || 1, unit: total / (o.qty || 1) }];
+  const sub = lines.reduce((a, x) => a + x.unit * x.qty, 0); if (Math.abs(sub - total) > 0.009 && total) lines.push({ name: total < sub ? L.disc : L.adj, qty: 1, unit: total - sub });
+  const body = ticketHTML({ lang: en ? "en" : "ar", label: en ? "RECEIPT" : "INVOICE", amount: fmt(paidNow, c), caption: h(L.st[k]) + ' · <b style="color:#fff">' + h(date) + "</b>",
+    meta: [[L.no, inv.no, 1], [L.order, o.code, 1]], intro: h(T[k+"P"]),
+    lines: lines.map(x => ({ name: x.name, qty: x.qty, amount: fmt(x.unit * x.qty, c) })),
+    totals: [[L.sub, fmt(total, c)]].concat(k === "final" && dep ? [[L.dep, "−" + fmt(dep, c)]] : []).concat([[L.paid, fmt(paidNow, c), 1]]).concat(k === "deposit" ? [[L.bal, fmt(Math.max(0, total - paidNow), c), 0, "#F0B43C"]] : []),
+    status: [L.st[k], "#3DDC97"], cta: [T.cta, link], note: (k === "deposit" ? L.note.deposit + " " : "") + L.note.other });
+  await sendMail(env, o.email, (en ? "Invoice " : "فاتورة ") + inv.no + " · Eyeblink Studio", mail(en?"en":"ar", T[k] + " · " + o.code, body, null, null, greet(o), { bare: true }));
 }
 export async function newInvoice(env, kind, amount){
   const seq = (+(await env.EB.get("invseq") || 0)) + 1; await env.EB.put("invseq", String(seq));

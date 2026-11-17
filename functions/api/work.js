@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, notifyStudio, fmt, rows, newInvoice, later } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -356,6 +356,22 @@ ${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.
 <tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
 </table>`;
 }
+// the invoice inside an e-mail: the cinema ticket (shared ticketHTML); the printable page (billPage) keeps the white document above
+const BILL_TCOL = { pending:"#F0B43C", partial:"#F0B43C", paid:"#3DDC97", overdue:"#FF6B6B", cancelled:"#9AA6BF", refunded:"#8FA2FF" };
+function billTicket(x, lang, intro, link){
+  const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], c = x.currency || "$", st = x.state || x.status;
+  const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
+  const open = st === "pending" || st === "partial" || st === "overdue", B = s => '<b style="color:#fff">' + h(s) + "</b>";
+  const cap = open ? (st === "overdue" ? (en ? "Past due since " : "متأخرة منذ ") + B(dt(x.due_date)) : (en ? "Amount due · by " : "المبلغ المستحق · حتى ") + B(dt(x.due_date)))
+            : st === "paid" ? (en ? "Paid in full · thank you" : "مدفوعة بالكامل · شكراً لك") : h(S[st] || st);
+  const items = x.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })).concat(x.discount ? [{ name: L.disc, qty: 1, amount: "−" + fmt(x.discount, c) }] : []);
+  const totals = [[L.total, fmt(x.total, c)]].concat(x.paid ? [[L.paid, fmt(x.paid, c)]] : []).concat(x.refunded ? [[L.refunded, "−" + fmt(x.refunded, c)]] : [])
+    .concat(st !== "cancelled" && st !== "refunded" ? [[L.bal, fmt(x.balance, c), 1, x.balance > 0 ? BILL_TCOL[st] : "#3DDC97"]] : []);
+  return ticketHTML({ lang: en ? "en" : "ar", label: "INVOICE", amount: fmt(open ? x.balance : x.total, c), caption: cap + (x.project_name ? '<br><span style="color:#9FB0CC">' + h(L.project) + ": " + h(x.project_name) + "</span>" : ""),
+    meta: [[L.no, x.no, 1], [L.issued, dt(x.issue_date)]], intro, lines: items, totals, status: [S[st] || st, BILL_TCOL[st] || "#EEF2F6"],
+    cta: [en ? "View the invoice" : "عرض الفاتورة", link], pdf: [en ? "Download PDF" : "تحميل PDF", SITE + "/api/work?invoiceDoc=" + encodeURIComponent(x.id)],
+    note: (x.note ? h(x.note).replace(/\n/g, "<br>") + "<br>" : "") + h(L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]) });
+}
 function billPage(x, cl, lang, opt){
   return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(x.no)} · Eyeblink Studio</title>
 <style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}body{padding:0}
@@ -522,8 +538,10 @@ async function tellClient(env, t, kind, extra){
                 : ["مشروع جديد في مساحة العمل", `فتح لك الاستوديو مشروع <b style="color:#fff">${h(extra && extra.name)}</b>، ويمكنك إرسال مهامك إليه من مساحة العمل.`],
   }[kind]; if (!T) return;
     const note = extra.note ? `<p style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(extra.note).replace(/\n/g, "<br>")}</p>` : "";
-    const invHtml = extra.inv ? `<div style="margin:18px 0 0">${billHTML(extra.inv, u, lang, { project: extra.inv.project_name })}</div>` : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
-    const subject = T[0], html = mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", SITE + (en ? "/en" : "") + "/workspace" + hash, greet({ name: u.name, lang }));
+    const invHtml = extra.inv ? "" : extra.report ? `<div style="margin:18px 0 0">${reportHTML(extra.report, u, lang)}</div>` : "";
+    const wsLink = SITE + (en ? "/en" : "") + "/workspace" + hash;
+    const subject = T[0], html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
+      : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + invHtml, en ? "Open in my workspace" : "افتح في مساحة العمل", wsLink, greet({ name: u.name, lang }));
     const r = await mailSend(env, u.email, subject, html);
     await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
   })());
