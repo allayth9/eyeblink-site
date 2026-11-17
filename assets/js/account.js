@@ -332,7 +332,7 @@
         (o.price?'<dt>'+T.final+'</dt><dd dir="ltr">'+esc(o.price)+(o.paid?' <span class="pill paid">'+T.paid+'</span>':'')+'</dd>':(o.total?'<dt>'+T.est+'</dt><dd dir="ltr">'+esc(o.total)+'</dd>':''))+
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
         (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
-        '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(o.link)+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
+        '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(/^https?:\/\//i.test(o.link)?o.link:'#')+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
         manageHTML(o)+
         paySteps(o)+
         ((o.deposit&&o.deposit.invoice)||o.invoice?'<div class="invs">'+(o.deposit&&o.deposit.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="deposit">🧾 '+(AR?'فاتورة العربون':'Deposit invoice')+'</button>':'')+(o.invoice?'<button type="button" class="btn btn-glass glass inv" data-inv="final">🧾 '+T.invoice+'</button>':'')+'</div>':'')+

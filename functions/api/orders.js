@@ -31,9 +31,9 @@ export async function onRequestPost(ctx) {
   let code; do { code = "EB-" + randHex(3).toUpperCase().slice(0, 5); } while (await env.EB.get("code:" + code));
   const key = "order:" + new Date().toISOString() + ":" + code;
   const order = { key, code, status: "new", createdAt: new Date().toISOString(), name, contact, details,
-    link: clip(d.link, 500), deadline: clip(d.deadline, 20), package: clip(d.package, 60), packageName: clip(d.packageName, 120),
+    link: /^https?:\/\/\S+$/i.test(clip(d.link, 500)) ? clip(d.link, 500) : "", deadline: clip(d.deadline, 20), package: clip(d.package, 60), packageName: clip(d.packageName, 120),
     addons: (Array.isArray(d.addons) ? d.addons : []).slice(0, 12).map(a => clip(a, 80)), total: clip(d.total, 40), lang: clip(d.lang, 4),
-    items: (Array.isArray(d.items) ? d.items : []).slice(0, 14).map(x => ({ name: clip(x && x.name, 120), qty: Math.max(1, Math.min(50, parseInt(x && x.qty) || 1)), unit: Math.round((+(x && x.unit) || 0) * 100) / 100 })).filter(x => x.name),
+    items: (Array.isArray(d.items) ? d.items : []).slice(0, 14).map(x => ({ name: clip(x && x.name, 120), qty: Math.max(1, Math.min(50, parseInt(x && x.qty) || 1)), unit: Math.max(0, Math.round((+(x && x.unit) || 0) * 100) / 100) })).filter(x => x.name),
     cur: clip(d.cur, 6), ccy: clip(d.ccy, 6), visit: visitOf(request, d.visit),
     qty: Math.max(1, Math.min(50, parseInt(d.qty) || 1)), platforms: (Array.isArray(d.platforms) ? d.platforms : []).slice(0, 8).map(a => clip(a, 30)), payPref: clip(d.payPref, 60),
     email: user.email, messages: [], seenClient: "", seenAdmin: "",
@@ -107,6 +107,8 @@ export async function onRequestPatch(ctx) {
   const inv = [];
   if (d.plan !== undefined) o.plan = d.plan === "split" ? "split" : "full";
   if (d.depositPct !== undefined) o.depositPct = Math.max(10, Math.min(90, parseInt(d.depositPct) || 50));
+  // an invoice is only ever drawn from the price the studio set: the client's own estimate (items, total) never becomes a bill
+  if (!o.manual && !num(o.price) && ((d.depositPaid && !(o.deposit && o.deposit.paid)) || (d.paid && !o.paid && !o.invoice))) return json({ ok: false, error: "set price first" }, 400);
   if (d.depositPaid !== undefined) { const was = !!(o.deposit && o.deposit.paid);
     if (d.depositPaid && !was) { const amt = (o.payInfo && o.payInfo.stage === "deposit" && num(o.payInfo.amount)) || stageAmount(o, "deposit");
       o.deposit = { amount: amt, paid: true, at: new Date().toISOString(), invoice: await newInvoice(env, "deposit", amt) }; inv.push("deposit");

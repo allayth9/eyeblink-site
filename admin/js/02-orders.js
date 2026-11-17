@@ -55,7 +55,7 @@
     btn.disabled=true;
     return fetch(API+'/orders',{method:'PATCH',headers:headers({'content-type':'application/json'}),body:JSON.stringify(d)}).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ Object.assign(o,j.order); renderOrders(); var d2=document.querySelector('[data-okey="'+o.key+'"]'); if(d2) d2.open=true; toast(okMsg); })
-      .catch(function(e){ btn.disabled=false; toast(({'set price and method first':'اكتب السعر واختر طريقة الدفع أولاً','no private details for this method':'اكتب حساب الاستلام بالخطوة 3'})[e.message]||'تعذّر ذلك، حاول مرة أخرى',true); });
+      .catch(function(e){ btn.disabled=false; toast(({'set price and method first':'اكتب السعر واختر طريقة الدفع أولاً','set price first':'اكتب السعر النهائي بالخطوة 1 قبل تسجيل الدفع','no private details for this method':'اكتب حساب الاستلام بالخطوة 3'})[e.message]||'تعذّر ذلك، حاول مرة أخرى',true); });
   }
   document.addEventListener('click',function(e){
     var b=e.target.closest('[data-pask],[data-pgot]'); if(!b) return;

@@ -1,0 +1,17 @@
+# Runs the privacy and security tests in dev/ on every push and pull request (no dependencies to install)
+name: tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: dev/test-*.mjs
+        run: |
+          set -e
+          for t in dev/test-*.mjs; do echo "== $t"; node "$t"; done
