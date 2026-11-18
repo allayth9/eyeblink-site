@@ -13,13 +13,31 @@ const attr = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;"
 const SECURITY = {
   "X-Frame-Options": "SAMEORIGIN",
   "Content-Security-Policy": "frame-ancestors 'self'",
-  "Strict-Transport-Security": "max-age=31536000",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "X-Content-Type-Options": "nosniff",                       // a file is only ever what its type says (no guessing an upload into a page)
   "Referrer-Policy": "strict-origin-when-cross-origin",      // private links (/d/…, workspace) never leak to other sites in full
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",   // nothing on the site uses these
 };
+// What a page may load, written down (Content-Security-Policy). In "report only" for now: nothing is blocked, the browser
+// tells /api/csp what would have been, and once a quiet week shows the list is complete it becomes the enforced policy.
+// The outside hosts: three.js (cdnjs, the sky), Google sign-in, Vimeo (oEmbed, thumbnails, player, files), YouTube
+// embeds and thumbnails, and R2 for direct client uploads. 'unsafe-inline' stays until the inline scripts get hashes.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+  "img-src 'self' data: blob: https://i.vimeocdn.com https://i.ytimg.com https://*.googleusercontent.com https://accounts.google.com",
+  "media-src 'self' blob: https://*.vimeocdn.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://vimeo.com https://accounts.google.com https://*.r2.cloudflarestorage.com",
+  "frame-src 'self' https://player.vimeo.com https://www.youtube-nocookie.com https://accounts.google.com",
+  "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
+  "frame-ancestors 'self'", "report-uri /api/csp",
+].join("; ");
 function secure(res) {
   const r = new Response(res.body, res);
   for (const k in SECURITY) if (!r.headers.has(k)) r.headers.set(k, SECURITY[k]);
+  if ((r.headers.get("content-type") || "").includes("text/html") && !r.headers.has("Content-Security-Policy-Report-Only")) r.headers.set("Content-Security-Policy-Report-Only", CSP);
   return r;
 }
 export async function onRequest(ctx) {
