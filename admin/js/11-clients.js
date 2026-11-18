@@ -154,8 +154,8 @@
         '<div class="row"><div class="field"><label>تاريخ البدء</label><input name="start_date" type="date"></div><div class="field"><label>تاريخ التسليم</label><input name="end_date" type="date"></div><div class="field"><label>الحصة الشهرية (مهام)</label><input name="quota" type="number" min="0" dir="ltr"></div></div>'+
         '<div class="field"><label>وصف مختصر</label><textarea name="description" dir="auto" rows="2"></textarea></div><div class="actions"><button class="btn primary sm" type="submit">إنشاء المشروع</button></div></form>'+
       (D.projects.length?'<div class="cp-projs">'+D.projects.map(function(p){ var lo=ords.filter(function(o){ return o.projectId===p.id; }).length, fl=D.files.filter(function(f){ return f.project_id===p.id; }).length+D.delivered.filter(function(x){ return x.project_id===p.id; }).length, late=p.status==='active'&&p.end_date&&p.end_date<D.today;
-        return '<article class="cp-proj'+(late?' late':'')+'"><div class="ph"><div><b>'+esc(p.name)+'</b> <span class="small muted">'+esc((WPT[p.type]||p.type)+(typeof cadTxt==='function'?cadTxt(p):''))+'</span></div><div class="cp-pa"><button class="btn sm" type="button" data-pedit="'+esc(p.id)+'">تعديل</button>'+(p.terms?'<button class="btn sm" type="button" data-pmb="'+esc(p.id)+'">فاتورة الشهر</button>':'')+'<select data-pstat="'+esc(p.id)+'" aria-label="حالة المشروع">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(p.status===k?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div></div>'+
-          (p.description?'<p class="small cp-desc">'+esc(p.description)+'</p>':'')+
+        return '<article class="cp-proj'+(late?' late':'')+'"><div class="ph"><div><b>'+esc(p.name)+'</b> <span class="small muted">'+esc((WPT[p.type]||p.type)+(typeof cadTxt==='function'?cadTxt(p):''))+'</span></div><div class="cp-pa"><button class="btn sm" type="button" data-pedit="'+esc(p.id)+'">تعديل</button>'+(p.terms?'<button class="btn sm" type="button" data-pmb="'+esc(p.id)+'">فاتورة الشهر</button>':'')+(p.terms&&p.terms.mode==='package'?'<button class="btn sm" type="button" data-pcarry="'+esc(p.id)+'">الرصيد المرحّل</button>':'')+'<select data-pstat="'+esc(p.id)+'" aria-label="حالة المشروع">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(p.status===k?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div></div>'+
+          carryForm(p)+(p.description?'<p class="small cp-desc">'+esc(p.description)+'</p>':'')+
           '<div class="cp-meta small"><span>البدء: <b>'+esc(wd(p.start_date))+'</b></span><span>التسليم: <b class="'+(late?'late':'')+'">'+esc(wd(p.end_date))+'</b></span><span>المهام: <b>'+p.open_tasks+'</b> مفتوحة · <b>'+p.done_tasks+'</b> مكتملة</span><span>الطلبات المرتبطة: <b>'+lo+'</b></span><span>الملفات: <b>'+fl+'</b></span><span>القيمة: <b>'+mmap(val(p.id))+'</b></span></div>'+
           '<div class="actions"><button class="btn sm" type="button" data-pgo="tasks" data-pproj="'+esc(p.id)+'">مهامه</button><button class="btn sm" type="button" data-pgo="files" data-pproj="'+esc(p.id)+'">ملفاته</button><button class="btn sm" type="button" data-pspace="'+esc(p.id)+'">مساحة المشروع (النقاش والجدول والتقارير)</button></div></article>'; }).join('')+'</div>'
         :'<div class="empty small">لا توجد مشاريع لهذا العميل بعد.</div>')+'</section>';
@@ -294,6 +294,10 @@
     if(b.dataset.pfc){ PFC=b.dataset.pfc; renderClients(); return; }
     if(b.dataset.pspace){ TAB='tasks'; WF={status:'',client:PROF.email,project:''}; render(); loadWork(); loadSpace(b.dataset.pspace); scrollTo(0,0); return; }
     if(b.dataset.topen){ TAB='tasks'; WOPEN=b.dataset.topen; route(); render(); loadWork(); scrollTo(0,0); return; }
+    if(b.dataset.pcarry){ if(CARRY&&CARRY.pid===b.dataset.pcarry){ CARRY=null; renderClients(); return; }
+      creq({action:'carryInfo',project:b.dataset.pcarry},b,null).then(function(j){ CARRY={pid:b.dataset.pcarry,j:j}; renderClients(); }).catch(function(){}); return; }
+    if(b.dataset.pcsave){ var fm=b.closest('.cp-carry'), u={}; fm.querySelectorAll('[data-cu]').forEach(function(i){ u[i.dataset.cu]=i.value; });
+      creq({action:'carrySave',project:CARRY.pid,month:CARRY.j.month,units:u},b,'حُفظ الرصيد المرحّل').then(function(){ CARRY=null; }).catch(function(){}); return; }
     if(b.dataset.pmb){ creq({action:'monthBill',project:b.dataset.pmb},b,null).then(function(j){ if(!j.items.length){ toast('لا بنود لهذا الشهر بعد',true); return; }
         TAB='billing'; BFORM={email:j.email,project:j.project,items:j.items,title:j.title,currency:j.cur}; render(); if(!BILL) loadBilling(); scrollTo(0,0); }).catch(function(){}); return; }
     if(b.dataset.pinv){ TAB='billing'; BFORM={email:b.dataset.pinv}; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
@@ -359,6 +363,12 @@
     [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });
 
   // ---- the client's brand library: the studio can fill it in or correct it (the client sees the same library in the workspace) ----
+  // carried units: what was left last month is offered, the studio decides what moves into this month
+  var CARRY=null;
+  function carryForm(p){ if(!CARRY||CARRY.pid!==p.id) return ''; var j=CARRY.j, MN=function(m){ return new Date(m+'-15T12:00:00Z').toLocaleDateString('ar-u-nu-latn',{month:'long'}); };
+    return '<div class="cp-carry"><b>الرصيد المرحّل إلى '+esc(MN(j.month))+'</b><p class="small muted">يُضاف إلى باقة هذا الشهر. بجانب كل وحدة ما بقي من '+esc(MN(j.prev))+'.</p>'+
+      j.units.map(function(u){ var cur=j.current[u.id]; return '<label class="cp-cu"><span>'+esc(u.name)+' <small class="muted">بقي '+u.left+'</small></span><input type="number" min="0" data-cu="'+esc(u.id)+'" value="'+(cur!=null?cur:u.left)+'"></label>'; }).join('')+
+      '<div class="actions"><button class="btn sm primary" type="button" data-pcsave="1">حفظ الرصيد المرحّل</button></div></div>'; }
   var BKIND={logo_bg:'الشعار على خلفية',logo_clear:'الشعار شفاف',vector:'ملفات فيكتور',font:'ملفات الخطوط',other:'أخرى'};
   var AVL={title:'صورة العميل',save:'احفظ الصورة',cancel:'إلغاء',zoom:'التكبير'};
   // the picture «take it from the brand library» uses: the transparent logo first, then the logo on its background (images only)

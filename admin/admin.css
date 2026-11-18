@@ -980,6 +980,8 @@ html{-webkit-tap-highlight-color:transparent}
 .wt-row{display:flex;gap:6px;align-items:center}.wt-row>*{flex:1 1 0;min-width:0}.wt-row>[data-k=name]{flex:2 1 0}.wt-row>[data-k=kind]{flex:1.4 1 0}.wt-row>.linkbtn{flex:0 0 24px}
 .wt-body>.btn{justify-self:start}.wt-row>[hidden]{display:none}
 @media (max-width:700px){.wt-row{flex-wrap:wrap}.wt-row>[data-k=name]{flex:1 1 100%}}
+.cp-carry{display:grid;gap:8px;margin:10px 0;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
+.cp-cu{display:flex;align-items:center;justify-content:space-between;gap:10px}.cp-cu input{width:90px}
 .wxt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
 .wx-list{display:flex;flex-wrap:wrap;gap:6px 16px}.wx-now{font-size:13px}
 /* the client's photo in the profile: the picture is the button; three plain actions under the name */

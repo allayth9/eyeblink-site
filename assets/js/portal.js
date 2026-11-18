@@ -1008,15 +1008,15 @@
         if(j&&j.ok){ toast(NP.ok); DASH=null; after(j.id); } else toast(NP.err); }); }; }
   /* ---- the project's agreement, as the client sees it: what the package holds this month, and extras to approve ---- */
   var AGT=AR?{h:'باقتك هذا الشهر',over:'هذه خارج باقتك لهذا الشهر، وتُحتسب بسعر الوحدة الإضافية ',xH:'إضافة بانتظار موافقتك',xP:'تتجاوز هذه المهمة الإطار المتفق عليه، فتُضاف إلى فاتورة هذا الشهر:',
-      ok:'موافق',no:'لنلتزم بالإطار المتفق عليه',noDur:function(s){ return 'لنختصره إلى '+s+' ثانية'; },okT:'شكراً لك، وصلت موافقتك',noT:'وصل طلبك، وسنلتزم بالإطار المتفق عليه',acc:'وافقت على الإضافة',dec:'طلبت الالتزام بالإطار المتفق عليه',of:' من '}
+      ok:'موافق',no:'لنلتزم بالإطار المتفق عليه',noDur:function(s){ return 'لنختصره إلى '+s+' ثانية'; },okT:'شكراً لك، وصلت موافقتك',noT:'وصل طلبك، وسنلتزم بالإطار المتفق عليه',acc:'وافقت على الإضافة',dec:'طلبت الالتزام بالإطار المتفق عليه',of:' من ',cy:function(n){ return '+'+n+' مرحّلة'; }}
     :{h:'Your package this month',over:'This one is past your package for this month, and counts at the extra unit price of ',xH:'An addition awaits your approval',xP:'This task goes beyond the scope we agreed on, so the following is added to this month\'s invoice:',
-      ok:'Approve',no:'Keep to the agreed scope',noDur:function(s){ return 'Shorten it to '+s+' seconds'; },okT:'Thank you, your approval arrived',noT:'Noted. We will keep to the agreed scope',acc:'You approved the addition',dec:'You asked to keep to the agreed scope',of:' of '};
+      ok:'Approve',no:'Keep to the agreed scope',noDur:function(s){ return 'Shorten it to '+s+' seconds'; },okT:'Thank you, your approval arrived',noT:'Noted. We will keep to the agreed scope',acc:'You approved the addition',dec:'You asked to keep to the agreed scope',of:' of ',cy:function(n){ return '+'+n+' carried over'; }};
   function agMeters(p){ var a=p.agreement; if(!a||a.mode!=='package') return ''; var U=a.units.filter(function(u){ return u.inc; }); if(!U.length) return '';
-    return '<div class="wag"><span class="wag-h">'+AGT.h+'</span>'+U.map(function(u){ var n=(a.used||{})[u.id]||0, pc=Math.min(100,Math.round(n*100/u.inc));
-      return '<div class="wag-r'+(n>=u.inc?' full':'')+'"><span>'+esc(u.name)+'</span><b dir="ltr">'+n+' / '+u.inc+'</b><i><s style="width:'+pc+'%"></s></i></div>'; }).join('')+'</div>'; }
+    return '<div class="wag"><span class="wag-h">'+AGT.h+'</span>'+U.map(function(u){ var n=(a.used||{})[u.id]||0, cy=+((a.carried||{})[u.id])||0, have=u.inc+cy, pc=Math.min(100,Math.round(n*100/have));
+      return '<div class="wag-r'+(n>=have?' full':'')+'"><span>'+esc(u.name)+(cy?' <small class="muted">'+AGT.cy(cy)+'</small>':'')+'</span><b dir="ltr">'+n+' / '+have+'</b><i><s style="width:'+pc+'%"></s></i></div>'; }).join('')+'</div>'; }
   function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0], a=pp&&pp.agreement;
     var v=String(d.querySelector('[name=type]').value||'').trim().toLowerCase(), u=a&&a.mode==='package'?a.units.filter(function(x){ return x.name.toLowerCase()===v; })[0]:null;
-    var full=u&&u.inc&&((a.used||{})[u.id]||0)>=u.inc&&u.price; el.hidden=!full; if(full) el.textContent=AGT.over+'('+u.price+(a.cur||'')+')'; }
+    var full=u&&u.inc&&((a.used||{})[u.id]||0)>=u.inc+(+((a.carried||{})[u.id])||0)&&u.price; el.hidden=!full; if(full) el.textContent=AGT.over+'('+u.price+(a.cur||'')+')'; }
   function xtraBox(t){ var x=t.extras; if(!x||!x.items||!x.items.length) return '';
     var list='<ul class="wx-items">'+x.items.map(function(i){ return '<li><span>'+esc(i.name)+(i.detail?' <small class="muted" dir="ltr">'+esc(i.detail)+'</small>':'')+'</span><b dir="ltr">'+esc(i.amount+(x.cur||''))+'</b></li>'; }).join('')+'</ul>';
     if(x.state!=='pending') return '<p class="wnote small">'+(x.state==='accepted'?AGT.acc:AGT.dec)+'</p>';

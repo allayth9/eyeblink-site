@@ -143,6 +143,7 @@ const MIGRATIONS = [
   "ALTER TABLE projects ADD COLUMN terms TEXT",
   "ALTER TABLE tasks ADD COLUMN unit TEXT",
   "ALTER TABLE tasks ADD COLUMN extras TEXT",
+  "ALTER TABLE projects ADD COLUMN carry TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -164,7 +165,10 @@ const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !isNaN(Date.parse(s +
 const clip = (v, m) => String(v ?? "").trim().slice(0, m);
 function cleanLinks(list){ return (Array.isArray(list) ? list : []).slice(0, 12).map(x => ({ label: clip(x && x.label, 80), url: clip(x && x.url, 600) })).filter(x => /^https?:\/\/[^\s]+$/i.test(x.url)); }
 function parse(t){ if (!t) return t; try { t.links = JSON.parse(t.links || "[]"); } catch { t.links = []; } try { t.extras = t.extras ? JSON.parse(t.extras) : null; } catch { t.extras = null; } try { t.brief = t.brief ? JSON.parse(t.brief) : null; } catch { t.brief = null; } try { t.change_request = t.change_request ? JSON.parse(t.change_request) : null; } catch { t.change_request = null; } return t; }
-function parseP(p){ if (!p) return p; try { p.services = JSON.parse(p.services || "[]"); } catch { p.services = []; } try { p.terms = p.terms ? JSON.parse(p.terms) : null; } catch { p.terms = null; } return p; }
+function parseP(p){ if (!p) return p; try { p.services = JSON.parse(p.services || "[]"); } catch { p.services = []; } try { p.terms = p.terms ? JSON.parse(p.terms) : null; } catch { p.terms = null; } try { p.carry = p.carry ? JSON.parse(p.carry) : {}; } catch { p.carry = {}; } return p; }
+// units carried into a month (set by hand by the studio): { "YYYY-MM": { unitId: n } }; the package for that month is inc + carried
+const carryOf = (p, month) => (p.carry && p.carry[month]) || {};
+const monthBefore = m => { const d = new Date(m + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); };
 // ---- the project's agreement (19 Nov): a monthly package (units included, each with a price for one more) or a price per unit,
 // and the extras the studio may add to a task (a flat amount, a share of the unit's price, or by length) — the client approves an extra before the work
 const TMODES = ["package", "unit"], XKINDS = ["flat", "pct", "dur"];
@@ -190,8 +194,8 @@ async function usageOf(D, pid, month){ const o = {};
   for (const r of (await D.prepare("SELECT unit, COUNT(*) AS n FROM tasks WHERE project_id=? AND unit IS NOT NULL AND substr(created_at,1,7)=? AND status NOT IN ('cancelled','rejected') GROUP BY unit").bind(pid, month).all()).results) o[r.unit] = r.n;
   return o; }
 // the client's view of the agreement: what is included and what one more costs (package); never the package price or per-unit prices
-async function forClientP(D, p){ if (!p) return p; const t = p.terms; delete p.terms; if (!t) return p;
-  p.agreement = { mode: t.mode, cur: t.cur, used: await usageOf(D, p.id, monthOf(now())), units: t.units.map(u => ({ id: u.id, name: u.name, ...(t.mode === "package" ? { inc: u.inc, price: u.price || undefined } : {}) })) };
+async function forClientP(D, p){ if (!p) return p; const t = p.terms, cy = carryOf(p, monthOf(now())); delete p.terms; delete p.carry; if (!t) return p;
+  p.agreement = { mode: t.mode, cur: t.cur, used: await usageOf(D, p.id, monthOf(now())), carried: cy, units: t.units.map(u => ({ id: u.id, name: u.name, ...(t.mode === "package" ? { inc: u.inc, price: u.price || undefined } : {}) })) };
   return p; }
 // the month's invoice lines for one project: the package (or the units done), units past the package, and the extras the client approved
 async function monthLines(D, p, month){
@@ -201,7 +205,8 @@ async function monthLines(D, p, month){
   if (t.mode === "package") {
     out.push({ desc: "الباقة الشهرية · " + MN, qty: 1, unit: t.price, project: p.id });
     const used = {}; tasks.filter(x => x.unit && inM(x.created_at)).forEach(x => used[x.unit] = (used[x.unit] || 0) + 1);
-    for (const u of t.units) { const more = (used[u.id] || 0) - u.inc; if (more > 0 && u.price) out.push({ desc: u.name + " إضافي (" + (used[u.id]) + " من " + u.inc + ")", qty: more, unit: u.price, project: p.id }); }
+    const cy = carryOf(p, month);
+    for (const u of t.units) { const have = u.inc + (+cy[u.id] || 0), more = (used[u.id] || 0) - have; if (more > 0 && u.price) out.push({ desc: u.name + " إضافي (" + (used[u.id]) + " من " + have + ")", qty: more, unit: u.price, project: p.id }); }
   } else {
     for (const u of t.units) { const n = tasks.filter(x => x.unit === u.id && x.status === "completed" && inM(x.completed_at)).length; if (n && u.price) out.push({ desc: u.name + " · " + MN, qty: n, unit: u.price, project: p.id }); }
   }
@@ -1116,7 +1121,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1770,6 +1775,21 @@ async function adminPost(ctx, d){
     if (ex) later(ctx, tellAdmin(ctx, env, { client_email: t.client_email, ref: t.ref, title: t.title }, "extras",
       { note: items.map(x => x.name + (x.detail ? " (" + x.detail + ")" : "") + " · " + fmt(x.amount, terms.cur)).join("، ") }));
     return json({ ok: true, extras: ex });
+  }
+  // carrying unused units into a month, by hand: the panel offers what was left last month, the studio decides
+  if (d.action === "carryInfo" || d.action === "carrySave") {
+    const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first()); if (!p || !p.terms || p.terms.mode !== "package") return json({ ok: false, error: "terms" }, 404);
+    const month = /^\d{4}-\d{2}$/.test(d.month || "") ? d.month : monthOf(now()), pm = monthBefore(month);
+    if (d.action === "carrySave") {
+      const units = {}; for (const u of p.terms.units) { const n = Math.max(0, Math.min(999, Math.round(+((d.units || {})[u.id]) || 0))); if (n) units[u.id] = n; }
+      const c = { ...(p.carry || {}), [month]: units }; Object.keys(c).sort().slice(0, -6).forEach(k => delete c[k]);   // the last six months are enough
+      await D.prepare("UPDATE projects SET carry=?, updated_at=? WHERE id=?").bind(JSON.stringify(c), at, p.id).run();
+      await act(D, { ...studio, client_email: p.client_email, project_id: p.id, kind: "carry_set", data: { month, units } });
+      return json({ ok: true });
+    }
+    const used = await usageOf(D, p.id, pm), pc = carryOf(p, pm);
+    return json({ ok: true, month, prev: pm, current: carryOf(p, month),
+      units: p.terms.units.map(u => ({ id: u.id, name: u.name, left: Math.max(0, u.inc + (+pc[u.id] || 0) - (used[u.id] || 0)) })) });
   }
   if (d.action === "monthBill") {
     const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first()); if (!p || !p.terms) return json({ ok: false, error: "terms" }, 404);
