@@ -184,7 +184,7 @@ export function ticketHTML(t){
 <tr><td ${D} style="padding:8px 24px 24px;text-align:${s}">
  ${t.intro ? `<p ${D} style="${F}margin:0 0 10px;font-size:14px;line-height:1.8;color:#C3CEE2">${t.intro}</p>` : ""}
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-  ${t.lines.map(x => `<tr><td ${D} style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#C3CEE2;text-align:${s}">${h(x.name)}${x.qty && x.qty !== 1 ? ` <span style="color:#6F7FA0;font-size:12.5px;${nb}">× ${x.qty}</span>` : ""}</td><td style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#EEF2F6;text-align:${e};${nb}">${h(x.amount)}</td></tr>`).join("")}
+  ${t.lines.map(x => x.head ? `<tr><td colspan="2" ${D} style="${F}padding:14px 0 2px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#3FE0E8;text-align:${s}">${h(x.head)}</td></tr>` : `<tr><td ${D} style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#C3CEE2;text-align:${s}">${h(x.name)}${x.qty && x.qty !== 1 ? ` <span style="color:#6F7FA0;font-size:12.5px;${nb}">× ${x.qty}</span>` : ""}</td><td style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#EEF2F6;text-align:${e};${nb}">${h(x.amount)}</td></tr>`).join("")}
  </table>
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px">${t.totals.map(x => row(x[0], x[1], x[2], x[3])).join("")}</table>
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#070C2A" style="margin-top:18px;background:#070C2A;border:1px solid ${line};border-radius:14px;border-collapse:separate"><tr>

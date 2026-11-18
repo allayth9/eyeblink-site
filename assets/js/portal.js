@@ -14,7 +14,7 @@
         prio:'الأولوية',links:'الملفات والمراجع (روابط)',linkLabel:'وصف الرابط',linkUrl:'الرابط (Google Drive، فيديو، مرجع…)',addLink:'+ رابط آخر',notes:'تعليمات إضافية: ملاحظات، تفاصيل إبداعية، توجيهات، أمثلة',
         preview:'معاينة الطلب',edit:'تعديل',send:'أرسل المهمة',sending:'جارٍ الإرسال…',need:'اكتب عنوان المهمة.',bad:'تحقّق من الموعد (اليوم أو ما بعده).',sent:'وصلت المهمة إلى الاستوديو.'},
       p:{normal:'عادية',high:'عالية',urgent:'عاجلة'},
-      types:{once:'مشروع لمرة واحدة',monthly:'تعاون شهري',campaign:'حملة إعلانية',content:'إدارة محتوى',editing:'مونتاج فيديوهات',motion:'موشن غرافيك',commercial:'إنتاج تجاري',custom:'مشروع مخصص'},
+      types:{program:'برنامج',design:'تصاميم',once:'مشروع لمرة واحدة',monthly:'تعاون شهري',campaign:'حملة إعلانية',content:'إدارة محتوى',editing:'مونتاج فيديوهات',motion:'موشن غرافيك',commercial:'إنتاج تجاري',custom:'مشروع مخصص'},
       pst:{active:'نشط',paused:'متوقف مؤقتاً',completed:'منتهٍ',archived:'مؤرشف'},
       st:{new:'طلب جديد',review:'قيد المراجعة',info:'بانتظار معلوماتك',accepted:'تم القبول',progress:'قيد التنفيذ',feedback:'بانتظار ملاحظاتك',revision:'تعديلات مطلوبة',final:'التسليم النهائي',completed:'مكتملة',rejected:'مرفوضة',cancelled:'ملغاة'},
       infoH:'يحتاج الاستوديو إلى معلومات منك',reply:'ردّك',replyBtn:'أرسل الرد',rejH:'سبب الرفض',noteH:'ملاحظة الاستوديو',
@@ -57,7 +57,7 @@
         prio:'Priority',links:'Files and references (links)',linkLabel:'Link label',linkUrl:'Link (Google Drive, video, reference…)',addLink:'+ Another link',notes:'Extra instructions: notes, creative direction, guidance, examples',
         preview:'Preview request',edit:'Edit',send:'Send task',sending:'Sending…',need:'Write a task title.',bad:'Check the date (today or later).',sent:'Your task reached the studio.'},
       p:{normal:'Normal',high:'High',urgent:'Urgent'},
-      types:{once:'One-off project',monthly:'Monthly collaboration',campaign:'Ad campaign',content:'Content management',editing:'Video editing',motion:'Motion graphics',commercial:'Commercial production',custom:'Custom project'},
+      types:{program:'Program',design:'Design',once:'One-off project',monthly:'Monthly collaboration',campaign:'Ad campaign',content:'Content management',editing:'Video editing',motion:'Motion graphics',commercial:'Commercial production',custom:'Custom project'},
       pst:{active:'Active',paused:'Paused',completed:'Finished',archived:'Archived'},
       st:{new:'New request',review:'Under review',info:'Awaiting your information',accepted:'Accepted',progress:'In progress',feedback:'Awaiting your feedback',revision:'Revision requested',final:'Final delivery',completed:'Completed',rejected:'Rejected',cancelled:'Cancelled'},
       infoH:'The studio needs some information',reply:'Your reply',replyBtn:'Send reply',rejH:'Reason',noteH:'Note from the studio',
@@ -164,7 +164,7 @@
     notifications:SVG('<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),settings:SVG('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
     plus:SVG('<path d="M12 5v14M5 12h14"/>'),fresh:SVG('<path d="M12 4.5v15M4.5 12h15"/>'),progress:SVG('<path d="M12 4a8 8 0 1 0 8 8"/><path d="M12 8v4l2.5 2.5"/>'),waiting:SVG('<path d="M5 12.5 9.5 17 19 7.5"/>'),
     done:SVG('<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'),dates:SVG('<rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/>'),arrow:SVG('<path d="M15 6l-6 6 6 6"/>'),more:SVG('<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>'),chev:'<svg class="wm-c" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>'};
-  var TYPEC={monthly:'#A78BFA',campaign:'#F5C66B',content:'#5EF0B0',editing:'#6E8BFF',motion:'#E07BE0',commercial:'#FFC56B',once:'#3FE0E8',custom:'#7DD3FC'};
+  var TYPEC={program:'#3FE0E8',design:'#B39BFF',monthly:'#A78BFA',campaign:'#F5C66B',content:'#5EF0B0',editing:'#6E8BFF',motion:'#E07BE0',commercial:'#FFC56B',once:'#3FE0E8',custom:'#7DD3FC'};
   var PAL=['#6E8BFF','#E07BE0','#3FE0E8','#F5C66B','#5EF0B0','#A78BFA','#FF7AB6','#7DD3FC','#FFC56B','#8FA2FF'];
   // four sections in order of use; notifications live in the bell, settings in the account menu, «new task» is the main button
   var NAV=[['overview','#w'],['tasks','#w/tasks'],['projects','#w/projects'],['invoices','#w/invoices']];
@@ -308,7 +308,7 @@
       btn=rv?'<a class="btn btn-primary" href="#w/t/'+esc(rv.ref)+'">'+HM.w.go+'</a>':inf?'<a class="btn btn-primary" href="#w/t/'+esc(inf.ref)+'">'+HM.act.info+'</a>':bill?'<a class="btn btn-primary" href="#w/invoices/'+esc(bill.id)+'">'+HM.act.bill+'</a>':none&&act.length?'<a class="btn btn-primary" href="#w/new">'+HM.w.new+'</a>':'';
     return '<aside class="wwel glass" role="note"><div><b>'+HM.w.h+'</b><p>'+esc(line)+'</p></div>'+btn+'<button type="button" class="wwel-x" aria-label="'+HM.w.x+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></aside>'; }
   function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
-    return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
+    return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
       '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
       (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
@@ -324,7 +324,8 @@
     api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; var all=false;
       var draw=function(){ var L2=j.projects.filter(function(p){ return all||p.status==='active'||p.status==='paused'; });
         host.querySelector('.wprojects').innerHTML=L2.length?L2.map(projCard).join(''):'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>'; };
-      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+seg('projects')+'<div class="wprojects wprojects-lg"></div>';
+      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,'<div class="wph-acts">'+(j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+'<button type="button" class="eb-metal wnp-btn">'+ICO.plus+'<span>'+NP.btn+'</span></button></div>')+seg('projects')+npForm()+'<div class="wprojects wprojects-lg"></div>';
+      bindNP(host,function(){ projectsView(); });
       var tg=host.querySelector('.wtoggle input'); if(tg) tg.onchange=function(){ all=tg.checked; draw(); };
       draw(); rise(); }); }
 
@@ -959,4 +960,23 @@
       api('',{action:'decide',task:t.ref,deliverable:id,decision:'changes',points:pts,note:note}).then(function(r){ if(r.ok){ toast(T.dl.chMsg); reload(); } else { b.disabled=false; msg.textContent=T.err; } }); };
   }
   window.EBPortal={mount:mount, route:route, T:T, notified:function(){ setUnread(0); if(CUR==='notifications') notifications(); }};
+  /* ---- a project the client opens; every task in it still goes through the studio ---- */
+  var NP=AR?{btn:'مشروع جديد',name:'اسم المشروع',namePh:'مثال: برنامج نبض',type:'النوع',per:'عدد الحلقات في الشهر',day:'يوم النشر',desc:'نبذة قصيرة (اختياري)',descPh:'ما الفكرة؟ ولمن؟',go:'أنشئ المشروع',cancel:'إلغاء',note:'يصل الاستوديو إشعار بالمشروع الجديد، ويمكنك إرسال مهامك إليه فوراً.',ok:'أُنشئ المشروع',err:'تعذّر الإنشاء، حاول مرة أخرى',needName:'اكتب اسم المشروع',
+      types:[['program','برنامج','حلقات منتظمة'],['monthly','محتوى شهري','باقة كل شهر'],['campaign','حملة','لفترة محددة'],['design','تصاميم','بوسترات وهوية'],['once','فيديو واحد','عمل لمرة واحدة']],days:[['sat','السبت'],['sun','الأحد'],['mon','الاثنين'],['tue','الثلاثاء'],['wed','الأربعاء'],['thu','الخميس'],['fri','الجمعة']],every:'كل ',perM:' حلقات شهرياً'}
+    :{btn:'New project',name:'Project name',namePh:'e.g. Pulse, a weekly show',type:'Type',per:'Episodes a month',day:'Publishing day',desc:'A short note (optional)',descPh:'What is it, and for whom?',go:'Create the project',cancel:'Cancel',note:'The studio is notified, and you can send tasks to it right away.',ok:'Project created',err:'Could not create it. Try again',needName:'Name the project',
+      types:[['program','Program','Regular episodes'],['monthly','Monthly content','A monthly package'],['campaign','Campaign','For a set period'],['design','Design','Posters and identity'],['once','One video','A one-off piece']],days:[['sat','Saturday'],['sun','Sunday'],['mon','Monday'],['tue','Tuesday'],['wed','Wednesday'],['thu','Thursday'],['fri','Friday']],every:'every ',perM:' episodes a month'};
+  function cadOf(p){ var c=null; try{ c=p.cadence?JSON.parse(p.cadence):null; }catch(_){} if(!c) return ''; var d=NP.days.filter(function(x){ return x[0]===c.day; })[0]; return ' · '+(d?NP.every+d[1]:c.per+NP.perM); }
+  function npForm(){ return '<form class="wnp glass" hidden novalidate><label>'+NP.name+'<input name="name" dir="auto" maxlength="80" placeholder="'+NP.namePh+'"></label>'+
+    '<div><span class="wnp-l">'+NP.type+'</span><div class="wnp-types" role="radiogroup">'+NP.types.map(function(t,i){ return '<button type="button" role="radio" data-npt="'+t[0]+'" aria-checked="'+(i===0)+'"><b>'+t[1]+'</b><small>'+t[2]+'</small></button>'; }).join('')+'</div></div>'+
+    '<div class="wnp-cad"><label>'+NP.per+'<input name="per" type="number" min="1" max="31" value="4" dir="ltr"></label><label>'+NP.day+'<select name="day"><option value=""></option>'+NP.days.map(function(d){ return '<option value="'+d[0]+'">'+d[1]+'</option>'; }).join('')+'</select></label></div>'+
+    '<label>'+NP.desc+'<textarea name="description" rows="2" dir="auto" maxlength="1000" placeholder="'+NP.descPh+'"></textarea></label>'+
+    '<div class="wnp-acts"><button type="submit" class="eb-metal">'+NP.go+'</button><button type="button" class="btn btn-glass glass" data-npx>'+NP.cancel+'</button></div><p class="muted small">'+NP.note+'</p></form>'; }
+  function bindNP(host,after){ var f=host.querySelector('.wnp'), btn=host.querySelector('.wnp-btn'), type='program'; if(!f||!btn) return;
+    btn.onclick=function(){ f.hidden=!f.hidden; if(!f.hidden) f.elements.name.focus(); };
+    f.querySelector('[data-npx]').onclick=function(){ f.hidden=true; };
+    f.querySelector('.wnp-types').onclick=function(e){ var b=e.target.closest('[data-npt]'); if(!b) return; type=b.dataset.npt; f.querySelectorAll('[data-npt]').forEach(function(x){ x.setAttribute('aria-checked',x===b); }); f.querySelector('.wnp-cad').hidden=type!=='program'; };
+    f.onsubmit=function(e){ e.preventDefault(); var n=f.elements.name.value.trim(); if(!n){ toast(NP.needName); f.elements.name.focus(); return; }
+      var s=f.querySelector('[type=submit]'); s.disabled=true;
+      api('',{action:'projectNew',name:n,type:type,description:f.elements.description.value.trim(),cadence:type==='program'?{per:f.elements.per.value,day:f.elements.day.value}:null}).then(function(j){ s.disabled=false;
+        if(j&&j.ok){ toast(NP.ok); DASH=null; after(j.id); } else toast(NP.err); }); }; }
 })();

@@ -47,7 +47,9 @@ import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendM
 const STATUSES = ["new","review","info","accepted","progress","feedback","revision","final","completed","rejected","cancelled"];
 const OPEN = ["new","review","info","accepted","progress","feedback","revision","final"];
 const PRIORITIES = ["normal","high","urgent"];
-const PTYPES = ["once","monthly","campaign","content","editing","motion","commercial","custom"];
+const PTYPES = ["program","monthly","campaign","design","once","content","editing","motion","commercial","custom"];   // program: episodes on a rhythm (cadence)
+const DAYS = ["sat","sun","mon","tue","wed","thu","fri"];
+const cadenceOf = (type, c) => type === "program" && c ? JSON.stringify({ per: Math.max(1, Math.min(31, parseInt(c.per) || 4)), day: DAYS.includes(c.day) ? c.day : "" }) : null;
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, client_email TEXT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', type TEXT NOT NULL DEFAULT 'custom',
@@ -128,6 +130,8 @@ const MIGRATIONS = [
   "ALTER TABLE tasks ADD COLUMN assignee TEXT",
   "ALTER TABLE notify_prefs ADD COLUMN push_cats TEXT NOT NULL DEFAULT '{}'",
   "ALTER TABLE notify_prefs ADD COLUMN tg_cats TEXT NOT NULL DEFAULT '{}'",
+  "ALTER TABLE projects ADD COLUMN cadence TEXT",
+  "ALTER TABLE invoices ADD COLUMN scope TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -252,7 +256,7 @@ async function monthReport(D, p, month){
   const dl = (await D.prepare("SELECT d.task_id, d.label, d.status, d.is_final, d.created_at FROM deliverables d WHERE d.project_id=?").bind(p.id).all()).results;
   const versions = dl.filter(x => monthOf(x.created_at) === month), rounds = versions.filter(x => x.status === "changes").length;
   const withDate = done.filter(t => t.confirmed_date), onTime = withDate.filter(t => String(t.completed_at).slice(0, 10) <= t.confirmed_date).length;
-  const inv = (await D.prepare("SELECT no, title, currency, total, paid, status, due_date, issue_date, payments, sent_at FROM invoices WHERE project_id=? AND sent_at IS NOT NULL").bind(p.id).all()).results.map(x => parseI(x));
+  const inv = (await D.prepare("SELECT no, title, currency, total, paid, status, due_date, issue_date, payments, sent_at FROM invoices WHERE (project_id=? OR scope LIKE ? OR scope=?) AND client_email=? AND sent_at IS NOT NULL").bind(p.id, '%"' + p.id + '"%', '"all"', p.client_email).all()).results.map(x => parseI(x));
   const issued = inv.filter(x => monthOf(x.issue_date) === month), paidIn = {};
   inv.forEach(x => x.payments.forEach(y => { if (monthOf(y.date || y.at) === month) paidIn[x.currency] = money((paidIn[x.currency] || 0) + y.amount); }));
   const open = tasks.filter(t => OPEN.includes(t.status)).length;
@@ -350,7 +354,12 @@ const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
 function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
-function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 30).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit) })).filter(i => i.desc); }
+function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40) })).filter(i => i.desc); }
+// lines under their project's heading when an invoice spans more than one
+function invGroups(items){ const g = []; for (const i of items) { const k = i.pname || ""; let x = g.find(y => y.k === k); if (!x) g.push(x = { k, items: [] }); x.items.push(i); } return g; }
+function invCovers(x, en){ let s = null; try { s = JSON.parse(x.scope || "null"); } catch {}
+  if (s === "all") return en ? "All projects" : "كل المشاريع";
+  const names = [...new Set(x.items.map(i => i.pname).filter(Boolean))]; return names.length ? names.join(en ? ", " : "، ") : (x.project_name || ""); }
 const BILL_ST = { ar: { pending:"بانتظار الدفع", partial:"مدفوعة جزئياً", paid:"مدفوعة", overdue:"متأخرة", cancelled:"ملغاة", refunded:"مستردة" },
                   en: { pending:"Awaiting payment", partial:"Partially paid", paid:"Paid", overdue:"Overdue", cancelled:"Cancelled", refunded:"Refunded" } };
 const BILL_T = {
@@ -384,7 +393,7 @@ function billHTML(x, cl, lang, opt){
 ${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:bold;color:${ink};text-align:${s}">${h(x.title)}</td></tr>` : ""}
 <tr><td style="padding:${x.title ? 12 : 26}px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
  <tr><td style="${th}text-align:${s}">${L.desc}</td><td style="${th}text-align:center;width:52px">${L.qty}</td><td style="${th}text-align:${e};width:92px">${L.unit}</td><td style="${th}text-align:${e};width:92px">${L.amount}</td></tr>
- ${x.items.map(i => `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
+ ${invGroups(x.items).flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (lang === "en" ? "General" : "بنود عامة") }] : []).concat(g.items)).map(i => i.head ? `<tr><td colspan="4" style="padding:14px 0 4px;${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;text-align:${s}">${h(i.head)}</td></tr>` : `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
 </table>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;margin-${s}:auto;width:260px;max-width:100%">
  ${x.discount ? tot(L.sub, fmt(sub, c)) + tot(L.disc, "−" + fmt(x.discount, c)) : ""}
@@ -410,10 +419,13 @@ function billTicket(x, lang, intro, link){
   const open = st === "pending" || st === "partial" || st === "overdue", B = s => '<b style="color:#fff">' + h(s) + "</b>";
   const cap = open ? (st === "overdue" ? (en ? "Due since " : "مستحقة منذ ") + B(dt(x.due_date)) : (en ? "Amount due · by " : "المبلغ المستحق · حتى ") + B(dt(x.due_date)))
             : st === "paid" ? (en ? "Paid in full · thank you" : "مدفوعة بالكامل · شكراً لك") : h(S[st] || st);
-  const items = x.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })).concat(x.discount ? [{ name: L.disc, qty: 1, amount: "−" + fmt(x.discount, c) }] : []);
+  const G = invGroups(x.items), multi = G.length > 1;
+  const items = [].concat(...G.map(g => (multi ? [{ head: g.k || (en ? "General" : "بنود عامة") }] : []).concat(g.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })))))
+    .concat(x.discount ? [{ name: L.disc, qty: 1, amount: "−" + fmt(x.discount, c) }] : []);
+  const covers = invCovers(x, en);
   const totals = [[L.total, fmt(x.total, c)]].concat(x.paid ? [[L.paid, fmt(x.paid, c)]] : []).concat(x.refunded ? [[L.refunded, "−" + fmt(x.refunded, c)]] : [])
     .concat(st !== "cancelled" && st !== "refunded" ? [[L.bal, fmt(x.balance, c), 1, x.balance > 0 ? BILL_TCOL[st] : "#3DDC97"]] : []);
-  return ticketHTML({ lang: en ? "en" : "ar", label: "INVOICE", amount: fmt(open ? x.balance : x.total, c), caption: cap + (x.project_name ? '<br><span style="color:#9FB0CC">' + h(L.project) + ": " + h(x.project_name) + "</span>" : ""),
+  return ticketHTML({ lang: en ? "en" : "ar", label: "INVOICE", amount: fmt(open ? x.balance : x.total, c), caption: cap + (covers ? '<br><span style="color:#9FB0CC">' + (multi || covers !== x.project_name ? (en ? "Covers: " : "تشمل: ") : h(L.project) + ": ") + h(covers) + "</span>" : ""),
     meta: [[L.no, x.no, 1], [L.issued, dt(x.issue_date)]], intro, lines: items, totals, status: [S[st] || st, BILL_TCOL[st] || "#EEF2F6"],
     cta: [en ? "View the invoice" : "عرض الفاتورة", link], pdf: [en ? "Download PDF" : "تحميل PDF", SITE + "/api/work?invoiceDoc=" + encodeURIComponent(x.id)],
     note: (x.note ? h(x.note).replace(/\n/g, "<br>") + "<br>" : "") + h(L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]) });
@@ -962,6 +974,17 @@ export async function onRequestPost(ctx) {
   if (u.mustChange) return json({ ok: false, error: "password" }, 403);   // a temporary password: choose your own first
   const D = await db(env); if (!D) return json({ ok: false, error: "db" }, 503);
   const at = now(), who = { actor: u.email, actor_name: u.name, client_email: u.email };
+  if (d.action === "projectNew") {
+    const name = clip(d.name, 80); if (!name) return json({ ok: false, error: "name" }, 400);
+    const type = ["program","monthly","campaign","design","once","custom"].includes(d.type) ? d.type : "custom";
+    if ((await D.prepare("SELECT COUNT(*) AS n FROM projects WHERE client_email=?").bind(u.email).first()).n >= 40) return json({ ok: false, error: "limit" }, 429);
+    const id = "p_" + randHex(6);
+    await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at, cadence) VALUES (?,?,?,?,?,'active','[]',NULL,NULL,NULL,NULL,0,?,?,?)")
+      .bind(id, u.email, name, clip(d.description, 1000), type, at, at, cadenceOf(type, d.cadence)).run();
+    await act(D, { ...who, project_id: id, kind: "project_created", data: { name, by: "client" } });
+    toStudio(ctx, env, "مشروع جديد من " + (u.name || u.email) + " · " + name, "أضاف العميل مشروعاً جديداً في مساحة عمله: " + name);
+    return json({ ok: true, id });
+  }
   if (d.action === "brand") {
     const hex = /^#[0-9a-f]{6}$/i;
     const colors = (Array.isArray(d.colors) ? d.colors : []).slice(0, 24).map(c => ({ name: clip(c && c.name, 40), hex: String(c && c.hex || "").trim().toUpperCase() })).filter(c => hex.test(c.hex));
@@ -1307,8 +1330,10 @@ async function adminPost(ctx, d){
   if (d.action === "invoice") {
     const email = clip(d.client_email, 254).toLowerCase(), u = await userOf(env, email); if (!u && !(await clientRow(D, email))) return json({ ok: false, error: "no account" }, 404);
     const items = cleanItems(d.items); if (!items.length) return json({ ok: false, error: "items" }, 400);
-    const pid = d.project_id ? clip(d.project_id, 40) : null;
-    if (pid) { const p = await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(pid).first(); if (!p || p.client_email !== email) return json({ ok: false, error: "project" }, 400); }
+    const PN = Object.fromEntries((await D.prepare("SELECT id, name FROM projects WHERE client_email=?").bind(email).all()).results.map(p => [p.id, p.name]));
+    for (const i of items) { if (!PN[i.project]) i.project = ""; i.pname = i.project ? PN[i.project] : ""; if (!i.project) { delete i.project; delete i.pname; } }
+    const ids = [...new Set(items.map(i => i.project).filter(Boolean))], scope = d.scope === "all" ? "all" : ids;
+    const pid = d.scope !== "all" && ids.length === 1 ? ids[0] : (d.project_id && PN[d.project_id] && !ids.length ? clip(d.project_id, 40) : null);
     const cur = clip(d.currency, 8) || "$", disc = Math.max(0, money(d.discount)), sub = money(items.reduce((a, i) => a + i.unit * i.qty, 0)), total = Math.max(0, money(sub - disc));
     const issue = isDate(d.issue_date) ? d.issue_date : today(), due = isDate(d.due_date) ? d.due_date : null;
     if (due && due < issue) return json({ ok: false, error: "due" }, 400);
@@ -1320,6 +1345,7 @@ async function adminPost(ctx, d){
       const st = x.paid > 0 ? (x.paid + 0.009 >= total ? "paid" : "partial") : "pending";
       await D.prepare("UPDATE invoices SET client_email=?, project_id=?, title=?, period=?, items=?, currency=?, discount=?, total=?, status=?, issue_date=?, due_date=?, note=?, reminded_at=CASE WHEN due_date IS ? THEN reminded_at ELSE NULL END, updated_at=? WHERE id=?")
         .bind(email, pid, title, period, JSON.stringify(items), cur, disc, total, st, issue, due, note, due, at, x.id).run();
+      await D.prepare("UPDATE invoices SET scope=? WHERE id=?").bind(JSON.stringify(scope), x.id).run();
       await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_updated", data: { no: x.no, total, cur } });
       if (d.send) { await D.prepare("UPDATE invoices SET sent_at=? WHERE id=?").bind(at, x.id).run(); later(ctx, invoiceMail(env, await invoiceOf(D, x.id), "invoice", ctx)); }
       return json({ ok: true, id: x.id, no: x.no });
@@ -1327,6 +1353,7 @@ async function adminPost(ctx, d){
     const n = await newInvoice(env, "bill", total), id = "i_" + randHex(6);
     await D.prepare("INSERT INTO invoices (id, no, client_email, project_id, title, period, items, currency, discount, total, paid, refunded, status, issue_date, due_date, note, payments, sent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,'pending',?,?,?,'[]',?,?,?)")
       .bind(id, n.no, email, pid, title, period, JSON.stringify(items), cur, disc, total, issue, due, note, d.send ? at : null, at, at).run();
+    await D.prepare("UPDATE invoices SET scope=? WHERE id=?").bind(JSON.stringify(scope), id).run();
     await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_issued", data: { no: n.no, total, cur, sent: !!d.send } });
     if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice", ctx));
     return json({ ok: true, id, no: n.no });
@@ -1452,12 +1479,14 @@ async function adminPost(ctx, d){
       const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.id, 40)).first(); if (!p) return json({ ok: false }, 404);
       await D.prepare("UPDATE projects SET client_email=?, name=?, description=?, type=?, status=?, services=?, start_date=?, end_date=?, quota=?, drive_url=?, auto_report=?, updated_at=? WHERE id=?")
         .bind(email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, p.id).run();
+      await D.prepare("UPDATE projects SET cadence=? WHERE id=?").bind(cadenceOf(f.type, d.cadence), p.id).run();
       await act(D, { ...studio, client_email: email, project_id: p.id, kind: "project_updated", data: { name: f.name, status: f.status } });
       return json({ ok: true, id: p.id });
     }
     const id = "p_" + randHex(6);
     await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
       .bind(id, email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, at).run();
+    await D.prepare("UPDATE projects SET cadence=? WHERE id=?").bind(cadenceOf(f.type, d.cadence), id).run();
     await act(D, { ...studio, client_email: email, project_id: id, kind: "project_created", data: { name: f.name } });
     later(ctx, tellAdmin(ctx, env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });

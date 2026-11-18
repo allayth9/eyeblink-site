@@ -26,18 +26,49 @@
   function bform(x){ var B=BILL, cl=B.clients||[], f=BFORM||{}, it=(x&&x.items)||f.items||[{desc:'',qty:1,unit:''}], em=(x&&x.client_email)||f.email||'';
     var td=B.today, due=(x&&x.due_date)||new Date(Date.now()+7*864e5).toISOString().slice(0,10);
     return '<form class="bform" data-bid="'+esc(x?x.id:'')+'" novalidate><div class="row"><div class="field"><label>العميل</label><select name="email">'+(cl.length?'':'<option value="">لا يوجد عملاء متعاقدون</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===em?' selected':'')+'>'+esc(c.name)+' — '+esc(c.email)+'</option>'; }).join('')+(em&&!cl.some(function(c){return c.email===em})?'<option value="'+esc(em)+'" selected>'+esc(em)+'</option>':'')+'</select></div>'+
-      '<div class="field"><label>المشروع (اختياري)</label><select name="project"></select></div></div>'+
+      '<div class="field bscope-f"><label>ما تشمله الفاتورة</label><div class="bscope" role="group" aria-label="ما تشمله الفاتورة"></div></div></div>'+
       '<div class="row"><div class="field"><label>العنوان</label><input name="title" dir="auto" value="'+esc(x?x.title:'')+'" placeholder="مثلاً: باقة المحتوى الشهرية"></div><div class="field"><label>الفترة (اختياري)</label><input name="period" dir="auto" value="'+esc(x?x.period:'')+'" placeholder="نوفمبر 2026"></div>'+
         '<div class="field"><label>العملة</label><input name="currency" dir="ltr" list="bcurs" value="'+esc(x?x.currency:'$')+'"><datalist id="bcurs">'+CURS.map(function(c){ return '<option value="'+c+'">'; }).join('')+'</datalist></div></div>'+
-      '<div class="small muted">البنود</div><div class="bitems">'+it.map(function(i){ return '<div class="bitem"><input name="desc" dir="auto" placeholder="البيان" value="'+esc(i.desc||'')+'"><input name="qty" type="number" min="0" step="any" placeholder="الكمية" value="'+esc(i.qty||1)+'"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة" value="'+esc(i.unit===''?'':i.unit)+'"><button type="button" class="linkbtn" data-brm>×</button></div>'; }).join('')+'</div>'+
-      '<button type="button" class="btn sm" data-badd>+ بند</button>'+
+      '<div class="small muted">البنود</div><div class="bgroups"></div>'+
       '<div class="row"><div class="field"><label>خصم</label><input name="discount" type="number" min="0" step="any" value="'+esc(x&&x.discount?x.discount:'')+'"></div><div class="field"><label>تاريخ الإصدار</label><input name="issue" type="date" value="'+esc(x?x.issue_date:td)+'"></div><div class="field"><label>تاريخ الاستحقاق</label><input name="due" type="date" value="'+esc(due)+'"></div></div>'+
       '<div class="field"><label>ملاحظة على الفاتورة (اختياري)</label><textarea name="note" dir="auto">'+esc(x?x.note:'')+'</textarea></div>'+
       '<div class="actions"><b class="btot">—</b><label class="check"><input type="checkbox" name="send"'+(x&&x.sent_at?'':' checked')+'> '+(x&&x.sent_at?'أعد إرسالها للعميل بعد الحفظ':'أرسلها للعميل الآن (بريد + إشعار)')+'</label><button class="btn primary sm" type="submit">'+(x?'حفظ الفاتورة':'إنشاء الفاتورة')+'</button><button class="btn sm" type="button" data-bx>إلغاء</button></div></form>'; }
-  function bformSync(f){ var B=BILL, em=f.elements.email.value, sel=f.elements.project, cur=sel.value||sel.dataset.v||'';
-    sel.innerHTML='<option value="">— بدون مشروع —</option>'+(B.projects||[]).filter(function(p){return p.client_email===em}).map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('');
-    var c=f.elements.currency.value.trim()||'$', sub=[].reduce.call(f.querySelectorAll('.bitem'),function(a,r){ return a+nn(r.children[1].value)*nn(r.children[2].value); },0), tot=Math.max(0,sub-nn(f.elements.discount.value));
-    f.querySelector('.btot').textContent='الإجمالي: '+mny(tot,c); }
+  /* what the invoice covers: one project, several, all of them, or general lines; each group holds its own lines */
+  function bPN(f){ var em=f.elements.email.value; return (BILL.projects||[]).filter(function(p){ return p.client_email===em&&p.status!=='archived'; }); }
+  function bRow(i){ var d=document.createElement('div'); d.className='bitem'; i=i||{};
+    d.innerHTML='<input name="desc" dir="auto" placeholder="البيان" value="'+esc(i.desc||'')+'"><input name="qty" type="number" min="0" step="any" placeholder="الكمية" value="'+esc(i.qty||1)+'"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة" value="'+esc(i.unit===''||i.unit==null?'':i.unit)+'"><button type="button" class="linkbtn" data-brm aria-label="حذف البند">×</button>'; return d; }
+  function bInit(f,x){ var P=bPN(f), ids={}, s=null; P.forEach(function(p){ ids[p.id]=1; }); try{ s=x&&x.scope?JSON.parse(x.scope):null; }catch(_){}
+    var it=((x&&x.items)||[]).map(function(i){ var k=i.project||(x.project_id&&!(x.items||[]).some(function(y){ return y.project; })?x.project_id:''); return {desc:i.desc,qty:i.qty,unit:i.unit,project:ids[k]?k:''}; });
+    f._sc={all:s==='all',keys:{}}; it.forEach(function(i){ f._sc.keys[i.project]=1; });
+    if(!it.length){ var pj=(BFORM&&BFORM.project&&ids[BFORM.project])?BFORM.project:(P.length===1?P[0].id:''); f._sc.keys[pj]=1; }
+    f._init=it; f.querySelector('.bgroups').innerHTML=''; bGroups(f,true); }
+  function bGroups(f,first){ var P=bPN(f), sc=f._sc, nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
+    var keys=P.filter(function(p){ return sc.all||sc.keys[p.id]; }).map(function(p){ return p.id; }).concat(sc.keys['']?['']:[]); if(!keys.length){ sc.keys['']=1; keys=['']; }
+    var chip=function(k,l,on){ return '<button type="button" class="bsc" data-bsc="'+esc(k)+'" aria-pressed="'+!!on+'">'+esc(l)+'</button>'; };
+    f.querySelector('.bscope').innerHTML=(P.length>1?chip('*','كل المشاريع',sc.all):'')+P.map(function(p){ return chip(p.id,p.name,sc.all||sc.keys[p.id]); }).join('')+chip('','بنود عامة',!!sc.keys['']);
+    var box=f.querySelector('.bgroups'), old={}; box.querySelectorAll('.bgrp').forEach(function(g){ old[g.dataset.proj]=g; });
+    keys.forEach(function(k){ var g=old[k]; delete old[k];
+      if(!g){ g=document.createElement('div'); g.className='bgrp'; g.dataset.proj=k; g.innerHTML='<div class="bgh"><b>'+esc(k?nm[k]:'بنود عامة')+'</b><small class="bgs"></small></div><div class="bitems"></div><div class="bsug"></div><button type="button" class="btn sm" data-badd>+ بند</button>';
+        var rows=first?f._init.filter(function(i){ return i.project===k; }):[]; (rows.length?rows:[{}]).forEach(function(i){ g.querySelector('.bitems').appendChild(bRow(i)); }); }
+      box.appendChild(g); });
+    Object.keys(old).forEach(function(k){ old[k].remove(); });
+    bSug(f); bformSync(f); }
+  // one tap from the work done: the project's tasks completed in the last two months
+  function bSug(f){ if(!WORK){ if(LIVE&&!f._wl){ f._wl=1; loadWork(); setTimeout(function(){ if(f.isConnected) bSug(f); },1500); } return; }
+    var since=new Date(Date.now()-62*864e5).toISOString();
+    f.querySelectorAll('.bgrp').forEach(function(g){ var k=g.dataset.proj; if(!k){ g.querySelector('.bsug').innerHTML=''; return; }
+      var have={}; g.querySelectorAll('.bitem input[name=desc]').forEach(function(i){ have[i.value.trim()]=1; });
+      var L=((WORK&&WORK.tasks)||[]).filter(function(t){ return t.project_id===k&&t.status==='completed'&&String(t.completed_at||t.updated_at||'')>=since; }).slice(0,8);
+      g.querySelector('.bsug').innerHTML=L.length?'<span class="small muted">من المهام المكتملة:</span>'+L.map(function(t){ return '<button type="button" class="bsg" data-bsug="'+esc(t.title)+'"'+(have[t.title]?' disabled':'')+'>'+esc(t.title)+'</button>'; }).join(''):''; }); }
+  function bformSync(f){ if(!f._sc) return; var c=f.elements.currency.value.trim()||'$', P=bPN(f), nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
+    var G=[].map.call(f.querySelectorAll('.bgrp'),function(g){ var rows=[].map.call(g.querySelectorAll('.bitem'),function(r){ return {d:r.children[0].value.trim(),q:nn(r.children[1].value)||1,u:nn(r.children[2].value)}; }).filter(function(r){ return r.d; });
+      var sub=rows.reduce(function(a,r){ return a+r.q*r.u; },0); g.querySelector('.bgs').textContent=rows.length?mny(sub,c):''; return {k:g.dataset.proj,rows:rows,sub:sub}; });
+    var sub=G.reduce(function(a,g){ return a+g.sub; },0), disc=nn(f.elements.discount.value), tot=Math.max(0,sub-disc), multi=G.filter(function(g){ return g.rows.length; }).length>1;
+    var names=G.filter(function(g){ return g.k; }).map(function(g){ return nm[g.k]; }), covers=f._sc.all&&P.length>1?'كل المشاريع':names.join('، ');
+    f.querySelector('.btot').textContent='الإجمالي: '+mny(tot,c);
+    f.querySelector('.btk').innerHTML='<div class="btk-s"><span class="btk-lab">INVOICE</span><b>'+esc(mny(tot,c))+'</b>'+(covers?'<small>تشمل: '+esc(covers)+'</small>':'')+'</div><div class="btk-b">'+
+      (G.some(function(g){ return g.rows.length; })?G.map(function(g){ return g.rows.length?(multi?'<div class="btk-h">'+esc(g.k?nm[g.k]:'بنود عامة')+'</div>':'')+g.rows.map(function(r){ return '<div class="btk-l"><span>'+esc(r.d)+(r.q!==1?' × '+r.q:'')+'</span><span dir="ltr">'+esc(mny(r.q*r.u,c))+'</span></div>'; }).join(''):''; }).join(''):'<div class="small muted">لا بنود بعد</div>')+
+      (disc?'<div class="btk-l"><span>خصم</span><span dir="ltr">−'+esc(mny(disc,c))+'</span></div>':'')+'<div class="btk-t"><span>الإجمالي</span><span dir="ltr">'+esc(mny(tot,c))+'</span></div></div>'; }
   function bdetail(r){ var x=r.x, c=r.currency;
     if(r.src==='order') return '<div class="bdet"><div class="small muted">طلب من الموقع — تُدار دفعاته وفواتيره من تبويب الطلبات (مسار الدفع الحالي كما هو).</div><div class="actions"><button class="btn sm" type="button" data-bord="'+esc(r.code)+'">افتح الطلب</button></div></div>';
     var closed=x.status==='cancelled'||x.status==='refunded';
@@ -94,20 +125,27 @@
         '<button class="btn sm primary" type="button" data-bnew>+ فاتورة جديدة</button></div>'+
       '<div class="osplit'+(sel||isNew?' has-open':'')+'"><ul class="olist">'+(list.length?'<li class="olh">الفواتير · '+list.length+'</li>'+list.map(function(r){ return billRow(r,td); }).join(''):'<li class="olh">لا توجد فواتير هنا</li>')+'</ul>'+panel+'</div>'+
       '<p class="hint bhint">الفوترة يدوية: لا بوابة دفع. تُصدر فاتورة للعميل المتعاقد، وتسجّل كل دفعة عند وصولها، فتتغيّر الحالة تلقائياً: بانتظار الدفع ← مدفوعة جزئياً ← مدفوعة، وتصبح «متأخرة» بعد تاريخ الاستحقاق ويصل العميلَ تذكير واحد. طلبات الموقع تظهر هنا للاطلاع فقط، ودفعاتها من تبويب الطلبات كما هي.</p>';
-    var f=$('#panel').querySelector('.bform'); if(f){ var sel=f.elements.project; sel.dataset.v=(BFORM&&BFORM.id&&(BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]||{}).project_id)||(BFORM&&BFORM.project)||''; bformSync(f); }
+    var f=$('#panel').querySelector('.bform'); if(f){ if(!f.querySelector('.btk')){ var tk=document.createElement('aside'); tk.className='btk'; tk.setAttribute('aria-live','polite'); f.appendChild(tk); } bInit(f,BFORM&&BFORM.id?BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]:null); }
   }
   document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f) bformSync(f); });
-  document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; } var f=s.closest&&s.closest('.bform'); if(f) bformSync(f); });
+  document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; } var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;
-    var items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:nn(r.children[1].value)||1,unit:nn(r.children[2].value)}; }).filter(function(i){ return i.desc; });
-    bpost({action:'invoice',id:f.dataset.bid||undefined,client_email:E.email.value,project_id:E.project.value||null,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,note:E.note.value.trim(),send:E.send.checked},
+    var items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:nn(r.children[1].value)||1,unit:nn(r.children[2].value),project:r.closest('.bgrp').dataset.proj||''}; }).filter(function(i){ return i.desc; });
+    bpost({action:'invoice',id:f.dataset.bid||undefined,client_email:E.email.value,scope:f._sc&&f._sc.all&&bPN(f).length>1?'all':undefined,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,note:E.note.value.trim(),send:E.send.checked},
       f.querySelector('button[type=submit]'),E.send.checked?'حُفظت الفاتورة وأُرسلت إلى العميل':'حُفظت الفاتورة').then(function(j){ if(j.ok){ BFORM=null; BOPEN='ws:'+j.id; route(true); } }); });
   document.addEventListener('click',function(e){ if(TAB!=='billing') return; var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-bnew')){ BFORM={}; BOPEN=null; route(); renderBilling(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.hasAttribute('data-bx')){ BFORM=null; renderBilling(); return; }
     if(b.hasAttribute('data-bback')){ BOPEN=null; BFORM=null; route(); renderBilling(); return; }
-    if(b.hasAttribute('data-badd')){ var w=b.closest('.bform').querySelector('.bitems'), d=document.createElement('div'); d.className='bitem'; d.innerHTML='<input name="desc" dir="auto" placeholder="البيان"><input name="qty" type="number" min="0" step="any" value="1"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة"><button type="button" class="linkbtn" data-brm>×</button>'; w.appendChild(d); d.firstChild.focus(); return; }
-    if(b.hasAttribute('data-brm')){ var f=b.closest('.bform'); if(f.querySelectorAll('.bitem').length>1) b.closest('.bitem').remove(); bformSync(f); return; }
+    if(b.hasAttribute('data-badd')){ var d=bRow({}); b.closest('.bgrp').querySelector('.bitems').appendChild(d); d.firstChild.focus(); return; }
+    if(b.hasAttribute('data-brm')){ var f=b.closest('.bform'), g=b.closest('.bgrp'); if(g.querySelectorAll('.bitem').length>1) b.closest('.bitem').remove(); else g.querySelectorAll('.bitem input').forEach(function(i){ i.value=i.name==='qty'?1:''; }); bSug(f); bformSync(f); return; }
+    if(b.dataset.bsc!==undefined){ var f2=b.closest('.bform'), sc=f2._sc, k=b.dataset.bsc, P=bPN(f2);
+      if(k==='*'){ sc.all=!sc.all; if(!sc.all){ sc.keys={'':sc.keys['']}; } }
+      else if(sc.all&&k){ sc.all=false; P.forEach(function(p){ sc.keys[p.id]=p.id!==k; }); }
+      else sc.keys[k]=!sc.keys[k];
+      bGroups(f2); return; }
+    if(b.dataset.bsug){ var g2=b.closest('.bgrp'), empty=[].filter.call(g2.querySelectorAll('.bitem'),function(r){ return !r.children[0].value.trim(); })[0], r2=empty||bRow({}); if(!empty) g2.querySelector('.bitems').appendChild(r2);
+      r2.children[0].value=b.dataset.bsug; r2.children[2].focus(); bSug(b.closest('.bform')); bformSync(b.closest('.bform')); return; }
     if(b.dataset.bopen){ BOPEN=b.dataset.bopen; BFORM=null; route(); renderBilling(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.dataset.bord){ var ob=ORDERS.filter(function(o){ return o.code===b.dataset.bord; })[0]; if(ob){ OOPEN=ob.key; OPICK=true; } OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     if(b.dataset.bedit){ BFORM={id:b.dataset.bedit}; renderBilling(); return; }
