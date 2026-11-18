@@ -1,4 +1,4 @@
-import { isAdmin, json, cookie, randHex, pbkdf2, limited, SITE, h, sendMail, telegram, greet, mail, num, rows, steps, later, accountMail, deviceInfo, seenDevice, withCookie } from "../_lib/shared.js";
+import { isAdmin, json, cookie, randHex, pbkdf2, limited, SITE, h, sendMail, telegram, greet, mail, num, rows, steps, later, accountMail, deviceInfo, seenDevice, withCookie, brandKit, brandZip } from "../_lib/shared.js";
 // a team member's security e-mails (new device, password changed), sent after the answer
 function tellMember(ctx, u, kind, x){ return later(ctx, (async () => { const m = accountMail(kind, u.lang === "en" ? "en" : "ar", u.name, x); if (m) await sendMail(ctx.env, u.email, m.subject, m.html); })()); }
 // The Eyeblink team: people who apply, are tried, sign a collaboration agreement, and then work on tasks the studio gives them.
@@ -58,8 +58,28 @@ function publicMember(u){ return { email: u.email, name: u.name, role: u.role, r
 async function sessionCookie(env, email, remember = true){ const t = randHex(24); await env.EB.put("tsess:" + t, email, { expirationTtl: remember ? TSESS_DAYS * 86400 : 86400 });
   return "eb_t=" + t + "; Path=/; HttpOnly; Secure; SameSite=Lax" + (remember ? "; Max-Age=" + TSESS_DAYS * 86400 : ""); }
 
+// the brand library of the client a member's task is for: logos, colours, fonts and style, to read and download (never the client's name or account)
+async function taskBrand(request, env, tid){
+  const u = await member(request, env); if (!u || !env.DB) return null;
+  const t = await kvJSON(env, "ttask:" + String(tid || "").slice(0, 40)); if (!t || t.member !== u.email) return null;
+  const p = t.workTask ? await env.DB.prepare("SELECT p.client_email AS e FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.ref=?").bind(t.workTask).first()
+    : t.projectId ? await env.DB.prepare("SELECT client_email AS e FROM projects WHERE id=?").bind(t.projectId).first() : null;
+  if (!p || !p.e) return null;
+  return { t, kit: await brandKit(env.DB, p.e) };
+}
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
+  if (q.get("brand")) { const b = await taskBrand(request, env, q.get("brand")); if (!b) return json({ ok: true, brand: null });
+    const k = b.kit, has = k.assets.length || k.colors.length || k.fonts.length || k.style;
+    return json({ ok: true, brand: has ? { colors: k.colors, fonts: k.fonts, style: k.style, music: k.music,
+      assets: k.assets.map(a => ({ id: a.id, kind: a.kind, title: a.title, size: a.size, type: a.type, url: "/api/team?bfile=" + encodeURIComponent(b.t.id) + "&a=" + a.id })) } : null }); }
+  if (q.get("bzip")) { const b = await taskBrand(request, env, q.get("bzip")); if (!b) return new Response("not found", { status: 404 }); return brandZip(env, b.kit, ""); }
+  if (q.get("bfile")) { const b = await taskBrand(request, env, q.get("bfile")), a = b && b.kit.assets.find(x => x.id === q.get("a"));
+    const o = a && env.R2 ? await env.R2.get(a.key) : null; if (!o) return new Response("not found", { status: 404 });
+    const hd = new Headers(); o.writeHttpMetadata(hd); const inline = /^image\/(jpeg|png|webp|gif)$/.test(hd.get("content-type") || "") && !q.get("dl");
+    hd.set("x-content-type-options", "nosniff"); hd.set("content-security-policy", "sandbox; default-src 'none'; img-src 'self'"); hd.set("cache-control", "private, max-age=3600");
+    hd.set("content-disposition", (inline ? "inline" : "attachment") + "; filename*=UTF-8''" + encodeURIComponent(a.title || a.key.split("/").pop()));
+    return new Response(o.body, { headers: hd }); }
   if (q.get("open")) { const s = await settingsOf(env); return json({ ok: true, open: !!s.open, roles: s.open ? s.roles.filter(r => ROLES.includes(r)) : [], staff: STAFF_ROLES, intro: s.open ? s.intro || "" : "", fields: cleanFields(s.fields), tools: cleanTools(s.tools) }); }
   if (q.get("me")) {
     const u = await member(request, env); if (!u) return json({ ok: false }, 401);

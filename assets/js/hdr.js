@@ -43,7 +43,9 @@
   // the workspace is an app: no site menu in its bar; the way back to the site is in the account menu
   function apply(){
     var u=S&&S.u, cl=u&&u.role==='client';
-    acct.classList.toggle('in',!!u); bar.classList.toggle('is-client',!!cl); try{ window.dispatchEvent(new CustomEvent('eb:who',{detail:u||null})); }catch(_){} if(u){ acct.title=u.name; acct.setAttribute('aria-haspopup','menu'); acct.setAttribute('aria-expanded','false'); } else { acct.removeAttribute('aria-haspopup'); acct.removeAttribute('aria-expanded'); }
+    acct.classList.toggle('in',!!u); bar.classList.toggle('is-client',!!cl);
+    // the account's photo in place of the person icon
+    var pi=acct.querySelector('.acct-img'); if(u&&u.pic){ if(!pi){ pi=document.createElement('img'); pi.className='acct-img'; pi.alt=''; acct.appendChild(pi); } if(pi.getAttribute('src')!==u.pic) pi.src=u.pic; acct.classList.add('has-pic'); } else { if(pi) pi.remove(); acct.classList.remove('has-pic'); } try{ window.dispatchEvent(new CustomEvent('eb:who',{detail:u||null})); }catch(_){} if(u){ acct.title=u.name; acct.setAttribute('aria-haspopup','menu'); acct.setAttribute('aria-expanded','false'); } else { acct.removeAttribute('aria-haspopup'); acct.removeAttribute('aria-expanded'); }
     // the workspace link: top bar (first item) + mobile dock
     var li=links&&links.querySelector('.ws-li');
     if(cl&&links&&!li){ li=document.createElement('li'); li.className='ws-li'; li.innerHTML='<a class="ws-link eb-metal" href="'+WS+'"'+(PAGE==='workspace'?' aria-current="page"':'')+'><i aria-hidden="true"></i><span>'+T.ws+'</span></a>'; links.insertBefore(li,links.firstChild); }

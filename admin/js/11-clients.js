@@ -107,8 +107,10 @@
     var D=P.d, c=D.client||{}, u=D.user, email=P.email, isCl=u.role==='client', ords=ordersOf(email), listC=(CL&&CL.clients||[]).filter(function(x){ return x.email===email; })[0]||{};
     var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,brand:D.brand?D.brand.assets.length+D.brand.colors.length+D.brand.fonts.length:0,support:supOf(email).length,log:D.activity.length};
     var head='<section class="sec cp-head"><div class="cp-top"><button class="btn sm" type="button" data-pclose>‹ كل العملاء</button>'+(P.loading?'<span class="small muted">يُحدَّث…</span>':'')+'</div>'+
-      '<div class="cph2">'+avatar({name:c.name||u.name,email:email,logo_url:c.logo_url},true)+'<div class="cp-id"><h2>'+esc(c.name||u.name||email)+'</h2>'+(c.company?'<div>'+esc(c.company)+'</div>':'')+
+      '<div class="cph2"><div class="cp-av"><button type="button" class="cp-av-b" data-avset aria-label="'+(c.logo_url?'غيّر الصورة':'ارفع صورة')+'">'+avatar({name:c.name||u.name,email:email,logo_url:c.logo_url},true)+
+        '<i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></i></button><input type="file" hidden data-avfile accept="image/png,image/jpeg,image/webp"></div><div class="cp-id"><h2>'+esc(c.name||u.name||email)+'</h2>'+(c.company?'<div>'+esc(c.company)+'</div>':'')+
         '<div class="small muted"><span dir="ltr" style="user-select:all">'+esc(email)+'</span>'+(c.phone?' · <span dir="ltr">'+esc(c.phone)+'</span>':'')+(c.id?' · <span class="code">'+esc(c.id)+'</span>':'')+'</div>'+
+        '<div class="cp-avact"><button class="btn sm" type="button" data-avset>'+(c.logo_url?'غيّر الصورة':'ارفع صورة')+'</button>'+(brandPic(D)?'<button class="btn sm" type="button" data-avbrand>خذها من مكتبة الهوية</button>':'')+(c.logo_url?'<button class="btn sm danger" type="button" data-avdel>احذف الصورة</button>':'')+'</div>'+
         '<div class="cp-chips">'+acctChip({account:D.account?{role:u.role}:null})+'<span class="rpill st-'+esc(c.status||'active')+'">'+esc(CST[c.status||'active'])+'</span>'+(isCl&&u.clientSince?'<span class="small muted">متعاقد منذ '+esc(new Date(u.clientSince).toLocaleDateString('ar'))+'</span>':'')+'</div></div>'+
         '<div class="actions client cp-acts">'+'<button class="btn sm" type="button" data-cedit>'+(PEDIT?'إغلاق التعديل':'تعديل البيانات')+'</button>'+
           (D.account?(isCl?'':'<button class="btn sm primary" type="button" data-urole="'+esc(email)+'" data-to="client">ترقية إلى عميل متعاقد</button>'):'<button class="btn sm primary" type="button" data-cready>تجهيز حسابه وإصدار بيانات الدخول</button>')+
@@ -120,7 +122,7 @@
           '</div></details>'+
           '<div class="newpw small" hidden></div></div></div>'+
       (PEDIT?'<form class="cl-edit" id="clEdit" novalidate><div class="row"><div class="field"><label>الاسم</label><input name="name" dir="auto" value="'+esc(c.name||u.name||'')+'"></div><div class="field"><label>الشركة أو العلامة</label><input name="company" dir="auto" value="'+esc(c.company||'')+'"></div></div>'+
-        '<div class="row"><div class="field"><label>الهاتف أو واتساب</label><input name="phone" dir="ltr" value="'+esc(c.phone||'')+'"></div><div class="field"><label>رابط الشعار أو الصورة</label><input name="logo_url" dir="ltr" placeholder="https://" value="'+esc(c.logo_url||'')+'"></div>'+
+        '<div class="row"><div class="field"><label>الهاتف أو واتساب</label><input name="phone" dir="ltr" value="'+esc(c.phone||'')+'"></div>'+
         '<div class="field"><label>حالة التعامل</label><select name="status">'+Object.keys(CST).map(function(k){ return '<option value="'+k+'"'+((c.status||'active')===k?' selected':'')+'>'+CST[k]+'</option>'; }).join('')+'</select></div></div>'+
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea name="notes" dir="auto" rows="3">'+esc(c.notes||'')+'</textarea></div><div class="actions"><button class="btn primary sm" type="submit">حفظ البيانات</button></div></form>'
         :(c.notes?'<div class="cp-notes"><span class="small muted">ملاحظات داخلية</span><p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p></div>':''))+
@@ -253,7 +255,7 @@
         return accReq({action:'createAccount',email:em,name:nm,lang:lang,mail:E.mail.checked},null).then(function(r){
           return proj().then(function(){ PKG={email:em,name:nm,password:r.password,link:r.link,lang:r.lang,phone:ph,project:pn,sent:r.sent}; done('جاهز: أرسل للعميل بيانات الدخول'); }); },function(){ done(); });
       }).catch(function(){ b.disabled=false; }); return; }
-    if(f.id==='clEdit'){ creq({action:'clientSave',email:PROF.email,name:E.name.value.trim(),company:E.company.value.trim(),phone:E.phone.value.trim(),logo_url:E.logo_url.value.trim(),status:E.status.value,notes:E.notes.value},b,'حُفظت بيانات العميل').catch(function(){}); return; }
+    if(f.id==='clEdit'){ creq({action:'clientSave',email:PROF.email,name:E.name.value.trim(),company:E.company.value.trim(),phone:E.phone.value.trim(),status:E.status.value,notes:E.notes.value},b,'حُفظت بيانات العميل').catch(function(){}); return; }
     if(f.id==='clProj'){ if(!E.name.value.trim()){ toast('اكتب اسم المشروع',true); return; }
       creq({action:'project',client_email:PROF.email,name:E.name.value.trim(),type:E.type.value,start_date:E.start_date.value,end_date:E.end_date.value,quota:E.quota.value,description:E.description.value.trim()},b,'أُنشئ المشروع').catch(function(){}); return; }
     if(f.id==='clTask'){ if(!E.title.value.trim()){ toast('اكتب عنوان المهمة',true); return; }
@@ -351,7 +353,19 @@
     [].forEach.call(document.querySelectorAll('.cp-more[open]'),function(d){ if(!d.contains(e.target)) d.open=false; }); });
 
   // ---- the client's brand library: the studio can fill it in or correct it (the client sees the same library in the workspace) ----
-  var BKIND={logo_dark:'شعار على خلفية داكنة',logo_light:'شعار على خلفية فاتحة',vector:'ملفات متجهة',font:'ملفات الخطوط',other:'أخرى'};
+  var BKIND={logo_bg:'الشعار على خلفية',logo_clear:'الشعار شفاف',vector:'ملفات فيكتور',font:'ملفات الخطوط',other:'أخرى'};
+  var AVL={title:'صورة العميل',save:'احفظ الصورة',cancel:'إلغاء',zoom:'التكبير'};
+  // the picture «take it from the brand library» uses: the transparent logo first, then the logo on its background (images only)
+  function brandPic(D){ var a=((D.brand||{}).assets||[]).filter(function(x){ return /^image\/(png|jpeg|webp)$/.test(x.type||''); });
+    return a.filter(function(x){ return x.kind==='logo_clear'; })[0]||a.filter(function(x){ return x.kind==='logo_bg'; })[0]||null; }
+  function avSave(data,btn,msg){ return creq({action:'clientAvatar',email:PROF.email,data:data},btn,msg).catch(function(){}); }
+  function avFrom(src,btn){ if(!window.EBCrop) return; EBCrop(src,AVL).then(function(u){ if(u) avSave(u,btn,'حُفظت الصورة'); },function(){ toast('تعذّر فتح الصورة',true); }); }
+  document.addEventListener('click',function(e){ if(TAB!=='clients'||!PROF) return; var b;
+    if((b=e.target.closest('[data-avset]'))){ var inp=document.querySelector('[data-avfile]'); if(inp) inp.click(); return; }
+    if((b=e.target.closest('[data-avbrand]'))){ var a=brandPic(PROF.d||{}); if(a) avFrom(String(a.url).replace(/^https?:\/\/[^\/]+/,''),b); return; }
+    if((b=e.target.closest('[data-avdel]'))){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف'; return; } avSave(null,b,'حُذفت الصورة'); } });
+  document.addEventListener('change',function(e){ var inp=e.target; if(TAB!=='clients'||!inp.hasAttribute('data-avfile')||!inp.files.length) return; var f=inp.files[0]; inp.value=''; avFrom(f,null); });
+  function fsize(n){ return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
   function pBrand(D){ var B=D.brand||{colors:[],fonts:[],style:'',music:'',assets:[]}, rel=function(u){ return String(u||'').replace(/^https?:\/\/[^\/]+/,''); };
     return '<section class="sec cp-brand"><div class="ph"><h3>مكتبة الهوية</h3>'+(B.updated_at?'<span class="small muted">آخر تعديل '+esc(ago2(B.updated_at))+'</span>':'')+'</div>'+
       '<p class="hint">ما تكتبه هنا يظهر للعميل في صفحة «مكتبة الهوية»، ويدخل تلقائياً في موجز كل مهمة جديدة.</p>'+
@@ -362,7 +376,10 @@
         '<div class="actions"><button class="btn primary sm" type="submit">حفظ مكتبة الهوية</button></div></form>'+
       '<h4>الملفات</h4><div class="cp-bup"><select data-bkind aria-label="نوع الملف">'+Object.keys(BKIND).map(function(k){ return '<option value="'+k+'">'+BKIND[k]+'</option>'; }).join('')+'</select>'+
         '<button class="btn sm" type="button" data-bpick>+ رفع ملفات</button><input type="file" multiple hidden data-bfile><span class="small muted" data-bprog></span></div>'+
-      (B.assets.length?'<div class="cp-bfiles">'+B.assets.map(function(a){ return '<div class="wfi"><span class="tag">'+esc(BKIND[a.kind]||a.kind)+'</span> <a href="'+esc(rel(a.url))+'?dl=1">'+esc(a.title)+'</a> <button class="btn sm danger" type="button" data-bdel="'+esc(a.id)+'">حذف</button></div>'; }).join('')+'</div>'
+      (B.assets.length?'<div class="cp-bfiles">'+B.assets.map(function(a){ var img=/^image\/(png|jpeg|webp|gif)$/.test(a.type||'');
+          return '<div class="wfi bfi'+(a.kind==='logo_clear'?' clear':'')+'">'+(img?'<span class="bth"><img src="'+esc(rel(a.url))+'" alt="" loading="lazy" onload="var m=this.closest(\'.bfi\').querySelector(\'[data-dim]\');if(m)m.textContent=this.naturalWidth+\'×\'+this.naturalHeight"></span>':'')+
+            '<span class="tag">'+esc(BKIND[a.kind]||a.kind)+'</span> <a href="'+esc(rel(a.url))+'?dl=1">'+esc(a.title)+'</a> <span class="small muted bmeta" dir="ltr">'+esc((a.title.split('.').pop()||'').toUpperCase().slice(0,5))+(img?' · <span data-dim></span>':'')+(a.size?' · '+fsize(a.size):'')+'</span> <button class="btn sm danger" type="button" data-bdel="'+esc(a.id)+'">حذف</button></div>'; }).join('')+'</div>'+
+          '<p><a class="btn sm" href="'+API+'/work?admin=1&brandZip='+encodeURIComponent(PROF.email)+'">تحميل المكتبة كاملة (ZIP)</a></p>'
         :'<div class="empty small">لا توجد ملفات بعد.</div>')+'</section>'; }
   document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||f.id!=='clBrand') return; e.preventDefault(); var E=f.elements, bad=[];
     var colors=E.colors.value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){ var m=/^(#?[0-9a-f]{6})\s*(.*)$/i.exec(l); if(!m){ bad.push(l); return null; } return {hex:(m[1][0]==='#'?'':'#')+m[1].toUpperCase(),name:m[2].trim()}; }).filter(Boolean);
@@ -373,10 +390,17 @@
     if((b=e.target.closest('[data-bpick]'))){ b.parentNode.querySelector('[data-bfile]').click(); return; }
     if((b=e.target.closest('[data-bdel]'))){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟'; return; } creq({action:'brandAssetDel',id:b.dataset.bdel},b,'حُذف الملف').catch(function(){}); } });
   document.addEventListener('change',function(e){ var inp=e.target; if(TAB!=='clients'||!inp.hasAttribute('data-bfile')||!inp.files.length) return;
-    var box=inp.parentNode, kind=box.querySelector('[data-bkind]').value, prog=box.querySelector('[data-bprog]'), q=[].slice.call(inp.files), n=q.length, ok=0;
+    var box=inp.parentNode, kind=box.querySelector('[data-bkind]').value, prog=box.querySelector('[data-bprog]'), q=[].slice.call(inp.files), n=q.length, ok=0, kindOf={};
+    if(kind==='logo_clear'&&window.EBAlpha){ var files=q.slice(); inp.value='';
+      Promise.all(files.map(EBAlpha)).then(function(r){ var opaque=files.filter(function(f,i){ return r[i]===false; });
+        if(!opaque.length) return go();
+        ask({tone:'warn',title:opaque.length>1?'هذه الصور لها خلفية':'هذه الصورة لها خلفية',text:opaque.map(function(f){ return f.name; }).join('، ')+': ليست شفافة. الأنسب وضعها في «الشعار على خلفية»، و«إلغاء» يُبقيها في «الشعار شفاف».',ok:'ضعها في «على خلفية»'})
+          .then(function(y){ if(y) opaque.forEach(function(f){ kindOf[f.name]='logo_bg'; }); go(); }); });
+      return; }
+    go(); function go(){
     var step=function(){ var f=q.shift(); if(!f){ prog.textContent=ok+' / '+n; toast(ok===n?'رُفعت الملفات':'رُفع '+ok+' من '+n,ok!==n); loadProfile(PROF.email); return; }
-      window.EBUp.upload(f,{scope:'brand',kind:kind,client_email:PROF.email},function(x){ prog.textContent=f.name+' · '+Math.round(x*100)+'%'; }).then(function(){ ok++; step(); },function(){ step(); }); };
-    inp.value=''; step(); });
+      window.EBUp.upload(f,{scope:'brand',kind:kindOf[f.name]||kind,client_email:PROF.email},function(x){ prog.textContent=f.name+' · '+Math.round(x*100)+'%'; }).then(function(){ ok++; step(); },function(){ step(); }); };
+    inp.value=''; step(); } });
 
   /* ---------------- clean-up (19 Nov): the delete window, for a client, several clients, a project or a team member ----------------
      Archive (or pause) where it exists, or delete for good: the real counts first, the e-mail (or the word «احذف») typed back. */

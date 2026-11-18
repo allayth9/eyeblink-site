@@ -27,4 +27,8 @@
     }).then(function(r){ if(!r.ok) throw r; onp(1); return r.file; });
   }
   window.EBUp={upload:upload};
+  // does this picture really have see-through pixels? true / false, or null when the browser cannot tell (SVG, HEIC…)
+  window.EBAlpha=function(f){ if(/^image\/jpe?g$/.test(f.type)) return Promise.resolve(false); if(!/^image\/(png|webp|gif)$/.test(f.type)||!window.createImageBitmap) return Promise.resolve(null);
+    return createImageBitmap(f).then(function(bm){ var k=Math.min(1,256/Math.max(bm.width,bm.height)), w=Math.max(1,Math.round(bm.width*k)), h=Math.max(1,Math.round(bm.height*k)), c=document.createElement('canvas'); c.width=w; c.height=h;
+      var x=c.getContext('2d'); x.drawImage(bm,0,0,w,h); var d=x.getImageData(0,0,w,h).data; for(var i=3;i<d.length;i+=4) if(d[i]<250) return true; return false; }).catch(function(){ return null; }); };
 })();

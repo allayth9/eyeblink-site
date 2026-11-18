@@ -12,8 +12,8 @@ import { s3Ready, r2Sign } from "../../_lib/s3.js";
 //   GET  /api/up/<key> → the file (byte ranges), for whoever may read that project or brand library
 // Keys say where a file belongs, so every later check is made from the key alone:
 //   p/<project id>/<category>/<16 hex>/<safe name>     b/<16 hex of the client's e-mail hash>/<kind>/<16 hex>/<safe name>
-const CATS = ["brand","raw","reference","document","other"], KINDS = ["logo_dark","logo_light","vector","font","other"];
-const KEY = /^(p\/p_[a-f0-9]{6,24}\/(brand|raw|reference|document|other)|b\/[a-f0-9]{16}\/(logo_dark|logo_light|vector|font|other))\/[a-f0-9]{16}\/[a-z0-9][a-z0-9.\-_]{0,80}$/;
+const CATS = ["brand","raw","reference","document","other"], KINDS = ["logo_bg","logo_clear","vector","font","other"];   // logo_dark / logo_light: older files, still read
+const KEY = /^(p\/p_[a-f0-9]{6,24}\/(brand|raw|reference|document|other)|b\/[a-f0-9]{16}\/(logo_bg|logo_clear|logo_dark|logo_light|vector|font|other))\/[a-f0-9]{16}\/[a-z0-9][a-z0-9.\-_]{0,80}$/;
 const EXT = /\.(mp4|mov|m4v|webm|mxf|avi|mp3|wav|aac|m4a|aif|aiff|flac|jpg|jpeg|png|webp|gif|heic|tif|tiff|psd|ai|eps|svg|pdf|doc|docx|ppt|pptx|xls|xlsx|txt|rtf|zip|rar|7z|ttf|otf|woff|woff2|prproj|aep|drp|srt|vtt|csv|json)$/i;
 const MAX = 5 * 1024 ** 3, BIG = 100 * 1024 ** 2;
 const MIB = 1024 * 1024, partOf = size => Math.max(16 * MIB, Math.ceil(size / 9000 / MIB) * MIB);   // ≥ 5 MiB, and under R2's 10,000 parts
@@ -81,8 +81,9 @@ async function record(env, key, obj, who, d){
   if (parts[0] === "b") {
     const email = who.email || String(d.client_email || "").toLowerCase();
     if (await brandOf(email) !== parts[1]) throw new Error("brand owner");   // the studio names the client; the key must be that client's
-    await D.prepare("INSERT INTO brand_assets (id, email, kind, title, key, size, type, created_at) VALUES (?,?,?,?,?,?,?,?)").bind(id, email, parts[2], title, key, obj.size, (obj.httpMetadata && obj.httpMetadata.contentType) || "", at).run();
-    return { id, kind: parts[2], title, url, size: obj.size };
+    const kind = ({ logo_dark: "logo_bg", logo_light: "logo_clear" })[parts[2]] || parts[2];
+    await D.prepare("INSERT INTO brand_assets (id, email, kind, title, key, size, type, created_at) VALUES (?,?,?,?,?,?,?,?)").bind(id, email, kind, title, key, obj.size, (obj.httpMetadata && obj.httpMetadata.contentType) || "", at).run();
+    return { id, kind, title, url, size: obj.size };
   }
   const p = await D.prepare("SELECT id, client_email FROM projects WHERE id=?").bind(parts[1]).first();
   // an attachment to a task (reference or raw material): the task must belong to this same project, otherwise it stays a plain project file

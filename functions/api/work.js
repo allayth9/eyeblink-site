@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail, setAvatar, brandKit, brandZip } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -137,6 +137,9 @@ const MIGRATIONS = [
   "ALTER TABLE notify_prefs ADD COLUMN tg_cats TEXT NOT NULL DEFAULT '{}'",
   "ALTER TABLE projects ADD COLUMN cadence TEXT",
   "ALTER TABLE invoices ADD COLUMN scope TEXT",
+  // logos are now «on a background» or «transparent»: the dark ones had a background; a light one moves to transparent when its format can be (the key keeps its old folder)
+  "UPDATE brand_assets SET kind='logo_bg' WHERE kind='logo_dark'",
+  "UPDATE brand_assets SET kind=CASE WHEN type IN ('image/png','image/svg+xml','image/webp','image/gif') THEN 'logo_clear' ELSE 'logo_bg' END WHERE kind='logo_light'",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -213,12 +216,7 @@ const fmtDate = (d, lang) => { try { return new Date(d + "T12:00:00Z").toLocaleD
 // ==== extensions (phase 7) ====
 const BRIEF_KEYS = ["goal","audience","format","duration","tone","message","cta","music","brand"];
 // the brand library, read for the client page and for a task that uses it
-async function brandOf(D, email){
-  const k = await D.prepare("SELECT * FROM brand_kits WHERE email=?").bind(email).first() || {};
-  const j = v => { try { return JSON.parse(v || "[]"); } catch { return []; } };
-  const assets = (await D.prepare("SELECT id, kind, title, key, size, type, created_at FROM brand_assets WHERE email=? AND deleted_at IS NULL ORDER BY created_at").bind(email).all()).results.map(a => ({ ...a, url: SITE + "/api/up/" + a.key }));
-  return { colors: j(k.colors), fonts: j(k.fonts), style: k.style || "", music: k.music || "", assets, updated_at: k.updated_at || null };
-}
+async function brandOf(D, email){ const k = await brandKit(D, email); k.assets = k.assets.map(a => ({ ...a, url: SITE + "/api/up/" + a.key })); return k; }
 // a task that uses the library carries a short summary in its brief and the library's files among its links (the studio sees both as they are today)
 function brandBrief(b, ar){
   const out = [];
@@ -823,6 +821,7 @@ async function purgeClient(env, D, email){
   const snap = { email, at: now(), rows: {}, kv: {} };
   for (const [t, c] of PURGE) snap.rows[t] = (await D.prepare(`SELECT * FROM ${t} WHERE ${c}=?`).bind(email).all()).results;
   snap.kv.user = await env.EB.get("user:" + email);
+  await setAvatar(env, email, null).catch(() => {});   // the photo is public media: it goes first
   const refs = new Set(snap.rows.tasks.map(t => t.ref));
   if (env.R2) { await env.R2.put("backups/purge/" + Date.now() + "-" + email.replace(/[^a-z0-9.@_-]/g, "_") + ".json", JSON.stringify(snap)).catch(() => {});
     for (const f of snap.rows.files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
@@ -1006,6 +1005,7 @@ export async function onRequestGet(ctx) {
     projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results,
     recurring: (await D.prepare(`SELECT r.id, r.title, r.every, r.dow, r.dom, r.due_days, r.next_run, r.project_id, p.name AS project_name FROM recurring r JOIN projects p ON p.id=r.project_id WHERE r.project_id IN ${MINE} AND r.active=1`).bind(e).all()).results });
   if (q.get("view") === "brand") return json({ ok: true, brand: await brandOf(D, e) });
+  if (q.get("view") === "brandZip") return brandZip(env, await brandKit(D, e), u.name || e.split("@")[0]);
   if (q.get("view") === "notifications") return json({ ok: true, unread: await unreadN(), items: (await D.prepare("SELECT * FROM notifications WHERE recipient=? ORDER BY id DESC LIMIT 40").bind(e).all()).results.map(parseA) });
   if (q.get("report") || q.get("reportDoc")) {
     const p = await myProject(D, e, clip(q.get("report") || q.get("reportDoc"), 40)); if (!p) return q.get("reportDoc") ? htmlRes("not found", 404) : json({ ok: false }, 404);
@@ -1053,18 +1053,20 @@ export async function onRequestGet(ctx) {
   const moves = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.change_request, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.change_request LIKE '%"pending"%' LIMIT 6`).bind(e).all()).results.map(cparse).filter(t => t.change_request && t.change_request.status === "pending");
   const tips = (await D.prepare("SELECT k FROM client_tips WHERE email=?").bind(e).all()).results.map(r => r.k);
+  // what the library still lacks for a clean delivery: a transparent logo, and the colours
+  const gap = await D.prepare("SELECT (SELECT COUNT(*) FROM brand_assets WHERE email=?1 AND deleted_at IS NULL AND kind IN ('logo_clear','vector')) AS clear, (SELECT COUNT(*) FROM brand_kits WHERE email=?1 AND colors<>'[]') AS colors").bind(e).first();
   const brandN = (await D.prepare("SELECT (SELECT COUNT(*) FROM brand_assets WHERE email=?1 AND deleted_at IS NULL) + (SELECT COUNT(*) FROM brand_kits WHERE email=?1 AND (colors<>'[]' OR fonts<>'[]' OR style<>'' OR music<>'')) AS n").bind(e).first()).n;
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
   const bills = await D.prepare("SELECT COUNT(*) AS open, SUM(CASE WHEN due_date<?2 THEN 1 ELSE 0 END) AS overdue FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(e, today()).first();
-  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, brand_n: brandN, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
+  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, brand_n: brandN, brand_gap: { clear: !gap.clear, colors: !gap.colors }, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
 }
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1099,7 +1101,7 @@ export async function onRequestPost(ctx) {
     if (env.R2) await env.R2.delete(a.key).catch(() => {});
     return json({ ok: true });
   }
-  if (d.action === "tip") { if (!["welcome","player"].includes(d.k)) return json({ ok: false }, 400);
+  if (d.action === "tip") { if (!["welcome","player","brandgap"].includes(d.k)) return json({ ok: false }, 400);
     await D.prepare("INSERT OR IGNORE INTO client_tips (email, k, at) VALUES (?, ?, ?)").bind(u.email, d.k, at).run(); return json({ ok: true }); }
   if (d.action === "read") {
     if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient=? AND read_at IS NULL").bind(at, u.email).run();
@@ -1296,7 +1298,7 @@ async function ensureClients(D, list){   // a stable id for every client the stu
 async function allUsers(env){ const out = []; let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor });
     for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v);
-      out.push({ email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", lang: u.lang || "ar", created: u.createdAt || null, lastLogin: u.lastLogin || null, orders: (u.orders || []).length, clientSince: u.clientSince || null }); }
+      out.push({ email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", lang: u.lang || "ar", created: u.createdAt || null, lastLogin: u.lastLogin || null, orders: (u.orders || []).length, clientSince: u.clientSince || null, pic: u.pic || null }); }
     cursor = r.list_complete ? null : r.cursor; } while (cursor && out.length < 3000);
   return out; }
 async function clientsOverview(env, D){
@@ -1316,7 +1318,7 @@ async function clientsOverview(env, D){
   const emails = new Set(users.map(u => u.email).concat(rows.map(r => r.email)));
   const R = {}; rows.forEach(r => R[r.email] = r);
   return [...emails].map(e => { const r = R[e] || {}, u = U[e] || null, st = by[e] || row(e);
-    return { id: r.id || null, email: e, name: r.name || (u && u.name) || "", company: r.company || "", phone: r.phone || "", logo_url: r.logo_url || null, status: r.status || "active", archived_at: r.archived_at || null,
+    return { id: r.id || null, email: e, name: r.name || (u && u.name) || "", company: r.company || "", phone: r.phone || "", logo_url: r.logo_url || (u && u.pic) || null, status: r.status || "active", archived_at: r.archived_at || null,
       added: r.created_at || (u && u.created), account: u ? { role: u.role, lang: u.lang, created: u.created, lastLogin: u.lastLogin, orders: u.orders, clientSince: u.clientSince } : null, ...st,
       last_activity: [st.last_activity, u && u.lastLogin].filter(Boolean).sort().pop() || r.updated_at || null }; });
 }
@@ -1336,6 +1338,8 @@ async function adminGet(request, env, q){
     const projects = (await D.prepare("SELECT id, name, client_email, status FROM projects ORDER BY updated_at DESC").all()).results;
     return json({ ok: true, invoices, projects, clients: await clientsList(env), today: today() });
   }
+  if (q.get("brandZip")) { const em = clip(q.get("brandZip"), 254).toLowerCase(), c = await clientRow(D, em), uu = await userOf(env, em);
+    return brandZip(env, await brandKit(D, em), (c && (c.company || c.name)) || (uu && uu.name) || em.split("@")[0]); }
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=?").bind(clip(q.get("creportDoc"), 20)).first(); if (!r) return htmlRes("not found", 404);
     const u = (await userOf(env, r.email)) || { email: r.email, name: "" }; return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x) return htmlRes("not found", 404);
@@ -1642,11 +1646,17 @@ async function adminPost(ctx, d){
     if (env.R2) await env.R2.delete(a.key).catch(() => {});
     return json({ ok: true });
   }
+  if (d.action === "clientAvatar") {   // the studio sets or removes a client's photo (the same photo the client sets on their account page)
+    const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
+    if (!(await userOf(env, email)) && !(await clientRow(D, email))) return json({ ok: false, error: "client" }, 404);
+    const r = await setAvatar(env, email, d.data || null); return json(r, r.ok ? 200 : 400);
+  }
   if (d.action === "clientSave") {
     const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
     const name = clip(d.name, 120), old = await clientRow(D, email), u = await userOf(env, email);
     if (!old && !name && !u) return json({ ok: false, error: "name" }, 400);
-    const logo = clip(d.logo_url, 600), f = { name: name || (old && old.name) || (u && u.name) || "", company: clip(d.company, 120), phone: clip(d.phone, 40), logo_url: isUrl(logo) ? logo : null, notes: clip(d.notes, 4000),
+    // the photo is set on its own (clientAvatar); a save without logo_url keeps it
+    const logo = clip(d.logo_url, 600), f = { name: name || (old && old.name) || (u && u.name) || "", company: clip(d.company, 120), phone: clip(d.phone, 40), logo_url: d.logo_url === undefined ? ((old && old.logo_url) || (u && u.pic) || null) : (isUrl(logo) || logo.startsWith("/api/media/") ? logo : null), notes: clip(d.notes, 4000),
       status: CSTATUS.includes(d.status) ? d.status : (old ? old.status : "active") };
     if (old) await D.prepare("UPDATE clients SET name=?, company=?, phone=?, logo_url=?, notes=?, status=?, archived_at=?, updated_at=? WHERE id=?")
       .bind(f.name, f.company, f.phone, f.logo_url, f.notes, f.status, f.status === "archived" ? (old.archived_at || at) : null, at, old.id).run();

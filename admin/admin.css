@@ -969,3 +969,17 @@ html{-webkit-tap-highlight-color:transparent}
 .wdays span{display:inline-block;padding:7px 13px;border-radius:999px;border:1px solid rgba(var(--k-light-rgb),.14);background:rgba(var(--k-light-rgb),.04);color:var(--k-mist);font-size:13.5px;line-height:1.3;transition:background .2s,border-color .2s,color .2s}
 .wdays input:checked+span{background:rgba(var(--k-horizon-rgb),.14);border-color:rgba(var(--k-horizon-rgb),.55);color:var(--k-light)}
 .wdays input:focus-visible+span{outline:2px solid var(--k-horizon);outline-offset:2px}
+
+/* the client's photo in the profile: the picture is the button; three plain actions under the name */
+.cp-av{position:relative;flex:none}
+.cp-av-b{all:unset;cursor:pointer;display:block;position:relative;border-radius:18px}
+.cp-av-b:focus-visible{outline:2px solid var(--k-horizon);outline-offset:3px}
+.cp-av-b i{position:absolute;inset:auto -6px -6px auto;width:24px;height:24px;border-radius:50%;background:var(--k-light);display:grid;place-items:center;box-shadow:0 0 0 3px var(--k-card)}
+.cp-av-b i svg{width:12px;height:12px;fill:none;stroke:var(--k-night);stroke-width:1.8;stroke-linejoin:round}
+.cp-avact{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+/* brand files: a small preview, the transparent ones on a checkerboard */
+.bfi{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bth{width:56px;height:40px;border-radius:8px;overflow:hidden;flex:none;background:rgba(var(--k-light-rgb),.06);display:grid;place-items:center}
+.bth img{max-width:100%;max-height:100%;object-fit:contain}
+.bfi.clear .bth{background-color:var(--k-light);background-image:linear-gradient(45deg,rgba(var(--k-mist-rgb),.45) 25%,transparent 25%,transparent 75%,rgba(var(--k-mist-rgb),.45) 75%),linear-gradient(45deg,rgba(var(--k-mist-rgb),.45) 25%,transparent 25%,transparent 75%,rgba(var(--k-mist-rgb),.45) 75%);background-size:10px 10px;background-position:0 0,5px 5px}
+.bmeta{font-variant-numeric:tabular-nums}

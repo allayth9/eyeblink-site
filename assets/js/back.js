@@ -10,6 +10,7 @@
   // topmost first: [is it open?, how to close it]
   var OV=[
     // the panel
+    [function(){ return document.querySelector('.avc'); }, click('[data-avno]')],
     [function(){ return document.querySelector('.snd-ov'); }, click('[data-sno]')],
     [function(){ return document.querySelector('.cfm-ov'); }, click('[data-cfno]')],
     [function(){ return document.getElementById('cmdk'); }, function(el){ el.remove(); }],

@@ -470,4 +470,66 @@ export async function rulesOf(env){
   const dg = r.digest || {}; out.digest = { on: dg.on !== undefined ? !!dg.on : DIGEST.on, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(dg.time || "") ? dg.time : DIGEST.time,
     tg: dg.tg !== undefined ? !!dg.tg : DIGEST.tg, email: dg.email !== undefined ? !!dg.email : DIGEST.email, fri: dg.fri !== undefined ? !!dg.fri : DIGEST.fri, skipEmpty: dg.skipEmpty !== undefined ? !!dg.skipEmpty : DIGEST.skipEmpty };
   return out;
-}
+}
+
+// ---- the client's photo: one small square image, set by the client (account page) or by the studio (client profile); the latest wins ----
+// kept as public KV media under a random name (/api/media/av-…), on the account (user.pic) and on the client row (clients.logo_url)
+const AV_MAX = 400 * 1024;
+export function avatarType(b){ if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  if (b.length > 3 && b[0] === 0xFF && b[1] === 0xD8) return "image/jpeg"; if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return "image/png"; return ""; }
+export async function setAvatar(env, email, dataUrl){   // dataUrl: "data:image/…;base64,…" or null to remove → { ok, url } | { ok:false, error }
+  let bytes = null, type = "";
+  if (dataUrl) { const m = /^data:image\/(webp|jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl)); if (!m) return { ok: false, error: "type" };
+    try { bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); } catch { return { ok: false, error: "type" }; }
+    if (bytes.length > AV_MAX) return { ok: false, error: "size" }; type = avatarType(bytes); if (!type) return { ok: false, error: "type" }; }
+  const k = "user:" + email, v = await env.EB.get(k), u = v ? JSON.parse(v) : null;
+  const row = env.DB ? await env.DB.prepare("SELECT logo_url FROM clients WHERE email=?").bind(email).first().catch(() => null) : null;
+  let url = null;
+  if (bytes) { const key = "av-" + randHex(8) + (type === "image/png" ? ".png" : type === "image/jpeg" ? ".jpg" : ".webp"); await env.EB.put("media:" + key, bytes, { metadata: { type, size: bytes.length } }); url = "/api/media/" + key; }
+  for (const o of new Set([u && u.pic, row && row.logo_url])) if (o && o !== url && String(o).startsWith("/api/media/av-")) await env.EB.delete("media:" + String(o).slice(11));
+  if (u) { if (url) u.pic = url; else delete u.pic; await env.EB.put(k, JSON.stringify(u)); }
+  if (row) await env.DB.prepare("UPDATE clients SET logo_url=?, updated_at=? WHERE email=?").bind(url, new Date().toISOString(), email).run();
+  return { ok: true, url };
+}
+
+// ---- the brand library, as stored (files in R2 by key); each reader turns keys into the links it serves ----
+export async function brandKit(D, email){
+  const k = await D.prepare("SELECT * FROM brand_kits WHERE email=?").bind(email).first() || {};
+  const j = v => { try { return JSON.parse(v || "[]"); } catch { return []; } };
+  const assets = (await D.prepare("SELECT id, kind, title, key, size, type, created_at FROM brand_assets WHERE email=? AND deleted_at IS NULL ORDER BY created_at").bind(email).all()).results;
+  return { colors: j(k.colors), fonts: j(k.fonts), style: k.style || "", music: k.music || "", assets, updated_at: k.updated_at || null };
+}
+// the whole library as one .zip (stored, not compressed: logos and fonts are compressed already), with a text file of colours, fonts and style
+const ZDIR = { logo_bg: "logo-on-background", logo_clear: "logo-transparent", logo_dark: "logo-on-background", logo_light: "logo-transparent", vector: "vector", font: "fonts", other: "other" };
+const ZMAX = 90 * 1024 * 1024;   // shortcut: the zip is built in memory (an isolate has 128 MB); past this a file is listed in the text file instead
+let CRC = null;
+function crc32(b){ if (!CRC) { CRC = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+export function zipStore(files){   // [{ name, data: Uint8Array }] → Uint8Array
+  const enc = new TextEncoder(), local = [], central = []; let off = 0;
+  for (const f of files) { const nm = enc.encode(f.name), crc = crc32(f.data), n = f.data.length;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, n, true); h.setUint32(22, n, true); h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+    local.push(new Uint8Array(h.buffer), nm, f.data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, n, true); c.setUint32(24, n, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), nm); off += 30 + nm.length + n; }
+  const cl = central.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cl, true); e.setUint32(16, off, true);
+  const parts = [...local, ...central, new Uint8Array(e.buffer)], out = new Uint8Array(parts.reduce((a, x) => a + x.length, 0)); let p = 0; for (const x of parts) { out.set(x, p); p += x.length; } return out;
+}
+export async function brandZip(env, kit, label){
+  const files = [], left = [], used = new Set(); let total = 0;
+  for (const a of kit.assets) { if (total + (a.size || 0) > ZMAX) { left.push(a.title); continue; }
+    const o = env.R2 ? await env.R2.get(a.key) : null; if (!o) continue; const data = new Uint8Array(await o.arrayBuffer()); total += data.length;
+    let name = (ZDIR[a.kind] || "other") + "/" + String(a.title || a.key.split("/").pop()).replace(/[\/\\:*?"<>|]+/g, "-"), i = 1; while (used.has(name)) name = name.replace(/(\.[^.]*)?$/, m => "-" + (++i) + m); used.add(name);
+    files.push({ name, data }); }
+  const txt = ["Brand library · " + label, "",
+    kit.colors.length ? "Colours / الألوان\r\n" + kit.colors.map(c => c.hex + (c.name ? "  " + c.name : "")).join("\r\n") : "",
+    kit.fonts.length ? "Fonts / الخطوط\r\n" + kit.fonts.map(f => f.name + (f.use ? "  (" + f.use + ")" : "")).join("\r\n") : "",
+    kit.style ? "Style / الأسلوب\r\n" + kit.style : "", kit.music ? "Music / الموسيقى\r\n" + kit.music : "",
+    left.length ? "Too large for this file, download them one by one / ملفات أكبر من أن تُضمّ هنا:\r\n" + left.join("\r\n") : ""].filter(Boolean).join("\r\n\r\n");
+  files.unshift({ name: "brand.txt", data: new TextEncoder().encode("﻿" + txt) });
+  const slug = String(label || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40), fname = (slug ? slug + "-" : "") + "brand-library.zip";
+  return new Response(zipStore(files), { headers: { "content-type": "application/zip", "content-disposition": "attachment; filename=\"" + fname + "\"", "cache-control": "private, no-store" } });
+}

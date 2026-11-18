@@ -225,9 +225,23 @@
         if(j.ok){ ME.access=j.request; var rb=box.querySelector('.role'); if(rb){ rb.innerHTML=roleBlock(); bindRole(); } return; }
         f.querySelector('.msg').textContent=T.e[j.error]||T.e[j._net?'net':'wrong']; }); };
   }
+  // the account's photo: picked, placed in a circle (avcrop.js), saved; the header picks it up at once
+  var AV=AR?{add:'أضف صورة',change:'غيّر الصورة',del:'احذف الصورة',title:'صورة الحساب',save:'احفظ الصورة',cancel:'إلغاء',zoom:'التكبير',ok:'حُفظت الصورة',gone:'حُذفت الصورة',err:'تعذّر حفظ الصورة، جرّب صورة أخرى'}
+    :{add:'Add a photo',change:'Change photo',del:'Remove photo',title:'Account photo',save:'Save photo',cancel:'Cancel',zoom:'Zoom',ok:'Photo saved',gone:'Photo removed',err:'Could not save the photo. Try another one'};
+  function picDone(j,msg){ if(j&&j.ok){ ME.user.pic=j.url||null; try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); dash(); flash(msg); } else flash(AV.err); }
+  function flash(m){ if(window.EBToast) return EBToast(m); var t=document.createElement('div'); t.className='acct-toast'; t.setAttribute('role','status'); t.textContent=m; document.body.appendChild(t); setTimeout(function(){ t.remove(); },2600); }
+  function bindPic(){ var inp=document.getElementById('avIn'); if(!inp) return;
+    var pick=function(){ inp.click(); }; document.getElementById('avPick').onclick=pick; document.getElementById('avPick2').onclick=pick;
+    inp.onchange=function(){ var f=inp.files[0]; inp.value=''; if(!f||!window.EBCrop) return;
+      EBCrop(f,AV).then(function(u){ if(!u) return; return api('account',{action:'avatar',data:u}).then(function(j){ picDone(j,AV.ok); }); },function(){ flash(AV.err); }); };
+    var del=document.getElementById('avDel'); if(del) del.onclick=function(){ if(del.dataset.armed!=='1'){ del.dataset.armed='1'; del.textContent=AR?'تأكيد الحذف':'Confirm'; return; }
+      del.disabled=true; api('account',{action:'avatar',data:null}).then(function(j){ picDone(j,AV.gone); }); }; }
   function dash(){
     var u=ME.user; LIST=ME.orders||[];
-    box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted acct-mail" dir="ltr" style="text-align:start">'+esc(u.email)+(u.unverified?' <button type="button" class="vchip" id="vsSend" dir="auto" title="'+(AR?'أعد إرسال رابط التأكيد':'Send the confirmation link again')+'"><i aria-hidden="true"></i>'+(AR?'بانتظار التأكيد':'Awaiting confirmation')+'</button>':'')+'</p><div class="role">'+roleBlock()+'</div></div>'+
+    var ini=String(u.name||u.email||'?').trim().split(/\s+/).slice(0,2).map(function(w){ return w.charAt(0); }).join('').toUpperCase();
+    box.innerHTML='<div class="acct-head glass rv"><div class="acct-pic"><button type="button" class="acct-ph" id="avPick" aria-label="'+AV.change+'">'+(u.pic?'<img src="'+esc(u.pic)+'" alt="">':'<span>'+esc(ini)+'</span>')+
+      '<i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></i></button><input type="file" id="avIn" accept="image/png,image/jpeg,image/webp,image/heic" hidden>'+
+      '<div class="acct-pa"><button type="button" class="linkbtn" id="avPick2">'+(u.pic?AV.change:AV.add)+'</button>'+(u.pic?'<button type="button" class="linkbtn danger" id="avDel">'+AV.del+'</button>':'')+'</div></div><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted acct-mail" dir="ltr" style="text-align:start">'+esc(u.email)+(u.unverified?' <button type="button" class="vchip" id="vsSend" dir="auto" title="'+(AR?'أعد إرسال رابط التأكيد':'Send the confirmation link again')+'"><i aria-hidden="true"></i>'+(AR?'بانتظار التأكيد':'Awaiting confirmation')+'</button>':'')+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
 
       (u.role==='client'?'<a class="ws-entry glass rv" href="workspace"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
@@ -238,6 +252,7 @@
       if(j&&j.ok){ toast(j.already?(AR?'بريدك مؤكد بالفعل':'Your e-mail is already confirmed'):(AR?'أرسلنا رابطاً جديداً إلى بريدك':'We sent a new link to your e-mail')); }
       else { vs.disabled=false; toast(j&&j.error==='too many attempts'?(AR?'أُرسلت عدة روابط مؤخراً. حاول بعد قليل':'Several links were sent recently. Try again shortly'):(AR?'تعذّر الإرسال، حاول مرة أخرى':'Could not send. Try again')); } }); };
     if(u.verifyNotice){ u.verifyNotice=false; api('account',{action:'verifyNoticed'}); setTimeout(function(){ blink(u.email); },500); }
+    bindPic();
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing"><span class="dot"></span>'+T.seePricing+'</a></div>';

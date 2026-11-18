@@ -423,6 +423,9 @@
       draw(); rise(); }); }
 
   /* ---- new tasks: one or several, sent together ---- */
+  function gapNote(){ var g=DASH&&DASH.brand_gap; if(!g||!(g.clear||g.colors)||seen('brandgap')) return '';
+    return '<p class="wnote wbgap">'+(g.clear&&g.colors?BR.gapBoth:g.clear?BR.gapClear:BR.gapColors)+' <a href="#w/brand">'+BR.gapGo+'</a><button type="button" class="linkbtn" data-bgx>'+BR.gapX+'</button></p>'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-bgx]'); if(!b) return; markSeen('brandgap'); var p=b.closest('.wbgap'); if(p) p.remove(); });
   function newTasks(pid){
     var W=C().workspace||{}, types=L(W.taskTypes)||[];
     var go=function(projects){ var act=projects.filter(function(p){return p.status==='active'});
@@ -431,7 +434,7 @@
       var minD=new Date().toISOString().slice(0,10);
       host.innerHTML=head('new','NEW TASKS',U2.nw.h,U2.nw.p)+
         '<form class="wmulti form" id="wNew" novalidate><div class="wm-top wcard glass"><label>'+T.project+'<select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===pid?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></label>'+
-          '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p></div><datalist id="wTypes">'+types.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'+
+          '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p>'+gapNote()+'</div><datalist id="wTypes">'+types.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'+
           '<div class="wm-list"></div><div class="wm-add"><button type="button" class="wm-addb">'+ICO.plus+'<span>'+U2.nw.add+'</span></button><small class="muted">'+U2.nw.copy+'</small></div>'+
           '<div class="wm-bar glass"><span class="wm-count"></span><p class="msg" role="alert"></p><button class="btn btn-primary" type="submit">'+U2.nw.review+'</button></div></form>';
       var f=document.getElementById('wNew'), list=f.querySelector('.wm-list'), N=0;
@@ -564,14 +567,14 @@
 
   /* ---- uploads: straight from the browser to R2 (presigned), progress from XMLHttpRequest ---- */
   var BR=AR?{h:'مكتبة الهوية',p:'هويتك البصرية في مكان واحد. يعتمدها الاستوديو تلقائياً في كل مهمة جديدة.',seg:{projects:'المشاريع',brand:'مكتبة الهوية',reports:'التقارير'},
-      logos:'الشعارات',dark:'على خلفية داكنة',light:'على خلفية فاتحة',vector:'ملفات متجهة',colors:'لوحة الألوان المعتمدة',fonts:'الخطوط المعتمدة',style:'الأسلوب والموسيقى',
+      logos:'الشعارات',bg:'الشعار على خلفية',clear:'الشعار شفاف',vector:'ملفات فيكتور',bgH:'JPG · PNG',clearH:'PNG · SVG',vectorH:'SVG · AI · EPS · PDF',onL:'معاينة على خلفية فاتحة',onD:'معاينة على خلفية داكنة',zip:'تحميل المكتبة كاملة',opq:'هذه الصورة لها خلفية، فهي ليست شفافة:',opqN:'هذه الصور لها خلفية، فهي ليست شفافة:',move:'انقلها إلى «الشعار على خلفية»',keep:'أبقها هنا',gapBoth:'أضف شعارك الشفاف وألوانك إلى مكتبة الهوية ليصل العمل بهويتك كاملة.',gapClear:'أضف شعارك الشفاف إلى مكتبة الهوية ليصل العمل بهويتك كاملة.',gapColors:'أضف ألوان هويتك إلى المكتبة ليصل العمل بهويتك كاملة.',gapGo:'افتح مكتبة الهوية',gapX:'إخفاء',colors:'لوحة الألوان المعتمدة',fonts:'الخطوط المعتمدة',style:'الأسلوب والموسيقى',
       styleL:'الأسلوب البصري',styleP:'مثال: هادئ وفاخر، لقطات قريبة، ألوان دافئة',musicL:'الموسيقى',musicP:'مثال: بيانو هادئ، بلا كلمات',
       up:'رفع ملف',none:'لا يوجد شيء بعد.',del:'حذف',copy:'نسخ',copied:'نُسخ',add:'إضافة',name:'الاسم (اختياري)',hex:'الرمز',fname:'اسم الخط',fuse:'الاستخدام (عناوين، نص…)',
       ffiles:'ملفات الخطوط',saved:'حُفظت مكتبة الهوية.',use:'اعتمد مكتبة الهوية في هذه المهمة',useP:'أزل التحديد إن كانت لهذه المهمة ملفات هوية خاصة، وأضفها في الروابط.',
       drop:'اسحب الملفات وأفلتها هنا',dropOr:'أو',pick:'اختر من جهازك',dropCat:'التصنيف',stored:'محفوظ لدى الاستوديو',
       st:{wait:'في الانتظار',up:'يُرفع',done:'اكتمل',fail:'تعذّر الرفع',type:'نوع غير مدعوم',size:'الحجم أكبر من 5 GB'},retry:'أعد المحاولة'}
     :{h:'Brand library',p:'Your visual identity in one place. The studio applies it to every new task automatically.',seg:{projects:'Projects',brand:'Brand library',reports:'Reports'},
-      logos:'Logos',dark:'On dark',light:'On light',vector:'Vector files',colors:'Approved colours',fonts:'Approved fonts',style:'Style and music',
+      logos:'Logos',bg:'Logo on a background',clear:'Transparent logo',vector:'Vector files',bgH:'JPG · PNG',clearH:'PNG · SVG',vectorH:'SVG · AI · EPS · PDF',onL:'Preview on light',onD:'Preview on dark',zip:'Download the whole library',opq:'This picture has a background, so it is not transparent:',opqN:'These pictures have a background, so they are not transparent:',move:'Move to «Logo on a background»',keep:'Keep it here',gapBoth:'Add your transparent logo and your colours to the brand library, so the work arrives fully in your identity.',gapClear:'Add your transparent logo to the brand library, so the work arrives fully in your identity.',gapColors:'Add your brand colours to the library, so the work arrives fully in your identity.',gapGo:'Open the brand library',gapX:'Hide',colors:'Approved colours',fonts:'Approved fonts',style:'Style and music',
       styleL:'Visual style',styleP:'e.g. calm and premium, close-ups, warm tones',musicL:'Music',musicP:'e.g. quiet piano, no vocals',
       up:'Upload a file',none:'Nothing yet.',del:'Delete',copy:'Copy',copied:'Copied',add:'Add',name:'Name (optional)',hex:'Code',fname:'Font name',fuse:'Use (headings, body…)',
       ffiles:'Font files',saved:'Brand library saved.',use:'Use the brand library for this task',useP:'Untick it if this task has its own brand files, and add them under links.',
@@ -611,15 +614,23 @@
   function brandView(){ loading();
     api('?view=brand').then(function(j){ if(!j.ok) return fail(j); var B=j.brand;
       var save=function(){ return api('',{action:'brand',colors:B.colors,fonts:B.fonts,style:B.style,music:B.music}).then(function(r){ if(r.ok){ B=r.brand; if(DASH) DASH.brand_n=1; toast(BR.saved); } else toast(T.err); }); };
-      var files=function(kind){ var L3=B.assets.filter(function(a){ return a.kind===kind; });
+      var fsz=function(n){ return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'; };
+      var files=function(kind){ var L3=B.assets.filter(function(a){ return a.kind===kind; }), logo=kind==='logo_bg'||kind==='logo_clear';
+        if(logo) return '<ul class="wbk-lg">'+(L3.length?L3.map(function(a){ var img=/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(a.type||''), ext=(a.title.split('.').pop()||'').toUpperCase().slice(0,5);
+            return '<li><span class="wbk-pv">'+(img?'<img src="'+esc(rel(a.url))+'" alt="'+esc(a.title)+'" loading="lazy" data-dimfor="'+esc(a.id)+'">':'<b dir="ltr">'+esc(ext)+'</b>')+'</span>'+
+              '<span class="wbk-meta" dir="ltr"><i>'+esc(ext)+'</i>'+(img?'<i data-dim="'+esc(a.id)+'" hidden></i>':'')+(a.size?'<i>'+fsz(a.size)+'</i>':'')+'</span>'+
+              '<span class="wbk-fn"><a href="'+esc(rel(a.url))+'?dl=1"><bdi>'+esc(a.title)+'</bdi></a><button type="button" class="linkbtn" data-del="'+esc(a.id)+'">'+BR.del+'</button></span></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
+          '<button type="button" class="btn btn-glass glass wbk-up" data-kind="'+kind+'">'+ICO.plus+'<span>'+BR.up+'</span></button><input type="file" hidden multiple data-for="'+kind+'" accept=".png,.jpg,.jpeg,.webp,.svg"><div class="wbk-opq" hidden></div><ul class="wupl"></ul>';
         return '<ul class="wbk-f">'+(L3.length?L3.map(function(a){ var img=/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(a.type||'');
           return '<li>'+(img?'<span class="wbk-th"><img src="'+esc(rel(a.url))+'" alt="'+esc(a.title)+'" loading="lazy"></span>':'<span class="wbk-ext" dir="ltr">'+esc((a.title.split('.').pop()||'').toUpperCase().slice(0,5))+'</span>')+
             '<a href="'+esc(rel(a.url))+'?dl=1"><bdi>'+esc(a.title)+'</bdi></a><button type="button" class="linkbtn" data-del="'+esc(a.id)+'">'+BR.del+'</button></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
           '<button type="button" class="btn btn-glass glass wbk-up" data-kind="'+kind+'">'+ICO.plus+'<span>'+BR.up+'</span></button><input type="file" hidden multiple data-for="'+kind+'"'+(kind==='font'?' accept=".ttf,.otf,.woff,.woff2,.zip"':kind==='vector'?' accept=".svg,.ai,.eps,.pdf,.zip"':' accept=".png,.jpg,.jpeg,.webp,.svg"')+'><ul class="wupl"></ul>'; };
       var draw=function(){
         host.innerHTML=head('projects','BRAND',BR.h,BR.p)+seg('brand')+'<div class="wbk form">'+
-          '<section class="wbk-c wbk-logos glass"><h3>'+BR.logos+'</h3><div class="wbk-3">'+
-            '<div class="wbk-s on-dark"><h4>'+BR.dark+'</h4>'+files('logo_dark')+'</div><div class="wbk-s on-light"><h4>'+BR.light+'</h4>'+files('logo_light')+'</div><div class="wbk-s"><h4>'+BR.vector+'</h4>'+files('vector')+'</div></div></section>'+
+          '<section class="wbk-c wbk-logos glass"><div class="wbk-hd"><h3>'+BR.logos+'</h3>'+(B.assets.length?'<a class="btn btn-glass glass wbk-zip" href="/api/work?view=brandZip">'+BR.zip+'</a>':'')+'</div><div class="wbk-3">'+
+            '<div class="wbk-s is-bg"><h4>'+BR.bg+' <small>'+BR.bgH+'</small></h4>'+files('logo_bg')+'</div>'+
+            '<div class="wbk-s is-clear"><h4>'+BR.clear+' <small>'+BR.clearH+'</small><span class="wbk-tog" role="group"><button type="button" data-bgt="l" aria-pressed="true" aria-label="'+BR.onL+'"><i></i></button><button type="button" data-bgt="d" aria-pressed="false" aria-label="'+BR.onD+'"><i></i></button></span></h4>'+files('logo_clear')+'</div>'+
+            '<div class="wbk-s"><h4>'+BR.vector+' <small>'+BR.vectorH+'</small></h4>'+files('vector')+'</div></div></section>'+
           '<section class="wbk-c glass"><h3>'+BR.colors+'</h3><ul class="wbk-sw">'+(B.colors.length?B.colors.map(function(c,i){ return '<li><span class="wbk-chip" style="background:'+esc(c.hex)+'"></span><span class="wbk-cn"><b dir="ltr">'+esc(c.hex)+'</b>'+(c.name?'<small class="muted"><bdi>'+esc(c.name)+'</bdi></small>':'')+'</span>'+
               '<button type="button" class="wbk-copy" data-copy="'+esc(c.hex)+'" aria-label="'+BR.copy+' '+esc(c.hex)+'">'+BR.copy+'</button><button type="button" class="wbk-x" data-rmc="'+i+'" aria-label="'+BR.del+' '+esc(c.hex)+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></li>'; }).join(''):'<li class="muted small">'+BR.none+'</li>')+'</ul>'+
             '<form class="wbk-add"><input type="color" value="#3FE0E8" aria-label="'+BR.hex+'"><input name="hex" dir="ltr" maxlength="7" value="#3FE0E8" aria-label="'+BR.hex+'"><input name="name" maxlength="40" dir="auto" placeholder="'+BR.name+'"><button class="btn btn-glass glass" type="submit">'+BR.add+'</button></form></section>'+
@@ -637,8 +648,18 @@
         cf.onsubmit=function(e){ e.preventDefault(); var hx=cf.elements.hex.value.trim().toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(hx)){ cf.elements.hex.focus(); return; } B.colors.push({hex:hx,name:cf.elements.name.value.trim()}); save().then(draw); };
         var ff=host.querySelector('.wbk-addf'); ff.onsubmit=function(e){ e.preventDefault(); var n=ff.elements.fn.value.trim(); if(!n) return; B.fonts.push({name:n,use:ff.elements.fu.value.trim()}); save().then(draw); };
         host.querySelectorAll('textarea').forEach(function(t){ t.onchange=function(){ B[t.name]=t.value.trim(); save(); }; });
-        host.querySelectorAll('.wbk-up').forEach(function(b){ var inp=b.nextElementSibling; b.onclick=function(){ inp.click(); };
-          inp.onchange=function(){ sendFiles(inp.files,{scope:'brand',kind:b.dataset.kind},inp.nextElementSibling,function(){ setTimeout(brandView,500); }); inp.value=''; }; });
+        host.querySelectorAll('.wbk-up').forEach(function(b){ var inp=b.nextElementSibling, list=inp.parentNode.querySelector('.wupl'), kind=b.dataset.kind; b.onclick=function(){ inp.click(); };
+          var send=function(fs,k){ if(fs.length) sendFiles(fs,{scope:'brand',kind:k},list,function(){ setTimeout(brandView,500); }); };
+          inp.onchange=function(){ var fs=[].slice.call(inp.files); inp.value='';
+            if(kind!=='logo_clear'||!window.EBAlpha) return send(fs,kind);
+            Promise.all(fs.map(EBAlpha)).then(function(r){ var op=fs.filter(function(f,i){ return r[i]===false; }); send(fs.filter(function(f,i){ return r[i]!==false; }),kind); if(!op.length) return;
+              var box=inp.parentNode.querySelector('.wbk-opq'); box.hidden=false;
+              box.innerHTML='<p>'+(op.length>1?BR.opqN:BR.opq)+' <bdi>'+esc(op.map(function(f){ return f.name; }).join('، '))+'</bdi></p><div><button type="button" class="btn btn-primary" data-mv>'+BR.move+'</button><button type="button" class="btn btn-glass glass" data-kp>'+BR.keep+'</button></div>';
+              box.querySelector('[data-mv]').onclick=function(){ box.hidden=true; send(op,'logo_bg'); };
+              box.querySelector('[data-kp]').onclick=function(){ box.hidden=true; send(op,'logo_clear'); }; }); }; });
+        // the transparent logos: preview them on light or on dark; each picture shows its size once it loads
+        host.querySelectorAll('[data-bgt]').forEach(function(t){ t.onclick=function(){ var s=t.closest('.wbk-s'); s.classList.toggle('dk',t.dataset.bgt==='d'); s.querySelectorAll('[data-bgt]').forEach(function(x){ x.setAttribute('aria-pressed',x===t); }); }; });
+        host.querySelectorAll('img[data-dimfor]').forEach(function(im){ var put=function(){ var m=host.querySelector('[data-dim="'+im.dataset.dimfor+'"]'); if(m&&im.naturalWidth){ m.textContent=im.naturalWidth+'×'+im.naturalHeight; m.hidden=false; } }; if(im.complete) put(); else im.onload=put; });
         host.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent=T.dl.sure; return; }
           api('',{action:'brandDel',id:b.dataset.del}).then(function(r){ if(r.ok) brandView(); else toast(T.err); }); }; });
         rise(); };
