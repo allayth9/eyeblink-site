@@ -107,7 +107,7 @@
       return {title:'تشغيل المهمة الدورية الآن',rows:[['المهمة',r.title]],pv:{kind:'recurring',client:r.client_email,title:r.title}}; }],
     ['.bform [type=submit]',function(b){ var E=b.form.elements; if(!E.send.checked||!E.email.value) return null;
       return {title:'حفظ الفاتورة وإرسالها',rows:[['البيان',E.title.value.trim()]],pv:{kind:'invoice',client:E.email.value},nopv:true}; }] ];
-  function sndWa(t){ return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/\n/g,'<br>'); }
+  function sndWa(t){ return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(INV-\d{4}-\d{4}|T-[A-Z0-9]{4,})/g,'<bdi style="white-space:nowrap">$1</bdi>').replace(/\n/g,'<br>'); }
   var SNDIC={email:'<path d="M3 6.5h18v11H3z"/><path d="M3.5 7l8.5 6.5L20.5 7"/>',push:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',wa:'<path d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/><path d="M9.5 9.5c.3 2 1.9 3.8 4 4.4"/>',app:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>'};
   function sendSheet(o){ return new Promise(function(res){ var last=document.activeElement, ov=document.createElement('div'), PV=null, WHEN='now'; ov.className='snd-ov';
     var rows=(o.rows||[]).filter(function(r){ return r[1]!=null&&r[1]!==''; });
