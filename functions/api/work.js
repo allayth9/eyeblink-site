@@ -49,7 +49,10 @@ const OPEN = ["new","review","info","accepted","progress","feedback","revision",
 const PRIORITIES = ["normal","high","urgent"];
 const PTYPES = ["program","monthly","campaign","design","once","content","editing","motion","commercial","custom"];   // program: episodes on a rhythm (cadence)
 const DAYS = ["sat","sun","mon","tue","wed","thu","fri"];
-const cadenceOf = (type, c) => type === "program" && c ? JSON.stringify({ per: Math.max(1, Math.min(31, parseInt(c.per) || 4)), day: DAYS.includes(c.day) ? c.day : "" }) : null;
+// program: the publishing days only (one or several); an older record kept {per, day}
+const cadenceOf = (type, c) => { if (type !== "program" || !c) return null;
+  const pick = new Set([].concat(c.days || c.day || []).map(String)), days = DAYS.filter(d => pick.has(d));
+  return days.length ? JSON.stringify({ days }) : null; };
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, client_email TEXT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', type TEXT NOT NULL DEFAULT 'custom',
