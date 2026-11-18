@@ -453,10 +453,13 @@ export const RULES = {
   invSoon: ["auto", 3, "aao"], invDue: ["auto", 2, "aao"], invFollow: ["ask", 10, "aao"], review: ["auto", 3, "aao"], info: ["auto", 2, "aao"],
   orderPay: ["auto", 2, "ao"], report: ["auto", 0, "ao"], teamSoon: ["auto", 1, "ao"], teamLate: ["auto", 1, "ao"], qcWait: ["auto", 1, "ao"], invPersonal: ["auto", 4, "ao"] };
 export const QUIET = { from: 10, to: 19, fri: true };   // Gulf time (UTC+4)
+export const DIGEST = { on: true, time: "09:30", tg: true, email: true, fri: true, skipEmpty: true };   // the studio's morning summary
 export async function rulesOf(env){
   let r = {}; try { r = JSON.parse(await env.EB.get("rules") || "{}") || {}; } catch {}
   const q = r.quiet || {}, out = { quiet: { from: Math.min(23, Math.max(0, parseInt(q.from ?? QUIET.from) || 0)), to: Math.min(24, Math.max(1, parseInt(q.to ?? QUIET.to) || 24)), fri: q.fri !== undefined ? !!q.fri : QUIET.fri }, rules: {} };
   for (const k in RULES) { const v = (r.rules || {})[k] || {}, ok = RULES[k][2] === "aao" ? ["auto", "ask", "off"] : ["auto", "off"];
     out.rules[k] = { mode: ok.includes(v.mode) ? v.mode : RULES[k][0], days: Math.max(0, Math.min(60, parseInt(v.days ?? RULES[k][1]) || 0)) }; }
+  const dg = r.digest || {}; out.digest = { on: dg.on !== undefined ? !!dg.on : DIGEST.on, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(dg.time || "") ? dg.time : DIGEST.time,
+    tg: dg.tg !== undefined ? !!dg.tg : DIGEST.tg, email: dg.email !== undefined ? !!dg.email : DIGEST.email, fri: dg.fri !== undefined ? !!dg.fri : DIGEST.fri, skipEmpty: dg.skipEmpty !== undefined ? !!dg.skipEmpty : DIGEST.skipEmpty };
   return out;
 }

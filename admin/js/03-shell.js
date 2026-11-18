@@ -26,7 +26,7 @@
     if(id==='orders') return [ORDERS.filter(function(o){return o.status==='new'||o.unread}).length,'hot'];
     if(id==='tasks'&&WORK&&WORK.tasks) return [WORK.tasks.filter(function(x){return x.status==='new'||(x.change_request&&x.change_request.status==='pending')}).length,'hot'];
     if(id==='billing'&&BILL&&BILL.invoices) return [BILL.invoices.filter(function(x){return x.state==='overdue'}).length,'crit'];
-    if(id==='notify') return [NOTI&&!NOTI.err?NOTI.unread:(WORK&&WORK.inboxUnread)||0,'hot'];
+    if(id==='notify') return [(NOTI&&!NOTI.err?NOTI.unread+(NOTI.pending||[]).length:((WORK&&WORK.inboxUnread)||0)+((WORK&&WORK.pending)||[]).length),'hot'];
     if(id==='clients'&&ACC) return [ACC.requests.filter(function(r){return r.status==='pending'}).length,'hot'];
     if(id==='team'&&TEAM&&TEAM.apps) return [TEAM.apps.filter(function(a){return a.status==='new'}).length+TEAM.tasks.filter(function(t){return t.status==='qc'}).length,'hot'];
     if(id==='support'&&SUPA) return [SUPA.filter(function(s){ return s.status!=='closed'&&s.unread; }).length,'hot'];

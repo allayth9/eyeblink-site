@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -624,7 +624,7 @@ async function tellClient(env, t, kind, extra){
   if ((!ch || ch.email) && (!P || P.email_cats[cat] || ESSENTIAL.includes(cat))) jobs.push((async () => {
     const m = composeMail(u, t, kind, extra, hash); if (!m) return; const { subject, html } = m;
     const r = await mailSend(env, u.email, subject, html);
-    await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: r.ok || r.skip ? null : { to: u.email, subject, html } });
+    await logSend(D, { channel: "email", recipient: u.email, target: u.email, kind, status: r.ok ? "sent" : r.skip ? "skipped" : r.retry ? "retry" : "failed", error: r.error || r.skip, next: r.retry ? nextTry(1) : null, provider_id: r.id, payload: { to: u.email, subject, html } });
   })());
   // 3) WhatsApp — only with explicit consent, a confirmed number, the category on, and the studio's WhatsApp switched on
   if ((!ch || ch.wa) && P && P.consent && P.wa_cats[cat]) jobs.push((async () => {
@@ -652,77 +652,136 @@ async function tellClient(env, t, kind, extra){
   })());
   await Promise.allSettled(jobs);
 }
-// ---- automatic messages (Phase 3): each rule fires once per item (rule_log), inside the quiet hours (Gulf time),
-// at most one message a day per client (the next run sends the rest). "ask" rules wait in Today (pending_sends). ----
-const gulf = () => new Date(Date.now() + 4 * 3600e3);
-async function runRules(env, D, force){
-  const R = await rulesOf(env), g = gulf(), hr = g.getUTCHours(), td = g.toISOString().slice(0, 10);
-  if (!force && (hr < R.quiet.from || hr >= R.quiet.to || (R.quiet.fri && g.getUTCDay() === 5))) return { quiet: true };
-  if (!force) { const last = await D.prepare("SELECT v FROM meta WHERE k='rsweep'").first(); if (last && Date.now() - +last.v < 3600e3) return { wait: true };
-    await D.prepare("INSERT INTO meta (k, v) VALUES ('rsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run(); }
-  const dayStart = new Date(Date.parse(td + "T00:00:00Z") - 4 * 3600e3).toISOString(), out = [];
-  const told = new Set((await D.prepare("SELECT DISTINCT recipient FROM rule_log WHERE at>=? AND outcome='sent'").bind(dayStart).all()).results.map(r => r.recipient));
-  const got = async (rule, key) => (await D.prepare("SELECT outcome, at FROM rule_log WHERE rule=? AND key=?").bind(rule, key).first()) || null;
-  const mark = (rule, key, who, outcome) => D.prepare("INSERT OR IGNORE INTO rule_log (rule, key, recipient, at, outcome) VALUES (?,?,?,?,?)").bind(rule, key, who || "", now(), outcome || "sent").run();
-  const day = n => new Date(Date.parse(td + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
-  const on = k => R.rules[k].mode !== "off", N = k => R.rules[k].days, cut = n => new Date(Date.now() - n * 864e5).toISOString();
-  const client = async (rule, key, t, kind, extra, title, sub) => {
-    if (!on(rule) || await got(rule, key)) return; const who = String(t.client_email || "").toLowerCase();
-    if (R.rules[rule].mode === "ask") {
-      await D.prepare("INSERT INTO pending_sends (rule, key, recipient, kind, t, extra, title, sub, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(rule, key, who, kind, JSON.stringify(t), JSON.stringify(extra), title, sub || "", now()).run();
-      await mark(rule, key, who, "asked"); out.push(rule + ":ask"); return; }
-    if (told.has(who)) return;   // one a day per client; this one goes on the next run
-    told.add(who); await mark(rule, key, who); await tellClient(env, t, kind, extra).catch(() => {}); out.push(rule + ":" + key); };
-  const studio = async (rule, key, subject, text, link) => {
-    if (!on(rule) || await got(rule, key)) return; await mark(rule, key, "studio");
-    try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES ('studio','event','studio',?,?,?)").bind(link || "#today", JSON.stringify({ subject, text }), now()).run(); } catch {}
-    await notifyStudio(env, subject, text).catch(() => {}); out.push(rule + ":" + key); };
-  // invoices: after the due date first (the most pressing), then the final follow-up, the studio's personal touch, and before the due date
-  const inv = (await D.prepare("SELECT i.*, p.name AS project_name, c.name AS client_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id LEFT JOIN clients c ON c.email=i.client_email WHERE i.status IN ('pending','partial') AND i.sent_at IS NOT NULL AND i.due_date IS NOT NULL ORDER BY i.due_date LIMIT 200").all()).results;
-  for (const row of inv) { const x = parseI(row), a = k => invoiceArgs(x, k), who = row.client_name || x.client_email;
-    if (x.due_date <= day(-N("invDue"))) {
-      if (x.reminded_at && x.reminded_at.slice(0, 10) >= x.due_date && !(await got("invDue", x.id))) await mark("invDue", x.id, x.client_email, "earlier");   // reminded before the rules (or by hand)
-      else { const A = a("invoiceDue"); await client("invDue", x.id, A.t, "invoiceDue", A.extra); } }
-    if (x.due_date <= day(-N("invFollow")) && await got("invDue", x.id)) { const A = a("invoiceFollow");
-      await client("invFollow", x.id, A.t, "invoiceFollow", A.extra, "متابعة أخيرة بالفاتورة " + x.no, who + " · المتبقي " + fmt(x.balance, x.currency)); }
+// ---- automatic messages (Phase 3): each rule fires once per item (rule_log), inside the quiet hours (Gulf time),
+// at most one message a day per client (the next run sends the rest). "ask" rules wait in Today (pending_sends). ----
+const gulf = () => new Date(Date.now() + 4 * 3600e3);
+async function runRules(env, D, force, dry){
+  const R = await rulesOf(env), g = gulf(), hr = g.getUTCHours(), td = g.toISOString().slice(0, 10);
+  if (!force && (hr < R.quiet.from || hr >= R.quiet.to || (R.quiet.fri && g.getUTCDay() === 5))) return { quiet: true };
+  if (!force) { const last = await D.prepare("SELECT v FROM meta WHERE k='rsweep'").first(); if (last && Date.now() - +last.v < 3600e3) return { wait: true };
+    await D.prepare("INSERT INTO meta (k, v) VALUES ('rsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
+    await D.prepare("UPDATE notify_log SET payload=NULL WHERE status='sent' AND payload IS NOT NULL AND at<?").bind(new Date(Date.now() - 60 * 864e5).toISOString()).run(); }
+  const dayStart = new Date(Date.parse(td + "T00:00:00Z") - 4 * 3600e3).toISOString(), out = [];
+  const told = new Set((await D.prepare("SELECT DISTINCT recipient FROM rule_log WHERE at>=? AND outcome='sent'").bind(dayStart).all()).results.map(r => r.recipient));
+  const got = async (rule, key) => (await D.prepare("SELECT outcome, at FROM rule_log WHERE rule=? AND key=?").bind(rule, key).first()) || null;
+  const mark = (rule, key, who, outcome) => D.prepare("INSERT OR IGNORE INTO rule_log (rule, key, recipient, at, outcome) VALUES (?,?,?,?,?)").bind(rule, key, who || "", now(), outcome || "sent").run();
+  const day = n => new Date(Date.parse(td + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const on = k => R.rules[k].mode !== "off", N = k => R.rules[k].days, cut = n => new Date(Date.now() - n * 864e5).toISOString();
+  const client = async (rule, key, t, kind, extra, title, sub) => {
+    if (!on(rule) || await got(rule, key)) return; const who = String(t.client_email || "").toLowerCase();
+    if (dry) { if (R.rules[rule].mode === "auto") out.push({ rule, kind, who, title: t.title || extra.no || "" }); return; }
+    if (R.rules[rule].mode === "ask") {
+      await D.prepare("INSERT INTO pending_sends (rule, key, recipient, kind, t, extra, title, sub, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(rule, key, who, kind, JSON.stringify(t), JSON.stringify(extra), title, sub || "", now()).run();
+      await mark(rule, key, who, "asked"); out.push(rule + ":ask"); return; }
+    if (told.has(who)) return;   // one a day per client; this one goes on the next run
+    told.add(who); await mark(rule, key, who); await tellClient(env, t, kind, extra).catch(() => {}); out.push(rule + ":" + key); };
+  const studio = async (rule, key, subject, text, link) => {
+    if (!on(rule) || await got(rule, key)) return; if (dry) { out.push({ rule, kind: rule, who: "studio", title: subject }); return; } await mark(rule, key, "studio");
+    try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES ('studio','event','studio',?,?,?)").bind(link || "#today", JSON.stringify({ subject, text }), now()).run(); } catch {}
+    await notifyStudio(env, subject, text).catch(() => {}); out.push(rule + ":" + key); };
+  // invoices: after the due date first (the most pressing), then the final follow-up, the studio's personal touch, and before the due date
+  const inv = (await D.prepare("SELECT i.*, p.name AS project_name, c.name AS client_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id LEFT JOIN clients c ON c.email=i.client_email WHERE i.status IN ('pending','partial') AND i.sent_at IS NOT NULL AND i.due_date IS NOT NULL ORDER BY i.due_date LIMIT 200").all()).results;
+  for (const row of inv) { const x = parseI(row), a = k => invoiceArgs(x, k), who = row.client_name || x.client_email;
+    if (x.due_date <= day(-N("invDue"))) {
+      if (x.reminded_at && x.reminded_at.slice(0, 10) >= x.due_date && !(await got("invDue", x.id))) await mark("invDue", x.id, x.client_email, "earlier");   // reminded before the rules (or by hand)
+      else { const A = a("invoiceDue"); await client("invDue", x.id, A.t, "invoiceDue", A.extra); } }
+    if (x.due_date <= day(-N("invFollow")) && await got("invDue", x.id)) { const A = a("invoiceFollow");
+      await client("invFollow", x.id, A.t, "invoiceFollow", A.extra, "متابعة أخيرة بالفاتورة " + x.no, who + " · المتبقي " + fmt(x.balance, x.currency)); }
     const fu = await got("invFollow", x.id);   // the personal touch counts from when the final follow-up actually went (or was skipped), not from the due date
-    if (fu && fu.outcome !== "asked" && fu.at <= cut(N("invPersonal")))
-      await studio("invPersonal", x.id, "فاتورة تحتاج متابعة شخصية · " + x.no, x.no + " · " + who + " · " + fmt(x.balance, x.currency) + " · بعد متابعتين", "#billing");
-    if (x.due_date >= td && x.due_date <= day(N("invSoon"))) { const A = a("invoiceSoon"); await client("invSoon", x.id, A.t, "invoiceSoon", A.extra); } }
-  // a version the client has not answered
-  const rv = (await D.prepare("SELECT t.*, d.id AS did, d.label AS dlabel, d.is_final AS dfin FROM tasks t JOIN deliverables d ON d.task_id=t.id WHERE t.status IN ('feedback','final') AND d.status='sent' AND d.created_at<=? AND d.version=(SELECT MAX(version) FROM deliverables WHERE task_id=t.id) LIMIT 100").bind(cut(N("review"))).all()).results;
-  for (const t of rv) await client("review", t.did, parse(t), "reviewWaiting", { label: t.dlabel, final: !!t.dfin }, "تذكير بمراجعة " + t.dlabel + " · " + t.ref, t.title);
-  // details the studio asked for and has not received
-  const inf = (await D.prepare("SELECT * FROM tasks WHERE status='info' AND updated_at<=? LIMIT 100").bind(cut(N("info"))).all()).results;
-  for (const t of inf) await client("info", t.id + ":" + t.updated_at, parse(t), "infoWaiting", { note: t.studio_note || "" }, "تذكير بالتفاصيل المطلوبة · " + t.ref, t.title);
-  // the team (KV): due tomorrow, past due, and internal reviews waiting for the studio
-  if (on("teamSoon") || on("teamLate") || on("qcWait")) {
-    const tt = [], members = {}; let c; do { const r = await env.EB.list({ prefix: "ttask:", cursor: c }); for (const k of r.keys) { try { tt.push(JSON.parse(await env.EB.get(k.name))); } catch {} } c = r.list_complete ? null : r.cursor; } while (c);
-    const mem = async e => members[e] !== undefined ? members[e] : (members[e] = await env.EB.get("member:" + e).then(v => v ? JSON.parse(v) : null).catch(() => null));
-    for (const t of tt) { if (!t || !t.member) continue; const open = ["assigned", "progress", "changes"].includes(t.status);
-      if (open && t.due && t.due >= td && t.due <= day(N("teamSoon")) && on("teamSoon") && !(await got("teamSoon", t.id + ":" + t.due))) { const m = await mem(t.member);
-        if (m && m.status === "active") { await mark("teamSoon", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("soon", m, t)); out.push("teamSoon:" + t.id); } }
-      if (open && t.due && t.due <= day(-N("teamLate")) && on("teamLate") && !(await got("teamLate", t.id + ":" + t.due))) { const m = await mem(t.member);
-        if (m && m.status === "active") { await mark("teamLate", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("late", m, t));
-          try { await notifyStudio(env, "مهمة متأخرة لدى " + (m.name || m.email), t.title + " · كان موعدها " + t.due); } catch {} out.push("teamLate:" + t.id); } }
-      const lv = (t.versions || []).slice(-1)[0];
-      if (t.status === "qc" && lv && lv.at <= cut(N("qcWait"))) { const m = await mem(t.member);
-        await studio("qcWait", t.id + ":" + lv.at, "تسليم داخلي بانتظار مراجعتك", t.title + " · من " + ((m && m.name) || t.member), "#team"); } }
-  }
-  return { sent: out };
-}
-// the team's two reminders, in the site's template; Modern Standard Arabic, English for members who chose it
-function teamMail(kind, m, t){ const en = m.lang === "en", lang = en ? "en" : "ar", W = s => `<b style="color:#fff">${h(s)}</b>`, link = SITE + "/team";
-  const when = t.due ? new Date(t.due + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }) : "";
-  const muted = x => `<p style="margin:16px 0 0;font-size:13px;line-height:1.8;color:#8E9BB8">${x}</p>`;
-  if (kind === "soon") return [en ? "Due soon · " + t.title : "موعد التسليم يقترب · " + t.title,
-    mail(lang, en ? "Your delivery date is near" : "موعد التسليم يقترب", `<p style="margin:0 0 12px">${en ? "A reminder that " + W(t.title) + " is due on " : "نذكّرك بأن موعد تسليم مهمة " + W(t.title) + " هو "}<b style="color:#3FE0E8">${h(when)}</b>.</p>` +
-      muted(en ? "If you need anything clarified, or more time, tell us early so we can arrange it together." : "إن احتجت إلى أي توضيح أو وقت إضافي، فأخبرنا مبكراً لنرتّب الأمر معاً."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
-  return [en ? "About " + t.title : "بخصوص مهمة " + t.title,
-    mail(lang, en ? "Checking in on your task" : "نودّ الاطمئنان على سير المهمة", `<p style="margin:0 0 12px">${en ? W(t.title) + " has passed its agreed delivery date. We would like to check in: upload what you have so far, or tell us the new expected date." : "تجاوزت مهمة " + W(t.title) + " موعد تسليمها المتفق عليه. نودّ الاطمئنان على سيرها: ارفع ما أنجزته حتى الآن، أو أخبرنا بالموعد الجديد المتوقع."}</p>` +
-      muted(en ? "The studio receives this note too, so we can help if you need it." : "يصل الاستوديو هذا التنبيه أيضاً، لنساعدك إن احتجت."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
-}
-
+    if (fu && fu.outcome !== "asked" && fu.at <= cut(N("invPersonal")))
+      await studio("invPersonal", x.id, "فاتورة تحتاج متابعة شخصية · " + x.no, x.no + " · " + who + " · " + fmt(x.balance, x.currency) + " · بعد متابعتين", "#billing");
+    if (x.due_date >= td && x.due_date <= day(N("invSoon"))) { const A = a("invoiceSoon"); await client("invSoon", x.id, A.t, "invoiceSoon", A.extra); } }
+  // a version the client has not answered
+  const rv = (await D.prepare("SELECT t.*, d.id AS did, d.label AS dlabel, d.is_final AS dfin FROM tasks t JOIN deliverables d ON d.task_id=t.id WHERE t.status IN ('feedback','final') AND d.status='sent' AND d.created_at<=? AND d.version=(SELECT MAX(version) FROM deliverables WHERE task_id=t.id) LIMIT 100").bind(cut(N("review"))).all()).results;
+  for (const t of rv) await client("review", t.did, parse(t), "reviewWaiting", { label: t.dlabel, final: !!t.dfin }, "تذكير بمراجعة " + t.dlabel + " · " + t.ref, t.title);
+  // details the studio asked for and has not received
+  const inf = (await D.prepare("SELECT * FROM tasks WHERE status='info' AND updated_at<=? LIMIT 100").bind(cut(N("info"))).all()).results;
+  for (const t of inf) await client("info", t.id + ":" + t.updated_at, parse(t), "infoWaiting", { note: t.studio_note || "" }, "تذكير بالتفاصيل المطلوبة · " + t.ref, t.title);
+  // the team (KV): due tomorrow, past due, and internal reviews waiting for the studio
+  if (!dry && (on("teamSoon") || on("teamLate") || on("qcWait"))) {
+    const tt = [], members = {}; let c; do { const r = await env.EB.list({ prefix: "ttask:", cursor: c }); for (const k of r.keys) { try { tt.push(JSON.parse(await env.EB.get(k.name))); } catch {} } c = r.list_complete ? null : r.cursor; } while (c);
+    const mem = async e => members[e] !== undefined ? members[e] : (members[e] = await env.EB.get("member:" + e).then(v => v ? JSON.parse(v) : null).catch(() => null));
+    for (const t of tt) { if (!t || !t.member) continue; const open = ["assigned", "progress", "changes"].includes(t.status);
+      if (open && t.due && t.due >= td && t.due <= day(N("teamSoon")) && on("teamSoon") && !(await got("teamSoon", t.id + ":" + t.due))) { const m = await mem(t.member);
+        if (m && m.status === "active") { await mark("teamSoon", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("soon", m, t)); out.push("teamSoon:" + t.id); } }
+      if (open && t.due && t.due <= day(-N("teamLate")) && on("teamLate") && !(await got("teamLate", t.id + ":" + t.due))) { const m = await mem(t.member);
+        if (m && m.status === "active") { await mark("teamLate", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("late", m, t));
+          try { await notifyStudio(env, "مهمة متأخرة لدى " + (m.name || m.email), t.title + " · كان موعدها " + t.due); } catch {} out.push("teamLate:" + t.id); } }
+      const lv = (t.versions || []).slice(-1)[0];
+      if (t.status === "qc" && lv && lv.at <= cut(N("qcWait"))) { const m = await mem(t.member);
+        await studio("qcWait", t.id + ":" + lv.at, "تسليم داخلي بانتظار مراجعتك", t.title + " · من " + ((m && m.name) || t.member), "#team"); } }
+  }
+  return { sent: out };
+}
+// the team's two reminders, in the site's template; Modern Standard Arabic, English for members who chose it
+function teamMail(kind, m, t){ const en = m.lang === "en", lang = en ? "en" : "ar", W = s => `<b style="color:#fff">${h(s)}</b>`, link = SITE + "/team";
+  const when = t.due ? new Date(t.due + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }) : "";
+  const muted = x => `<p style="margin:16px 0 0;font-size:13px;line-height:1.8;color:#8E9BB8">${x}</p>`;
+  if (kind === "soon") return [en ? "Due soon · " + t.title : "موعد التسليم يقترب · " + t.title,
+    mail(lang, en ? "Your delivery date is near" : "موعد التسليم يقترب", `<p style="margin:0 0 12px">${en ? "A reminder that " + W(t.title) + " is due on " : "نذكّرك بأن موعد تسليم مهمة " + W(t.title) + " هو "}<b style="color:#3FE0E8">${h(when)}</b>.</p>` +
+      muted(en ? "If you need anything clarified, or more time, tell us early so we can arrange it together." : "إن احتجت إلى أي توضيح أو وقت إضافي، فأخبرنا مبكراً لنرتّب الأمر معاً."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
+  return [en ? "About " + t.title : "بخصوص مهمة " + t.title,
+    mail(lang, en ? "Checking in on your task" : "نودّ الاطمئنان على سير المهمة", `<p style="margin:0 0 12px">${en ? W(t.title) + " has passed its agreed delivery date. We would like to check in: upload what you have so far, or tell us the new expected date." : "تجاوزت مهمة " + W(t.title) + " موعد تسليمها المتفق عليه. نودّ الاطمئنان على سيرها: ارفع ما أنجزته حتى الآن، أو أخبرنا بالموعد الجديد المتوقع."}</p>` +
+      muted(en ? "The studio receives this note too, so we can help if you need it." : "يصل الاستوديو هذا التنبيه أيضاً، لنساعدك إن احتجت."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
+}
+
+// ---- the studio's morning digest (Phase 4): what waits for a decision, what happens today, what happened yesterday ----
+async function digestData(env, D){
+  const g = gulf(), td = g.toISOString().slice(0, 10), yd = new Date(Date.parse(td + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
+  const yStart = new Date(Date.parse(yd + "T00:00:00Z") - 4 * 3600e3).toISOString(), tStart = new Date(Date.parse(td + "T00:00:00Z") - 4 * 3600e3).toISOString();
+  const wait = [], today = [], yest = [];
+  for (const p of (await D.prepare("SELECT title, sub FROM pending_sends WHERE done_at IS NULL ORDER BY id LIMIT 10").all()).results) wait.push([p.title, p.sub]);
+  const tt = []; let c; do { const r = await env.EB.list({ prefix: "ttask:", cursor: c }); for (const k of r.keys) { try { tt.push(JSON.parse(await env.EB.get(k.name))); } catch {} } c = r.list_complete ? null : r.cursor; } while (c);
+  for (const t of tt) { if (!t) continue; if (t.status === "qc") wait.push(["تسليم داخلي بانتظار مراجعتك: " + t.title, ""]);
+    if (t.due === td && ["assigned", "progress", "changes"].includes(t.status)) today.push(["تسليم من الفريق: " + t.title, ""]); }
+  c = null; do { const r = await env.EB.list({ prefix: "order:", cursor: c }); for (const k of r.keys) { try { const o = JSON.parse(await env.EB.get(k.name)); if (o && o.status === "new" && !o.demo && o.createdAt >= yStart) wait.push(["طلب جديد من الموقع" + (o.packageName ? ": " + o.packageName : ""), o.name || ""]); } catch {} } c = r.list_complete ? null : r.cursor; } while (c);
+  for (const t of (await D.prepare("SELECT t.title, p.name AS pn FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.confirmed_date=? AND t.status NOT IN ('completed','rejected','cancelled') LIMIT 10").bind(td).all()).results) today.push(["تسليم: " + t.title, t.pn]);
+  for (const x of (await D.prepare("SELECT no, total, currency FROM invoices WHERE due_date=? AND status IN ('pending','partial') AND sent_at IS NOT NULL LIMIT 10").bind(td).all()).results) today.push(["فاتورة تستحق اليوم: " + x.no, fmt(x.total, x.currency)]);
+  const sent = (await D.prepare("SELECT COUNT(*) AS n FROM notify_log WHERE at>=? AND at<? AND status='sent' AND channel='email'").bind(yStart, tStart).first()).n;
+  if (sent) yest.push(["رسائل بريد أُرسلت إلى العملاء", String(sent)]);
+  for (const x of (await D.prepare("SELECT no, payments, currency FROM invoices WHERE updated_at>=?").bind(yStart).all()).results) { let ps = []; try { ps = JSON.parse(x.payments || "[]"); } catch {}
+    for (const p of ps) if (p.date === yd) yest.push(["دفعة وصلت: " + x.no, fmt(p.amount, x.currency)]); }
+  const done = (await D.prepare("SELECT COUNT(*) AS n FROM tasks WHERE completed_at>=? AND completed_at<?").bind(yStart, tStart).first()).n;
+  if (done) yest.push(["مهام اكتملت", String(done)]);
+  return { td, wait, today, yest };
+}
+function digestMail(G){
+  const iso = s => String(s).replace(/(INV-\d{4}-\d{4}|T-[A-Z0-9]{4,})/g, '<span style="direction:ltr;unicode-bidi:isolate">$1</span>');
+  const sec = (t, rows, col) => rows.length ? `<div style="margin:22px 0 4px;font-size:12px;color:#6F7FA0">${t}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${rows.map(r =>
+    `<tr><td style="padding:10px 0;border-bottom:1px solid #1B2556;font-size:14px;color:#DCE3F0;text-align:right"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${col};margin-left:8px"></span>${iso(h(r[0]))}</td><td style="padding:10px 0;border-bottom:1px solid #1B2556;font-size:12.5px;color:#9FB0CC;text-align:left;white-space:nowrap">${h(r[1] || "")}</td></tr>`).join("")}</table>` : "";
+  const tile = (v, k, col) => `<td width="33%" style="padding:12px 10px;background:#070C2A;border:1px solid #1B2556;border-radius:14px;text-align:right;vertical-align:top"><div style="font-size:26px;font-weight:300;color:${col};direction:ltr;text-align:right">${v}</div><div style="font-size:12px;color:#9FB0CC">${k}</div></td>`;
+  // Arabic counting: one / two / three to ten / eleven and more
+  const cnt = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n <= 10 ? n + " " + few : n + " " + many;
+  const lead = G.wait.length || G.today.length ? `${G.wait.length ? cnt(G.wait.length, "أمر واحد ينتظر", "أمران ينتظران", "أمور تنتظر", "أمراً ينتظر") + " قرارك" : "لا شيء ينتظر قرارك"}، و${G.today.length ? cnt(G.today.length, "موعد واحد", "موعدان", "مواعيد", "موعداً") + " اليوم" : "لا مواعيد اليوم"}.` : "يوم هادئ: لا قرارات تنتظرك ولا مواعيد اليوم.";
+  const body = `<p style="margin:0 0 16px">${lead}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="8" style="border-collapse:separate;margin:0 -8px"><tr>${tile(G.wait.length, "بانتظار قرارك", "#F7C76A")}${tile(G.today.length, "مواعيد اليوم", "#3FE0E8")}${tile(G.yest.length, "من أمس", "#6EE7B0")}</tr></table>` +
+    sec("بانتظار قرارك", G.wait, "#F7C76A") + sec("اليوم", G.today, "#3FE0E8") + sec("أمس", G.yest, "#6EE7B0");
+  const text = ["صباح الخير، هذا يومك", "", ...(G.wait.length ? ["بانتظار قرارك · " + G.wait.length, ...G.wait.map(r => r[0] + (r[1] ? " · " + r[1] : "")), ""] : []),
+    ...(G.today.length ? ["اليوم", ...G.today.map(r => r[0] + (r[1] ? " · " + r[1] : "")), ""] : []), ...(G.yest.length ? ["أمس", G.yest.map(r => r[0] + " " + r[1]).join(" · "), ""] : []), SITE + "/admin/"].join("\n");
+  return { subject: "صباح الخير · ملخص " + new Date(G.td + "T12:00:00Z").toLocaleDateString("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }), html: mail("ar", "صباح الخير، هذا يومك", body, "افتح صفحة اليوم", SITE + "/admin/", "", { label: "DAILY DIGEST" }), text };
+}
+async function runDigest(env, D, force){
+  const R = await rulesOf(env), C = R.digest, g = gulf(), td = g.toISOString().slice(0, 10);
+  if (!force) { if (!C.on || g.toISOString().slice(11, 16) < C.time || (C.fri && g.getUTCDay() === 5)) return { wait: true };
+    if (await D.prepare("SELECT 1 FROM meta WHERE k=?").bind("digest:" + td).first()) return { done: true };
+    await D.prepare("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING").bind("digest:" + td, now()).run(); }
+  const G = await digestData(env, D);
+  if (!force && C.skipEmpty && !G.wait.length && !G.today.length && !G.yest.length) return { empty: true };
+  const m = digestMail(G), s = await siteSettings(env), to = env.NOTIFY_EMAIL || s.email;
+  if (C.tg) await telegram(env, m.text).catch(() => {});
+  if (C.email && to) await sendMail(env, to, m.subject, m.html).catch(() => {});
+  return { sent: true, tg: C.tg, email: C.email && !!to };
+}
+// samples for the Templates tab: the real builders with clearly sample data
+function tplSample(kind, lang){
+  const en = lang === "en", name = en ? "Sarah" : "سارة", due = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+  const info = { when: new Date().toLocaleString(en ? "en-GB" : "ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Asia/Dubai" }), device: en ? "Chrome on Windows" : "Chrome على Windows", place: en ? "Dubai, United Arab Emirates (approximate)" : "دبي، الإمارات (تقريبي)" };
+  if (["welcome", "welcomeGoogle", "verify", "device", "password", "code"].includes(kind)) return accountMail(kind, lang, name, { link: SITE + (en ? "/en" : "") + "/account", code: "482916", info });
+  if (kind === "teamSoon" || kind === "teamLate") { const r = teamMail(kind === "teamSoon" ? "soon" : "late", { name: en ? "Nour" : "نور", lang }, { title: en ? "Offer launch poster" : "بوستر إطلاق العرض", due }); return { subject: r[0], html: r[1] }; }
+  const u = { name, lang, email: "client@example.com" }, t = { client_email: u.email, ref: "T-A62CA", title: en ? "Apartments reel" : "ريل عرض الشقق", confirmed_date: due, status: "feedback", studio_note: "" };
+  const inv = { id: "sample", no: "INV-2026-0006", items: [{ desc: en ? "Monthly reels · November" : "ريلز شهرية · نوفمبر", qty: 1, unit: 300 }], currency: "$", total: 300, paid: 0, refunded: 0, discount: 0, balance: 300, status: "pending", state: kind === "invoiceFollow" ? "overdue" : "pending", due_date: due, issue_date: new Date().toISOString().slice(0, 10), project_name: en ? "Monthly reels" : "ريلز شهرية", note: "" };
+  const extra = /^invoice/.test(kind) ? { inv, no: inv.no, amount: "$300", balance: "$300", due } : kind === "infoWaiting" ? { note: en ? "The logo as an SVG, and two product photos" : "الشعار بصيغة SVG، وصورتان للمنتج" } : { label: "V2" };
+  return composeMail(u, t, kind, extra, /^invoice/.test(kind) ? "#w/invoices/sample" : "#w/t/T-A62CA");
+}
 // to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
 function toStudio(ctx, env, subject, text){
   const m = /T-[A-Z0-9]{4,}/.exec(subject);
@@ -735,7 +794,7 @@ async function retryRow(env, D, r){
   const res = r.channel === "email" ? await mailSend(env, p.to, p.subject, p.html) : await waSend(env, await waConfig(env), p.phone, p.lang, p.p);
   const n = r.attempts + 1, st = res.ok ? "sent" : res.skip ? "skipped" : (res.retry && n <= BACKOFF.length) ? "retry" : "failed";
   await D.prepare("UPDATE notify_log SET status=?, attempts=?, error=?, next_try_at=?, provider_id=COALESCE(?, provider_id), payload=? WHERE id=?")
-    .bind(st, n, res.ok ? null : (res.error || res.skip || null), st === "retry" ? nextTry(n) : null, res.id || null, res.ok ? null : r.payload, r.id).run();
+    .bind(st, n, res.ok ? null : (res.error || res.skip || null), st === "retry" ? nextTry(n) : null, res.id || null, r.payload, r.id).run();
   return res;
 }
 async function sweepNotify(env){ try {
@@ -748,8 +807,9 @@ async function sweepNotify(env){ try {
   const sch = (await D.prepare("SELECT * FROM scheduled_sends WHERE sent_at IS NULL AND cancelled_at IS NULL AND at<=? ORDER BY at LIMIT 10").bind(now()).all()).results;
   for (const r of sch) { const c = await D.prepare("UPDATE scheduled_sends SET sent_at=? WHERE id=? AND sent_at IS NULL").bind(now(), r.id).run();
     if (c.meta && c.meta.changes) await tellClient(env, JSON.parse(r.t), r.kind, JSON.parse(r.extra)).catch(() => {}); }
-  // the automatic messages (Settings → automatic messages): at most hourly, inside the quiet hours
+  // the automatic messages (Notifications → rules): at most hourly, inside the quiet hours; then the studio's morning digest
   await runRules(env, D);
+  await runDigest(env, D);
   // recurring tasks whose date has come
   const rec = (await D.prepare("SELECT * FROM recurring WHERE active=1 AND next_run<=? LIMIT 10").bind(today()).all()).results;
   for (const r of rec) await runRecurring({}, env, D, r, r.next_run);
@@ -849,7 +909,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1143,10 +1203,17 @@ async function adminGet(request, env, q){
     const where = [], args = [];
     if (["email","whatsapp","push","telegram"].includes(q.get("channel"))) { where.push("channel=?"); args.push(q.get("channel")); }
     if (["sent","failed","retry","skipped"].includes(q.get("status"))) { where.push("status=?"); args.push(q.get("status")); }
-    const log = (await D.prepare(`SELECT id, at, channel, recipient, target, kind, status, attempts, error, next_try_at, delivery FROM notify_log ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
+    const log = (await D.prepare(`SELECT id, at, channel, recipient, target, kind, status, attempts, error, next_try_at, delivery, (channel='email' AND payload IS NOT NULL) AS view FROM notify_log ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT 200`).bind(...args).all()).results;
     const stats = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE at>=? GROUP BY channel, status").bind(new Date(Date.now() - 30 * 864e5).toISOString()).all()).results;
     const cfg = await waConfig(env);
-    return json({ ok: true, inbox, unread: (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n, log, stats,
+    const scheduled = (await D.prepare("SELECT id, at, recipient, kind, t, extra FROM scheduled_sends WHERE sent_at IS NULL AND cancelled_at IS NULL ORDER BY at LIMIT 50").all()).results
+      .map(r => { let t = {}, x = {}; try { t = JSON.parse(r.t); x = JSON.parse(r.extra); } catch {} return { id: r.id, at: r.at, recipient: r.recipient, kind: r.kind, title: t.title || x.no || "", ch: x.ch || null }; });
+    const pending = (await D.prepare("SELECT id, rule, recipient, kind, title, sub, created_at FROM pending_sends WHERE done_at IS NULL ORDER BY id LIMIT 50").all()).results;
+    const upcoming = ((await runRules(env, D, true, true)) || {}).sent || [];
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    return json({ ok: true, inbox, unread: (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n, log, stats, scheduled, pending, upcoming,
+      sent30: (await D.prepare("SELECT COUNT(*) AS n FROM notify_log WHERE at>=? AND status='sent'").bind(since).first()).n, retry: (await D.prepare("SELECT COUNT(*) AS n FROM notify_log WHERE status IN ('failed','retry')").first()).n,
+      clientNames: Object.fromEntries((await D.prepare("SELECT email, name FROM clients").all()).results.map(c => [c.email, c.name])),
       consents: (await D.prepare("SELECT COUNT(*) AS n FROM notify_prefs WHERE wa_consent_at IS NOT NULL AND wa_withdrawn_at IS NULL").first()).n,
       wa: { config: cfg, ready: waReady(env, cfg), secrets: { token: !!env.WHATSAPP_TOKEN, phoneId: !!env.WHATSAPP_PHONE_ID, appSecret: !!env.WHATSAPP_APP_SECRET, verifyToken: !!env.WHATSAPP_VERIFY_TOKEN } },
       email: { ready: !!env.RESEND_API_KEY }, webhook: SITE + "/api/whatsapp", goBase: SITE + "/go/",
@@ -1287,7 +1354,7 @@ async function adminPost(ctx, d){
   if (d.action === "rulesSave") {
     const cur = await rulesOf(env), r = d.rules || {}, q = d.quiet || {}, rules = {};
     for (const k in RULES) { const v = r[k] || cur.rules[k]; rules[k] = { mode: String(v.mode || ""), days: parseInt(v.days) }; }
-    await env.EB.put("rules", JSON.stringify({ rules, quiet: { from: parseInt(q.from ?? cur.quiet.from), to: parseInt(q.to ?? cur.quiet.to), fri: q.fri !== undefined ? !!q.fri : cur.quiet.fri } }));
+    await env.EB.put("rules", JSON.stringify({ rules, quiet: { from: parseInt(q.from ?? cur.quiet.from), to: parseInt(q.to ?? cur.quiet.to), fri: q.fri !== undefined ? !!q.fri : cur.quiet.fri }, digest: { ...cur.digest, ...(d.digest || {}) } }));
     return json({ ok: true, ...(await rulesOf(env)) });   // read back through the same checks
   }
   if (d.action === "rulesRun") return json({ ok: true, ...(await runRules(env, D, true)) });   // "check now", outside the hour and the quiet hours
@@ -1298,6 +1365,13 @@ async function adminPost(ctx, d){
     if (d.action === "pendingSend") later(ctx, tellAdmin(ctx, env, JSON.parse(p.t), p.kind, JSON.parse(p.extra)));
     return json({ ok: true, scheduled: !!(ctx.notify && ctx.notify.at) });
   }
+  if (d.action === "logView") { const r = await D.prepare("SELECT channel, payload FROM notify_log WHERE id=?").bind(+d.id || 0).first(); let p = null; try { p = JSON.parse(r && r.payload || "null"); } catch {}
+    return p && p.html ? json({ ok: true, subject: p.subject, html: p.html }) : json({ ok: false, error: "gone" }, 404); }
+  if (d.action === "scheduledNow") { const r = await D.prepare("SELECT * FROM scheduled_sends WHERE id=? AND sent_at IS NULL AND cancelled_at IS NULL").bind(+d.id || 0).first(); if (!r) return json({ ok: false, error: "gone" }, 404);
+    await D.prepare("UPDATE scheduled_sends SET sent_at=? WHERE id=?").bind(at, r.id).run(); later(ctx, tellClient(env, JSON.parse(r.t), r.kind, JSON.parse(r.extra))); return json({ ok: true }); }
+  if (d.action === "tplPreview") { const m = tplSample(clip(d.kind, 20), d.lang === "en" ? "en" : "ar"); return m ? json({ ok: true, ...m }) : json({ ok: false }, 400); }
+  if (d.action === "digestPreview") { const m = digestMail(await digestData(env, D)); return json({ ok: true, ...m }); }
+  if (d.action === "digestNow") return json({ ok: true, ...(await runDigest(env, D, true)) });
   if (d.action === "scheduledCancel") { await D.prepare("UPDATE scheduled_sends SET cancelled_at=? WHERE id=? AND sent_at IS NULL").bind(at, +d.id || 0).run(); return json({ ok: true }); }
   if (d.action === "studioRead") {
     if (d.all) await D.prepare("UPDATE notifications SET read_at=? WHERE recipient='studio' AND read_at IS NULL").bind(at).run();
