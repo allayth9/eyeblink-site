@@ -94,7 +94,24 @@
     ['[data-bpay]',function(b){ var i=cfInv(b.dataset.bpay); if(!i||!i.x.sent_at) return null; var a=sndVal(b,'[data-pamt]');
       return {title:'تسجيل دفعة وإشعار العميل',rows:[['الفاتورة',i.x.no],['المبلغ',mny(nn(a),i.x.currency)],['الطريقة',sndVal(b,'[data-pmeth]')]],pv:{kind:'invoicePaid',invoice:i.x.id},nopv:true}; }],
     ['[data-bremind]',function(b){ var i=cfInv(b.dataset.bremind); if(!i) return null;
-      return {title:'تذكير لطيف بالفاتورة',rows:i.rows.concat([['المتبقي',mny(i.x.balance,i.x.currency)]]),pv:{kind:'invoiceDue',invoice:i.x.id}}; }] ];
+      return {title:'تذكير لطيف بالفاتورة',rows:i.rows.concat([['المتبقي',mny(i.x.balance,i.x.currency)]]),pv:{kind:'invoiceDue',invoice:i.x.id}}; }],
+    // things that do not exist yet: the preview is built from the form's own values
+    ['#clProj [type=submit],.wpf [type=submit]',function(b){ var f=b.form; if(f.dataset.wpid) return null; var n=f.elements.name.value.trim(), c=f.elements.client_email?f.elements.client_email.value:PROF&&PROF.email; if(!n||!c) return null;
+      return {title:'مشروع جديد للعميل',rows:[['المشروع',n]],pv:{kind:'project',client:c,name:n}}; }],
+    ['#clTask [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!PROF) return null;
+      return {title:'مهمة جديدة من الاستوديو',rows:[['المهمة',t],['الموعد المؤكد',E.confirmed_date.value&&wd(E.confirmed_date.value)]],pv:{kind:'added',client:PROF.email,title:t,date:E.confirmed_date.value}}; }],
+    ['#clFile [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!/^https?:\/\/\S+$/i.test(E.url.value.trim())) return null;
+      return {title:'مشاركة ملف مع العميل',rows:[['الملف',t]],pv:{kind:'file',project:E.project.value,file:t}}; }],
+    ['.cl-pay [type=submit]',function(b){ var id=b.closest('[data-iid]').dataset.iid, x=((PROF&&PROF.d&&PROF.d.invoices)||[]).filter(function(v){ return v.id===id; })[0], a=+b.form.elements.amount.value; if(!(a>0)||!x||!x.sent_at) return null;
+      return {title:'تسجيل دفعة وإشعار العميل',rows:[['الفاتورة',x.no],['المبلغ',mny(a,x.currency)]],pv:{kind:'invoicePaid',invoice:id},nopv:true}; }],
+    ['[data-tsave]',function(b){ var tc=b.closest('[data-tref]'), t=tc&&((PROF&&PROF.d&&PROF.d.tasks)||[]).filter(function(x){ return x.ref===tc.dataset.tref; })[0]; if(!t) return null;
+      var st=tc.querySelector('[data-tstat]').value, dt=tc.querySelector('[data-tdate]').value, sc=st!==t.status, dc=!!(dt&&t.confirmed_date&&dt!==t.confirmed_date); if(!sc&&!dc) return null;
+      return {title:sc?'تحديث حالة المهمة':'تغيير موعد التسليم',rows:[['المهمة',t.title]].concat(sc?[['الحالة الجديدة',WST[st]||st]]:[]).concat(dc?[['الموعد الجديد',wd(dt)]]:[]),
+        pv:sc?{kind:st==='progress'?'progress':st==='completed'?'completed':'status',ref:t.ref,over:{status:st,confirmed_date:dt||t.confirmed_date}}:{kind:'date',ref:t.ref,over:{confirmed_date:dt}}}; }],
+    ['[data-rrun]',function(b){ var r=((WSPACE&&WSPACE.d&&WSPACE.d.recurring)||[]).filter(function(x){ return x.id===b.dataset.rrun; })[0]; if(!r) return null;
+      return {title:'تشغيل المهمة الدورية الآن',rows:[['المهمة',r.title]],pv:{kind:'recurring',client:r.client_email,title:r.title}}; }],
+    ['.bform [type=submit]',function(b){ var E=b.form.elements; if(!E.send.checked||!E.email.value) return null;
+      return {title:'حفظ الفاتورة وإرسالها',rows:[['البيان',E.title.value.trim()]],pv:{kind:'invoice',client:E.email.value},nopv:true}; }] ];
   function sndWa(t){ return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/\n/g,'<br>'); }
   var SNDIC={email:'<path d="M3 6.5h18v11H3z"/><path d="M3.5 7l8.5 6.5L20.5 7"/>',push:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',wa:'<path d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/><path d="M9.5 9.5c.3 2 1.9 3.8 4 4.4"/>',app:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>'};
   function sendSheet(o){ return new Promise(function(res){ var last=document.activeElement, ov=document.createElement('div'), PV=null, WHEN='now'; ov.className='snd-ov';
@@ -121,7 +138,7 @@
       ok.textContent=WHEN==='none'||!any?'نفّذ دون إشعار':WHEN==='later'?'جدوِل الإرسال':'أرسل الآن'; }
     fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(Object.assign({action:'notifyPreview'},o.pv))}).then(function(r){ return r.json(); }).then(function(j){ PV=j;
       if(!j.ok||!j.account){ Q('[data-to]').textContent=j.ok?'لا يملك العميل حساباً بعد، فيُنفَّذ الإجراء دون رسائل':'تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; if(j.ok) ov.querySelectorAll('[data-ch]').forEach(function(c){ c.checked=false; c.disabled=true; }); sync(); return; }
-      Q('[data-to]').innerHTML=esc(j.name||'العميل')+' <span>·</span> '+esc(j.subject);
+      Q('[data-to]').innerHTML=esc(j.name||'العميل')+(j.subject?' <span>·</span> '+esc(j.subject):'');
       ['email','push','wa'].forEach(function(k){ var c=Q('[data-ch="'+k+'"]'); if(!j.channels[k]){ c.checked=false; c.disabled=true; c.closest('label').querySelector('[data-why]').textContent=SNDWHY[j.why[k]]||''; } });
       if(!o.nopv){ var fr=document.createElement('iframe'); fr.title='معاينة البريد'; fr.setAttribute('sandbox','allow-same-origin allow-popups'); fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>');
         fr.onload=function(){ try{ fr.style.height=fr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var box=Q('[data-pvmail]'); box.innerHTML=''; box.appendChild(fr);

@@ -1177,10 +1177,13 @@ async function adminPost(ctx, d){
     else if (d.project) { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
       t = { client_email: p.client_email, ref: "", title: p.name }; extra = { id: p.id, name: p.name, file: clip(d.file, 120), note: clip(d.note, 4000), hash: "#w/p/" + p.id + (kind === "file" ? "/files" : kind === "comment" ? "/talk" : "") };
       if (kind === "report") { const month = isMonth(d.month) ? d.month : prevMonth(); Object.assign(extra, { report: await monthReport(D, p, month), month, hash: "#w/p/" + p.id + "/report/" + month }); } }
+    else if (d.client) {   // something not created yet (a new project, task, invoice): the form's own values
+      t = { client_email: String(d.client).toLowerCase().trim(), ref: "", title: clip(d.title, 120), confirmed_date: isDate(d.date) ? d.date : null, status: "accepted" }; extra = { name: clip(d.name, 120), id: "" }; }
     else return json({ ok: false }, 400);
     const u = await userOf(env, t.client_email); if (!u) return json({ ok: true, account: false });
     const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
-    const m = composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
+    const m = d.client && /^invoice/.test(kind) ? { subject: "", html: "" } : composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
+    if (d.client && / · $/.test(m.subject)) { const s2 = m.subject.slice(0, -3); m.html = m.html.split(h(m.subject)).join(h(s2)); m.subject = s2; }   // no task number before it exists
     const P = await prefsOf(D, u.email).catch(() => null), cfg = await waConfig(env), cl = await D.prepare("SELECT phone FROM clients WHERE email=?").bind(u.email).first();
     const devices = (await D.prepare("SELECT (SELECT COUNT(*) FROM push_subs WHERE email=?) + (SELECT COUNT(*) FROM tg_links WHERE email=?) AS n").bind(u.email, u.email).first()).n;
     const line = shortText(lang, kind, tellData(t, extra), ST_LABEL[lang], 700), link = SITE + (en ? "/en" : "") + "/workspace" + hash, first = String(u.name || "").trim().split(/\s+/)[0];

@@ -28,7 +28,7 @@
       .catch(function(){ PROF={email:email,err:'net'}; renderClients(); }); }
   function closeProfile(){ PROF=null; route(); renderClients(); scrollTo(0,0); }
   // every change made from a profile goes through here, then the profile and the list reload
-  function creq(body,btn,ok){ if(!LIVE){ toast('يعمل على الموقع المنشور',true); return Promise.reject(); } if(btn) btn.disabled=true;
+  function creq(body,btn,ok){ if(!LIVE){ toast('يعمل على الموقع المنشور',true); return Promise.reject(); } if(btn) btn.disabled=true; if(NEXT_NOTIFY){ body.notify=NEXT_NOTIFY; ok=sndSay(NEXT_NOTIFY,ok); }   // the send sheet's choice
     return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.ok) throw new Error(j.error||'fail'); return j; }); })
       .then(function(j){ if(ok) toast(ok); if(PROF) loadProfile(PROF.email); loadClients(); WORK=null; BILL=null; return j; })
       .catch(function(e){ if(btn) btn.disabled=false; toast(({email:'اكتب بريداً صحيحاً',name:'اكتب اسم العميل',title:'اكتب العنوان',date:'اختر تاريخاً صحيحاً','date first':'حدّد الموعد المؤكد أولاً',project:'اختر المشروع','no account':'لا يوجد حساب أو سجل لهذا العميل','not client':'هذا الحساب ليس عميلاً متعاقداً بعد',amount:'اكتب مبلغاً صحيحاً','too much':'المبلغ أكبر من المتبقي',state:'لا يمكن ذلك في حالتها الحالية'})[e.message]||'تعذّر التنفيذ',true); throw e; }); }
@@ -294,13 +294,13 @@
     var tc=b.closest('[data-tref]');
     if(tc&&b.hasAttribute('data-tsave')){ var ref=tc.dataset.tref, t=D.tasks.filter(function(x){ return x.ref===ref; })[0]; if(!t) return;
       var st=tc.querySelector('[data-tstat]').value, pr=tc.querySelector('[data-tprio]').value, dt=tc.querySelector('[data-tdate]').value, as=tc.querySelector('[data-tasg]').value.trim(), jobs=[];
-      b.disabled=true;
-      var post=function(body){ return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.ok) throw new Error(j.error||'fail'); return j; }); }); };
+      b.disabled=true; var N=NEXT_NOTIFY;   // the send sheet's choice, for the date and status messages below
+      var post=function(body){ if(N&&(body.action==='date'||body.action==='status')) body.notify=N; return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.ok) throw new Error(j.error||'fail'); return j; }); }); };
       var chain=Promise.resolve();
       if(pr!==t.priority||as!==(t.assignee||'')) chain=chain.then(function(){ return post({action:'taskEdit',task:ref,priority:pr,assignee:as}); });
       if(dt&&dt!==t.confirmed_date) chain=chain.then(function(){ return post({action:'date',task:ref,confirmed_date:dt}); });
       if(st!==t.status) chain=chain.then(function(){ return post({action:'status',task:ref,status:st}); });
-      chain.then(function(){ toast('حُفظت المهمة'); loadProfile(PROF.email); loadClients(); WORK=null; })
+      chain.then(function(){ toast(sndSay(N,'حُفظت المهمة')); loadProfile(PROF.email); loadClients(); WORK=null; })
         .catch(function(er){ b.disabled=false; toast(er.message==='date first'?'حدّد تاريخ الاستحقاق قبل قبول المهمة':er.message==='date'?'اختر تاريخاً صحيحاً':'تعذّر الحفظ',true); loadProfile(PROF.email); }); return; }
     if(tc&&b.hasAttribute('data-tdel')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف؟ لا يمكن التراجع'; return; } creq({action:'taskDelete',task:tc.dataset.tref},b,'حُذفت المهمة').catch(function(){}); return; }
     var oc=b.closest('[data-okey]');
