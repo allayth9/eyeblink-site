@@ -1698,12 +1698,16 @@ async function adminPost(ctx, d){
     const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
     const title = clip(d.title, 140); if (!title) return json({ ok: false, error: "title" }, 400);
     const cd = clip(d.confirmed_date, 10); if (cd && !isDate(cd)) return json({ ok: false, error: "date" }, 400);
-    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", st = cd ? "accepted" : "review";
-    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, confirmed_date, status, assignee, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'studio',?,?)`)
-      .bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, at, at).run();
-    await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, by_studio: true, confirmed_date: cd || null, priority: pr } });
+    // work already finished (before the client joined the workspace, or done off the platform): recorded as completed on its day,
+    // so the reports count it in its period; the client is not notified about it
+    const dd = d.done ? clip(d.done_date, 10) : ""; if (d.done && (!isDate(dd) || dd > today())) return json({ ok: false, error: "date" }, 400);
+    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", st = d.done ? "completed" : cd ? "accepted" : "review";
+    const born = d.done ? dd + "T12:00:00.000Z" : at;
+    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, confirmed_date, status, assignee, created_by, created_at, updated_at, completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'studio',?,?,?)`)
+      .bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, born, born, d.done ? born : null).run();
+    await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, by_studio: true, confirmed_date: cd || null, priority: pr, done_before: d.done ? dd : undefined } });
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
-    later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
+    if (!d.done) later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
     return json({ ok: true, ref });
   }
   if (d.action === "point" || d.action === "pointAdd") {

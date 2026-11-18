@@ -180,7 +180,10 @@
     return '<section class="sec"><div class="ph"><h3>المهام</h3>'+(act.length?'<button class="btn sm primary" type="button" data-pnewt>+ مهمة جديدة</button>':'')+'</div>'+
       '<form class="cl-task" id="clTask" hidden novalidate><div class="row"><div class="field"><label>المشروع *</label><select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(PROF.proj===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div><div class="field"><label>العنوان *</label><input name="title" dir="auto" required></div></div>'+
         '<div class="row"><div class="field"><label>الأولوية</label><select name="priority">'+Object.keys(WPR).map(function(k){ return '<option value="'+k+'">'+WPR[k]+'</option>'; }).join('')+'</select></div><div class="field"><label>تاريخ الاستحقاق</label><input name="confirmed_date" type="date"></div><div class="field"><label>المسؤول عن التنفيذ</label><input name="assignee" dir="auto" placeholder="اختياري"></div></div>'+
-        '<div class="field"><label>الوصف</label><textarea name="description" dir="auto" rows="2"></textarea></div><p class="hint">مع تاريخ الاستحقاق تُنشأ المهمة مقبولة، ودونه تكون قيد المراجعة. يصل إشعار إلى العميل.</p><div class="actions"><button class="btn primary sm" type="submit">إنشاء المهمة</button></div></form>'+
+        '<div class="field"><label>الوصف</label><textarea name="description" dir="auto" rows="2"></textarea></div>'+
+        '<div class="row cl-done"><label class="check"><input type="checkbox" name="done" data-tdone> مهمة منجزة سابقاً</label><div class="field" data-tdd hidden><label>تاريخ الإنجاز</label><input name="done_date" type="date" max="'+new Date().toISOString().slice(0,10)+'" value="'+new Date().toISOString().slice(0,10)+'"></div></div>'+
+        '<p class="hint" data-th="0">مع تاريخ الاستحقاق تُنشأ المهمة مقبولة، ودونه تكون قيد المراجعة. يصل إشعار إلى العميل.</p><p class="hint" data-th="1" hidden>تُسجَّل مكتملة بتاريخ إنجازها، وتدخل في تقرير تلك الفترة، ولا يصل إلى العميل أي إشعار.</p>'+
+        '<div class="actions"><button class="btn primary sm" type="submit">إنشاء المهمة</button></div></form>'+
       '<div class="chips">'+[['open','المفتوحة'],['done','المكتملة'],['closed','الملغاة والمرفوضة'],['all','الكل']].map(function(x){ var n=D.tasks.filter(function(t){ return (!TGRP[x[0]]||TGRP[x[0]].indexOf(t.status)>=0)&&(!PROF.proj||t.project_id===PROF.proj); }).length; return '<button type="button" class="btn sm'+(PTF===x[0]?' primary':'')+'" data-ptf="'+x[0]+'">'+x[1]+' <small>'+n+'</small></button>'; }).join('')+
         (D.projects.length>1?'<select class="cp-pf" data-pfilter aria-label="المشروع"><option value="">كل المشاريع</option>'+D.projects.map(function(p){ return '<option value="'+esc(p.id)+'"'+(PROF.proj===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select>':'')+'</div>'+
       (list.length?'<div class="cp-tasks">'+list.map(function(t){ var late=t.confirmed_date&&t.confirmed_date<td&&OPENS.indexOf(t.status)>=0&&['feedback','final'].indexOf(t.status)<0;
@@ -259,7 +262,8 @@
     if(f.id==='clProj'){ if(!E.name.value.trim()){ toast('اكتب اسم المشروع',true); return; }
       creq({action:'project',client_email:PROF.email,name:E.name.value.trim(),type:E.type.value,start_date:E.start_date.value,end_date:E.end_date.value,quota:E.quota.value,description:E.description.value.trim()},b,'أُنشئ المشروع').catch(function(){}); return; }
     if(f.id==='clTask'){ if(!E.title.value.trim()){ toast('اكتب عنوان المهمة',true); return; }
-      creq({action:'studioTask',project:E.project.value,title:E.title.value.trim(),priority:E.priority.value,confirmed_date:E.confirmed_date.value,assignee:E.assignee.value.trim(),description:E.description.value.trim()},b,'أُنشئت المهمة ووصل إشعار إلى العميل').catch(function(){}); return; }
+      var dn=E.done.checked; if(dn&&!E.done_date.value){ toast('اختر تاريخ الإنجاز',true); return; }
+      creq({action:'studioTask',project:E.project.value,title:E.title.value.trim(),priority:E.priority.value,confirmed_date:E.confirmed_date.value,assignee:E.assignee.value.trim(),description:E.description.value.trim(),done:dn,done_date:dn?E.done_date.value:''},b,dn?'سُجّلت المهمة مكتملة':'أُنشئت المهمة ووصل إشعار إلى العميل').catch(function(){}); return; }
     if(f.id==='clFile'){ var u=E.url.value.trim(); if(!E.title.value.trim()||!/^https?:\/\/\S+$/i.test(u)){ toast('اكتب الاسم ورابطاً يبدأ بـ https://',true); return; }
       creq({action:'studioFile',project:E.project.value,category:E.category.value,title:E.title.value.trim(),url:u},b,'أُضيف الملف').catch(function(){}); return; }
     if(f.classList.contains('cl-pay')){ var id=f.closest('[data-iid]').dataset.iid, amt=+E.amount.value; if(!(amt>0)){ toast('اكتب مبلغاً صحيحاً',true); return; }
@@ -364,6 +368,9 @@
     if((b=e.target.closest('[data-avset]'))){ var inp=document.querySelector('[data-avfile]'); if(inp) inp.click(); return; }
     if((b=e.target.closest('[data-avbrand]'))){ var a=brandPic(PROF.d||{}); if(a) avFrom(String(a.url).replace(/^https?:\/\/[^\/]+/,''),b); return; }
     if((b=e.target.closest('[data-avdel]'))){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف'; return; } avSave(null,b,'حُذفت الصورة'); } });
+  // «done before»: the completion date shows, and the note under the form says what will (and will not) happen
+  document.addEventListener('change',function(e){ var c=e.target; if(TAB!=='clients'||!c.hasAttribute('data-tdone')) return; var f=c.form;
+    f.querySelector('[data-tdd]').hidden=!c.checked; f.querySelectorAll('[data-th]').forEach(function(p){ p.hidden=(p.dataset.th==='1')!==c.checked; }); });
   document.addEventListener('change',function(e){ var inp=e.target; if(TAB!=='clients'||!inp.hasAttribute('data-avfile')||!inp.files.length) return; var f=inp.files[0]; inp.value=''; avFrom(f,null); });
   function fsize(n){ return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
   function pBrand(D){ var B=D.brand||{colors:[],fonts:[],style:'',music:'',assets:[]}, rel=function(u){ return String(u||'').replace(/^https?:\/\/[^\/]+/,''); };

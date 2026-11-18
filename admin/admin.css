@@ -915,7 +915,10 @@ html{-webkit-tap-highlight-color:transparent}
 .bform{grid-template-columns:minmax(0,1fr) 290px;align-items:start}
 .bform>*{grid-column:1}
 .bform>.btk{grid-column:2;grid-row:1 / span 40;position:sticky;top:96px}
-@media (max-width:1000px){.bform{grid-template-columns:minmax(0,1fr)}.bform>.btk{grid-column:1;grid-row:auto;position:static}}
+/* the live ticket sits beside the form only when the form itself has room (it also opens in the narrow side panel) */
+:has(>.bform){container-type:inline-size}
+@container (max-width:720px){.bform{grid-template-columns:minmax(0,1fr)}.bform>.btk{grid-column:1;grid-row:auto;position:static}}
+@container (max-width:520px){.bform .bitem{grid-template-columns:90px minmax(0,1fr) 28px}.bform .bitem>[name=desc]{grid-column:1/-1}}
 .bscope{display:flex;gap:6px;flex-wrap:wrap}
 .bsc{font:inherit;font-size:13px;color:var(--mist);background:rgba(var(--fg),.04);border:0;border-radius:999px;padding:6px 13px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
 .bsc[aria-pressed="true"]{background:color-mix(in srgb,var(--horizon) 12%,transparent);color:var(--horizon);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--horizon) 40%,transparent)}

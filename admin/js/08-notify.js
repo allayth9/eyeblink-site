@@ -93,7 +93,7 @@
     // things that do not exist yet: the preview is built from the form's own values
     ['#clProj [type=submit],.wpf [type=submit]',function(b){ var f=b.form; if(f.dataset.wpid) return null; var n=f.elements.name.value.trim(), c=f.elements.client_email?f.elements.client_email.value:PROF&&PROF.email; if(!n||!c) return null;
       return {title:'مشروع جديد للعميل',rows:[['المشروع',n]],pv:{kind:'project',client:c,name:n}}; }],
-    ['#clTask [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!PROF) return null;
+    ['#clTask [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!PROF||(E.done&&E.done.checked)) return null;   // work done before: saved quietly, nothing to send
       return {title:'مهمة جديدة من الاستوديو',rows:[['المهمة',t],['الموعد المؤكد',E.confirmed_date.value&&wd(E.confirmed_date.value)]],pv:{kind:'added',client:PROF.email,title:t,date:E.confirmed_date.value}}; }],
     ['#clFile [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!/^https?:\/\/\S+$/i.test(E.url.value.trim())) return null;
       return {title:'مشاركة ملف مع العميل',rows:[['الملف',t]],pv:{kind:'file',project:E.project.value,file:t}}; }],
