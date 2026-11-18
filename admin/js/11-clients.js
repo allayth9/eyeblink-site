@@ -17,7 +17,7 @@
   var ROLE={client:'عميل متعاقد',customer:'عميل عادي'}, VIA={invite:'بدعوة',request:'بطلب وصول',upgrade:'ترقية من الإدارة'};
   /* ---------------- clients: a list of every client, and one management profile per client ---------------- */
   // the list comes from the server (D1 client records + accounts), joined here with the site orders already loaded
-  var CL=null, CQ='', CF='all', CS='activity', CADD=false, PROF=null, PSEC='overview', PTF='open', PFC='all', PEDIT=false;
+  var CL=null, CQ='', CF='all', CS='activity', CADD=false, PROF=null, PSEC='overview', PTF='open', PFC='all', PEDIT=false, CSELM=false, CSEL={};
   function loadClients(){ if(!LIVE){ CL={err:'live'}; if(TAB==='clients') renderClients(); return; }
     fetch(API+'/work?admin=1&view=clients',{headers:headers({}),cache:'no-store'}).then(function(r){ return r.json(); })
       .then(function(j){ CL=j.ok?j:{err:j.error||'fail'}; if(TAB==='clients') renderClients(); }).catch(function(){ CL={err:'net'}; if(TAB==='clients') renderClients(); }); }
@@ -77,10 +77,11 @@
           '<div class="field"><label>مشروع أول (اختياري)</label><input name="pname" dir="auto" placeholder="مثلاً: المحتوى الشهري"></div><div class="field"><label>نوع المشروع</label><select name="ptype">'+Object.keys(WPT).map(function(k){ return '<option value="'+k+'"'+(k==='monthly'?' selected':'')+'>'+WPT[k]+'</option>'; }).join('')+'</select></div></div>'+
         '<label class="check"><input type="checkbox" name="mail"> أرسل بيانات الدخول إلى بريده أيضاً</label>'+
         '<div class="actions"><button class="btn primary sm" type="submit">إضافة العميل وتجهيزه</button></div></form>':'')+
+      '<div class="cl-sel">'+(CSELM?'<span class="small muted">'+(Object.keys(CSEL).length?'حُدّد '+Object.keys(CSEL).length:'اضغط على العملاء لتحديدهم')+'</span>'+(Object.keys(CSEL).length?'<button class="btn sm danger" type="button" data-cpurgesel>حذف المحدد…</button>':''):'')+'<button class="btn sm" type="button" data-csel>'+(CSELM?'إنهاء التحديد':'تحديد عدة عملاء')+'</button></div>'+
       '<div class="cl-tools"><input type="search" class="cl-q" placeholder="ابحث بالاسم أو البريد أو الهاتف…" value="'+esc(CQ)+'" aria-label="بحث"><select class="cl-sort" aria-label="الترتيب"><option value="activity"'+(CS==='activity'?' selected':'')+'>الأحدث نشاطاً</option><option value="name"'+(CS==='name'?' selected':'')+'>الاسم</option><option value="added"'+(CS==='added'?' selected':'')+'>الأحدث إضافة</option></select></div>'+
       '<div class="chips cl-chips">'+CFL.map(function(x){ var n=all.filter(function(c){ return cmatch(c,x[0]); }).length; return '<button type="button" class="btn sm f-'+x[0]+(CF===x[0]?' primary':'')+'" data-cf="'+x[0]+'">'+x[1]+' <small>'+n+'</small></button>'; }).join('')+'</div>'+
       (list.length?'<div class="cl-list">'+list.map(function(c){
-        return '<button type="button" class="cl-row'+(c.status==='archived'?' arch':'')+'" data-copen="'+esc(c.email)+'">'+avatar(c)+
+        return '<button type="button" class="cl-row'+(c.status==='archived'?' arch':'')+(CSELM&&CSEL[c.email]?' sel':'')+'" data-copen="'+esc(c.email)+'"'+(CSELM?' aria-pressed="'+!!CSEL[c.email]+'"':'')+'>'+(CSELM?'<i class="cl-ck" aria-hidden="true"></i>':'')+avatar(c)+
           '<span class="cl-id"><b>'+esc(c.name||c.email)+'</b>'+(c.company?'<small>'+esc(c.company)+'</small>':'')+'<span class="small muted" dir="ltr">'+esc(c.email)+(c.phone?' · '+esc(c.phone):'')+'</span></span>'+
           '<span class="cl-st">'+acctChip(c)+(c.status!=='active'?'<span class="rpill st-'+esc(c.status)+'">'+esc(CST[c.status])+'</span>':'')+'</span>'+
           '<span class="cl-n">'+(c.projects?'<span><b>'+c.projects+'</b> '+(c.projects>1?'مشاريع':'مشروع')+'</span>':'')+(c._orders?'<span><b>'+c._orders+'</b> '+(c._orders>1?'طلبات':'طلب')+'</span>':'')+(c.open_tasks?'<span><b>'+c.open_tasks+'</b> '+(c.open_tasks>1?'مهام مفتوحة':'مهمة مفتوحة')+'</span>':'')+'</span>'+
@@ -99,12 +100,12 @@
       '<dl class="pkg-dl"><div><dt>الرابط</dt><dd dir="ltr">'+esc(k.link)+'</dd></div><div><dt>البريد</dt><dd dir="ltr">'+esc(k.email)+'</dd></div><div><dt>كلمة السر المؤقتة</dt><dd dir="ltr" class="pkg-pw">'+esc(k.password)+'</dd></div></dl>'+
       '<pre class="pkg-msg" dir="auto">'+esc(pkgMsg(k))+'</pre>'+
       '<div class="actions"><button class="btn sm primary" type="button" data-pkgcopy>نسخ الرسالة</button><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/'+digits+'?text='+encodeURIComponent(pkgMsg(k))+'">إرسال عبر واتساب'+(digits?'':' (اختر جهة الاتصال)')+'</a><button class="btn sm" type="button" data-pkgpw>نسخ كلمة السر</button></div></section>'; }
-  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['brand','مكتبة الهوية'],['log','سجل النشاط']];
+  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['brand','مكتبة الهوية'],['support','الدعم'],['log','سجل النشاط']];
   function renderProfile(){ var P=PROF;
     if(P.err) { $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="empty">'+(P.err==='live'?'يعمل هذا القسم على الموقع المنشور.':P.err==='db'?'قاعدة البيانات غير مربوطة.':'تعذّر تحميل ملف العميل.')+'</div></section>'; return; }
     if(!P.d){ $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="skel"><i></i><i></i><i></i></div></section>'; return; }
     var D=P.d, c=D.client||{}, u=D.user, email=P.email, isCl=u.role==='client', ords=ordersOf(email), listC=(CL&&CL.clients||[]).filter(function(x){ return x.email===email; })[0]||{};
-    var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,brand:D.brand?D.brand.assets.length+D.brand.colors.length+D.brand.fonts.length:0,log:D.activity.length};
+    var cnt={projects:D.projects.length,orders:ords.length,tasks:D.tasks.length,billing:D.invoices.length,files:D.files.length+D.delivered.length,brand:D.brand?D.brand.assets.length+D.brand.colors.length+D.brand.fonts.length:0,support:supOf(email).length,log:D.activity.length};
     var head='<section class="sec cp-head"><div class="cp-top"><button class="btn sm" type="button" data-pclose>‹ كل العملاء</button>'+(P.loading?'<span class="small muted">يُحدَّث…</span>':'')+'</div>'+
       '<div class="cph2">'+avatar({name:c.name||u.name,email:email,logo_url:c.logo_url},true)+'<div class="cp-id"><h2>'+esc(c.name||u.name||email)+'</h2>'+(c.company?'<div>'+esc(c.company)+'</div>':'')+
         '<div class="small muted"><span dir="ltr" style="user-select:all">'+esc(email)+'</span>'+(c.phone?' · <span dir="ltr">'+esc(c.phone)+'</span>':'')+(c.id?' · <span class="code">'+esc(c.id)+'</span>':'')+'</div>'+
@@ -115,7 +116,7 @@
             (D.account?'<button class="btn sm" type="button" data-ctemp>بيانات دخول جديدة</button>':'<button class="btn sm" type="button" data-cinvite>إرسال دعوة بدلاً من التجهيز</button>')+
             (D.account&&isCl?'<button class="btn sm" type="button" data-urole="'+esc(email)+'" data-to="customer">إلغاء مساحة العمل</button>':'')+
             (c.status==='archived'?'<button class="btn sm" type="button" data-carch="0">استعادة العميل</button>':'<button class="btn sm" type="button" data-carch="1">أرشفة</button>')+
-            (D.account?'<button class="btn sm danger" type="button" data-udel="'+esc(email)+'">حذف الحساب</button>':'')+
+            '<button class="btn sm danger" type="button" data-cpurge="'+esc(email)+'">حذف العميل…</button>'+
           '</div></details>'+
           '<div class="newpw small" hidden></div></div></div>'+
       (PEDIT?'<form class="cl-edit" id="clEdit" novalidate><div class="row"><div class="field"><label>الاسم</label><input name="name" dir="auto" value="'+esc(c.name||u.name||'')+'"></div><div class="field"><label>الشركة أو العلامة</label><input name="company" dir="auto" value="'+esc(c.company||'')+'"></div></div>'+
@@ -124,7 +125,7 @@
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea name="notes" dir="auto" rows="3">'+esc(c.notes||'')+'</textarea></div><div class="actions"><button class="btn primary sm" type="submit">حفظ البيانات</button></div></form>'
         :(c.notes?'<div class="cp-notes"><span class="small muted">ملاحظات داخلية</span><p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p></div>':''))+
       '<nav class="cp-tabs" role="tablist">'+PSECS.map(function(x){ return '<button type="button" role="tab" class="t-'+x[0]+'" aria-selected="'+(PSEC===x[0])+'" data-psec="'+x[0]+'">'+x[1]+(cnt[x[0]]?' <small>'+cnt[x[0]]+'</small>':'')+'</button>'; }).join('')+'</nav></section>';
-    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,brand:pBrand,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
+    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,brand:pBrand,support:pSupport,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
   }
   function kpi(n,l,k){ var fam={'#F5C66B':' ck-wait','#7DD3FC':' ck-ok'}[k]||''; return '<div class="ck'+fam+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
   function due2(D){ var due={},paid={}; D.invoices.forEach(function(x){ if(x.status!=='cancelled') paid[x.currency]=(paid[x.currency]||0)+x.paid-(x.refunded||0); if(x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0) due[x.currency]=(due[x.currency]||0)+x.balance; });
@@ -376,3 +377,51 @@
     var step=function(){ var f=q.shift(); if(!f){ prog.textContent=ok+' / '+n; toast(ok===n?'رُفعت الملفات':'رُفع '+ok+' من '+n,ok!==n); loadProfile(PROF.email); return; }
       window.EBUp.upload(f,{scope:'brand',kind:kind,client_email:PROF.email},function(x){ prog.textContent=f.name+' · '+Math.round(x*100)+'%'; }).then(function(){ ok++; step(); },function(){ step(); }); };
     inp.value=''; step(); });
+
+  /* ---------------- clean-up (19 Nov): the delete window, for a client, several clients, a project or a team member ----------------
+     Archive (or pause) where it exists, or delete for good: the real counts first, the e-mail (or the word «احذف») typed back. */
+  function purgeWin(o){ return new Promise(function(res){ var ov=document.createElement('div'), mode=o.archive?'d':'d', last=document.activeElement; ov.className='cfm-ov';
+    var cs=(o.counts||[]).filter(function(c){ return c[0]; });
+    ov.innerHTML='<div class="cfm cf-bad pg" role="alertdialog" aria-modal="true" aria-labelledby="pgT"><span class="cfm-ic"><svg viewBox="0 0 24 24" aria-hidden="true">'+CFICO.bad+'</svg></span><h4 id="pgT">'+esc(o.title)+'</h4>'+(o.sub?'<p class="pg-sub" dir="auto">'+esc(o.sub)+'</p>':'')+
+      (o.archive?'<div class="pg-opt" role="radiogroup"><label><input type="radio" name="pgm" value="a"><span><b>'+esc(o.archive[0])+'</b><small>'+esc(o.archive[1])+'</small></span></label><label class="del"><input type="radio" name="pgm" value="d" checked><span><b>حذف نهائي</b><small>'+esc(o.delHint)+'</small></span></label></div>':'<p class="pg-sub">'+esc(o.delHint)+'</p>')+
+      '<div class="pg-what">'+(cs.length?cs.map(function(c){ return '<div'+(c[2]?' class="warn"':'')+'><b>'+c[0]+'</b>'+esc(c[1])+'</div>'; }).join(''):'<div class="none">لا توجد بيانات مرتبطة غير '+esc(o.only||'الحساب')+'</div>')+'</div>'+
+      '<label class="pg-typ"><span>'+esc(o.typeLabel)+'</span><input dir="'+(o.typeWord==='احذف'?'rtl':'ltr')+'" autocomplete="off" spellcheck="false" data-pgt></label>'+
+      (o.backup?'<p class="pg-note"><i></i>تُحفظ نسخة احتياطية تلقائياً قبل الحذف</p>':'')+
+      '<div class="cfm-act"><button type="button" class="btn primary" data-pgok disabled>احذف نهائياً</button><button type="button" class="btn" data-cfno>إلغاء</button></div></div>';
+    document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('on'); });
+    var ok=ov.querySelector('[data-pgok]'), inp=ov.querySelector('[data-pgt]'), typ=ov.querySelector('.pg-typ'), what=ov.querySelector('.pg-what');
+    function sync(){ var del=mode==='d'; typ.hidden=!del; what.style.opacity=del?1:.4; ok.textContent=del?'احذف نهائياً':o.archive[2];
+      ok.disabled=del&&inp.value.trim().toLowerCase()!==String(o.typeWord).toLowerCase(); ok.parentNode.parentNode.classList.toggle('cf-bad',del); ok.parentNode.parentNode.classList.toggle('cf-go',!del); }
+    function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
+    function key(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); done(false); } else if(e.key==='Enter'&&!ok.disabled){ e.preventDefault(); ok.click(); } }
+    ov.addEventListener('change',function(e){ if(e.target.name==='pgm'){ mode=e.target.value; sync(); if(mode==='d') inp.focus(); } });
+    inp.addEventListener('input',sync);
+    ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('[data-cfno]')) return done(false);
+      if(e.target.closest('[data-pgok]')&&!ok.disabled){ ok.disabled=true; ok.textContent='جارٍ التنفيذ…'; o.run(mode).then(function(j){ if(j&&j.ok) done(mode); else { toast('تعذّر التنفيذ',true); sync(); } },function(){ toast('تعذّر التنفيذ',true); sync(); }); } });
+    addEventListener('keydown',key,true); sync(); setTimeout(function(){ (o.archive?ov.querySelector('input[value="d"]'):inp).focus(); },60); }); }
+  function wpost(body){ return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+  function afterPurge(){ CL=null; USERS=null; WORK=null; BILL=null; NOTI=null; CSEL={}; CSELM=false; if(typeof loadUsers==='function') loadUsers(); loadClients(); renderTabs(); }
+  function clientPurge(emails){ var one=emails.length===1;
+    wpost({action:'purgePreview',emails:emails}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true);
+      var T={projects:0,tasks:0,deliverables:0,invoices:0,paid:0,files:0,notifications:0,orders:0,tickets:0}; Object.keys(j.counts).forEach(function(e){ var c=j.counts[e]; Object.keys(T).forEach(function(k){ T[k]+=c[k]||0; }); });
+      var c=one&&((CL&&CL.clients)||[]).filter(function(x){ return x.email===emails[0]; })[0];
+      purgeWin({ title: one?'حذف «'+((c&&c.name)||emails[0])+'»':'حذف '+emails.length+' عملاء', sub: one?emails[0]:'',
+        archive: one&&c&&c.status!=='archived'?['أرشفة','يختفي من القوائم، ويبقى كل شيء محفوظاً. يمكنك إعادته متى شئت','أرشف العميل']:null,
+        delHint: one?'يُحذف هو وكل ما يخصّه من كل الأقسام، ولا يمكن التراجع':'يُحذفون مع كل ما يخصّهم من كل الأقسام، ولا يمكن التراجع',
+        counts:[[T.projects,'مشاريع'],[T.tasks,'مهام'],[T.deliverables,'تسليمات'],[T.invoices,'فواتير'+(T.paid?' · '+T.paid+' مدفوعة':''),!!T.paid],[T.files,'ملفات'],[T.notifications,'إشعارات'],[T.orders,'طلبات من الموقع'],[T.tickets,'تذاكر دعم']],
+        typeLabel: one?'اكتب بريد العميل للتأكيد':'اكتب «احذف» للتأكيد', typeWord: one?emails[0]:'احذف', backup:true,
+        run:function(m){ return m==='a'?wpost({action:'clientArchive',email:emails[0],archive:true}):wpost({action:'clientPurge',emails:emails,confirm:true}); } })
+      .then(function(m){ if(!m) return; toast(m==='a'?'أُرشف العميل':one?'حُذف العميل وكل ما يخصّه':'حُذف '+emails.length+' عملاء وكل ما يخصّهم'); if(m==='d'&&PROF) PROF=null; afterPurge(); route(); }); }); }
+  document.addEventListener('click',function(e){ if(TAB!=='clients') return; var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.cpurge){ e.stopImmediatePropagation(); clientPurge([b.dataset.cpurge]); return; }
+    if(b.hasAttribute('data-cpurgesel')){ clientPurge(Object.keys(CSEL)); return; }
+    if(b.hasAttribute('data-csel')){ CSELM=!CSELM; CSEL={}; renderClients(); return; }
+    if(CSELM&&b.dataset.copen){ e.stopImmediatePropagation(); if(CSEL[b.dataset.copen]) delete CSEL[b.dataset.copen]; else CSEL[b.dataset.copen]=1; renderClients(); } },true);
+
+  // the client's support tickets, from the support section's own list (loaded once when a profile opens)
+  function supOf(email){ if(SUPA===null){ SUPA=[]; loadSupport(); setTimeout(function(){ if(PROF&&TAB==='clients') renderClients(); },900); } return (SUPA||[]).filter(function(s){ return String(s.email||'').toLowerCase()===email; }); }
+  function pSupport(){ var L=supOf(PROF.email);
+    return '<section class="sec"><h3>تذاكر الدعم</h3>'+(L.length?'<div class="cp-list">'+L.map(function(s){ var m=(s.messages||[])[0]||{}, last=(s.messages||[]).slice(-1)[0]||m;
+      return '<button type="button" class="cl-row cp-sup" data-psup="'+esc(s.id)+'"><span class="cl-id"><b>'+esc(String(m.text||'').slice(0,90))+'</b><span class="small muted">'+esc(s.id)+' · '+esc(ago2(last.at||s.updatedAt))+'</span></span><span class="cl-st"><span class="rpill tf-'+(SFAM[s.status]||'new')+'">'+esc(SST[s.status]||s.status)+'</span></span></button>'; }).join('')+'</div>'
+      :'<div class="empty">لا توجد تذاكر دعم لهذا العميل.</div>')+'</section>'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-psup]'); if(!b||TAB!=='clients') return; SOPEN=b.dataset.psup; SPICK=true; TAB='support'; route(); render(); scrollTo(0,0); });

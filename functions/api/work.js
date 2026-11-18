@@ -782,6 +782,49 @@ function tplSample(kind, lang){
   const extra = /^invoice/.test(kind) ? { inv, no: inv.no, amount: "$300", balance: "$300", due } : kind === "infoWaiting" ? { note: en ? "The logo as an SVG, and two product photos" : "الشعار بصيغة SVG، وصورتان للمنتج" } : { label: "V2" };
   return composeMail(u, t, kind, extra, /^invoice/.test(kind) ? "#w/invoices/sample" : "#w/t/T-A62CA");
 }
+// ---- clean-up (19 Nov): a client or a project leaves with everything that hangs on it. Counts first; the rows go to R2 as a JSON
+// backup (backups/purge/…) before anything is deleted; the client's uploads in R2 go too. Invoices of a deleted project stay (money), unlinked. ----
+const PURGE = [["deliverables","client_email"],["comments","client_email"],["files","client_email"],["tasks","client_email"],["recurring","client_email"],["invoices","client_email"],
+  ["project_members","email"],["projects","client_email"],["activity","client_email"],["notifications","recipient"],["notify_prefs","email"],["notify_log","recipient"],
+  ["scheduled_sends","recipient"],["pending_sends","recipient"],["rule_log","recipient"],["push_subs","email"],["tg_links","email"],["client_tips","email"],
+  ["brand_kits","email"],["brand_assets","email"],["clients","email"]];
+async function kvEach(env, prefix, fn){ let c; do { const r = await env.EB.list({ prefix, cursor: c }); for (const k of r.keys) { let v = null; try { v = JSON.parse(await env.EB.get(k.name)); } catch {} if (v) await fn(k.name, v); } c = r.list_complete ? null : r.cursor; } while (c); }
+async function purgeCounts(env, D, email){
+  const n = async (sql, ...a) => ((await D.prepare(sql).bind(...a).first()) || {}).n || 0;
+  const out = { projects: await n("SELECT COUNT(*) AS n FROM projects WHERE client_email=?", email), tasks: await n("SELECT COUNT(*) AS n FROM tasks WHERE client_email=?", email),
+    deliverables: await n("SELECT COUNT(*) AS n FROM deliverables WHERE client_email=?", email), invoices: await n("SELECT COUNT(*) AS n FROM invoices WHERE client_email=?", email),
+    paid: await n("SELECT COUNT(*) AS n FROM invoices WHERE client_email=? AND paid>0", email), files: await n("SELECT COUNT(*) AS n FROM files WHERE client_email=?", email) + await n("SELECT COUNT(*) AS n FROM brand_assets WHERE email=?", email),
+    notifications: await n("SELECT COUNT(*) AS n FROM notifications WHERE recipient=?", email), orders: 0, tickets: 0, account: !!(await env.EB.get("user:" + email)) };
+  await kvEach(env, "order:", async (k, o) => { if (String(o.email || "").toLowerCase() === email) out.orders++; });
+  await kvEach(env, "sup:", async (k, s) => { if (String(s.email || "").toLowerCase() === email) out.tickets++; });
+  return out;
+}
+async function purgeClient(env, D, email){
+  const snap = { email, at: now(), rows: {}, kv: {} };
+  for (const [t, c] of PURGE) snap.rows[t] = (await D.prepare(`SELECT * FROM ${t} WHERE ${c}=?`).bind(email).all()).results;
+  snap.kv.user = await env.EB.get("user:" + email);
+  const refs = new Set(snap.rows.tasks.map(t => t.ref));
+  if (env.R2) { await env.R2.put("backups/purge/" + Date.now() + "-" + email.replace(/[^a-z0-9.@_-]/g, "_") + ".json", JSON.stringify(snap)).catch(() => {});
+    for (const f of snap.rows.files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
+    for (const a of snap.rows.brand_assets) await env.R2.delete(a.key).catch(() => {}); }
+  await D.batch(PURGE.map(([t, c]) => D.prepare(`DELETE FROM ${t} WHERE ${c}=?`).bind(email)));
+  await env.EB.delete("user:" + email); await env.EB.delete("accreq:" + email);
+  await kvEach(env, "order:", async (k, o) => { if (String(o.email || "").toLowerCase() === email) { await env.EB.delete(k); if (o.code) await env.EB.delete("code:" + o.code); } });
+  await kvEach(env, "sup:", async (k, s) => { if (String(s.email || "").toLowerCase() === email) await env.EB.delete(k); });
+  await unlinkTeam(env, refs);
+}
+// team tasks that pointed at client tasks which no longer exist keep their work, without the dead link
+async function unlinkTeam(env, refs){ if (!refs.size) return;
+  await kvEach(env, "ttask:", async (k, t) => { if (t.workTask && refs.has(t.workTask)) { t.workTask = ""; await env.EB.put(k, JSON.stringify(t)); } }); }
+async function purgeProject(env, D, id){
+  const tasks = (await D.prepare("SELECT id, ref FROM tasks WHERE project_id=?").bind(id).all()).results, files = (await D.prepare("SELECT url FROM files WHERE project_id=?").bind(id).all()).results;
+  if (env.R2) for (const f of files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
+  await D.batch([D.prepare("DELETE FROM deliverables WHERE project_id=?").bind(id), D.prepare("DELETE FROM comments WHERE project_id=?").bind(id), D.prepare("DELETE FROM files WHERE project_id=?").bind(id),
+    D.prepare("DELETE FROM tasks WHERE project_id=?").bind(id), D.prepare("DELETE FROM recurring WHERE project_id=?").bind(id), D.prepare("DELETE FROM project_members WHERE project_id=?").bind(id),
+    D.prepare("UPDATE invoices SET project_id=NULL WHERE project_id=?").bind(id), D.prepare("DELETE FROM projects WHERE id=?").bind(id)]);
+  await unlinkTeam(env, new Set(tasks.map(t => t.ref)));
+  return tasks.length;
+}
 // to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
 function toStudio(ctx, env, subject, text){
   const m = /T-[A-Z0-9]{4,}/.exec(subject);
@@ -909,7 +952,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1458,6 +1501,28 @@ async function adminPost(ctx, d){
     await act(D, { ...studio, client_email: email, kind: old ? "client_updated" : "client_added", data: { name: f.name } });
     return json({ ok: true, id: (await clientRow(D, email)).id, account: !!u, role: u ? (u.role === "client" ? "client" : "customer") : null });
   }
+  if (d.action === "purgePreview") {
+    if (d.project) { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
+      const n = async (sql) => ((await D.prepare(sql).bind(p.id).first()) || {}).n || 0;
+      return json({ ok: true, project: { name: p.name, tasks: await n("SELECT COUNT(*) AS n FROM tasks WHERE project_id=?"), deliverables: await n("SELECT COUNT(*) AS n FROM deliverables WHERE project_id=?"),
+        files: await n("SELECT COUNT(*) AS n FROM files WHERE project_id=?"), invoices: await n("SELECT COUNT(*) AS n FROM invoices WHERE project_id=?") } }); }
+    const list = [].concat(d.emails || d.email || []).slice(0, 50).map(e => clip(e, 254).toLowerCase()).filter(Boolean), out = {};
+    for (const e of list) out[e] = await purgeCounts(env, D, e);
+    return json({ ok: true, counts: out });
+  }
+  if (d.action === "clientPurge") {   // permanent: the panel asks for the e-mail typed back (one) or the count (several)
+    if (d.confirm !== true) return json({ ok: false, error: "confirm" }, 400);
+    const list = [].concat(d.emails || []).slice(0, 50).map(e => clip(e, 254).toLowerCase()).filter(e => /@/.test(e));
+    for (const e of list) await purgeClient(env, D, e);
+    return json({ ok: true, deleted: list.length });
+  }
+  if (d.action === "projectPurge") {
+    const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.id, 40)).first(); if (!p) return json({ ok: false }, 404);
+    if (d.mode === "archive") { await D.prepare("UPDATE projects SET status='archived', updated_at=? WHERE id=?").bind(at, p.id).run(); await act(D, { ...studio, client_email: p.client_email, project_id: p.id, kind: "project_archived", data: { name: p.name } }); return json({ ok: true }); }
+    if (d.confirm !== true) return json({ ok: false, error: "confirm" }, 400);
+    const n = await purgeProject(env, D, p.id); await act(D, { ...studio, client_email: p.client_email, kind: "project_deleted", data: { name: p.name, tasks: n } });
+    return json({ ok: true });
+  }
   if (d.action === "clientArchive") {
     const c = await clientRow(D, clip(d.email, 254)); if (!c) return json({ ok: false }, 404);
     const arch = d.archive !== false;
@@ -1520,6 +1585,7 @@ async function adminPost(ctx, d){
   if (d.action === "taskDelete") {
     await D.batch([D.prepare("DELETE FROM deliverables WHERE task_id=?").bind(t.id), D.prepare("DELETE FROM comments WHERE task_id=?").bind(t.id), D.prepare("UPDATE files SET task_id=NULL WHERE task_id=?").bind(t.id), D.prepare("DELETE FROM tasks WHERE id=?").bind(t.id)]);
     await act(D, { ...studio, client_email: t.client_email, project_id: t.project_id, kind: "task_deleted", data: { ref: t.ref, title: t.title } });
+    await unlinkTeam(env, new Set([t.ref]));
     return json({ ok: true });
   }
   if (d.action === "studioComment") return addComment(ctx, D, { scope: "task", task: t, author: "studio", author_name: "Eyeblink Studio", body: d.body, links: d.links });

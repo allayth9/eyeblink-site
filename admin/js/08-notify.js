@@ -128,13 +128,18 @@
     document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('on'); });
     var Q=function(s){ return ov.querySelector(s); }, ok=Q('[data-sok]'), at=Q('[data-at]');
     function sync(){ var any=[].some.call(ov.querySelectorAll('[data-ch]'),function(c){ return c.checked&&!c.disabled; });
-      ov.querySelectorAll('.snd-c[data-c]').forEach(function(l){ var c=l.querySelector('input'); l.classList.toggle('on',c.checked&&!c.disabled); l.classList.toggle('dis',c.disabled); });
+      ov.querySelectorAll('label.snd-c[data-c]').forEach(function(l){ var c=l.querySelector('input'); l.classList.toggle('on',c.checked&&!c.disabled); l.classList.toggle('dis',c.disabled); });
       Q('.snd-chs').classList.toggle('mute',WHEN==='none');
       ok.textContent=WHEN==='none'||!any?'نفّذ دون إشعار':WHEN==='later'?'جدوِل الإرسال':'أرسل الآن'; }
     fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(Object.assign({action:'notifyPreview'},o.pv))}).then(function(r){ return r.json(); }).then(function(j){ PV=j;
       if(!j.ok||!j.account){ Q('[data-to]').textContent=j.ok?'لا يملك العميل حساباً بعد، فيُنفَّذ الإجراء دون رسائل':'تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; if(j.ok) ov.querySelectorAll('[data-ch]').forEach(function(c){ c.checked=false; c.disabled=true; }); sync(); return; }
       Q('[data-to]').innerHTML=esc(j.name||'العميل')+(j.subject?' <span>·</span> '+esc(j.subject):'');
       ['email','push','wa'].forEach(function(k){ var c=Q('[data-ch="'+k+'"]'); if(!j.channels[k]){ c.checked=false; c.disabled=true; c.closest('label').querySelector('[data-why]').textContent=SNDWHY[j.why[k]]||''; } });
+      // WhatsApp not automatic (yet): a clear row with the message ready, to open the chat or copy it, in every send window
+      if(!j.channels.wa&&j.wa){ var ph=String(j.phone||'').replace(/\D/g,''), first=String(j.name||'').trim().split(/\s+/)[0], row=document.createElement('div'); row.className='snd-c snd-wam'; row.dataset.c='wa';
+        row.innerHTML='<span class="snd-i"><svg viewBox="0 0 24 24" aria-hidden="true">'+SNDIC.wa+'</svg></span><span class="snd-tx"><b>واتساب · يدوياً من رقم الاستوديو</b><small>'+(j.why.wa==='meta'?'الإرسال التلقائي بعد توثيق Meta':'لم يفعّله العميل في مساحة عمله')+'</small></span>'+
+          '<div class="snd-bub">'+sndWa(j.wa)+'</div><div class="snd-wact">'+(ph?'<a class="btn sm snd-waopen" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent(j.wa)+'">افتح المحادثة'+(first?' مع '+esc(first):'')+'</a>':'<span class="small muted">لا رقم للعميل؛ أضفه من ملفه</span>')+'<button type="button" class="btn sm" data-wcopy>انسخ الرسالة</button></div>';
+        Q('label[data-c="wa"]').replaceWith(row); var tb=Q('[data-pv="wa"]'); if(tb) tb.hidden=true; }
       if(!o.nopv){ var fr=document.createElement('iframe'); fr.title='معاينة البريد'; fr.setAttribute('sandbox','allow-same-origin allow-popups'); fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>');
         fr.onload=function(){ try{ fr.style.height=fr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var box=Q('[data-pvmail]'); box.innerHTML=''; box.appendChild(fr);
         Q('[data-wtxt]').innerHTML=sndWa(j.wa); var ph=String(j.phone||'').replace(/\D/g,''); if(ph){ var a=Q('[data-wopen]'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(j.wa); a.hidden=false; } }

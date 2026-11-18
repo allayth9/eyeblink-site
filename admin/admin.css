@@ -871,3 +871,42 @@ html{-webkit-tap-highlight-color:transparent}
 .nc-tog:focus-visible{outline:2px solid var(--horizon);outline-offset:2px}
 .nc-pv{width:min(480px,100%)}
 .nc-pv .snd-fr{min-height:260px}
+
+/* the delete window and the clients list's selection */
+.pg{width:min(460px,100%)}
+.pg .pg-sub{margin:-2px 0 12px;font-size:13px;color:var(--mist);overflow-wrap:anywhere}
+.pg-opt{display:grid;gap:8px;margin-bottom:14px}
+.pg-opt label{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border-radius:14px;background:rgba(var(--fg),.035);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.pg-opt input{width:auto;min-width:0;flex:none;margin:5px 0 0;accent-color:var(--horizon)}
+.pg-opt span{display:grid;gap:1px}.pg-opt b{font-size:14.5px}.pg-opt small{font-size:12.5px;color:var(--mist)}
+.pg-opt label:has(input:checked){background:color-mix(in srgb,var(--horizon) 8%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--horizon) 38%,transparent)}
+.pg-opt label.del:has(input:checked){background:color-mix(in srgb,var(--f-bad) 8%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-bad) 38%,transparent)}
+.pg-what{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:14px;transition:opacity .2s}
+.pg-what div{border-radius:12px;padding:8px 10px;background:rgba(var(--fg),.045);font-size:12px;color:var(--mist)}
+.pg-what b{display:block;font:300 20px/1.2 Oswald,sans-serif;color:var(--light)}
+.pg-what .warn b{color:var(--f-wait)}
+.pg-what .none{grid-column:1/-1;font-size:13px}
+.pg-typ{display:grid;gap:6px;margin-bottom:12px;font-size:13px;color:var(--mist)}
+.pg-typ input{font:inherit;color:var(--light);background:var(--input);border:0;border-radius:12px;padding:10px 12px;box-shadow:inset 0 0 0 1px var(--line)}
+.pg-note{display:flex;gap:8px;align-items:center;margin:0 0 14px!important;font-size:12.5px!important;color:var(--dim)!important}
+.pg-note i{width:7px;height:7px;border-radius:50%;background:var(--f-ok)}
+.cf-bad .cfm-act [data-pgok]{background:linear-gradient(45deg,#8E1F3A,#C2405E);color:var(--k-white);box-shadow:none}
+.cl-sel{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:-4px}
+.cl-row .cl-ck{flex:none;width:18px;height:18px;border-radius:6px;box-shadow:inset 0 0 0 1.5px var(--dim)}
+.cl-row.sel{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-bad) 45%,transparent)}
+.cl-row.sel .cl-ck{background:var(--f-bad);box-shadow:none;position:relative}
+.cl-row.sel .cl-ck::after{content:"";position:absolute;inset:4px 5px 6px;border:solid var(--k-white);border-width:0 0 2px 2px;transform:rotate(-45deg)}
+
+/* WhatsApp by hand: the message ready in the channels list, to open the chat or copy */
+.snd-wam{display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px 12px;align-items:center;background:color-mix(in srgb,#25D366 6%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#25D366 30%,transparent)}
+.snd-wam .snd-i{background:color-mix(in srgb,#25D366 15%,transparent);color:#25D366}
+.snd-wam .snd-bub{grid-column:1/-1;max-width:none;max-height:150px;overflow:auto;font-size:13px;padding:10px 12px;border-radius:14px 14px 4px 14px}
+.snd-wam .snd-wact{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.snd-waopen{background:#128C4B!important;color:var(--k-white)!important;box-shadow:none!important}
+
+/* a client task shows the team tasks working on it */
+.wteam{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.wteam-c{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12.5px;color:var(--mist);background:rgba(var(--fg),.05);border:0;border-radius:999px;padding:4px 11px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.wteam-c i{width:7px;height:7px;border-radius:50%;background:var(--f-prod)}
+.wteam-c.tt-qc i{background:var(--f-sign)}.wteam-c.tt-approved i{background:var(--f-ok)}.wteam-c.tt-changes i{background:var(--f-fix)}.wteam-c.tt-assigned i{background:var(--f-info)}
+.wteam-c:hover{color:var(--light)}

@@ -79,7 +79,7 @@
   function wpill(s){ return '<span class="wpill tf-'+(TFAM[s]||'new')+'">'+esc(WST[s]||s)+'</span>'; }
   function wtaskBody(t){
     var cr=t.change_request, cn=(WORK.clients||[]).filter(function(c){return c.email===t.client_email})[0];
-    return '<div class="wtb"><div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
+    return '<div class="wtb">'+teamLinks(t)+'<div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
       '<div class="wdd"><div><span>الموعد المطلوب (من العميل)</span><b>'+esc(wd(t.requested_date))+'</b></div><div class="'+(t.confirmed_date?'ok':'')+'"><span>الموعد المؤكد (منك)</span><b>'+esc(wd(t.confirmed_date))+'</b></div></div>'+
       (t.recurring||t.over_quota?'<div>'+(t.recurring?'<span class="tag">مهمة دورية</span> ':'')+(t.over_quota?'<span class="tag pr-urgent">خارج الحصة الشهرية</span>':'')+'</div>':'')+
       (t.brief?'<div class="small muted">الموجز الإبداعي</div><div class="wbr">'+Object.keys(t.brief).map(function(k){ return '<div><span class="small muted">'+esc({goal:'الهدف',audience:'الجمهور',format:'المقاس',duration:'المدة',tone:'الأسلوب',message:'الرسالة',cta:'الدعوة لإجراء',music:'الموسيقى'}[k]||k)+'</span><b>'+esc(t.brief[k])+'</b></div>'; }).join('')+'</div>':'')+
@@ -116,7 +116,7 @@
       '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">عدد المهام المتفق عليه شهرياً. يراه العميل، وتُعلَّم المهام الزائدة بـ«خارج الحصة» دون منعها.</p></div></div>'+
       '<div class="row"><div class="field"><label>رابط مجلد المشروع على Google Drive (اختياري)</label><input name="drive_url" dir="ltr" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(p.drive_url||'')+'"></div>'+
         '<div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="auto_report"'+(p.auto_report?' checked':'')+'> أرسل التقرير الشهري للعميل تلقائياً أول كل شهر</label></div></div>'+
-      '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button>':'')+'</div></form>'; }
+      '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button><button class="btn sm danger" type="button" data-wpdel="'+esc(p.id)+'">حذف المشروع…</button>':'')+'</div></form>'; }
   function renderWork(){
     var W=WORK;
     if(!W){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; if(LIVE) loadWork(); return; }
@@ -173,6 +173,11 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
     if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
+    if(b.dataset.wpdel){ var pid=b.dataset.wpdel; wpost({action:'purgePreview',project:pid}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true); var P=j.project;
+      purgeWin({ title:'حذف «'+P.name+'»', archive:['أرشفة','يختفي من المشاريع النشطة، ويبقى كل شيء محفوظاً','أرشف المشروع'], delHint:'تُحذف مهامه وتسليماته وملفاته. فواتيره تبقى في الفوترة دون ربط بالمشروع',
+        counts:[[P.tasks,'مهام'],[P.deliverables,'تسليمات'],[P.files,'ملفات'],[P.invoices,'فواتير تبقى',true]], only:'المشروع', typeLabel:'اكتب «احذف» للتأكيد', typeWord:'احذف',
+        run:function(m){ return wpost({action:'projectPurge',id:pid,mode:m==='a'?'archive':'delete',confirm:true}); } })
+      .then(function(m){ if(!m) return; toast(m==='a'?'أُرشف المشروع':'حُذف المشروع'); WPEDIT=null; WSPACE=null; CL=null; BILL=null; loadWork(); renderTabs(); }); }); return; }
     if(b.dataset.wpt){ WF={status:'',client:'',project:b.dataset.wpt}; WSUB='tasks'; WOPEN=null; route(); renderWork(); return; }
     if(b.dataset.wsp){ loadSpace(b.dataset.wsp); return; }
     if(b.dataset.radd){ var sp=b.closest('#wspace'), g=function(k){ return sp.querySelector('[data-'+k+']'); }; if(!g('rt').value.trim()){ toast('اكتب عنوان المهمة',true); return; }
@@ -209,3 +214,9 @@
     if(b.dataset.wdt){ wreq({action:'date',task:b.dataset.wdt,confirmed_date:box.querySelector('[data-wcd2]').value},b,'تغيّر الموعد وأُبلغ العميل').catch(function(){}); return; }
     if(b.dataset.wdd){ wreq({action:'dateDecision',task:b.dataset.wdd,approve:b.dataset.ok==='1'},b,b.dataset.ok==='1'?'تأكّد الموعد الجديد':'بقي الموعد كما هو').catch(function(){}); return; }
   });
+
+  // the team tasks working on this client task: who has it and where it stands (opens the team task)
+  function teamLinks(t){ if(TEAM===null&&LIVE){ TEAM=undefined; loadTeam(); setTimeout(function(){ if(TAB==='tasks') renderWork(); },900); }
+    var L=((TEAM&&TEAM.tasks)||[]).filter(function(x){ return x.workTask===t.ref; }); if(!L.length) return '';
+    return '<div class="wteam">'+L.map(function(x){ return '<button type="button" class="wteam-c tt-'+esc(x.status)+'" data-wteam="'+esc(x.id)+'"><i></i>الفريق: لدى '+esc(memName(x.member))+' · '+esc(TTST[x.status]||x.status)+'</button>'; }).join('')+'</div>'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-wteam]'); if(!b) return; var id=b.dataset.wteam; TAB='team'; TSUB='tasks'; route(); render(); setTimeout(function(){ openTTask(id); },60); });

@@ -254,6 +254,14 @@ async function adminAction(ctx, d){
     const sent = await appMail(env, { name: u.name, email: u.email, role: u.role, lang: u.lang, type: u.type }, "welcome", C_(d.password, 80), ag);
     return json({ ok: !!sent, error: sent ? undefined : "mail" });
   }
+  if (d.action === "memberDelete") {   // permanent: the member and their tasks; "pause" keeps both
+    const email = C_(d.email, 254).toLowerCase(), u = await kvJSON(env, "member:" + email); if (!u) return json({ ok: false }, 404);
+    if (d.confirm !== true) return json({ ok: false, error: "confirm" }, 400);
+    const tasks = (await listJSON(env, "ttask:")).filter(t => t.member === email);
+    for (const t of tasks) await env.EB.delete("ttask:" + t.id);
+    await env.EB.delete("member:" + email);
+    return json({ ok: true, tasks: tasks.length });
+  }
   if (d.action === "memberUpdate" || d.action === "memberReset") {
     const u = await kvJSON(env, "member:" + C_(d.email, 254).toLowerCase()); if (!u) return json({ ok: false }, 404);
     if (d.action === "memberReset") { const pw = tempPass(); u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); u.mustChange = true; await env.EB.put("member:" + u.email, JSON.stringify(u));
