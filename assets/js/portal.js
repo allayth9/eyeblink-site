@@ -126,13 +126,13 @@
       completed:function(d,t){return 'اكتملت مهمة '+t;},deliver:function(d,t){return d.final?'التسليم النهائي لـ'+t+' جاهز للمراجعة':'النسخة '+d.label+' من '+t+' جاهزة للمراجعة';},comment:function(d,t){return 'تعليق جديد من الاستوديو على '+t;},
       project:function(d){return 'فتح الاستوديو لك مشروع «'+d.name+'»';},file:function(d){return 'أضاف الاستوديو ملف «'+d.file+'» إلى مشروع «'+d.name+'»';},
       invoice:function(d){return 'فاتورة جديدة '+d.no+' بقيمة '+d.amount;},invoicePaid:function(d){return 'وصلت دفعتك للفاتورة '+d.no;},invoiceDue:function(d){return 'الفاتورة '+d.no+' متأخرة — المتبقي '+d.balance;},
-      recurring:function(d,t){return 'مهمة دورية جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},added:function(d,t){return 'أضاف الاستوديو مهمة جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},report:function(d){return 'التقرير الشهري لمشروع «'+d.name+'» جاهز';}},
+      recurring:function(d,t){return 'مهمة دورية جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},added:function(d,t){return 'أضاف الاستوديو مهمة جديدة '+t+(d.date?' · التسليم '+d8(d.date):'');},extras:function(d,t){return 'إضافة على '+t+' بانتظار موافقتك';},report:function(d){return 'التقرير الشهري لمشروع «'+d.name+'» جاهز';}},
     en:{accept:function(d,t){return 'Task '+t+' accepted'+(d.date?' · confirmed for '+d8(d.date):'');},info:function(d,t){return 'The studio needs information for '+t;},reject:function(d,t){return 'About '+t+': we can\'t take it as requested';},
       progress:function(d,t){return 'Work started on '+t;},status:function(d,t){return t+' is now “'+(T.st[d.status]||d.status)+'”';},date:function(d,t){return 'Delivery date of '+t+' is now '+d8(d.date);},dateNo:function(d,t){return 'Delivery date of '+t+' stays '+d8(d.date);},
       completed:function(d,t){return t+' is complete';},deliver:function(d,t){return d.final?'Final delivery of '+t+' is ready for review':'Version '+d.label+' of '+t+' is ready for review';},comment:function(d,t){return 'New comment from the studio on '+t;},
       project:function(d){return 'The studio opened the project “'+d.name+'”';},file:function(d){return 'The studio added “'+d.file+'” to “'+d.name+'”';},
       invoice:function(d){return 'New invoice '+d.no+' for '+d.amount;},invoicePaid:function(d){return 'Payment received for invoice '+d.no;},invoiceDue:function(d){return 'Invoice '+d.no+' is overdue — '+d.balance+' due';},
-      recurring:function(d,t){return 'Recurring task '+t+' added'+(d.date?' · due '+d8(d.date):'');},added:function(d,t){return 'The studio added a task '+t+(d.date?' · due '+d8(d.date):'');},report:function(d){return 'The monthly report for “'+d.name+'” is ready';}}}[lang];
+      recurring:function(d,t){return 'Recurring task '+t+' added'+(d.date?' · due '+d8(d.date):'');},added:function(d,t){return 'The studio added a task '+t+(d.date?' · due '+d8(d.date):'');},extras:function(d,t){return 'An addition on '+t+' awaits your approval';},report:function(d){return 'The monthly report for “'+d.name+'” is ready';}}}[lang];
   function nText(n){ var d=n.data||{}, f=NT[n.kind]; return f?f(d,AR?'«'+(d.title||'')+'»':'“'+(d.title||'')+'”'):n.kind; }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },2600); }
 
@@ -310,7 +310,7 @@
     return '<aside class="wwel glass" role="note"><div><b>'+HM.w.h+'</b><p>'+esc(line)+'</p></div>'+btn+'<button type="button" class="wwel-x" aria-label="'+HM.w.x+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></aside>'; }
   function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
     return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
-      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(p.quota?quotaBar(p.month_tasks||0,p.quota):'')+'</a>'+
+      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(agMeters(p)||(p.quota?quotaBar(p.month_tasks||0,p.quota):''))+'</a>'+
       (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
@@ -440,7 +440,7 @@
       var f=document.getElementById('wNew'), list=f.querySelector('.wm-list'), N=0;
       var card=function(prev){ var i=N++, k=PAL[i%PAL.length], d=document.createElement('section'); d.className='wm-card glass'; d.style.setProperty('--k',k);
         d.innerHTML='<div class="wm-h"><span class="wm-n">'+(list.children.length+1)+'</span><b>'+U2.nw.card+'</b><button type="button" class="wm-rm" aria-label="'+U2.nw.rm+'">×</button></div>'+
-          '<div class="wgrid"><label>'+T.f.title+'<input name="title" maxlength="140" dir="auto" required></label><label>'+T.f.type+'<input name="type" list="wTypes" maxlength="60" dir="auto" value="'+esc(prev?prev.type:'')+'"></label>'+
+          '<div class="wgrid"><label>'+T.f.title+'<input name="title" maxlength="140" dir="auto" required></label><label>'+T.f.type+'<input name="type" list="wTypes" maxlength="60" dir="auto" value="'+esc(prev?prev.type:'')+'"><small class="wag-over" hidden></small></label>'+
           '<label>'+T.f.date+'<input name="requested_date" type="date" min="'+minD+'" value="'+esc(prev?prev.date:'')+'"></label>'+
           '<fieldset class="wprio"><legend>'+T.f.prio+'</legend>'+['normal','high','urgent'].map(function(p){ var on=(prev?prev.prio:'normal')===p; return '<label class="chipb'+(on?' on':'')+'"><input type="radio" name="priority_'+i+'" value="'+p+'"'+(on?' checked':'')+'>'+esc(L((W.priorities||{})[p])||T.p[p])+'</label>'; }).join('')+'</fieldset></div>'+
           '<label>'+T.f.desc+'<textarea name="description" maxlength="4000" dir="auto" rows="2"></textarea></label>'+
@@ -450,6 +450,7 @@
             '<div class="wlinks"><span class="olab">'+T.f.links+'</span><div class="rows"></div><button type="button" class="linkbtn addl">'+T.f.addLink+'</button></div>'+
             '<label>'+T.f.notes+'<textarea name="notes" maxlength="3000" dir="auto"></textarea></label>'+
             '<div class="wbrief-in"><b>'+T.x.brief+'</b> <small class="muted">'+T.x.briefHint+'</small><div class="wgrid">'+['goal','audience','format','duration','tone','message','cta','music'].map(function(b){ return '<label>'+T.x.b[b]+'<input name="b_'+b+'" maxlength="'+(b==='format'?120:600)+'" dir="auto"'+(b==='format'?' list="wFmts"':'')+'></label>'; }).join('')+'</div></div></details>';
+        d.querySelector('[name=type]').addEventListener('input',function(){ agNote(d,f); });
         d.addEventListener('input',function(){ if(d.classList.contains('err')){ d.classList.remove('err'); f.querySelector('.msg').textContent=''; } });
         list.appendChild(d); var rows=d.querySelector('.rows'), addRow=function(){ if(rows.children.length>=10) return; var r=document.createElement('div'); r.className='lrow2'; r.innerHTML='<input name="ll" placeholder="'+T.f.linkLabel+'" maxlength="80" dir="auto"><input name="lu" type="url" dir="ltr" placeholder="'+T.f.linkUrl+'">'; rows.appendChild(r); };
         addRow(); d.querySelector('.addl').onclick=addRow; attach(d);
@@ -464,7 +465,10 @@
           brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
       var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
         f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
-        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&pp.quota&&(pp.month_tasks||0)+n>pp.quota); };
+        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&!pp.agreement&&pp.quota&&(pp.month_tasks||0)+n>pp.quota);
+        // a project with an agreement: its units are the task types
+        var ag=pp&&pp.agreement, dl=f.querySelector('#wTypes'); if(!dl._all) dl._all=dl.innerHTML;
+        dl.innerHTML=ag?ag.units.map(function(u){ return '<option value="'+esc(u.name)+'">'; }).join(''):dl._all; [].forEach.call(list.children,function(c){ agNote(c,f); }); };
       f.elements.project.onchange=sync;
       f.querySelector('.wm-addb').onclick=function(){ var last=list.lastElementChild, x=last?read(last):null; var d=card(x?{type:x.type,date:x.requested_date,prio:x.priority}:null); d.querySelector('[name=title]').focus(); d.scrollIntoView({block:'center',behavior:'smooth'}); };
       card(null); setTimeout(function(){ var t=list.querySelector('[name=title]'); if(t) t.focus({preventScroll:true}); },60);
@@ -530,7 +534,7 @@
       '<div class="wcard glass wphead" style="--k:'+(TYPEC[p.type]||'#3FE0E8')+'"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
         '<dl class="wmeta">'+(p.start_date?'<div><dt>'+T.start+'</dt><dd>'+esc(d8(p.start_date))+'</dd></div>':'')+(p.end_date?'<div><dt>'+T.end+'</dt><dd>'+esc(d8(p.end_date))+'</dd></div>':'')+
         ((p.services||[]).length?'<div><dt>'+T.services+'</dt><dd>'+p.services.map(function(s){ var sv=(C().services||[]).filter(function(x){return x.id===s})[0]; return '<span class="tag">'+esc(sv?L(sv.name):s)+'</span>'; }).join(' ')+'</dd></div>':'')+'</dl></div>'+
-        '<div class="wphx">'+(p.quota?quotaBar(j.quota_used||0,p.quota):'')+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
+        '<div class="wphx">'+(agMeters(p)||(p.quota?quotaBar(j.quota_used||0,p.quota):''))+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
         (p.status==='active'?'<a class="btn btn-primary" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</div></div>'+
       '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length,'#6E8BFF'],['talk',T.tabs.talk,nc,'#8FA2FF'],['files',T.tabs.files,nf,'#5EF0B0'],['report',T.x.report,0,'#7DD3FC']].map(function(x){
         return '<a role="tab" style="--k:'+x[3]+'" href="#w/p/'+esc(p.id)+(x[0]==='tasks'?'':'/'+x[0])+'" aria-selected="'+(tab===x[0])+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</a>'; }).join('')+'</div><div class="wpbody"></div>';
@@ -715,7 +719,7 @@
       host.innerHTML='<a class="wback" href="#w/p/'+esc(t.project_id)+'">← '+esc(t.project_name||T.back)+'</a>'+
         '<div class="wcard glass wtask r-'+esc(t.status)+'"><div class="wthead"><div><span class="k">'+esc(t.ref)+(t.type?' · '+esc(t.type):'')+'</span><h2>'+esc(t.title)+'</h2></div><div>'+pill(t.status)+prio(t.priority)+(t.recurring?'<span class="tprio p-rec">'+T.x.recBadge+'</span>':'')+(t.over_quota?'<span class="tprio p-over">'+T.x.over+'</span>':'')+'</div></div>'+
         (off?'':'<ol class="track wtrack" style="--p:'+(Math.max(0,at)/(PATH.length-1))+'">'+PATH.map(function(s,i){ return '<li class="'+(i<at||t.status==='completed'?'done':i===at?'now':'')+'"><i></i><b>'+esc(T.st[s])+'</b></li>'; }).join('')+'</ol>')+
-        stageCap(t,at,off)+
+        stageCap(t,at,off)+xtraBox(t)+
         '<div class="wdates2"><div><span>'+T.req+'</span><b>'+esc(t.requested_date?d8(t.requested_date):T.reqNone)+'</b><small class="muted">'+(AR?'من طرفك':'from you')+'</small></div>'+
           '<div class="'+(t.confirmed_date?'ok':'')+'"><span>'+T.conf+'</span><b>'+esc(t.confirmed_date?d8(t.confirmed_date):'—')+'</b><small class="muted">'+(t.confirmed_date?(AR?'معتمد من Eyeblink':'confirmed by Eyeblink'):T.confNone)+'</small></div></div>'+
         (cr&&cr.status==='pending'?'<p class="wnote">'+T.changePend+esc(d8(cr.date))+T.changeWait+'</p>':'')+
@@ -1002,6 +1006,24 @@
       var s=f.querySelector('[type=submit]'); s.disabled=true;
       api('',{action:'projectNew',name:n,type:type,description:f.elements.description.value.trim(),cadence:type==='program'?{days:[].map.call(f.querySelectorAll('input[name=day]:checked'),function(i){return i.value})}:null}).then(function(j){ s.disabled=false;
         if(j&&j.ok){ toast(NP.ok); DASH=null; after(j.id); } else toast(NP.err); }); }; }
+  /* ---- the project's agreement, as the client sees it: what the package holds this month, and extras to approve ---- */
+  var AGT=AR?{h:'باقتك هذا الشهر',over:'هذه خارج باقتك لهذا الشهر، وتُحتسب بسعر الوحدة الإضافية ',xH:'إضافة بانتظار موافقتك',xP:'تتجاوز هذه المهمة الإطار المتفق عليه، فتُضاف إلى فاتورة هذا الشهر:',
+      ok:'موافق',no:'لنلتزم بالإطار المتفق عليه',noDur:function(s){ return 'لنختصره إلى '+s+' ثانية'; },okT:'شكراً لك، وصلت موافقتك',noT:'وصل طلبك، وسنلتزم بالإطار المتفق عليه',acc:'وافقت على الإضافة',dec:'طلبت الالتزام بالإطار المتفق عليه',of:' من '}
+    :{h:'Your package this month',over:'This one is past your package for this month, and counts at the extra unit price of ',xH:'An addition awaits your approval',xP:'This task goes beyond the scope we agreed on, so the following is added to this month\'s invoice:',
+      ok:'Approve',no:'Keep to the agreed scope',noDur:function(s){ return 'Shorten it to '+s+' seconds'; },okT:'Thank you, your approval arrived',noT:'Noted. We will keep to the agreed scope',acc:'You approved the addition',dec:'You asked to keep to the agreed scope',of:' of '};
+  function agMeters(p){ var a=p.agreement; if(!a||a.mode!=='package') return ''; var U=a.units.filter(function(u){ return u.inc; }); if(!U.length) return '';
+    return '<div class="wag"><span class="wag-h">'+AGT.h+'</span>'+U.map(function(u){ var n=(a.used||{})[u.id]||0, pc=Math.min(100,Math.round(n*100/u.inc));
+      return '<div class="wag-r'+(n>=u.inc?' full':'')+'"><span>'+esc(u.name)+'</span><b dir="ltr">'+n+' / '+u.inc+'</b><i><s style="width:'+pc+'%"></s></i></div>'; }).join('')+'</div>'; }
+  function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0], a=pp&&pp.agreement;
+    var v=String(d.querySelector('[name=type]').value||'').trim().toLowerCase(), u=a&&a.mode==='package'?a.units.filter(function(x){ return x.name.toLowerCase()===v; })[0]:null;
+    var full=u&&u.inc&&((a.used||{})[u.id]||0)>=u.inc&&u.price; el.hidden=!full; if(full) el.textContent=AGT.over+'('+u.price+(a.cur||'')+')'; }
+  function xtraBox(t){ var x=t.extras; if(!x||!x.items||!x.items.length) return '';
+    var list='<ul class="wx-items">'+x.items.map(function(i){ return '<li><span>'+esc(i.name)+(i.detail?' <small class="muted" dir="ltr">'+esc(i.detail)+'</small>':'')+'</span><b dir="ltr">'+esc(i.amount+(x.cur||''))+'</b></li>'; }).join('')+'</ul>';
+    if(x.state!=='pending') return '<p class="wnote small">'+(x.state==='accepted'?AGT.acc:AGT.dec)+'</p>';
+    var d1=x.items.length===1&&x.items[0].max?AGT.noDur(x.items[0].max):AGT.no;
+    return '<div class="wnote warn wxtra"><b>'+AGT.xH+'</b><p>'+AGT.xP+'</p>'+list+'<div class="wx-acts"><button type="button" class="btn btn-primary" data-xd="accept" data-ref="'+esc(t.ref)+'">'+AGT.ok+'</button><button type="button" class="btn btn-glass glass" data-xd="decline" data-ref="'+esc(t.ref)+'">'+esc(d1)+'</button></div></div>'; }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-xd]'); if(!b) return; b.disabled=true;
+    api('',{action:'extrasDecide',task:b.dataset.ref,decision:b.dataset.xd}).then(function(r){ if(r&&r.ok){ toast(b.dataset.xd==='accept'?AGT.okT:AGT.noT); task(b.dataset.ref); } else { b.disabled=false; toast(T.err); } }); });
   /* ---- the client's reports: every report they received, each opens as a page they can save as PDF ---- */
   var RPW=AR?{h:'التقارير',p:'ما أنجزناه معاً، تقريراً بعد تقرير. افتح أي تقرير لتقرأه كاملاً أو تحفظه PDF.',empty:'لم يصلك أي تقرير بعد. يصلك أول تقرير على الموعد المتفق عليه مع الاستوديو.',t:'مهام',v:'نسخ',r:'تقرير',from:'من ',to:' إلى '}
     :{h:'Reports',p:'What we did together, report by report. Open any of them to read it in full or save it as a PDF.',empty:'No report yet. Your first one arrives on the rhythm agreed with the studio.',t:'tasks',v:'versions',r:'Report',from:'',to:' to '};

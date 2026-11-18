@@ -973,6 +973,15 @@ html{-webkit-tap-highlight-color:transparent}
 .wdays input:checked+span{background:rgba(var(--k-horizon-rgb),.14);border-color:rgba(var(--k-horizon-rgb),.55);color:var(--k-light)}
 .wdays input:focus-visible+span{outline:2px solid var(--k-horizon);outline-offset:2px}
 
+/* the project's agreement in the project form, and a task's unit and extras */
+.wterms{border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:grid;gap:10px}
+.wterms summary{cursor:pointer;font-weight:600}.wterms[open] summary{margin-bottom:6px}
+.wt-modes{display:flex;gap:14px;flex-wrap:wrap}.wt-body{display:grid;gap:8px}.wt-body[hidden]{display:none}
+.wt-row{display:flex;gap:6px;align-items:center}.wt-row>*{flex:1 1 0;min-width:0}.wt-row>[data-k=name]{flex:2 1 0}.wt-row>[data-k=kind]{flex:1.4 1 0}.wt-row>.linkbtn{flex:0 0 24px}
+.wt-body>.btn{justify-self:start}.wt-row>[hidden]{display:none}
+@media (max-width:700px){.wt-row{flex-wrap:wrap}.wt-row>[data-k=name]{flex:1 1 100%}}
+.wxt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.wx-list{display:flex;flex-wrap:wrap;gap:6px 16px}.wx-now{font-size:13px}
 /* the client's photo in the profile: the picture is the button; three plain actions under the name */
 .cp-av{position:relative;flex:none}
 .cp-av-b{all:unset;cursor:pointer;display:block;position:relative;border-radius:18px}

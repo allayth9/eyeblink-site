@@ -82,6 +82,7 @@
     return '<div class="wtb">'+teamLinks(t)+'<div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
       '<div class="wdd"><div><span>الموعد المطلوب (من العميل)</span><b>'+esc(wd(t.requested_date))+'</b></div><div class="'+(t.confirmed_date?'ok':'')+'"><span>الموعد المؤكد (منك)</span><b>'+esc(wd(t.confirmed_date))+'</b></div></div>'+
       (t.recurring||t.over_quota?'<div>'+(t.recurring?'<span class="tag">مهمة دورية</span> ':'')+(t.over_quota?'<span class="tag pr-urgent">خارج الحصة الشهرية</span>':'')+'</div>':'')+
+      wterms(t)+
       (t.brief?'<div class="small muted">الموجز الإبداعي</div><div class="wbr">'+Object.keys(t.brief).map(function(k){ return '<div><span class="small muted">'+esc({goal:'الهدف',audience:'الجمهور',format:'المقاس',duration:'المدة',tone:'الأسلوب',message:'الرسالة',cta:'الدعوة لإجراء',music:'الموسيقى'}[k]||k)+'</span><b>'+esc(t.brief[k])+'</b></div>'; }).join('')+'</div>':'')+
       (t.description?'<div class="small muted">الوصف</div><pre>'+esc(t.description)+'</pre>':'')+(t.details?'<div class="small muted">التفاصيل</div><pre>'+esc(t.details)+'</pre>':'')+
       (t.notes?'<div class="small muted">تعليمات إضافية</div><pre>'+esc(t.notes)+'</pre>':'')+((t.links||[]).length?'<div class="small muted">الروابط</div><div>'+wlinks(t.links)+'</div>':'')+
@@ -119,7 +120,46 @@
       '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">عدد المهام المتفق عليه شهرياً. يراه العميل، وتُعلَّم المهام الزائدة بـ«خارج الحصة» دون منعها.</p></div></div>'+
       '<div class="row"><div class="field"><label>رابط مجلد المشروع على Google Drive (اختياري)</label><input name="drive_url" dir="ltr" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(p.drive_url||'')+'"></div>'+
         '<div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="auto_report"'+(p.auto_report?' checked':'')+'> أرسل التقرير الشهري للعميل تلقائياً أول كل شهر</label></div></div>'+
+      termsForm(p.terms)+
       '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button><button class="btn sm danger" type="button" data-wpdel="'+esc(p.id)+'">حذف المشروع…</button>':'')+'</div></form>'; }
+  /* ---- the project's agreement: a monthly package or a price per unit, and the extras a task may carry (the client approves each before the work) ---- */
+  var XK={flat:'مبلغ ثابت',pct:'نسبة من سعر الوحدة',dur:'حسب المدة'};
+  function tUnit(u,mode){ u=u||{}; return '<div class="wt-row" data-tu="'+esc(u.id||'')+'"><input data-k="name" dir="auto" placeholder="فيديو، بوستر، ستوري…" value="'+esc(u.name||'')+'">'+
+    '<input data-k="inc" type="number" min="0" placeholder="بالباقة" value="'+esc(u.inc==null?'':u.inc)+'"'+(mode==='unit'?' hidden':'')+'><input data-k="price" type="number" min="0" step="any" placeholder="'+(mode==='unit'?'السعر':'سعر الوحدة الإضافية')+'" value="'+esc(u.price||'')+'"><button type="button" class="linkbtn" data-trm aria-label="حذف">×</button></div>'; }
+  function tExtra(x){ x=x||{kind:'flat'}; return '<div class="wt-row wt-x" data-tx="'+esc(x.id||'')+'"><input data-k="name" dir="auto" placeholder="مدة الفيديو، نسخة بمقاس آخر…" value="'+esc(x.name||'')+'">'+
+    '<select data-k="kind">'+Object.keys(XK).map(function(k){ return '<option value="'+k+'"'+(k===x.kind?' selected':'')+'>'+XK[k]+'</option>'; }).join('')+'</select>'+
+    '<input data-k="amount" type="number" min="0" step="any" placeholder="'+(x.kind==='pct'?'النسبة %':x.kind==='dur'?'المبلغ لكل خطوة':'المبلغ')+'" value="'+esc(x.amount||'')+'">'+
+    '<input data-k="max" type="number" min="1" placeholder="الحد (ث)" value="'+esc(x.max||50)+'"'+(x.kind==='dur'?'':' hidden')+'><input data-k="step" type="number" min="1" placeholder="الخطوة (ث)" value="'+esc(x.step||30)+'"'+(x.kind==='dur'?'':' hidden')+'>'+
+    '<button type="button" class="linkbtn" data-trm aria-label="حذف">×</button></div>'; }
+  function termsForm(t){ var m=(t&&t.mode)||'';
+    return '<details class="wterms"'+(t?' open':'')+'><summary>اتفاق المشروع <span class="small muted">'+(m==='package'?'باقة شهرية':m==='unit'?'سعر للوحدة':'بلا حساب')+'</span></summary>'+
+      '<div class="wt-modes" role="radiogroup">'+[['','بلا حساب'],['package','باقة شهرية'],['unit','سعر للوحدة']].map(function(o){ return '<label class="check"><input type="radio" name="t_mode" value="'+o[0]+'"'+(o[0]===m?' checked':'')+'> '+o[1]+'</label>'; }).join('')+'</div>'+
+      '<div class="wt-body"'+(m?'':' hidden')+'><div class="row wt-pkg"'+(m==='package'?'':' hidden')+'><div class="field"><label>سعر الباقة الشهري</label><input name="t_price" type="number" min="0" step="any" value="'+esc(t&&t.price||'')+'"></div><div class="field"><label>العملة</label><input name="t_cur" dir="ltr" value="'+esc(t&&t.cur||'$')+'"></div></div>'+
+        '<div class="small muted">الوحدات <span class="wt-uh">'+(m==='unit'?'(الاسم · السعر)':'(الاسم · العدد بالباقة · سعر الوحدة الإضافية)')+'</span></div><div class="wt-units">'+((t&&t.units)||[{}]).map(function(u){ return tUnit(u,m); }).join('')+'</div><button type="button" class="btn sm" data-tadd="u">+ وحدة</button>'+
+        '<div class="small muted">الطلبات الإضافية <span>(اختيارية، يوافق عليها العميل قبل التنفيذ)</span></div><div class="wt-extras">'+((t&&t.extras)||[]).map(tExtra).join('')+'</div><button type="button" class="btn sm" data-tadd="x">+ طلب إضافي</button>'+
+        '<p class="hint">الوحدات تظهر للعميل عند إنشاء المهمة، ويرى ما استهلكه من الباقة وسعر الوحدة الإضافية فقط. الباقة لا تُرحَّل إلى الشهر التالي.</p></div></details>'; }
+  function termsOf(f){ var m=(f.querySelector('input[name=t_mode]:checked')||{}).value; if(!m) return null;
+    var row=function(r){ var o={}; r.querySelectorAll('[data-k]').forEach(function(i){ o[i.dataset.k]=i.value.trim(); }); return o; };
+    return {mode:m,price:f.elements.t_price.value,cur:f.elements.t_cur.value,
+      units:[].map.call(f.querySelectorAll('[data-tu]'),function(r){ var o=row(r); o.id=r.dataset.tu; return o; }),
+      extras:[].map.call(f.querySelectorAll('[data-tx]'),function(r){ var o=row(r); o.id=r.dataset.tx; return o; })}; }
+  document.addEventListener('change',function(e){ var i=e.target, f=i.closest('.wterms'); if(!f) return;
+    if(i.name==='t_mode'){ var m=i.value; f.querySelector('.wt-body').hidden=!m; f.querySelector('.wt-pkg').hidden=m!=='package'; f.querySelector('.wt-uh').textContent=m==='unit'?'(الاسم · السعر)':'(الاسم · العدد بالباقة · سعر الوحدة الإضافية)';
+      f.querySelectorAll('[data-tu] [data-k=inc]').forEach(function(x){ x.hidden=m==='unit'; }); f.querySelectorAll('[data-tu] [data-k=price]').forEach(function(x){ x.placeholder=m==='unit'?'السعر':'سعر الوحدة الإضافية'; }); }
+    if(i.dataset.k==='kind'){ var r=i.closest('[data-tx]'); r.querySelectorAll('[data-k=max],[data-k=step]').forEach(function(x){ x.hidden=i.value!=='dur'; }); r.querySelector('[data-k=amount]').placeholder=i.value==='pct'?'النسبة %':i.value==='dur'?'المبلغ لكل خطوة':'المبلغ'; } });
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-tadd],[data-trm]'); if(!b||!b.closest('.wterms')) return; var f=b.closest('.wterms');
+    if(b.hasAttribute('data-trm')){ b.closest('.wt-row').remove(); return; }
+    var m=(f.querySelector('input[name=t_mode]:checked')||{}).value, box=f.querySelector(b.dataset.tadd==='u'?'.wt-units':'.wt-extras'), d=document.createElement('div'); d.innerHTML=b.dataset.tadd==='u'?tUnit({},m):tExtra(); box.appendChild(d.firstChild); });
+  // a task's unit and extras (from its project's agreement)
+  document.addEventListener('change',function(e){ var s=e.target; if(!s.dataset||!s.dataset.wunit) return; wreq({action:'taskUnit',task:s.dataset.wunit,unit:s.value},null,'حُفظت الوحدة').catch(function(){}); });
+  var XST={pending:'بانتظار موافقة العميل',accepted:'وافق العميل',declined:'طلب العميل الالتزام بالإطار المتفق عليه'};
+  function wterms(t){ var p=(WORK.projects||[]).filter(function(x){ return x.id===t.project_id; })[0], T=p&&p.terms; if(!T) return '';
+    var ex=t.extras, done=ex&&ex.state==='accepted', on={}, dur=T.extras.some(function(x){ return x.kind==='dur'; }); (ex&&ex.items||[]).forEach(function(x){ on[x.id]=1; });
+    return '<div class="wxt"><div class="row"><div class="field"><label>الوحدة</label><select data-wunit="'+esc(t.ref)+'"><option value="">—</option>'+T.units.map(function(u){ return '<option value="'+esc(u.id)+'"'+(u.id===t.unit?' selected':'')+'>'+esc(u.name)+'</option>'; }).join('')+'</select></div></div>'+
+      (ex?'<div class="wx-now"><span class="tag '+(ex.state==='accepted'?'ok':ex.state==='declined'?'':'pr-high')+'">'+esc(XST[ex.state]||ex.state)+'</span> '+ex.items.map(function(x){ return esc(x.name+(x.detail?' ('+x.detail+')':'')+' · '+x.amount+(ex.cur||'')); }).join('، ')+'</div>':'')+
+      (T.extras.length&&!done?'<div class="small muted">الطلبات الإضافية على هذه المهمة</div><div class="wx-list">'+T.extras.map(function(x){ return '<label class="check"><input type="checkbox" data-wx value="'+esc(x.id)+'"'+(on[x.id]?' checked':'')+'> '+esc(x.name)+' <span class="small muted">'+(x.kind==='pct'?x.amount+'%':x.kind==='dur'?'حتى '+x.max+' ث، ثم '+x.amount+' لكل '+x.step+' ث':x.amount)+'</span></label>'; }).join('')+'</div>'+
+        (dur?'<div class="row"><div class="field"><label>مدة القطعة (ثوانٍ أو دقائق:ثوانٍ)</label><input data-wsec dir="ltr" placeholder="1:20"></div></div>':'')+
+        '<div class="actions"><button class="btn sm primary" type="button" data-wxs="'+esc(t.ref)+'">'+(ex?'حدّث الإضافة وأرسلها للعميل':'أرسل الإضافة للعميل للموافقة')+'</button></div>':'')+'</div>'; }
   function renderWork(){
     var W=WORK;
     if(!W){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; if(LIVE) loadWork(); return; }
@@ -171,10 +211,12 @@
     if(!s.dataset.wf) return; WF[s.dataset.wf]=s.value; renderWork(); });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList.contains('wpf')) return; e.preventDefault(); var E=f.elements;
     var body={action:'project',id:f.dataset.wpid||undefined,client_email:E.client_email.value,name:E.name.value.trim(),type:E.type.value,status:E.status.value,start_date:E.start_date.value,end_date:E.end_date.value,
-      description:E.description.value.trim(),quota:E.quota.value,cadence:E.type.value==='program'?{days:[].map.call(f.querySelectorAll('input[name=cad_day]:checked'),function(i){return i.value})}:null,drive_url:E.drive_url.value.trim(),auto_report:E.auto_report.checked,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
+      description:E.description.value.trim(),quota:E.quota.value,terms:termsOf(f),cadence:E.type.value==='program'?{days:[].map.call(f.querySelectorAll('input[name=cad_day]:checked'),function(i){return i.value})}:null,drive_url:E.drive_url.value.trim(),auto_report:E.auto_report.checked,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
     wreq(body,f.querySelector('button[type=submit]'),f.dataset.wpid?'حُفظ المشروع':'أُنشئ المشروع وأُرسل بريد إلى العميل').then(function(){ WPEDIT=null; }).catch(function(){}); });
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }
+    if(b.dataset.wxs){ var bx=b.closest('.wxt'), sv=(bx.querySelector('[data-wsec]')||{}).value||'', mm=/^(\d+):(\d{1,2})$/.exec(sv.trim()), sec=mm?(+mm[1]*60+ +mm[2]):+sv||0;
+      wreq({action:'taskExtras',task:b.dataset.wxs,items:[].map.call(bx.querySelectorAll('[data-wx]:checked'),function(i){ return i.value; }),sec:sec},b,'أُرسلت الإضافة إلى العميل للموافقة').catch(function(){}); return; }
     if(b.hasAttribute('data-wpx')){ WPEDIT=null; renderWork(); return; }
     if(b.dataset.wpdel){ var pid=b.dataset.wpdel; wpost({action:'purgePreview',project:pid}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true); var P=j.project;
       purgeWin({ title:'حذف «'+P.name+'»', archive:['أرشفة','يختفي من المشاريع النشطة، ويبقى كل شيء محفوظاً','أرشف المشروع'], delHint:'تُحذف مهامه وتسليماته وملفاته. فواتيره تبقى في الفوترة دون ربط بالمشروع',

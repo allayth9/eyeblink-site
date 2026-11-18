@@ -27,8 +27,8 @@
     var td=B.today, due=(x&&x.due_date)||new Date(Date.now()+7*864e5).toISOString().slice(0,10);
     return '<form class="bform" data-bid="'+esc(x?x.id:'')+'" novalidate><div class="row"><div class="field"><label>العميل</label><select name="email">'+(cl.length?'':'<option value="">لا يوجد عملاء متعاقدون</option>')+cl.map(function(c){ return '<option value="'+esc(c.email)+'"'+(c.email===em?' selected':'')+'>'+esc(clLabel(c,cl))+'</option>'; }).join('')+(em&&!cl.some(function(c){return c.email===em})?'<option value="'+esc(em)+'" selected>'+esc(em)+'</option>':'')+'</select></div>'+
       '<div class="field bscope-f"><label>ما تشمله الفاتورة</label><div class="bscope" role="group" aria-label="ما تشمله الفاتورة"></div></div></div>'+
-      '<div class="row"><div class="field"><label>العنوان</label><input name="title" dir="auto" value="'+esc(x?x.title:'')+'" placeholder="مثلاً: باقة المحتوى الشهرية"></div><div class="field"><label>الفترة (اختياري)</label><input name="period" dir="auto" value="'+esc(x?x.period:'')+'" placeholder="نوفمبر 2026"></div>'+
-        '<div class="field"><label>العملة</label><input name="currency" dir="ltr" list="bcurs" value="'+esc(x?x.currency:'$')+'"><datalist id="bcurs">'+CURS.map(function(c){ return '<option value="'+c+'">'; }).join('')+'</datalist></div></div>'+
+      '<div class="row"><div class="field"><label>العنوان</label><input name="title" dir="auto" value="'+esc(x?x.title:(f.title||''))+'" placeholder="مثلاً: باقة المحتوى الشهرية"></div><div class="field"><label>الفترة (اختياري)</label><input name="period" dir="auto" value="'+esc(x?x.period:'')+'" placeholder="نوفمبر 2026"></div>'+
+        '<div class="field"><label>العملة</label><input name="currency" dir="ltr" list="bcurs" value="'+esc(x?x.currency:(f.currency||'$'))+'"><datalist id="bcurs">'+CURS.map(function(c){ return '<option value="'+c+'">'; }).join('')+'</datalist></div></div>'+
       '<div class="small muted">البنود</div><div class="bgroups"></div>'+
       '<div class="row"><div class="field"><label>خصم</label><input name="discount" type="number" min="0" step="any" value="'+esc(x&&x.discount?x.discount:'')+'"></div><div class="field"><label>تاريخ الإصدار</label><input name="issue" type="date" value="'+esc(x?x.issue_date:td)+'"></div><div class="field"><label>تاريخ الاستحقاق</label><input name="due" type="date" value="'+esc(due)+'"></div></div>'+
       '<div class="field"><label>ملاحظة على الفاتورة (اختياري)</label><textarea name="note" dir="auto">'+esc(x?x.note:'')+'</textarea></div>'+
@@ -38,7 +38,7 @@
   function bRow(i){ var d=document.createElement('div'); d.className='bitem'; i=i||{};
     d.innerHTML='<input name="desc" dir="auto" placeholder="البيان" value="'+esc(i.desc||'')+'"><input name="qty" type="number" min="0" step="any" placeholder="الكمية" value="'+esc(i.qty||1)+'"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة" value="'+esc(i.unit===''||i.unit==null?'':i.unit)+'"><button type="button" class="linkbtn" data-brm aria-label="حذف البند">×</button>'; return d; }
   function bInit(f,x){ var P=bPN(f), ids={}, s=null; P.forEach(function(p){ ids[p.id]=1; }); try{ s=x&&x.scope?JSON.parse(x.scope):null; }catch(_){}
-    var it=((x&&x.items)||[]).map(function(i){ var k=i.project||(x.project_id&&!(x.items||[]).some(function(y){ return y.project; })?x.project_id:''); return {desc:i.desc,qty:i.qty,unit:i.unit,project:ids[k]?k:''}; });
+    var it=((x&&x.items)||(!x&&BFORM&&BFORM.items)||[]).map(function(i){ var k=i.project||(x&&x.project_id&&!(x.items||[]).some(function(y){ return y.project; })?x.project_id:''); return {desc:i.desc,qty:i.qty,unit:i.unit,project:ids[k]?k:''}; });
     f._sc={all:s==='all',keys:{}}; it.forEach(function(i){ f._sc.keys[i.project]=1; });
     if(!it.length){ var pj=(BFORM&&BFORM.project&&ids[BFORM.project])?BFORM.project:(P.length===1?P[0].id:''); f._sc.keys[pj]=1; }
     f._init=it; f.querySelector('.bgroups').innerHTML=''; bGroups(f,true); }
