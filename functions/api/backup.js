@@ -8,7 +8,7 @@ import { isAdmin, json } from "../_lib/shared.js";
 // GET  /api/backup?snap=<key>     → one stored snapshot, as a file
 // POST /api/backup {snapshot:1}   → store a snapshot on R2 now (the panel does this by itself once a week); the last 8 are kept
 // POST /api/backup {restore:"backup:<ts>"} → put a content version back on the site (the current one is kept as a version first)
-const SKIP = /^(sess:|asess:|tsess:|code:|reset:|invite:|tglink:|auth:|adev:|a2t:|a2c:|a2s:|fail:|backup:|sweep:|rl:|lim:|file:|media:)/;
+const SKIP = /^(sess:|asess:|tsess:|code:|reset:|invite:|tglink:|auth:|adev:|a2t:|a2c:|a2s:|fail:|backup:|csp:|sweep:|rl:|lim:|file:|media:)/;
 const BINARY = /^(file:|media:)/;
 const SECRET = /^(hash|salt|sv|pw|pass|password|token|secret|tmp\w*|temp\w*)$/i;
 const NO_TABLES = /^(sqlite_|_cf_|d1_)|^(view_hits|like_hits|interest|push_subs|tg_links)$/;
