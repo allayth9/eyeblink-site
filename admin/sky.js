@@ -6,8 +6,10 @@
 (function(){
   var cv=document.createElement('canvas'); cv.id='sky'; cv.setAttribute('aria-hidden','true');
   document.body.insertBefore(cv,document.body.firstChild);
-  var gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false,depth:false,stencil:false});
-  if(!gl){ cv.remove(); return; }
+  // only on a real graphics card: drawn in software (no GPU, or a test machine) this shader would freeze the panel, so the aurora stays alone
+  var gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false,depth:false,stencil:false,failIfMajorPerformanceCaveat:true});
+  var dbg=gl&&gl.getExtension('WEBGL_debug_renderer_info'), rn=dbg?String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)):'';
+  if(!gl||/swiftshader|llvmpipe|softpipe|software|basic render/i.test(rn)){ cv.remove(); return; }
   // the brand gradient (#2FC4D8 → #2A86E6 → #1C45E6 → #1638C4 → #0E1A5C), read from the palette so a change there reaches here
   function hex(n,f){ var v=getComputedStyle(document.documentElement).getPropertyValue(n).trim()||f, h=v.replace('#',''); if(h.length===3) h=h.replace(/./g,'$&$&');
     var i=parseInt(h,16); return [(i>>16&255)/255,(i>>8&255)/255,(i&255)/255].map(function(c){ return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4); }); }
