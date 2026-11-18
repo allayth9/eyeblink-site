@@ -1,6 +1,7 @@
 /* Eyeblink admin · settings — loaded after the files before it; all of admin/js shares one scope */
   /* ---------------- settings ---------------- */
   function renderSettings(){
+    setTimeout(loadRules,0);   // the automatic messages section fills itself from the server
     var S=C.settings=C.settings||{}; var T=(P&&P.templates)||DEFAULT_TPL;
     var tog=function(k,l){ return '<label class="check"><input type="checkbox" data-p="settings.'+k+'" data-t="check"'+(S[k]!==false?' checked':'')+'> '+l+'</label>'; };
     $('#panel').innerHTML=
@@ -8,7 +9,7 @@
       '<section class="sec"><h3>الخلفية الحيوية</h3><p class="hint">كرة النقاط المتحركة خلف صفحات الموقع. 100 = كما هي الآن، و0 = مخفية (تبقى السماء المتدرجة وحدها). على الموبايل تظهر أخف قليلاً من القيمة نفسها.</p>'+
         '<div class="field"><label for="bgOp">الشفافية: <b data-bgv>'+(S.bgOpacity==null?100:S.bgOpacity)+'%</b></label><input id="bgOp" type="range" min="0" max="100" step="5" data-p="settings.bgOpacity" data-t="num" value="'+(S.bgOpacity==null?100:S.bgOpacity)+'"></div></section>'+
       '<section class="sec"><h3>التنبيهات</h3><p class="hint">يرسل رسالة تجريبية عبر تيليغرام ورسالة بريد تجريبية، ويعرض ردّ كل منهما. (بعد أي تغيير في متغيرات Cloudflare يلزم إجراء Retry deployment.)</p><div><button class="btn" type="button" id="notifyTest">أرسل تنبيهاً تجريبياً</button></div><pre id="notifyOut" class="small" hidden style="white-space:pre-wrap;margin-top:10px"></pre></section>'+
-      '<section class="sec"><h3>تسجيل العملاء عبر Google</h3><p class="hint">العملاء يسجّلون بالإيميل وكلمة السر دائماً. لإضافة زر «المتابعة عبر Google» الصق هنا الـ Client ID من Google Cloud (ينتهي بـ apps.googleusercontent.com) ثم انشر.</p>'+
+      '<section class="sec rules" id="rulesSec"><h3>الرسائل التلقائية</h3><p class="hint">قواعد تتابع عنك ما يُنسى عادةً، عبر القنوات التي فعّلها كل عميل. «اسألني أولاً» تضع الرسالة في صفحة «اليوم» لتوافق عليها.</p><div class="rl-body"><p class="muted small">جارٍ التحميل…</p></div></section>'+'<section class="sec"><h3>تسجيل العملاء عبر Google</h3><p class="hint">العملاء يسجّلون بالإيميل وكلمة السر دائماً. لإضافة زر «المتابعة عبر Google» الصق هنا الـ Client ID من Google Cloud (ينتهي بـ apps.googleusercontent.com) ثم انشر.</p>'+
         '<div class="field"><label>Google Client ID</label><input data-p="settings.googleClientId" data-t="text" dir="ltr" value="'+esc(S.googleClientId||'')+'" placeholder="1234567890-xxxx.apps.googleusercontent.com"></div></section>'+
       '<section class="sec"><h3>عنوان علامة التبويب لكل صفحة</h3><p class="hint">النص الذي يظهر في تبويب المتصفح. اتركه فارغاً ليبقى العنوان الافتراضي (الظاهر باهتاً).</p>'+
         PAGES.map(function(pg){ var v=(C.titles&&C.titles[pg[0]])||{};

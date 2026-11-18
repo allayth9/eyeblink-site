@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -89,6 +89,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS notify_log_retry ON notify_log(status, next_try_at)`,
   `CREATE INDEX IF NOT EXISTS notify_log_provider ON notify_log(provider_id)`,
   `CREATE TABLE IF NOT EXISTS scheduled_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, recipient TEXT NOT NULL, kind TEXT NOT NULL, t TEXT NOT NULL, extra TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT, cancelled_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS rule_log (rule TEXT NOT NULL, key TEXT NOT NULL, recipient TEXT NOT NULL DEFAULT '', at TEXT NOT NULL, outcome TEXT NOT NULL DEFAULT 'sent', PRIMARY KEY (rule, key))`,
+  `CREATE TABLE IF NOT EXISTS pending_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, rule TEXT NOT NULL, key TEXT NOT NULL, recipient TEXT NOT NULL, kind TEXT NOT NULL, t TEXT NOT NULL, extra TEXT NOT NULL, title TEXT NOT NULL, sub TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, done_at TEXT, outcome TEXT)`,
   `CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, no TEXT NOT NULL UNIQUE, client_email TEXT NOT NULL, project_id TEXT, title TEXT NOT NULL DEFAULT '', period TEXT NOT NULL DEFAULT '',
      items TEXT NOT NULL DEFAULT '[]', currency TEXT NOT NULL DEFAULT '$', discount REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, paid REAL NOT NULL DEFAULT 0, refunded REAL NOT NULL DEFAULT 0,
      status TEXT NOT NULL DEFAULT 'pending', issue_date TEXT NOT NULL, due_date TEXT, note TEXT NOT NULL DEFAULT '', payments TEXT NOT NULL DEFAULT '[]', sent_at TEXT, reminded_at TEXT,
@@ -428,7 +430,8 @@ function invoiceArgs(x, kind){ return { t: { client_email: x.client_email, ref: 
 
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
-  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks" };
+  invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks",
+  invoiceSoon:"billing", invoiceFollow:"billing", reviewWaiting:"deliveries", infoWaiting:"requests" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
 const ESSENTIAL = ["deliveries","billing"];   // e-mail for these cannot be switched off
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
@@ -529,6 +532,9 @@ const WA_TXT = {
         comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
         invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
         invoiceDue: d => `نودّ أن نذكّرك بلطف بالفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
+        invoiceSoon: d => `تذكير ودّي: يحلّ موعد استحقاق الفاتورة ${d.no} في ${d.dueText}، والمبلغ ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
+        invoiceFollow: d => `نتابع معك بخصوص الفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كان بوسعنا تسهيل الأمر فيسعدنا أن نسمع منك.`,
+        reviewWaiting: d => `النسخة ${d.label} من «${d.title}» (${d.ref}) بانتظار رأيك متى سنح وقتك.`, infoWaiting: d => `ما زلنا بانتظار بعض التفاصيل لبدء «${d.title}» (${d.ref}).`,
         recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو مهمة «${d.title}» (${d.ref}) إلى مشروعك${d.date ? "، وموعد تسليمها المؤكد " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
@@ -537,6 +543,9 @@ const WA_TXT = {
         comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
         invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
         invoiceDue: d => `A gentle reminder about invoice ${d.no}; the remaining balance is ${d.balance}. If you have already settled it, thank you.`,
+        invoiceSoon: d => `A gentle reminder: invoice ${d.no} is due on ${d.dueText}, for ${d.balance}. If you have already settled it, thank you.`,
+        invoiceFollow: d => `Following up on invoice ${d.no}; ${d.balance} is still due. If we can make it easier, we would be glad to hear from you.`,
+        reviewWaiting: d => `Version ${d.label} of "${d.title}" (${d.ref}) is waiting for your review whenever you have a moment.`, infoWaiting: d => `We are still waiting for a few details to start "${d.title}" (${d.ref}).`,
         recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added "${d.title}" (${d.ref}) to your project${d.date ? "; confirmed delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
 // the e-mail for one event, built once: tellClient sends it, the admin's send sheet previews it
 function composeMail(u, t, kind, extra, hash){
@@ -562,6 +571,16 @@ function composeMail(u, t, kind, extra, hash){
                     : ["وصلت دفعتك · " + extra.no, `وصلتنا دفعتك <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> للفاتورة <b style="color:#fff">${h(extra.no)}</b>. شكراً لك! تجد الفاتورة المحدّثة أدناه.`],
     invoiceDue: en ? ["A gentle reminder · invoice " + extra.no, `A gentle reminder about invoice <b style="color:#fff">${h(extra.no)}</b>; the remaining balance is <b style="color:#3FE0E8">${h(extra.balance)}</b>. If you have already settled it, thank you, and please disregard this note. We are always happy to help with any question.`]
                    : ["تذكير ودّي · الفاتورة " + extra.no, `نودّ أن نذكّرك بلطف بالفاتورة <b style="color:#fff">${h(extra.no)}</b>، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كنت قد أتممت الدفع فلك جزيل الشكر، ويسعدنا دائماً الإجابة عن أي استفسار.`],
+    invoiceSoon: en ? ["A gentle reminder · invoice " + extra.no + " is due soon", `A gentle reminder that invoice <b style="color:#fff">${h(extra.no)}</b> is due on <b style="color:#fff">${h(fmtDate(extra.due, lang))}</b>, for <b style="color:#3FE0E8">${h(extra.balance)}</b>. If you have already settled it, thank you.`]
+                    : ["تذكير ودّي · الفاتورة " + extra.no + " تستحق قريباً", `نودّ أن نذكّرك بلطف بأن الفاتورة <b style="color:#fff">${h(extra.no)}</b> يحلّ موعد استحقاقها في <b style="color:#fff">${h(fmtDate(extra.due, lang))}</b>، والمبلغ <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كنت قد أتممت الدفع فلك جزيل الشكر.`],
+    invoiceFollow: en ? ["About invoice " + extra.no, `We are following up on invoice <b style="color:#fff">${h(extra.no)}</b>; the remaining balance is <b style="color:#3FE0E8">${h(extra.balance)}</b>. If we can make it easier, with another payment method or a date that suits you better, we would be glad to hear from you.`]
+                      : ["بخصوص الفاتورة " + extra.no, `نتابع معك بخصوص الفاتورة <b style="color:#fff">${h(extra.no)}</b>، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كان بوسعنا تسهيل الأمر، كطريقة دفع أخرى أو موعد يناسبك أكثر، فيسعدنا أن نسمع منك.`],
+    reviewWaiting: en ? ["Version " + extra.label + " is waiting for your review · " + t.ref, `We recently sent you version <b style="color:#3FE0E8">${h(extra.label)}</b> of <b style="color:#fff">${h(t.title)}</b>. We look forward to your thoughts whenever you have a moment; your approval or notes help us finish on time.`, "Review the version",
+                         t.confirmed_date ? `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">Confirmed delivery: ${h(fmtDate(t.confirmed_date, lang))}</p>` : ""]
+                      : ["النسخة " + extra.label + " بانتظار رأيك · " + t.ref, `أرسلنا إليك مؤخراً النسخة <b style="color:#3FE0E8">${h(extra.label)}</b> من <b style="color:#fff">${h(t.title)}</b>. نتطلع إلى رأيك متى سنح وقتك؛ فموافقتك أو ملاحظاتك تساعدنا على إكمال العمل في موعده.`, "راجع النسخة",
+                         t.confirmed_date ? `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">موعد التسليم المؤكد: ${h(fmtDate(t.confirmed_date, lang))}</p>` : ""],
+    infoWaiting: en ? ["We are still waiting for a few details · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need what we asked for:`, "Send the details", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">As soon as they arrive, we begin.</p>`]
+                    : ["ما زلنا بانتظار بعض التفاصيل · " + t.ref, `لنبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b> نحتاج إلى ما طلبناه منك:`, "أرسل التفاصيل", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">حالما تصلنا نبدأ مباشرة.</p>`],
     recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                   : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
     added:   en ? ["New task from the studio · " + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to your project${t.confirmed_date ? `. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
@@ -576,7 +595,7 @@ function composeMail(u, t, kind, extra, hash){
     const wsLink = SITE + (en ? "/en" : "") + "/workspace" + hash;
     const html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
       : extra.report ? mail(lang, T[0], reportCard(extra.report, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // the monthly report: the scoreboard
-      : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note, en ? "Open in my workspace" : "افتح في مساحة العمل", wsLink, greet({ name: u.name, lang }));
+      : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + (T[3] || ""), T[2] || (en ? "Open in my workspace" : "افتح في مساحة العمل"), wsLink, greet({ name: u.name, lang }));
     return { subject: T[0], html };
 }
 function tellData(t, extra){ return { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
@@ -633,6 +652,77 @@ async function tellClient(env, t, kind, extra){
   })());
   await Promise.allSettled(jobs);
 }
+// ---- automatic messages (Phase 3): each rule fires once per item (rule_log), inside the quiet hours (Gulf time),
+// at most one message a day per client (the next run sends the rest). "ask" rules wait in Today (pending_sends). ----
+const gulf = () => new Date(Date.now() + 4 * 3600e3);
+async function runRules(env, D, force){
+  const R = await rulesOf(env), g = gulf(), hr = g.getUTCHours(), td = g.toISOString().slice(0, 10);
+  if (!force && (hr < R.quiet.from || hr >= R.quiet.to || (R.quiet.fri && g.getUTCDay() === 5))) return { quiet: true };
+  if (!force) { const last = await D.prepare("SELECT v FROM meta WHERE k='rsweep'").first(); if (last && Date.now() - +last.v < 3600e3) return { wait: true };
+    await D.prepare("INSERT INTO meta (k, v) VALUES ('rsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run(); }
+  const dayStart = new Date(Date.parse(td + "T00:00:00Z") - 4 * 3600e3).toISOString(), out = [];
+  const told = new Set((await D.prepare("SELECT DISTINCT recipient FROM rule_log WHERE at>=? AND outcome='sent'").bind(dayStart).all()).results.map(r => r.recipient));
+  const got = async (rule, key) => (await D.prepare("SELECT outcome, at FROM rule_log WHERE rule=? AND key=?").bind(rule, key).first()) || null;
+  const mark = (rule, key, who, outcome) => D.prepare("INSERT OR IGNORE INTO rule_log (rule, key, recipient, at, outcome) VALUES (?,?,?,?,?)").bind(rule, key, who || "", now(), outcome || "sent").run();
+  const day = n => new Date(Date.parse(td + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const on = k => R.rules[k].mode !== "off", N = k => R.rules[k].days, cut = n => new Date(Date.now() - n * 864e5).toISOString();
+  const client = async (rule, key, t, kind, extra, title, sub) => {
+    if (!on(rule) || await got(rule, key)) return; const who = String(t.client_email || "").toLowerCase();
+    if (R.rules[rule].mode === "ask") {
+      await D.prepare("INSERT INTO pending_sends (rule, key, recipient, kind, t, extra, title, sub, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(rule, key, who, kind, JSON.stringify(t), JSON.stringify(extra), title, sub || "", now()).run();
+      await mark(rule, key, who, "asked"); out.push(rule + ":ask"); return; }
+    if (told.has(who)) return;   // one a day per client; this one goes on the next run
+    told.add(who); await mark(rule, key, who); await tellClient(env, t, kind, extra).catch(() => {}); out.push(rule + ":" + key); };
+  const studio = async (rule, key, subject, text, link) => {
+    if (!on(rule) || await got(rule, key)) return; await mark(rule, key, "studio");
+    try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES ('studio','event','studio',?,?,?)").bind(link || "#today", JSON.stringify({ subject, text }), now()).run(); } catch {}
+    await notifyStudio(env, subject, text).catch(() => {}); out.push(rule + ":" + key); };
+  // invoices: after the due date first (the most pressing), then the final follow-up, the studio's personal touch, and before the due date
+  const inv = (await D.prepare("SELECT i.*, p.name AS project_name, c.name AS client_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id LEFT JOIN clients c ON c.email=i.client_email WHERE i.status IN ('pending','partial') AND i.sent_at IS NOT NULL AND i.due_date IS NOT NULL ORDER BY i.due_date LIMIT 200").all()).results;
+  for (const row of inv) { const x = parseI(row), a = k => invoiceArgs(x, k), who = row.client_name || x.client_email;
+    if (x.due_date <= day(-N("invDue"))) {
+      if (x.reminded_at && x.reminded_at.slice(0, 10) >= x.due_date && !(await got("invDue", x.id))) await mark("invDue", x.id, x.client_email, "earlier");   // reminded before the rules (or by hand)
+      else { const A = a("invoiceDue"); await client("invDue", x.id, A.t, "invoiceDue", A.extra); } }
+    if (x.due_date <= day(-N("invFollow")) && await got("invDue", x.id)) { const A = a("invoiceFollow");
+      await client("invFollow", x.id, A.t, "invoiceFollow", A.extra, "متابعة أخيرة بالفاتورة " + x.no, who + " · المتبقي " + fmt(x.balance, x.currency)); }
+    const fu = await got("invFollow", x.id);   // the personal touch counts from when the final follow-up actually went (or was skipped), not from the due date
+    if (fu && fu.outcome !== "asked" && fu.at <= cut(N("invPersonal")))
+      await studio("invPersonal", x.id, "فاتورة تحتاج متابعة شخصية · " + x.no, x.no + " · " + who + " · " + fmt(x.balance, x.currency) + " · بعد متابعتين", "#billing");
+    if (x.due_date >= td && x.due_date <= day(N("invSoon"))) { const A = a("invoiceSoon"); await client("invSoon", x.id, A.t, "invoiceSoon", A.extra); } }
+  // a version the client has not answered
+  const rv = (await D.prepare("SELECT t.*, d.id AS did, d.label AS dlabel, d.is_final AS dfin FROM tasks t JOIN deliverables d ON d.task_id=t.id WHERE t.status IN ('feedback','final') AND d.status='sent' AND d.created_at<=? AND d.version=(SELECT MAX(version) FROM deliverables WHERE task_id=t.id) LIMIT 100").bind(cut(N("review"))).all()).results;
+  for (const t of rv) await client("review", t.did, parse(t), "reviewWaiting", { label: t.dlabel, final: !!t.dfin }, "تذكير بمراجعة " + t.dlabel + " · " + t.ref, t.title);
+  // details the studio asked for and has not received
+  const inf = (await D.prepare("SELECT * FROM tasks WHERE status='info' AND updated_at<=? LIMIT 100").bind(cut(N("info"))).all()).results;
+  for (const t of inf) await client("info", t.id + ":" + t.updated_at, parse(t), "infoWaiting", { note: t.studio_note || "" }, "تذكير بالتفاصيل المطلوبة · " + t.ref, t.title);
+  // the team (KV): due tomorrow, past due, and internal reviews waiting for the studio
+  if (on("teamSoon") || on("teamLate") || on("qcWait")) {
+    const tt = [], members = {}; let c; do { const r = await env.EB.list({ prefix: "ttask:", cursor: c }); for (const k of r.keys) { try { tt.push(JSON.parse(await env.EB.get(k.name))); } catch {} } c = r.list_complete ? null : r.cursor; } while (c);
+    const mem = async e => members[e] !== undefined ? members[e] : (members[e] = await env.EB.get("member:" + e).then(v => v ? JSON.parse(v) : null).catch(() => null));
+    for (const t of tt) { if (!t || !t.member) continue; const open = ["assigned", "progress", "changes"].includes(t.status);
+      if (open && t.due && t.due >= td && t.due <= day(N("teamSoon")) && on("teamSoon") && !(await got("teamSoon", t.id + ":" + t.due))) { const m = await mem(t.member);
+        if (m && m.status === "active") { await mark("teamSoon", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("soon", m, t)); out.push("teamSoon:" + t.id); } }
+      if (open && t.due && t.due <= day(-N("teamLate")) && on("teamLate") && !(await got("teamLate", t.id + ":" + t.due))) { const m = await mem(t.member);
+        if (m && m.status === "active") { await mark("teamLate", t.id + ":" + t.due, m.email); await sendMail(env, m.email, ...teamMail("late", m, t));
+          try { await notifyStudio(env, "مهمة متأخرة لدى " + (m.name || m.email), t.title + " · كان موعدها " + t.due); } catch {} out.push("teamLate:" + t.id); } }
+      const lv = (t.versions || []).slice(-1)[0];
+      if (t.status === "qc" && lv && lv.at <= cut(N("qcWait"))) { const m = await mem(t.member);
+        await studio("qcWait", t.id + ":" + lv.at, "تسليم داخلي بانتظار مراجعتك", t.title + " · من " + ((m && m.name) || t.member), "#team"); } }
+  }
+  return { sent: out };
+}
+// the team's two reminders, in the site's template; Modern Standard Arabic, English for members who chose it
+function teamMail(kind, m, t){ const en = m.lang === "en", lang = en ? "en" : "ar", W = s => `<b style="color:#fff">${h(s)}</b>`, link = SITE + "/team";
+  const when = t.due ? new Date(t.due + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }) : "";
+  const muted = x => `<p style="margin:16px 0 0;font-size:13px;line-height:1.8;color:#8E9BB8">${x}</p>`;
+  if (kind === "soon") return [en ? "Due soon · " + t.title : "موعد التسليم يقترب · " + t.title,
+    mail(lang, en ? "Your delivery date is near" : "موعد التسليم يقترب", `<p style="margin:0 0 12px">${en ? "A reminder that " + W(t.title) + " is due on " : "نذكّرك بأن موعد تسليم مهمة " + W(t.title) + " هو "}<b style="color:#3FE0E8">${h(when)}</b>.</p>` +
+      muted(en ? "If you need anything clarified, or more time, tell us early so we can arrange it together." : "إن احتجت إلى أي توضيح أو وقت إضافي، فأخبرنا مبكراً لنرتّب الأمر معاً."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
+  return [en ? "About " + t.title : "بخصوص مهمة " + t.title,
+    mail(lang, en ? "Checking in on your task" : "نودّ الاطمئنان على سير المهمة", `<p style="margin:0 0 12px">${en ? W(t.title) + " has passed its agreed delivery date. We would like to check in: upload what you have so far, or tell us the new expected date." : "تجاوزت مهمة " + W(t.title) + " موعد تسليمها المتفق عليه. نودّ الاطمئنان على سيرها: ارفع ما أنجزته حتى الآن، أو أخبرنا بالموعد الجديد المتوقع."}</p>` +
+      muted(en ? "The studio receives this note too, so we can help if you need it." : "يصل الاستوديو هذا التنبيه أيضاً، لنساعدك إن احتجت."), en ? "Open the task" : "افتح المهمة", link, greet({ name: m.name, lang }), { label: "TEAM" })];
+}
+
 // to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
 function toStudio(ctx, env, subject, text){
   const m = /T-[A-Z0-9]{4,}/.exec(subject);
@@ -658,14 +748,13 @@ async function sweepNotify(env){ try {
   const sch = (await D.prepare("SELECT * FROM scheduled_sends WHERE sent_at IS NULL AND cancelled_at IS NULL AND at<=? ORDER BY at LIMIT 10").bind(now()).all()).results;
   for (const r of sch) { const c = await D.prepare("UPDATE scheduled_sends SET sent_at=? WHERE id=? AND sent_at IS NULL").bind(now(), r.id).run();
     if (c.meta && c.meta.changes) await tellClient(env, JSON.parse(r.t), r.kind, JSON.parse(r.extra)).catch(() => {}); }
-  // one reminder per invoice once it passes its due date
-  const due = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.status IN ('pending','partial') AND i.due_date<? AND i.reminded_at IS NULL AND i.sent_at IS NOT NULL LIMIT 10").bind(today()).all()).results;
-  for (const x of due) { await D.prepare("UPDATE invoices SET reminded_at=? WHERE id=?").bind(now(), x.id).run(); await invoiceMail(env, parseI(x), "invoiceDue"); }
+  // the automatic messages (Settings → automatic messages): at most hourly, inside the quiet hours
+  await runRules(env, D);
   // recurring tasks whose date has come
   const rec = (await D.prepare("SELECT * FROM recurring WHERE active=1 AND next_run<=? LIMIT 10").bind(today()).all()).results;
   for (const r of rec) await runRecurring({}, env, D, r, r.next_run);
   // monthly reports switched to automatic: during the first days of the month, once per project
-  if (new Date().getUTCDate() <= 5) { const pm = prevMonth();
+  if (new Date().getUTCDate() <= 5 && (await rulesOf(env)).rules.report.mode !== "off") { const pm = prevMonth();
     const auto = (await D.prepare("SELECT p.* FROM projects p WHERE p.auto_report=1 AND p.status='active' AND NOT EXISTS (SELECT 1 FROM meta m WHERE m.k='rep:'||p.id||':'||?) LIMIT 5").bind(pm).all()).results;
     for (const p of auto) await sendReport({}, env, D, p, pm); }
 } catch {} }
@@ -760,7 +849,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1076,7 +1165,8 @@ async function adminGet(request, env, q){
     if (t) { activity = (await D.prepare("SELECT * FROM activity WHERE task_id=? ORDER BY id DESC LIMIT 80").bind(t.id).all()).results.map(parseA); deliverables = await deliverablesOf(D, t.id); comments = await commentsOf(D, "task", t.id); } }
   const clients = await clientsList(env);
   const inboxUnread = (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n;
-  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, inboxUnread, today: today() });
+  const pending = (await D.prepare("SELECT id, rule, recipient, kind, title, sub, created_at FROM pending_sends WHERE done_at IS NULL ORDER BY id LIMIT 50").all()).results;   // "ask me first" messages, for Today
+  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, inboxUnread, pending, today: today() });
 }
 
 async function adminPost(ctx, d){
@@ -1169,7 +1259,8 @@ async function adminPost(ctx, d){
   }
   if (d.action === "notifyPreview") {   // the send sheet: the exact e-mail, the WhatsApp text to copy, and which channels reach this client
     const kind = clip(d.kind, 20); let t, extra = {};
-    if (d.invoice) { const x = await invoiceOf(D, d.invoice); if (!x) return json({ ok: false }, 404); ({ t, extra } = invoiceArgs(x, kind)); }
+    if (d.pending) { const p = await D.prepare("SELECT * FROM pending_sends WHERE id=?").bind(+d.pending || 0).first(); if (!p) return json({ ok: false }, 404); t = JSON.parse(p.t); extra = JSON.parse(p.extra); }
+    else if (d.invoice) { const x = await invoiceOf(D, d.invoice); if (!x) return json({ ok: false }, 404); ({ t, extra } = invoiceArgs(x, kind)); }
     else if (d.ref) { const row = await D.prepare("SELECT * FROM tasks WHERE ref=? OR id=?").bind(clip(d.ref, 40), clip(d.ref, 40)).first(); if (!row) return json({ ok: false }, 404);
       const o = d.over || {}; t = { ...parse(row), ...(STATUSES.includes(o.status) ? { status: o.status } : {}), ...(isDate(o.confirmed_date) ? { confirmed_date: o.confirmed_date } : {}) };
       extra = { label: clip(d.label, 20), final: !!d.final, note: clip(d.note, 4000) };
@@ -1191,6 +1282,21 @@ async function adminPost(ctx, d){
     return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, phone: (P && P.wa_phone) || (cl && cl.phone) || "",
       channels: { email: !!(P ? (P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) : true), push: devices > 0, wa: !!(P && P.consent && P.wa_phone && waReady(env, cfg)) },
       why: { email: P && !(P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) ? "off" : "", push: devices > 0 ? "" : "none", wa: !waReady(env, cfg) ? "meta" : !(P && P.consent && P.wa_phone) ? "consent" : "" } });
+  }
+  if (d.action === "rulesGet") return json({ ok: true, ...(await rulesOf(env)), defaults: RULES });
+  if (d.action === "rulesSave") {
+    const cur = await rulesOf(env), r = d.rules || {}, q = d.quiet || {}, rules = {};
+    for (const k in RULES) { const v = r[k] || cur.rules[k]; rules[k] = { mode: String(v.mode || ""), days: parseInt(v.days) }; }
+    await env.EB.put("rules", JSON.stringify({ rules, quiet: { from: parseInt(q.from ?? cur.quiet.from), to: parseInt(q.to ?? cur.quiet.to), fri: q.fri !== undefined ? !!q.fri : cur.quiet.fri } }));
+    return json({ ok: true, ...(await rulesOf(env)) });   // read back through the same checks
+  }
+  if (d.action === "rulesRun") return json({ ok: true, ...(await runRules(env, D, true)) });   // "check now", outside the hour and the quiet hours
+  if (d.action === "pendingSend" || d.action === "pendingSkip") {
+    const p = await D.prepare("SELECT * FROM pending_sends WHERE id=? AND done_at IS NULL").bind(+d.id || 0).first(); if (!p) return json({ ok: false, error: "gone" }, 404);
+    await D.prepare("UPDATE pending_sends SET done_at=?, outcome=? WHERE id=?").bind(at, d.action === "pendingSend" ? "sent" : "skipped", p.id).run();
+    await D.prepare("UPDATE rule_log SET outcome=?, at=? WHERE rule=? AND key=?").bind(d.action === "pendingSend" ? "sent" : "skipped", at, p.rule, p.key).run();
+    if (d.action === "pendingSend") later(ctx, tellAdmin(ctx, env, JSON.parse(p.t), p.kind, JSON.parse(p.extra)));
+    return json({ ok: true, scheduled: !!(ctx.notify && ctx.notify.at) });
   }
   if (d.action === "scheduledCancel") { await D.prepare("UPDATE scheduled_sends SET cancelled_at=? WHERE id=? AND sent_at IS NULL").bind(at, +d.id || 0).run(); return json({ ok: true }); }
   if (d.action === "studioRead") {

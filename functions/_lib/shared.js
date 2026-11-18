@@ -351,7 +351,8 @@ export async function newInvoice(env, kind, amount){
 export async function sweepReminders(env){
   try {
     const last = +(await env.EB.get("sweep:at") || 0); if (Date.now() - last < 3600e3) return; await env.EB.put("sweep:at", String(Date.now()));
-    const c = await siteContent(env), hrs = num(((c.payments || {}).reminderHours)) || 48, payOn = (c.payments || {}).reminders !== false;
+    const c = await siteContent(env), RR = (await rulesOf(env)).rules.orderPay;   // the rule from Settings → automatic messages
+    const hrs = (RR.days || 2) * 24, payOn = (c.payments || {}).reminders !== false && RR.mode !== "off";
     let cursor; do {
       const r = await env.EB.list({ prefix: "order:", cursor });
       for (const k of r.keys) {
@@ -444,4 +445,18 @@ export function accountMail(kind, lang, name, x){
   if (!M) return null;
   const [subject, title, body, cta, link, label] = M();
   return { subject, html: mail(L, title, body, cta, link, hi, { label }) };
+}
+
+// ---- automatic messages (Phase 3, 18 Nov 2026): the studio's rules, set in Settings and kept in KV "rules" ----
+// id: [default mode, default days, which modes it offers]. Client rules can wait for the studio's approval ("ask"); the rest are on or off.
+export const RULES = {
+  invSoon: ["auto", 3, "aao"], invDue: ["auto", 2, "aao"], invFollow: ["ask", 10, "aao"], review: ["auto", 3, "aao"], info: ["auto", 2, "aao"],
+  orderPay: ["auto", 2, "ao"], report: ["auto", 0, "ao"], teamSoon: ["auto", 1, "ao"], teamLate: ["auto", 1, "ao"], qcWait: ["auto", 1, "ao"], invPersonal: ["auto", 4, "ao"] };
+export const QUIET = { from: 10, to: 19, fri: true };   // Gulf time (UTC+4)
+export async function rulesOf(env){
+  let r = {}; try { r = JSON.parse(await env.EB.get("rules") || "{}") || {}; } catch {}
+  const q = r.quiet || {}, out = { quiet: { from: Math.min(23, Math.max(0, parseInt(q.from ?? QUIET.from) || 0)), to: Math.min(24, Math.max(1, parseInt(q.to ?? QUIET.to) || 24)), fri: q.fri !== undefined ? !!q.fri : QUIET.fri }, rules: {} };
+  for (const k in RULES) { const v = (r.rules || {})[k] || {}, ok = RULES[k][2] === "aao" ? ["auto", "ask", "off"] : ["auto", "off"];
+    out.rules[k] = { mode: ok.includes(v.mode) ? v.mode : RULES[k][0], days: Math.max(0, Math.min(60, parseInt(v.days ?? RULES[k][1]) || 0)) }; }
+  return out;
 }

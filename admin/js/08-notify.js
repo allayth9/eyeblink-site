@@ -168,3 +168,40 @@
     for(var i=0;i<SND.length;i++){ if(!b.matches(SND[i][0])) continue; var o=SND[i][1](b); if(!o) return;
       e.preventDefault(); e.stopImmediatePropagation();
       sendSheet(o).then(function(n){ if(!n||!b.isConnected) return; NEXT_NOTIFY=n; b.dataset.armed='1'; b._sndOk=b._cfOk=true; b.click(); b._sndOk=b._cfOk=false; NEXT_NOTIFY=null; }); return; } },true);
+
+  /* ---------------- automatic messages (Phase 3): the rules screen, and Today's "waiting for your approval" ---------------- */
+  var RUL=null, RULT=0;
+  var RULEDEF=[['العملاء',[['invSoon','تذكير قبل استحقاق الفاتورة','قبل','من تاريخ الاستحقاق'],['invDue','تذكير لطيف بعد الاستحقاق','بعد','من تاريخ الاستحقاق'],['invFollow','متابعة أخيرة بالفاتورة','بعد','من الاستحقاق، بعرض المساعدة بدل الإلحاح'],
+      ['review','نسخة بانتظار المراجعة','بعد','من التسليم دون ردّ، مرة واحدة'],['info','معلومات مطلوبة لم تصل','بعد','من طلبها، مرة واحدة'],['orderPay','تذكير دفع طلبات الموقع','بعد','من إرسال بيانات الدفع'],['report','التقرير الشهري','','أول كل شهر، للمشاريع التي فعّلته']]],
+    ['الفريق',[['teamSoon','موعد التسليم يقترب','قبل','من موعد المهمة، إن لم تُسلَّم'],['teamLate','مهمة تجاوزت موعدها','بعد','من الموعد، للعضو وللاستوديو معاً']]],
+    ['الاستوديو',[['qcWait','تسليم داخلي بانتظار مراجعتك','بعد','دون مراجعة'],['invPersonal','فاتورة تحتاج متابعة شخصية','بعد','من المتابعة الأخيرة دون دفع']]]];
+  var RMODE={auto:'تلقائي',ask:'اسألني أولاً',off:'متوقفة'};
+  function dayWord(n){ return n<=2?'يوم':n<=10?'أيام':'يوماً'; }
+  function rpost(body){ return fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+  function loadRules(){ if(!$('#rulesSec')) return; if(RUL) return drawRules(); if(!LIVE){ $('#rulesSec .rl-body').innerHTML='<p class="muted small">تعمل على الموقع المنشور.</p>'; return; }
+    rpost({action:'rulesGet'}).then(function(j){ if(!j.ok) throw 0; RUL=j; drawRules(); }).catch(function(){ var b=$('#rulesSec .rl-body'); if(b) b.innerHTML='<p class="muted small">تعذّر التحميل.</p>'; }); }
+  function drawRules(){ var box=$('#rulesSec .rl-body'); if(!box||!RUL) return; var q=RUL.quiet, hrs=function(v){ var o=''; for(var i=0;i<=24;i++) o+='<option value="'+i+'"'+(i===v?' selected':'')+'>'+('0'+i).slice(-2)+':00</option>'; return o; };
+    box.innerHTML='<div class="rl-quiet"><span>الساعات الهادئة (بتوقيت الخليج): من</span><select data-rq="from" aria-label="بداية الإرسال">'+hrs(q.from)+'</select><span>إلى</span><select data-rq="to" aria-label="نهاية الإرسال">'+hrs(q.to)+'</select>'+
+      '<label class="check"><input type="checkbox" data-rq="fri"'+(q.fri?' checked':'')+'> لا شيء يوم الجمعة</label><button class="btn sm" type="button" data-rrun>تحقّق الآن</button></div>'+
+      RULEDEF.map(function(g){ return '<div class="rl-g">'+g[0]+'</div>'+g[1].map(function(d){ var r=RUL.rules[d[0]], modes=(RUL.defaults[d[0]][2]==='aao'?['auto','ask','off']:['auto','off']);
+        return '<div class="rl-row'+(r.mode==='off'?' off':'')+'"><div class="rl-t"><b>'+d[1]+'</b><span>'+(d[2]?d[2]+' <input type="number" min="0" max="60" data-rd="'+d[0]+'" value="'+r.days+'" aria-label="عدد الأيام"> <i>'+dayWord(r.days)+'</i> ':'')+d[3]+'</span></div>'+
+          '<div class="rl-m" role="group" aria-label="وضع القاعدة">'+modes.map(function(m){ return '<button type="button" data-rm="'+d[0]+'" data-m="'+m+'" aria-pressed="'+(r.mode===m)+'">'+RMODE[m]+'</button>'; }).join('')+'</div></div>'; }).join(''); }).join(''); }
+  function saveRules(){ clearTimeout(RULT); RULT=setTimeout(function(){ rpost({action:'rulesSave',rules:RUL.rules,quiet:RUL.quiet}).then(function(j){ if(j.ok){ RUL.rules=j.rules; RUL.quiet=j.quiet; toast('حُفظت القواعد'); } else toast('تعذّر الحفظ',true); }); },450); }
+  document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!RUL||!b.closest('#rulesSec')) return;
+    if(b.dataset.rm){ RUL.rules[b.dataset.rm].mode=b.dataset.m; drawRules(); saveRules(); return; }
+    if(b.hasAttribute('data-rrun')){ b.disabled=true; rpost({action:'rulesRun'}).then(function(j){ b.disabled=false; var n=(j.sent||[]).length; toast(n?'نُفّذت '+n+' رسالة أو تنبيه':'لا شيء مستحق الآن'); WORK=null; if(typeof loadWork==='function') loadWork(); }); } });
+  document.addEventListener('change',function(e){ var el=e.target; if(!RUL||!el.closest||!el.closest('#rulesSec')) return;
+    if(el.dataset.rd){ var n=Math.max(0,Math.min(60,parseInt(el.value)||0)); RUL.rules[el.dataset.rd].days=n; el.value=n; el.nextElementSibling.textContent=dayWord(n); saveRules(); }
+    if(el.dataset.rq){ RUL.quiet[el.dataset.rq]=el.type==='checkbox'?el.checked:+el.value; saveRules(); } });
+  // Today: rules on "ask me first" wait here
+  function pendingBlock(){ var L=(WORK&&WORK.pending)||[]; if(!L.length) return '';
+    return '<section class="pnd"><div class="pnd-h"><i></i><b>بانتظار موافقتك</b><small>'+L.length+'</small></div>'+L.map(function(p){
+      return '<div class="pnd-r"><div class="pnd-w">'+esc(p.title)+'<small>'+esc(p.sub||p.recipient)+'</small></div><div class="pnd-a"><button class="btn sm primary" type="button" data-pds="'+p.id+'">أرسل</button><button class="btn sm" type="button" data-pdr="'+p.id+'">راجع</button><button class="btn sm" type="button" data-pdk="'+p.id+'">تخطَّ</button></div></div>'; }).join('')+'</section>'; }
+  function pendingDo(id,action,notify,btn){ if(btn) btn.disabled=true;
+    return rpost(Object.assign({action:action,id:id},notify?{notify:notify}:{})).then(function(j){ if(!j.ok&&j.error!=='gone'){ if(btn) btn.disabled=false; toast('تعذّر التنفيذ',true); return; }
+      WORK.pending=(WORK.pending||[]).filter(function(p){ return String(p.id)!==String(id); }); toast(action==='pendingSkip'?'تُخطّيت الرسالة':sndSay(notify,'أُرسلت الرسالة')); if(TAB==='today') renderToday(true); }); }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-pds],[data-pdr],[data-pdk]'); if(!b) return;
+    if(b.dataset.pds) return pendingDo(b.dataset.pds,'pendingSend',null,b);
+    if(b.dataset.pdk) return pendingDo(b.dataset.pdk,'pendingSkip',null,b);
+    var p=((WORK&&WORK.pending)||[]).filter(function(x){ return String(x.id)===b.dataset.pdr; })[0]; if(!p) return;
+    sendSheet({title:p.title,rows:[['إلى',p.sub||p.recipient]],pv:{kind:p.kind,pending:p.id}}).then(function(n){ if(n) pendingDo(p.id,'pendingSend',n,b); }); });

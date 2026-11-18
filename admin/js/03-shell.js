@@ -232,6 +232,7 @@
           '<div class="td2-chips">'+(prod?'<span class="tag s-in-progress">'+prod+' بالإنتاج</span>':'')+(wait?'<span class="tag tf-wait">'+wait+' بانتظار</span>':'')+(late?'<span class="tag c-crit">'+late+' متأخرة</span>':'')+(teamOpen?'<span class="tag s-confirmed">'+teamOpen+' عند الفريق</span>':'')+'</div></div>'+
           '<svg class="td2-ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40"/><circle class="on" cx="50" cy="50" r="40" stroke-dasharray="'+Math.round(pct*2.513)+' 252"/><text x="50" y="57">'+pct+'%</text></svg></div>')+
       '</div>'+
+      pendingBlock()+
       '<div class="tdy-grid">'+
         '<section class="panelx td2-todo"><div class="px-h"><h3>بحاجة لقرارك</h3><span class="muted small">'+(al.length?'مرتّبة حسب الأهمية':'')+'</span></div>'+
           (LIVE&&!ORD_READY?'<div class="calm"><span>جارٍ التحميل…</span></div>':al.length?'<ul class="td2-list">'+al.map(function(a){ return '<li class="lv-'+a.lvl+'"><button type="button" data-go=\''+esc(JSON.stringify(a.go))+'\'><i></i><div><b>'+esc(a.title)+'</b><span>'+a.sub+'</span></div><em>'+esc(a.lvl==='info'?LV.info:(ACT[a.go&&a.go.tab]||'افتح'))+'</em></button></li>'; }).join('')+'</ul>'
