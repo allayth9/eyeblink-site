@@ -11,6 +11,7 @@
   var OV=[
     // the panel
     [function(){ return document.querySelector('.avc'); }, click('[data-avno]')],
+    [function(){ var m=document.getElementById('avMenu'); return m&&!m.hidden?m:null; }, function(m){ m.hidden=true; }],
     [function(){ return document.querySelector('.snd-ov'); }, click('[data-sno]')],
     [function(){ return document.querySelector('.cfm-ov'); }, click('[data-cfno]')],
     [function(){ return document.getElementById('cmdk'); }, function(el){ el.remove(); }],

@@ -231,7 +231,13 @@
   function picDone(j,msg){ if(j&&j.ok){ ME.user.pic=j.url||null; try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); dash(); flash(msg); } else flash(AV.err); }
   function flash(m){ if(window.EBToast) return EBToast(m); var t=document.createElement('div'); t.className='acct-toast'; t.setAttribute('role','status'); t.textContent=m; document.body.appendChild(t); setTimeout(function(){ t.remove(); },2600); }
   function bindPic(){ var inp=document.getElementById('avIn'); if(!inp) return;
-    var pick=function(){ inp.click(); }; document.getElementById('avPick').onclick=pick; document.getElementById('avPick2').onclick=pick;
+    // the pencil on the photo is the only control: no photo yet → choose one; a photo → a small menu (change, remove)
+    var btn=document.getElementById('avPick'), menu=document.getElementById('avMenu'), pick=function(){ inp.click(); };
+    var shut=function(){ if(menu&&!menu.hidden){ menu.hidden=true; btn.setAttribute('aria-expanded','false'); } };
+    btn.onclick=function(e){ if(!menu) return pick(); e.stopPropagation(); menu.hidden=!menu.hidden; btn.setAttribute('aria-expanded',String(!menu.hidden)); if(!menu.hidden) menu.querySelector('button').focus(); };
+    if(menu){ document.getElementById('avNew').onclick=function(){ shut(); pick(); };
+      document.addEventListener('click',function(e){ if(!e.target.closest('#avMenu')) shut(); });
+      menu.addEventListener('keydown',function(e){ if(e.key==='Escape'){ shut(); btn.focus(); } }); }
     inp.onchange=function(){ var f=inp.files[0]; inp.value=''; if(!f||!window.EBCrop) return;
       EBCrop(f,AV).then(function(u){ if(!u) return; return api('account',{action:'avatar',data:u}).then(function(j){ picDone(j,AV.ok); }); },function(){ flash(AV.err); }); };
     var del=document.getElementById('avDel'); if(del) del.onclick=function(){ if(del.dataset.armed!=='1'){ del.dataset.armed='1'; del.textContent=AR?'تأكيد الحذف':'Confirm'; return; }
@@ -239,9 +245,9 @@
   function dash(){
     var u=ME.user; LIST=ME.orders||[];
     var ini=String(u.name||u.email||'?').trim().split(/\s+/).slice(0,2).map(function(w){ return w.charAt(0); }).join('').toUpperCase();
-    box.innerHTML='<div class="acct-head glass rv"><div class="acct-pic"><button type="button" class="acct-ph" id="avPick" aria-label="'+AV.change+'">'+(u.pic?'<img src="'+esc(u.pic)+'" alt="">':'<span>'+esc(ini)+'</span>')+
+    box.innerHTML='<div class="acct-head glass rv"><div class="acct-who"><div class="acct-pic"><button type="button" class="acct-ph" id="avPick" aria-label="'+(u.pic?AV.change:AV.add)+'"'+(u.pic?' aria-haspopup="menu" aria-expanded="false"':'')+'>'+(u.pic?'<img src="'+esc(u.pic)+'" alt="">':'<span>'+esc(ini)+'</span>')+
       '<i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></i></button><input type="file" id="avIn" accept="image/png,image/jpeg,image/webp,image/heic" hidden>'+
-      '<div class="acct-pa"><button type="button" class="linkbtn" id="avPick2">'+(u.pic?AV.change:AV.add)+'</button>'+(u.pic?'<button type="button" class="linkbtn danger" id="avDel">'+AV.del+'</button>':'')+'</div></div><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted acct-mail" dir="ltr" style="text-align:start">'+esc(u.email)+(u.unverified?' <button type="button" class="vchip" id="vsSend" dir="auto" title="'+(AR?'أعد إرسال رابط التأكيد':'Send the confirmation link again')+'"><i aria-hidden="true"></i>'+(AR?'بانتظار التأكيد':'Awaiting confirmation')+'</button>':'')+'</p><div class="role">'+roleBlock()+'</div></div>'+
+      (u.pic?'<div class="acct-pm" id="avMenu" role="menu" hidden><button type="button" role="menuitem" id="avNew">'+AV.change+'</button><button type="button" role="menuitem" class="danger" id="avDel">'+AV.del+'</button></div>':'')+'</div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted acct-mail" dir="ltr" style="text-align:start">'+esc(u.email)+(u.unverified?' <button type="button" class="vchip" id="vsSend" dir="auto" title="'+(AR?'أعد إرسال رابط التأكيد':'Send the confirmation link again')+'"><i aria-hidden="true"></i>'+(AR?'بانتظار التأكيد':'Awaiting confirmation')+'</button>':'')+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
 
       (u.role==='client'?'<a class="ws-entry glass rv" href="workspace"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
