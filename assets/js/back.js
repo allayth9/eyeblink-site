@@ -23,6 +23,7 @@
     [function(){ return document.querySelector('.lb-view.on'); }, click('.close')],
     [function(){ var l=document.getElementById('lb'); return l&&!l.hidden&&l; }, click('#lbClose')],
     [function(){ var o=document.getElementById('olb'); return o&&!o.hidden&&o; }, click('#olbClose')],
+    [function(){ return document.querySelector('.vmoment.on'); }, click('.vm-ok')],
     [function(){ var m=document.querySelectorAll('.acct-modal.show'); return m[m.length-1]; }, click('.x')],
     [function(){ return document.querySelector('.sup:not([hidden])'); }, click('.sup-x')],
     [function(){ return document.querySelector('.wsheet-ov.show'); }, click('.wsheet-x')],

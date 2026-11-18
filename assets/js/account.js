@@ -227,16 +227,17 @@
   }
   function dash(){
     var u=ME.user; LIST=ME.orders||[];
-    box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
+    box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted acct-mail" dir="ltr" style="text-align:start">'+esc(u.email)+(u.unverified?' <button type="button" class="vchip" id="vsSend" dir="auto" title="'+(AR?'أعد إرسال رابط التأكيد':'Send the confirmation link again')+'"><i aria-hidden="true"></i>'+(AR?'بانتظار التأكيد':'Awaiting confirmation')+'</button>':'')+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
-      (u.unverified?'<div class="verify-strip glass rv" role="status"><span class="vs-dot" aria-hidden="true"></span><span class="vs-t">'+(AR?'أكّد بريدك الإلكتروني لتصلك تحديثات طلباتك وفواتيرك دون انقطاع. أرسلنا إليك رابط التأكيد عند التسجيل.':'Confirm your e-mail so updates on your orders and invoices always reach you. We sent you the link when you signed up.')+'</span><button type="button" class="btn btn-glass glass" id="vsSend">'+(AR?'أعد إرسال الرابط':'Send the link again')+'</button></div>':'')+
+
       (u.role==='client'?'<a class="ws-entry glass rv" href="workspace"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
         '<span class="we-t"><b>'+(AR?'مساحة العمل':'Your workspace')+'</b><small>'+(AR?'مشاريعك ومهامك وتسليماتك وفواتيرك في صفحة مستقلة.':'Your projects, tasks, deliveries and invoices on their own page.')+'</small></span><span class="we-go">'+(AR?'افتح مساحة العمل':'Open workspace')+' <i>←</i></span></a>':'')+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
     bindRole();
     var vs=document.getElementById('vsSend'); if(vs) vs.onclick=function(){ vs.disabled=true; api('account',{action:'resendVerify'}).then(function(j){
-      if(j&&j.ok){ toast(j.already?(AR?'بريدك مؤكد بالفعل':'Your e-mail is already confirmed'):(AR?'أرسلنا رابطاً جديداً إلى بريدك':'We sent a new link to your e-mail')); vs.textContent=AR?'أُرسل الرابط':'Link sent'; }
+      if(j&&j.ok){ toast(j.already?(AR?'بريدك مؤكد بالفعل':'Your e-mail is already confirmed'):(AR?'أرسلنا رابطاً جديداً إلى بريدك':'We sent a new link to your e-mail')); }
       else { vs.disabled=false; toast(j&&j.error==='too many attempts'?(AR?'أُرسلت عدة روابط مؤخراً. حاول بعد قليل':'Several links were sent recently. Try again shortly'):(AR?'تعذّر الإرسال، حاول مرة أخرى':'Could not send. Try again')); } }); };
+    if(u.verifyNotice){ u.verifyNotice=false; api('account',{action:'verifyNoticed'}); setTimeout(function(){ blink(u.email); },500); }
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing"><span class="dot"></span>'+T.seePricing+'</a></div>';
@@ -398,6 +399,23 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('.thread .tstamp'); if(!b) return;
     var v=lastVid&&lastVid.isConnected? lastVid : [].slice.call(document.querySelectorAll('.thread video')).pop(); if(!v) return;
     v.currentTime=+b.dataset.t; v.scrollIntoView({behavior:'smooth',block:'center'}); var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); });
+  // "one last step": shown once, the first time a new account opens. The envelope's flap closes like an eyelid (the studio's blink)
+  function blink(email){
+    var ov=document.createElement('div'); ov.className='vmoment'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-labelledby','vmT');
+    ov.innerHTML='<div class="vm-sheet"><svg class="vm-env" viewBox="0 0 96 72" aria-hidden="true"><defs><linearGradient id="vmG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2FC4D8"/><stop offset=".5" stop-color="#2A86E6"/><stop offset="1" stop-color="#1C45E6"/></linearGradient></defs>'+
+      '<rect x="8" y="14" width="80" height="52" rx="9" fill="#0B1236" stroke="url(#vmG)" stroke-width="2"/><path class="vm-lid" d="M10 16 L48 44 L86 16" fill="none" stroke="url(#vmG)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle class="vm-dot" cx="48" cy="44" r="4" fill="#3FE0E8"/></svg>'+
+      '<span class="eyebrow">ONE LAST STEP</span><h2 id="vmT">'+(AR?'تبقّت خطوة واحدة':'Almost there')+'</h2>'+
+      '<p class="muted">'+(AR?'أرسلنا رابط التأكيد إلى بريدك. افتحه متى شئت، لتصلك تحديثات طلباتك وفواتيرك دون انقطاع.':'We sent a confirmation link to your e-mail. Open it whenever you like, so updates on your orders and invoices always reach you.')+'</p>'+
+      '<span class="vm-pill" dir="ltr">'+esc(email)+'</span><div class="vm-acts"><button type="button" class="btn btn-primary vm-ok">'+(AR?'فهمت':'Got it')+'</button></div>'+
+      '<button type="button" class="linkbtn vm-again">'+(AR?'أعد إرسال الرابط':'Send the link again')+'</button></div>';
+    document.body.appendChild(ov); requestAnimationFrame(function(){ requestAnimationFrame(function(){ ov.classList.add('on'); }); });
+    var last=document.activeElement, ok=ov.querySelector('.vm-ok');
+    function close(){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },450); if(last&&last.focus) last.focus(); }
+    function key(e){ if(e.key==='Escape'){ e.preventDefault(); close(); } else if(e.key==='Tab'){ var f=[ok,ov.querySelector('.vm-again')]; e.preventDefault(); (document.activeElement===f[0]?f[1]:f[0]).focus(); } }
+    ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('.vm-ok')) close();
+      else if(e.target.closest('.vm-again')){ var vs=document.getElementById('vsSend'); close(); if(vs) vs.click(); } });
+    addEventListener('keydown',key,true); setTimeout(function(){ ok.focus({preventScroll:true}); },60);
+  }
   function toast(t){ var d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3200); }
   // the invoice: the same compact design as the e-mail, in a window over the page (Save PDF prints it)
   function invoice(o,kind){

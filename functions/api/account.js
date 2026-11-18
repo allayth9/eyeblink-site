@@ -3,7 +3,7 @@ import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited
 // POST /api/account — { action: "register", name, email, password } | { action: "login", email, password }
 //                     | { action: "google", credential } | { action: "logout" }
 //                     | { action: "forgot", email } → 6-digit code by e-mail | { action: "reset", email, code, password }
-//                     | { action: "verify", token } (the link in the welcome e-mail) | { action: "resendVerify" }
+//                     | { action: "verify", token } (the link in the welcome e-mail) | { action: "resendVerify" } | { action: "verifyNoticed" }
 const EMAIL=/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 export async function onRequestGet({ request, env }) {
   const u = await currentUser(request, env);
@@ -17,7 +17,7 @@ export async function onRequestGet({ request, env }) {
       lastAt: ((o.messages || []).slice(-1)[0] || {}).at || o.updatedAt || o.createdAt });
   }
   const ar = await env.EB.get("accreq:" + u.email);
-  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, mustChange: !!u.mustChange, unverified: !!(u.selfReg && !u.verified) }, access: ar ? JSON.parse(ar) : null, orders });
+  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, mustChange: !!u.mustChange, unverified: !!(u.selfReg && !u.verified), verifyNotice: !!(u.selfReg && !u.verified && !u.vn) }, access: ar ? JSON.parse(ar) : null, orders });
 }
 // the confirmation link: 24 hours, one use
 async function verifyLink(env, email, lang){ const t = randHex(24); await env.EB.put("verify:" + t, email, { expirationTtl: 86400 }); return SITE + (lang === "en" ? "/en" : "") + "/account?verify=" + t; }
@@ -32,6 +32,10 @@ export async function onRequestPost(ctx) {
     const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "link" }, 400);
     const u = JSON.parse(v); u.verified = true; await env.EB.put("user:" + email, JSON.stringify(u)); await env.EB.delete("verify:" + t);
     return json({ ok: true, email });
+  }
+  if (d.action === "verifyNoticed") {   // the "one last step" moment was shown: never again for this account
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    if (!u.vn) { u.vn = true; await env.EB.put("user:" + u.email, JSON.stringify(u)); } return json({ ok: true });
   }
   if (d.action === "resendVerify") {
     const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
