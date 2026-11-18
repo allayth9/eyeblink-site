@@ -8,6 +8,21 @@
   function bi(a,e){ return {ar:a||'',en:e||''}; }
   function headers(extra){ var h={}; for(var k in extra) h[k]=extra[k]; return h; }   // the session cookie (HttpOnly, /api/ only) carries the sign-in
   var onHttp=/^https?:/.test(location.protocol);
+  // passkeys (fingerprint / Face ID): the browser's WebAuthn, with the base64url the server speaks
+  var WA={
+    ok:!!(window.PublicKeyCredential&&navigator.credentials),
+    enc:function(b){ var s='',a=new Uint8Array(b); for(var i=0;i<a.length;i++) s+=String.fromCharCode(a[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); },
+    dec:function(s){ s=String(s).replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var b=atob(s),a=new Uint8Array(b.length); for(var i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a.buffer; },
+    get:function(o){ return navigator.credentials.get({publicKey:{challenge:WA.dec(o.challenge),rpId:o.rpId,timeout:o.timeout,userVerification:o.userVerification,
+        allowCredentials:(o.allowCredentials||[]).map(function(c){ return {type:'public-key',id:WA.dec(c.id),transports:c.transports}; })}})
+      .then(function(c){ var r=c.response; return {id:c.id,clientDataJSON:WA.enc(r.clientDataJSON),authenticatorData:WA.enc(r.authenticatorData),signature:WA.enc(r.signature)}; }); },
+    create:function(o){ var p=JSON.parse(JSON.stringify(o)); p.challenge=WA.dec(o.challenge); p.user.id=WA.dec(o.user.id);
+      p.excludeCredentials=(o.excludeCredentials||[]).map(function(c){ return {type:'public-key',id:WA.dec(c.id)}; });
+      return navigator.credentials.create({publicKey:p}).then(function(c){ var r=c.response;
+        if(!r.getPublicKey) throw new Error('old');
+        return {id:c.id,alg:r.getPublicKeyAlgorithm(),publicKey:WA.enc(r.getPublicKey()),clientDataJSON:WA.enc(r.clientDataJSON),
+          authenticatorData:WA.enc(r.getAuthenticatorData()),transports:r.getTransports?r.getTransports():[]}; }); }
+  };
 
   /* ---------------- automatic English ----------------
      Arabic is the source. Every {ar,en} text gets its English from /api/translate when an Arabic field is left

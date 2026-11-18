@@ -31,11 +31,45 @@
       return r.text().then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(_){}
         if(!j || typeof j.ok!=='boolean'){ LIVE=false; return loadContent(); }
         if(r.status===200 && j.ok){ $('#pw').value=''; LIVE=true; return loadContent(); }
+        if(r.status===200 && j.need2fa){ $('#pw').value=''; msg.textContent=''; return showTfa(j); }
         if(r.status===500){ msg.textContent='لم تُضبط كلمة السر على Cloudflare بعد (ADMIN_PASSWORD).'; return; }
         msg.textContent='كلمة السر غير صحيحة.';
       });
     }).catch(function(){ LIVE=false; loadContent(); });
   });
+  // sign-in, step two: a passkey, a code from the app, or a backup code (the ticket from step one lasts five minutes)
+  var TFA=null;
+  function showTfa(j){
+    TFA={ticket:j.ticket,passkey:j.passkey,totp:j.totp,backup:false};
+    $('#loginForm').hidden=true; $('#tfaForm').hidden=false; $('#tfaMsg').textContent='';
+    $('#tfaRemember').hidden=!($('#remember')||{}).checked;
+    tfaMode();
+    if(!TFA.passkey||!WA.ok) $('#tfaCode').focus();
+  }
+  function tfaMode(){
+    var pk=!!(TFA.passkey&&WA.ok)&&!TFA.backup, code=TFA.totp||TFA.backup||!pk;
+    $('#tfaKey').hidden=!pk; $('#tfaLead').hidden=!pk;
+    $('#tfaLabel').textContent=TFA.backup?'رمز احتياطي':(pk?'أو أدخل الرمز من Google Authenticator':'أدخل الرمز من Google Authenticator');
+    $('#tfaLabel').hidden=$('#tfaCode').hidden=$('#tfaGo').hidden=!code;
+    $('#tfaCode').placeholder=TFA.backup?'XXXX-XXXX':'123456'; $('#tfaCode').inputMode=TFA.backup?'text':'numeric';
+    $('#tfaGo').className='btn'+(pk?'':' primary');
+    $('#tfaBackup').textContent=TFA.backup?'استخدم البصمة أو التطبيق':'استخدم رمزاً احتياطياً';
+  }
+  function tfaSend(body){
+    var msg=$('#tfaMsg'); msg.textContent='…'; body.action='verify'; body.ticket=TFA.ticket;
+    return fetch(API+'/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store'})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
+        if(r.ok&&j.ok){ $('#tfaForm').hidden=true; LIVE=true; return loadContent(); }
+        if(j.error==='expired'){ tfaReset('انتهت مهلة التحقق. أدخل كلمة السر مرة أخرى.'); return; }
+        msg.textContent=body.passkey?'تعذّر التحقق بالبصمة، حاول مرة أخرى.':'الرمز غير صحيح.'; $('#tfaCode').select();
+      }); }).catch(function(){ msg.textContent='تعذّر الاتصال، حاول مرة أخرى.'; });
+  }
+  function tfaReset(note){ TFA=null; $('#tfaForm').hidden=true; $('#tfaCode').value=''; $('#loginForm').hidden=false; $('#loginMsg').textContent=note||''; $('#pw').focus(); }
+  $('#tfaForm').addEventListener('submit',function(e){ e.preventDefault(); var c=$('#tfaCode').value.trim(); if(!c) return; tfaSend({code:c}); });
+  $('#tfaKey').addEventListener('click',function(){ $('#tfaMsg').textContent='…';
+    WA.get(TFA.passkey).then(function(a){ return tfaSend({passkey:a}); }).catch(function(){ $('#tfaMsg').textContent='أُلغي التحقق بالبصمة. يمكنك المحاولة مجدداً أو إدخال الرمز.'; }); });
+  $('#tfaBackup').addEventListener('click',function(){ TFA.backup=!TFA.backup; $('#tfaCode').value=''; $('#tfaMsg').textContent=''; tfaMode(); if(!$('#tfaCode').hidden) $('#tfaCode').focus(); });
+  $('#tfaBack').addEventListener('click',function(){ tfaReset(); });
   try{ sessionStorage.removeItem('eb-pw'); }catch(_){}   // older panels kept the password here
   if(onHttp){ fetch(API+'/auth',{cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(r.status===200&&j.ok&&j.session){ PW=''; LIVE=true; loadContent(); } }); }).catch(function(){}); }
   $('#logoutBtn').addEventListener('click',function(){ fetch(API+'/auth',{method:'DELETE'}).catch(function(){}).then(function(){ location.reload(); }); });

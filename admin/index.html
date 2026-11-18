@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Eyeblink Admin">
 <link rel="apple-touch-icon" href="/assets/img/admin-icon-180.png">
 <link rel="icon" href="/assets/img/admin-icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/admin/admin.css?v=7a40e870">
+<link rel="stylesheet" href="/admin/admin.css?v=56a39593">
 <script src="/admin/sky.js?v=190fe684" defer></script>
 <link rel="stylesheet" href="/admin/theme.css?v=592d26e9">
 </head>
@@ -31,6 +31,18 @@
     <label class="check" style="justify-content:center"><input type="checkbox" id="remember" checked> تذكّرني على هذا الجهاز (30 يوماً)</label>
     <button class="btn primary" type="submit">دخول</button>
     <p class="muted small" id="loginMsg"></p>
+  </form>
+  <form class="card" id="tfaForm" hidden>
+    <img src="/assets/img/favicon.svg" alt="" width="56" height="56">
+    <h1>تأكيد هويتك</h1>
+    <p class="muted" id="tfaLead">استخدم بصمتك أو Face ID من هاتفك.</p>
+    <button class="btn primary" type="button" id="tfaKey">الدخول بالبصمة أو Face ID</button>
+    <label for="tfaCode" id="tfaLabel">أو أدخل الرمز من Google Authenticator</label>
+    <input id="tfaCode" class="tfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="9" placeholder="123456">
+    <button class="btn" type="submit" id="tfaGo">تحقّق</button>
+    <p class="muted small" id="tfaRemember" hidden>لن يُطلب منك التحقق مجدداً على هذا الجهاز لمدة 30 يوماً.</p>
+    <p class="small"><button class="linkbtn" type="button" id="tfaBackup">استخدم رمزاً احتياطياً</button> · <button class="linkbtn" type="button" id="tfaBack">رجوع</button></p>
+    <p class="muted small" id="tfaMsg" role="status"></p>
   </form>
 </div>
 
@@ -58,7 +70,7 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 <script src="/content.js"></script>
-<script src="/assets/js/back.js?v=ab2a102e"></script><script src="/assets/js/r2up.js?v=0d881d32"></script><script src="/admin/js/01-core.js?v=7847a12c"></script>
+<script src="/assets/js/back.js?v=ab2a102e"></script><script src="/assets/js/r2up.js?v=0d881d32"></script><script src="/admin/js/01-core.js?v=3996aa5b"></script>
 <script src="/admin/js/02-orders.js?v=09d87706"></script>
 <script src="/admin/js/03-shell.js?v=cc2fa625"></script>
 <script src="/assets/js/tools.js?v=6576414f"></script><script src="/admin/js/04-team.js?v=31bbead6"></script>
@@ -69,7 +81,7 @@
 <script src="/admin/js/09-billing.js?v=2e29c6cb"></script>
 <script src="/admin/js/10-reports.js?v=6458f76e"></script>
 <script src="/admin/js/11-clients.js?v=03ec2b87"></script>
-<script src="/admin/js/12-settings.js?v=791818d5"></script>
-<script src="/admin/js/13-boot.js?v=060791fe"></script>
+<script src="/admin/js/12-settings.js?v=cc9ebe4b"></script>
+<script src="/admin/js/13-boot.js?v=1fa1dfe1"></script>
 </body>
 </html>

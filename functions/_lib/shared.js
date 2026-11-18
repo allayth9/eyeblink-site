@@ -10,13 +10,32 @@ export async function isAdmin(req, env){
   if(s && await env.EB.get("asess:"+s[1])) return true;
   const h=req.headers.get("authorization")||""; const pw=h.startsWith("Bearer ")?h.slice(7):"";
   if(!pw) return false;
+  // with two-step sign-in on, the password alone opens nothing: only a session made after the second step does
+  if(await env.EB.get("auth:2fa")) return false;
+  return adminPwOk(req, env, pw);
+}
+// the panel password itself (sign-in step one, and the "current password" checks), with the lockout per address
+export async function adminPwOk(req, env, pw){
   const ip=req.headers.get("cf-connecting-ip")||"x", fk="fail:"+ip, fails=+(await env.EB.get(fk)||0);
   if(fails>=10) return false;
   const stored=await env.EB.get("auth:hash");
-  const ok= stored ? await adminPwCheck(pw, stored) : (!!env.ADMIN_PASSWORD && same(pw, env.ADMIN_PASSWORD));
-  if(!ok) await env.EB.put(fk, String(fails+1), { expirationTtl: 3600 });
+  const ok= !!pw && (stored ? await adminPwCheck(pw, stored) : (!!env.ADMIN_PASSWORD && same(pw, env.ADMIN_PASSWORD)));
+  if(!ok) { await env.EB.put(fk, String(fails+1), { expirationTtl: 3600 }); if(fails+1===10) await adminAlert(env, req, "lock"); }
   else if(stored && !stored.startsWith("pbkdf2$")) await env.EB.put("auth:hash", await adminPwHash(pw));   // old plain SHA-256 → salted PBKDF2
   return ok;
+}
+// Telegram notes about the panel's own security (new device, lockout, two-step turned off)
+export async function adminAlert(env, req, kind){
+  const cf=req.cf||{}, ua=req.headers.get("user-agent")||"";
+  const br=/Edg\//.test(ua)?"Edge":/OPR\//.test(ua)?"Opera":/Chrome\//.test(ua)?"Chrome":/Firefox\//.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":"متصفح آخر";
+  const os=/iPhone|iPad/.test(ua)?"iOS":/Android/.test(ua)?"Android":/Windows/.test(ua)?"Windows":/Mac OS/.test(ua)?"macOS":/Linux/.test(ua)?"Linux":"نظام آخر";
+  const where=[cf.city,cf.country].filter(Boolean).join("، ")||"غير معروف";
+  const when=new Date().toLocaleString("ar-u-nu-latn",{timeZone:"Asia/Damascus",day:"numeric",month:"long",hour:"numeric",minute:"2-digit"});
+  const T={ device:["🔐 دخول جديد إلى لوحة التحكم","تمّ الدخول من جهاز جديد."],
+            lock:["⚠️ أُوقف الدخول إلى لوحة التحكم مؤقتاً","عشر محاولات خاطئة لكلمة السر من العنوان نفسه، فأُوقف الدخول منه لمدة ساعة."],
+            off:["🔓 أُوقف التحقق بخطوتين","أصبح الدخول إلى لوحة التحكم بكلمة السر وحدها."] }[kind];
+  return telegram(env, T[0]+"\n"+T[1]+"\nالمتصفح: "+br+" على "+os+"\nالموقع التقريبي: "+where+"\nالوقت: "+when+
+    "\n\nإن لم يكن هذا أنت، سجّل الخروج من كل الأجهزة وغيّر كلمة السر:\n"+SITE+"/admin/settings");
 }
 // Panel password, stored like client passwords: "pbkdf2$<iterations>$<salt>$<hash>" (salted PBKDF2-SHA256).
 // A bare 64-character SHA-256 hash from before still works once, then is replaced.
