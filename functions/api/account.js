@@ -52,7 +52,7 @@ export async function onRequestPost(ctx) {
   if (d.action === "setPassword") {
     const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
     const pw = String(d.password || ""); if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
-    if (!u.mustChange) { if (!u.hash || (await pbkdf2(String(d.current || ""), u.salt)) !== u.hash) return json({ ok: false, error: "current" }, 403); }
+    if (!u.mustChange) { if (!u.hash || !same(await pbkdf2(String(d.current || ""), u.salt), u.hash)) return json({ ok: false, error: "current" }, 403); }
     else if (u.hash && (await pbkdf2(pw, u.salt)) === u.hash) return json({ ok: false, error: "same" }, 400);
     const wasTemp = !!u.mustChange; u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); delete u.mustChange;
     (u.log ||= []).unshift({ at: new Date().toISOString(), by: "client", what: "chose a new password" }); u.log = u.log.slice(0, 60);
@@ -75,7 +75,8 @@ export async function onRequestPost(ctx) {
     if (!EMAIL.test(email)) return json({ ok: false, error: "email" }, 400);
     if (!env.RESEND_API_KEY) return json({ ok: false, error: "mail off" }, 503);
     const v = await env.EB.get("user:" + email);
-    if (v) {   // same answer either way, so the form does not reveal who has an account
+    // three codes an hour per address, whatever the IP (no flooding someone's inbox); same quiet answer when over it
+    if (v && !(await limited(env, "fgt:" + email, 3, 3600))) {   // same answer either way, so the form does not reveal who has an account
       const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
       await env.EB.put("reset:" + email, JSON.stringify({ code, tries: 0 }), { expirationTtl: 900 });
       const m = accountMail("code", d.lang === "en" ? "en" : "ar", JSON.parse(v).name, { code });
@@ -88,7 +89,9 @@ export async function onRequestPost(ctx) {
     const r = await env.EB.get("reset:" + email); if (!r) return json({ ok: false, error: "code" }, 400);
     const rec = JSON.parse(r);
     if (rec.tries >= 5) { await env.EB.delete("reset:" + email); return json({ ok: false, error: "code" }, 400); }
-    if (String(d.code || "").trim() !== rec.code) { rec.tries++; await env.EB.put("reset:" + email, JSON.stringify(rec), { expirationTtl: 900 }); return json({ ok: false, error: "code" }, 400); }
+    // ten wrong guesses an hour per address across all its codes (asking for a new code does not reset this)
+    const over = +(await env.EB.get("rtry:" + email) || 0) >= 10;
+    if (over || String(d.code || "").trim() !== rec.code) { if (!over) await limited(env, "rtry:" + email, 10, 3600); rec.tries++; await env.EB.put("reset:" + email, JSON.stringify(rec), { expirationTtl: 900 }); return json({ ok: false, error: "code" }, 400); }
     if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
     const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "code" }, 400);
     user = JSON.parse(v); user.salt = randHex(16); user.hash = await pbkdf2(pw, user.salt); user.verified = true; user.sv = (user.sv || 0) + 1; user._reset = true;

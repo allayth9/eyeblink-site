@@ -10,7 +10,7 @@ export async function onRequestGet({ request, params, env }) {
   if (!value) return new Response("not found", { status: 404 });
   if (!(await mayRead(request, env, metadata))) return new Response("not found", { status: 404 });
   const size = value.byteLength, type = metadata?.type || "application/octet-stream";
-  const head = { "content-type": type, "accept-ranges": "bytes", "cache-control": "private, max-age=86400",
+  const head = { "content-type": type, "content-security-policy": "sandbox; default-src 'none'; img-src 'self'; media-src 'self'", "accept-ranges": "bytes", "cache-control": "private, max-age=86400",
     "content-disposition": (/^(image|video|audio)\//.test(type) || type === "application/pdf" ? "inline" : "attachment") + "; filename*=UTF-8''" + encodeURIComponent(metadata?.name || key) };
   const m = /bytes=(\d*)-(\d*)/.exec(request.headers.get("range") || "");
   if (m) {
@@ -46,7 +46,7 @@ export async function onRequestPost({ request, env }) {
   const buf = await request.arrayBuffer();
   if (!buf.byteLength) return json({ ok: false }, 400);
   if (buf.byteLength > 20 * 1024 * 1024) return json({ ok: false, error: "size" }, 413);
-  const raw = decodeURIComponent(request.headers.get("x-filename") || "file");
+  let raw = request.headers.get("x-filename") || "file"; try { raw = decodeURIComponent(raw); } catch {}
   const safe = raw.toLowerCase().replace(/[^a-z0-9.\-_]/g, "-").replace(/-+/g, "-").slice(-50) || "file";
   const key = randHex(12) + "-" + safe.replace(/^[^a-z0-9]+/, "");
   await env.EB.put("file:" + key, buf, { metadata: { type, size: buf.byteLength, name: raw.slice(0, 120), code } });

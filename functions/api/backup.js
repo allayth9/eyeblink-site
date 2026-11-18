@@ -36,7 +36,7 @@ async function build(env) {
   const d1 = {};
   if (env.DB) try {
     const tabs = ((await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).results || []).map(r => r.name).filter(n => !NO_TABLES.test(n));
-    for (const t of tabs) d1[t] = strip(((await env.DB.prepare(`SELECT * FROM "${t.replace(/"/g, "")}"`).all()).results) || []);
+    for (const t of tabs) d1[t] = strip((((await env.DB.prepare(`SELECT * FROM "${t.replace(/"/g, "")}"`).all()).results) || []).filter(r => !(t === "meta" && r.k === "vapid")));   // the push signing key stays out
   } catch (e) { d1._error = String(e && e.message || e).slice(0, 200); }
   const r2 = [];
   if (env.R2) try { let cursor; do { const l = await env.R2.list({ cursor, limit: 1000 }); for (const o of l.objects) if (!o.key.startsWith("backups/")) r2.push({ key: o.key, size: o.size }); cursor = l.truncated ? l.cursor : null; } while (cursor); } catch {}

@@ -8,7 +8,7 @@ export async function onRequestGet({ request, params, env }) {
   const { value, metadata } = await env.EB.getWithMetadata("media:" + key, { type: "arrayBuffer" });
   if (!value) return new Response("not found", { status: 404 });
   const size = value.byteLength;
-  const head = { "content-type": metadata?.type || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable", "accept-ranges": "bytes" };
+  const head = { "content-type": metadata?.type || "application/octet-stream", "content-security-policy": "sandbox; default-src 'none'; img-src 'self'; media-src 'self'", "cache-control": "public, max-age=31536000, immutable", "accept-ranges": "bytes" };
   const m = /^bytes=(\d*)-(\d*)$/.exec((request.headers.get("range") || "").trim());
   if (m && (m[1] !== "" || m[2] !== "")) {
     let a = m[1] === "" ? size - +m[2] : +m[1], b = m[1] === "" || m[2] === "" ? size - 1 : Math.min(+m[2], size - 1);

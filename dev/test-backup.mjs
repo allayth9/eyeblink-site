@@ -14,16 +14,21 @@ const kv = new Map([
   ["member:m@b.co", JSON.stringify({ email: "m@b.co", hash: "MH", tmpPass: "T" })],
   ["sess:abc", "a@b.co"], ["asess:x", "1"], ["tsess:y", "m@b.co"], ["code:a@b.co", "123456"], ["reset:a@b.co", "1"],
   ["invite:tok", JSON.stringify({ email: "c@d.co" })], ["auth:hash", "pbkdf2$1$s$h"], ["backup:1", "{}"],
-  ["media:pic", "BINARY"], ["file:doc", "BINARY"]
+  ["media:pic", "BINARY"], ["file:doc", "BINARY"],
+  ["auth:2fa", JSON.stringify({ totp: "SECRETB32" })], ["adev:d", "1"], ["a2t:t", "{}"], ["fail:1.1.1.1", "3"]
 ]);
 const env = { EB: {
   list: async ({ prefix }) => ({ keys: [...kv.keys()].filter(k => k.startsWith(prefix || "")).map(name => ({ name })), list_complete: true }),
-  get: async k => kv.get(k) ?? null } };
+  get: async k => kv.get(k) ?? null },
+  DB: { prepare: sql => ({ all: async () => ({ results: /sqlite_master/.test(sql) ? [{ name: "meta" }, { name: "projects" }]
+    : /"meta"/.test(sql) ? [{ k: "schema", v: "7" }, { k: "vapid", v: JSON.stringify({ jwk: { d: "PRIVATEKEY" } }) }] : [{ id: "p_1", name: "Reel" }] }) }) } };
 const b = await m.build(env), s = JSON.stringify(b);
 
 assert.ok(b.kv.content && b.kv["order:2026:EB-1"], "the content and the requests are in it");
 assert.equal(b.kv["user:a@b.co"].name, "A", "a client's record is in it");
-for (const k of ["sess:abc", "asess:x", "tsess:y", "code:a@b.co", "reset:a@b.co", "invite:tok", "auth:hash", "backup:1", "media:pic", "file:doc"]) assert.ok(!(k in b.kv), k + " must not be in the backup");
-for (const leak of ['"hash"', '"salt"', '"sv"', '"tmpPass"', "pbkdf2$", "BINARY"]) assert.ok(!s.includes(leak), "the backup leaks " + leak);
+for (const k of ["sess:abc", "asess:x", "tsess:y", "code:a@b.co", "reset:a@b.co", "invite:tok", "auth:hash", "backup:1", "media:pic", "file:doc", "auth:2fa", "adev:d", "a2t:t", "fail:1.1.1.1"]) assert.ok(!(k in b.kv), k + " must not be in the backup");
+for (const leak of ['"hash"', '"salt"', '"sv"', '"tmpPass"', "pbkdf2$", "BINARY", "SECRETB32", "PRIVATEKEY"]) assert.ok(!s.includes(leak), "the backup leaks " + leak);
+assert.equal(b.d1.projects[0].name, "Reel", "the workspace tables are in it");
+assert.deepEqual(b.d1.meta.map(r => r.k), ["schema"], "the push signing key is not");
 assert.deepEqual(b.files.kv.map(f => f.key).sort(), ["file:doc", "media:pic"], "media files are listed by name only");
 console.log("backup privacy: ok");
