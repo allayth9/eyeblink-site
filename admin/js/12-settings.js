@@ -1,12 +1,14 @@
 /* Eyeblink admin · settings — loaded after the files before it; all of admin/js shares one scope */
   /* ---------------- settings ---------------- */
-  function renderSettings(){
+  function renderSettings(){ skyOp();
     var S=C.settings=C.settings||{}; var T=(P&&P.templates)||DEFAULT_TPL;
     var tog=function(k,l){ return '<label class="check"><input type="checkbox" data-p="settings.'+k+'" data-t="check"'+(S[k]!==false?' checked':'')+'> '+l+'</label>'; };
     $('#panel').innerHTML=
       '<section class="sec"><h3>ما يظهر على الموقع</h3>'+tog('showStats','خانة الأرقام في الرئيسية')+tog('showWorkTeaser','الأعمال في الرئيسية')+tog('showPackagesTeaser','الباقات في الرئيسية')+tog('showPayments','طرق الدفع (صفحة الباقات وأسفل الموقع)')+tog('ordersOpen','استقبال الطلبات من صفحة الباقات')+'</section>'+
       '<section class="sec"><h3>الخلفية الحيوية</h3><p class="hint">كرة النقاط المتحركة خلف صفحات الموقع. 100 = كما هي الآن، و0 = مخفية (تبقى السماء المتدرجة وحدها). على الموبايل تظهر أخف قليلاً من القيمة نفسها.</p>'+
         '<div class="field"><label for="bgOp">الشفافية: <b data-bgv>'+(S.bgOpacity==null?100:S.bgOpacity)+'%</b></label><input id="bgOp" type="range" min="0" max="100" step="5" data-p="settings.bgOpacity" data-t="num" value="'+(S.bgOpacity==null?100:S.bgOpacity)+'"></div></section>'+
+      '<section class="sec"><h3>خلفية لوحة التحكم</h3><p class="hint">شرائط المعدن خلف اللوحة. 100 = كما هي الآن، و0 = مخفية (يبقى الضوء الهادئ وحده). يتغيّر أمامك مباشرة، ويُحفظ مع «نشر التعديلات».</p>'+
+        '<div class="field"><label for="skyOp">الشفافية: <b data-skyv>'+(S.adminBgOpacity==null?100:S.adminBgOpacity)+'%</b></label><input id="skyOp" type="range" min="0" max="100" step="5" data-p="settings.adminBgOpacity" data-t="num" value="'+(S.adminBgOpacity==null?100:S.adminBgOpacity)+'"></div></section>'+
       '<section class="sec"><h3>التنبيهات</h3><p class="hint">يرسل رسالة تجريبية عبر تيليغرام ورسالة بريد تجريبية، ويعرض ردّ كل منهما. (بعد أي تغيير في متغيرات Cloudflare يلزم إجراء Retry deployment.)</p><div><button class="btn" type="button" id="notifyTest">أرسل تنبيهاً تجريبياً</button></div><pre id="notifyOut" class="small" hidden style="white-space:pre-wrap;margin-top:10px"></pre></section>'+
       '<section class="sec"><h3>الرسائل التلقائية</h3><p class="hint">انتقلت القواعد والملخص اليومي إلى «الإشعارات».</p><div><button class="btn sm" type="button" data-gorules>افتح القواعد</button></div></section>'+'<section class="sec"><h3>تسجيل العملاء عبر Google</h3><p class="hint">العملاء يسجّلون بالإيميل وكلمة السر دائماً. لإضافة زر «المتابعة عبر Google» الصق هنا الـ Client ID من Google Cloud (ينتهي بـ apps.googleusercontent.com) ثم انشر.</p>'+
         '<div class="field"><label>Google Client ID</label><input data-p="settings.googleClientId" data-t="text" dir="ltr" value="'+esc(S.googleClientId||'')+'" placeholder="1234567890-xxxx.apps.googleusercontent.com"></div></section>'+
@@ -117,6 +119,9 @@
     else if(a==='logoutAll'){ tfaPost({action:'logoutAll'}).then(function(){ location.reload(); }).catch(tfaFail); }
   });
   // the background slider shows its value as it moves
+  // the panel's own background: its strength follows the setting, live while the slider moves
+  function skyOp(v){ if(v==null) v=C&&C.settings&&C.settings.adminBgOpacity; v=v==null||v===''?100:Math.max(0,Math.min(100,+v)); document.documentElement.style.setProperty('--sky-op',v/100); }
+  document.addEventListener('input',function(e){ if(e.target.id==='skyOp'){ var o=document.querySelector('[data-skyv]'); if(o) o.textContent=e.target.value+'%'; skyOp(e.target.value); } });
   document.addEventListener('input',function(e){ if(e.target.id==='bgOp'){ var o=document.querySelector('[data-bgv]'); if(o) o.textContent=e.target.value+'%'; } });
   document.addEventListener('input',function(e){
     var k=e.target.dataset.tpl; if(!k) return; P=P||{}; P.templates=P.templates||JSON.parse(JSON.stringify(DEFAULT_TPL));
