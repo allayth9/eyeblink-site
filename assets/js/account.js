@@ -157,8 +157,14 @@
     box.innerHTML='<div class="acct-load glass"><span></span></div>';
     me().then(function(m){
       if(m===false){ box.innerHTML='<div class="acct-card glass"><p class="muted">'+(AR?'الحساب يعمل على الموقع المنشور فقط.':'Accounts work on the published site only.')+'</p></div>'; return; }
-      var inv=INVITE();
+      var inv=INVITE(), q=new URLSearchParams(location.search);
       if(inv){ return invitePage(inv,m); }
+      // the link in the welcome e-mail: account?verify=TOKEN
+      if(/^[a-f0-9]{48}$/.test(q.get('verify')||'')){ var vt=q.get('verify'); dropInvite();
+        return api('account',{action:'verify',token:vt}).then(function(j){ toast(j&&j.ok?(AR?'تأكّد بريدك الإلكتروني، شكراً لك':'Your e-mail is confirmed. Thank you'):(AR?'انتهت صلاحية رابط التأكيد. يمكنك طلب رابط جديد من حسابك':'This confirmation link has expired. You can ask for a new one from your account'));
+          if(j&&j.ok&&ME&&ME.user) ME.user.unverified=false; page(); }); }
+      // "secure my account" in the new-device e-mail: account?reset=1 opens the new-password steps
+      if(q.get('reset')==='1'){ dropInvite(); box.innerHTML='<div class="acct-card glass"></div>'; forgotBox(box.firstChild,function(){ try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); },false,m&&m.user?m.user.email:''); return; }
       if(!m){ box.innerHTML='<div class="acct-card glass"></div>'; authBox(box.firstChild,function(){ try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); return; }
       if(m.user.mustChange){ return newPassword(m,nextWs); }
       if(nextWs&&m.user.role==='client'){ location.replace('workspace'+(/^#w/.test(location.hash)?location.hash:'')); return; }   // the workspace has its own page now
@@ -223,10 +229,14 @@
     var u=ME.user; LIST=ME.orders||[];
     box.innerHTML='<div class="acct-head glass rv"><div><span class="eyebrow">ACCOUNT</span><h1>'+esc(T.hi+u.name)+'</h1><p class="muted" dir="ltr" style="text-align:start">'+esc(u.email)+'</p><div class="role">'+roleBlock()+'</div></div>'+
       '<div class="actions"><a class="btn btn-primary" href="pricing">'+T.newOrder+'</a><button class="btn btn-glass glass" type="button" id="acctOut">'+T.logout+'</button></div></div>'+
+      (u.unverified?'<div class="verify-strip glass rv" role="status"><span class="vs-dot" aria-hidden="true"></span><span class="vs-t">'+(AR?'أكّد بريدك الإلكتروني لتصلك تحديثات طلباتك وفواتيرك دون انقطاع. أرسلنا إليك رابط التأكيد عند التسجيل.':'Confirm your e-mail so updates on your orders and invoices always reach you. We sent you the link when you signed up.')+'</span><button type="button" class="btn btn-glass glass" id="vsSend">'+(AR?'أعد إرسال الرابط':'Send the link again')+'</button></div>':'')+
       (u.role==='client'?'<a class="ws-entry glass rv" href="workspace"><span class="we-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg></span>'+
         '<span class="we-t"><b>'+(AR?'مساحة العمل':'Your workspace')+'</b><small>'+(AR?'مشاريعك ومهامك وتسليماتك وفواتيرك في صفحة مستقلة.':'Your projects, tasks, deliveries and invoices on their own page.')+'</small></span><span class="we-go">'+(AR?'افتح مساحة العمل':'Open workspace')+' <i>←</i></span></a>':'')+
       '<div class="acct-grid"><aside class="olist"><h3>'+T.orders+'</h3><div class="items"></div></aside><section class="odetail"></section></div>';
     bindRole();
+    var vs=document.getElementById('vsSend'); if(vs) vs.onclick=function(){ vs.disabled=true; api('account',{action:'resendVerify'}).then(function(j){
+      if(j&&j.ok){ toast(j.already?(AR?'بريدك مؤكد بالفعل':'Your e-mail is already confirmed'):(AR?'أرسلنا رابطاً جديداً إلى بريدك':'We sent a new link to your e-mail')); vs.textContent=AR?'أُرسل الرابط':'Link sent'; }
+      else { vs.disabled=false; toast(j&&j.error==='too many attempts'?(AR?'أُرسلت عدة روابط مؤخراً. حاول بعد قليل':'Several links were sent recently. Try again shortly'):(AR?'تعذّر الإرسال، حاول مرة أخرى':'Could not send. Try again')); } }); };
     document.getElementById('acctOut').onclick=function(){ api('account',{action:'logout'}).then(function(){ ME=null; mark(); try{ sessionStorage.removeItem('eb-who'); }catch(_){} if(window.EBHdr) EBHdr.refresh(); page(); }); };
     var items=box.querySelector('.olist .items');
     if(!LIST.length){ items.innerHTML='<div class="empty"><b>'+T.none+'</b><p class="muted">'+T.noneP+'</p><a class="btn btn-glass glass" href="pricing"><span class="dot"></span>'+T.seePricing+'</a></div>';

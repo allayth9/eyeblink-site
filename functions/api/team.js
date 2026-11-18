@@ -1,4 +1,6 @@
-import { isAdmin, json, cookie, randHex, pbkdf2, limited, SITE, h, sendMail, telegram, greet, mail, num, rows, steps } from "../_lib/shared.js";
+import { isAdmin, json, cookie, randHex, pbkdf2, limited, SITE, h, sendMail, telegram, greet, mail, num, rows, steps, later, accountMail, deviceInfo, seenDevice, withCookie } from "../_lib/shared.js";
+// a team member's security e-mails (new device, password changed), sent after the answer
+function tellMember(ctx, u, kind, x){ return later(ctx, (async () => { const m = accountMail(kind, u.lang === "en" ? "en" : "ar", u.name, x); if (m) await sendMail(ctx.env, u.email, m.subject, m.html); })()); }
 // The Eyeblink team: people who apply, are tried, sign a collaboration agreement, and then work on tasks the studio gives them.
 // Kept apart from clients on purpose: own accounts (KV "member:<email>"), own sessions (cookie "eb_t"), own portal (/team/).
 // A member only ever sees their own tasks and their own fee: never the client's name or contact, never what the client pays.
@@ -85,8 +87,9 @@ export async function onRequestPost(ctx) {
     if (await limited(env, "tlog:" + ip, 12, 3600)) return json({ ok: false, error: "slow" }, 429);
     const email = C_(d.email, 254).toLowerCase(), u = await kvJSON(env, "member:" + email);
     if (!u || u.status !== "active" || !u.hash || (await pbkdf2(String(d.password || ""), u.salt)) !== u.hash) return json({ ok: false, error: "wrong" }, 401);
-    u.lastLogin = new Date().toISOString(); await env.EB.put("member:" + email, JSON.stringify(u));
-    return json({ ok: true, me: publicMember(u) }, 200, { "set-cookie": await sessionCookie(env, email, d.remember !== false) });
+    u.lastLogin = new Date().toISOString(); const dev = seenDevice(request, u); await env.EB.put("member:" + email, JSON.stringify(u));
+    if (dev.alert) tellMember(ctx, u, "device", { info: deviceInfo(request, u.lang), link: SITE + "/team" });
+    return withCookie(json({ ok: true, me: publicMember(u) }, 200, { "set-cookie": await sessionCookie(env, email, d.remember !== false) }), dev.cookie);
   }
   if (d.action === "logout") { const m = (request.headers.get("cookie") || "").match(/(?:^|;\s*)eb_t=([a-f0-9]{48})/); if (m) await env.EB.delete("tsess:" + m[1]);
     return json({ ok: true }, 200, { "set-cookie": "eb_t=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" }); }
@@ -182,7 +185,8 @@ async function memberAction(ctx, u, d){
     const next = String(d.next || "");
     if (!u.mustChange && (await pbkdf2(String(d.current || ""), u.salt)) !== u.hash) return json({ ok: false, error: "wrong" }, 401);
     if (next.length < 10) return json({ ok: false, error: "short" }, 400);
-    u.salt = randHex(16); u.hash = await pbkdf2(next, u.salt); u.mustChange = false; await env.EB.put("member:" + u.email, JSON.stringify(u));
+    const wasTemp = !!u.mustChange; u.salt = randHex(16); u.hash = await pbkdf2(next, u.salt); u.mustChange = false; await env.EB.put("member:" + u.email, JSON.stringify(u));
+    if (!wasTemp) tellMember(ctx, u, "password", { info: deviceInfo(ctx.request, u.lang), keep: true });
     return json({ ok: true, me: publicMember(u) });
   }
   if (u.mustChange) return json({ ok: false, error: "password" }, 403);

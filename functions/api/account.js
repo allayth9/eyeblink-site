@@ -1,8 +1,9 @@
-import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, unreadFor, sendMail, mail } from "../_lib/shared.js";
+import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, unreadFor, sendMail, mail, later, SITE, accountMail, deviceInfo, seenDevice, withCookie } from "../_lib/shared.js";
 // GET  /api/account — the signed-in client and a summary of their orders (401 if not signed in)
 // POST /api/account — { action: "register", name, email, password } | { action: "login", email, password }
 //                     | { action: "google", credential } | { action: "logout" }
 //                     | { action: "forgot", email } → 6-digit code by e-mail | { action: "reset", email, code, password }
+//                     | { action: "verify", token } (the link in the welcome e-mail) | { action: "resendVerify" }
 const EMAIL=/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 export async function onRequestGet({ request, env }) {
   const u = await currentUser(request, env);
@@ -16,10 +17,28 @@ export async function onRequestGet({ request, env }) {
       lastAt: ((o.messages || []).slice(-1)[0] || {}).at || o.updatedAt || o.createdAt });
   }
   const ar = await env.EB.get("accreq:" + u.email);
-  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, mustChange: !!u.mustChange }, access: ar ? JSON.parse(ar) : null, orders });
+  return json({ ok: true, user: { email: u.email, name: u.name, provider: u.provider, role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, mustChange: !!u.mustChange, unverified: !!(u.selfReg && !u.verified) }, access: ar ? JSON.parse(ar) : null, orders });
 }
-export async function onRequestPost({ request, env }) {
+// the confirmation link: 24 hours, one use
+async function verifyLink(env, email, lang){ const t = randHex(24); await env.EB.put("verify:" + t, email, { expirationTtl: 86400 }); return SITE + (lang === "en" ? "/en" : "") + "/account?verify=" + t; }
+export async function onRequestPost(ctx) {
+  const { request, env } = ctx;
   const d = await request.json().catch(() => ({}));
+  // account and security e-mails go out after the answer (they never slow the sign-in down)
+  const tell = (u, kind, x) => later(ctx, (async () => { const m = accountMail(kind, u.lang === "en" ? "en" : "ar", u.name, x || {}); if (m) await sendMail(env, u.email, m.subject, m.html); })());
+  if (d.action === "verify") {
+    const t = String(d.token || ""); if (!/^[a-f0-9]{48}$/.test(t)) return json({ ok: false, error: "link" }, 400);
+    const email = await env.EB.get("verify:" + t); if (!email) return json({ ok: false, error: "link" }, 400);
+    const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "link" }, 400);
+    const u = JSON.parse(v); u.verified = true; await env.EB.put("user:" + email, JSON.stringify(u)); await env.EB.delete("verify:" + t);
+    return json({ ok: true, email });
+  }
+  if (d.action === "resendVerify") {
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    if (u.verified) return json({ ok: true, already: true });
+    if (await limited(env, "rv:" + u.email, 3, 3600)) return json({ ok: false, error: "too many attempts" }, 429);
+    tell(u, "verify", { link: await verifyLink(env, u.email, u.lang) }); return json({ ok: true });
+  }
   const ip = request.headers.get("cf-connecting-ip") || "x";
   if (d.action === "logout") {
     const t = cookie(request, "eb_s"); if (t) await env.EB.delete("sess:" + t);
@@ -31,10 +50,11 @@ export async function onRequestPost({ request, env }) {
     const pw = String(d.password || ""); if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
     if (!u.mustChange) { if (!u.hash || (await pbkdf2(String(d.current || ""), u.salt)) !== u.hash) return json({ ok: false, error: "current" }, 403); }
     else if (u.hash && (await pbkdf2(pw, u.salt)) === u.hash) return json({ ok: false, error: "same" }, 400);
-    u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); delete u.mustChange;
+    const wasTemp = !!u.mustChange; u.salt = randHex(16); u.hash = await pbkdf2(pw, u.salt); delete u.mustChange;
     (u.log ||= []).unshift({ at: new Date().toISOString(), by: "client", what: "chose a new password" }); u.log = u.log.slice(0, 60);
     u.sv = (u.sv || 0) + 1;   // every other device is signed out
     await env.EB.put("user:" + u.email, JSON.stringify(u));
+    if (!wasTemp) tell(u, "password", { info: deviceInfo(request, u.lang) });
     return json({ ok: true }, 200, { "set-cookie": await startSession(env, u.email) });
   }
   // the client switched the workspace language: their e-mails and notifications follow it
@@ -54,11 +74,8 @@ export async function onRequestPost({ request, env }) {
     if (v) {   // same answer either way, so the form does not reveal who has an account
       const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
       await env.EB.put("reset:" + email, JSON.stringify({ code, tries: 0 }), { expirationTtl: 900 });
-      const en = d.lang === "en";
-      await sendMail(env, email, en ? "Your Eyeblink password code" : "رمز استعادة كلمة السر — Eyeblink",
-        mail(en ? "en" : "ar", en ? "Reset your password" : "استعادة كلمة السر",
-          (en ? "Your code (valid for 15 minutes):" : "رمزك (صالح لمدة 15 دقيقة):") + `<div style="font:bold 30px/1.4 Arial;letter-spacing:8px;color:#fff;margin:14px 0;direction:ltr">${code}</div>` +
-          (en ? "If you did not ask for this, ignore this e-mail." : "إن لم تطلب ذلك، تجاهل هذه الرسالة."), "", ""));
+      const m = accountMail("code", d.lang === "en" ? "en" : "ar", JSON.parse(v).name, { code });
+      await sendMail(env, email, m.subject, m.html);
     }
     return json({ ok: true });
   }
@@ -70,7 +87,7 @@ export async function onRequestPost({ request, env }) {
     if (String(d.code || "").trim() !== rec.code) { rec.tries++; await env.EB.put("reset:" + email, JSON.stringify(rec), { expirationTtl: 900 }); return json({ ok: false, error: "code" }, 400); }
     if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
     const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "code" }, 400);
-    user = JSON.parse(v); user.salt = randHex(16); user.hash = await pbkdf2(pw, user.salt); user.verified = true; user.sv = (user.sv || 0) + 1;
+    user = JSON.parse(v); user.salt = randHex(16); user.hash = await pbkdf2(pw, user.salt); user.verified = true; user.sv = (user.sv || 0) + 1; user._reset = true;
     await env.EB.delete("reset:" + email);
   } else
   if (d.action === "register" || d.action === "login") {
@@ -83,7 +100,7 @@ export async function onRequestPost({ request, env }) {
       if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
       if (existing) return json({ ok: false, error: "exists" }, 409);
       const salt = randHex(16);
-      user = { email, name, provider: "password", salt, hash: await pbkdf2(pw, salt), createdAt: new Date().toISOString(), orders: [] };
+      user = { email, name, provider: "password", salt, hash: await pbkdf2(pw, salt), createdAt: new Date().toISOString(), orders: [], selfReg: true, _new: "welcome" };
     } else {
       if (!existing) return json({ ok: false, error: "wrong" }, 401);
       user = JSON.parse(existing);
@@ -100,11 +117,17 @@ export async function onRequestPost({ request, env }) {
     if (g.aud !== clientId || !(g.email_verified === true || g.email_verified === "true") || +g.exp * 1000 < Date.now()) return json({ ok: false, error: "google" }, 401);
     const email = String(g.email).toLowerCase();
     const existing = await env.EB.get("user:" + email);
-    user = existing ? JSON.parse(existing) : { email, name: String(g.name || email.split("@")[0]).slice(0, 80), provider: "google", createdAt: new Date().toISOString(), orders: [] };
+    user = existing ? JSON.parse(existing) : { email, name: String(g.name || email.split("@")[0]).slice(0, 80), provider: "google", createdAt: new Date().toISOString(), orders: [], _new: "welcomeGoogle" };
     if (existing && user.hash && !user.verified && !user.mustChange && user.clientVia !== "admin") { delete user.hash; delete user.salt; user.sv = (user.sv || 0) + 1; }
     user.google = true; user.verified = true;
   } else return json({ ok: false }, 400);
   user.lastLogin = new Date().toISOString(); if (d.lang === "en" || d.lang === "ar") user.lang = d.lang;
+  const isNew = user._new, wasReset = user._reset; delete user._new; delete user._reset;
+  const dev = seenDevice(request, user);   // a browser this account has not been used with
   await env.EB.put("user:" + user.email, JSON.stringify(user));
-  return json({ ok: true, user: { email: user.email, name: user.name } }, 200, { "set-cookie": await startSession(env, user.email) });
+  if (isNew === "welcome") tell(user, "welcome", { link: await verifyLink(env, user.email, user.lang) });
+  else if (isNew) tell(user, isNew);
+  else if (wasReset) tell(user, "password", { info: deviceInfo(request, user.lang) });
+  else if (dev.alert) tell(user, "device", { info: deviceInfo(request, user.lang) });
+  return withCookie(json({ ok: true, user: { email: user.email, name: user.name } }, 200, { "set-cookie": await startSession(env, user.email) }), dev.cookie);
 }
