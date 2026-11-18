@@ -111,8 +111,11 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
   .side{height:100vh;top:0;border-radius:0}
   .panel{padding:16px 14px 60px}
 }
+/* the team board's task cards and the member cards stand straight on the moving sky: give them the same frosted glass as
+   the applications and hiring panels, so the wave behind turns to soft light and never runs through the text */
+.bcard,.mcard{background:var(--glass);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
 @media (prefers-reduced-transparency:reduce){
-  .side,.top,.sec,.login .card,.cmd,#tsheet .dbox,#dsheet .dbox,.toast{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}
+  .side,.top,.sec,.login .card,.cmd,#tsheet .dbox,#dsheet .dbox,.toast,.bcard,.mcard{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}
 }
 
 /* ---------- «Today» (phase 5): decision first, then money, pipeline and production, then the week and the motion ---------- */
