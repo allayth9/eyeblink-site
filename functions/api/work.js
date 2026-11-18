@@ -1121,7 +1121,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1399,7 +1399,7 @@ async function adminGet(request, env, q){
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=? AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p ORDER BY p.updated_at DESC`).bind(monthOf(now())).all()).results.map(parseP);
   if (q.get("view") === "billing") {
     const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
-    const projects = (await D.prepare("SELECT id, name, client_email, status FROM projects ORDER BY updated_at DESC").all()).results;
+    const projects = (await D.prepare("SELECT id, name, client_email, status, terms FROM projects ORDER BY updated_at DESC").all()).results.map(p => { try { p.terms = p.terms ? JSON.parse(p.terms) : null; } catch { p.terms = null; } return p; });
     return json({ ok: true, invoices, projects, clients: await clientsList(env), today: today() });
   }
   if (q.get("brandZip")) { const em = clip(q.get("brandZip"), 254).toLowerCase(), c = await clientRow(D, em), uu = await userOf(env, em);
@@ -1790,6 +1790,19 @@ async function adminPost(ctx, d){
     const used = await usageOf(D, p.id, pm), pc = carryOf(p, pm);
     return json({ ok: true, month, prev: pm, current: carryOf(p, month),
       units: p.terms.units.map(u => ({ id: u.id, name: u.name, left: Math.max(0, u.inc + (+pc[u.id] || 0) - (used[u.id] || 0)) })) });
+  }
+  // a clean start for billing (test invoices): every client invoice, and the invoices on requests (the requests stay); the numbering starts again.
+  // preview first; with confirm a JSON copy goes to R2 before anything is removed
+  if (d.action === "invoicesPurge") {
+    const rows = (await D.prepare("SELECT * FROM invoices").all()).results, orders = [];
+    await kvEach(env, "order:", async (k, o) => { if (o.invoice || (o.deposit && o.deposit.invoice)) orders.push([k, o]); });
+    if (!d.confirm) return json({ ok: true, invoices: rows.length, orders: orders.length });
+    if (env.R2) await env.R2.put("backups/purge/" + Date.now() + "-invoices.json", JSON.stringify({ at, invoices: rows, orders: orders.map(([k, o]) => ({ key: k, invoice: o.invoice || null, deposit: o.deposit || null })) })).catch(() => {});
+    await D.prepare("DELETE FROM invoices").run();
+    for (const [k, o] of orders) { delete o.invoice; if (o.deposit) delete o.deposit.invoice; await env.EB.put(k, JSON.stringify(o)); }
+    await D.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
+    await D.prepare("DELETE FROM seq WHERE name='inv'").run(); await env.EB.put("invseq", "0");
+    return json({ ok: true, invoices: rows.length, orders: orders.length });
   }
   if (d.action === "monthBill") {
     const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first()); if (!p || !p.terms) return json({ ok: false, error: "terms" }, 404);

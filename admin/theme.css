@@ -147,7 +147,7 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .td2-prod{display:flex;align-items:center;gap:12px;flex:1}.td2-prod>div{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
 .td2-chips{display:flex;flex-wrap:wrap;gap:6px}
 .td2 .tag[class*="s-"]{color:var(--c)}
-.td2-ring{width:96px;height:96px;flex-shrink:0}
+.td2-ring{width:96px;height:96px;flex-shrink:0;overflow:visible}   /* the glow of the arc reaches past the drawing: let it, or it is cut into a square */
 .td2-ring circle{fill:none;stroke:rgba(var(--fg),.1);stroke-width:10}
 .td2-ring circle.on{stroke:var(--horizon);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;filter:drop-shadow(0 0 6px rgba(var(--acc),.5))}
 .td2-ring text{font:300 20px Oswald,sans-serif;fill:var(--light);text-anchor:middle}
