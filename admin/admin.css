@@ -936,3 +936,4 @@ html{-webkit-tap-highlight-color:transparent}
 .btk-h{font-size:11.5px;color:var(--horizon);margin-top:8px}
 .btk-l{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--k-mist);padding:5px 0;border-bottom:1px solid rgba(var(--k-white-rgb),.07)}
 .btk-t{display:flex;justify-content:space-between;font-weight:700;font-size:14px;padding-top:10px;color:var(--k-light)}.btk-t span:last-child{color:var(--f-wait)}
+.cp-pa{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
