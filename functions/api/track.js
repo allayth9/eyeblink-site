@@ -21,21 +21,25 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const ua = request.headers.get("user-agent") || "";
   if (BOT.test(ua)) return new Response(null, { status: 204 });
-  // only page views sent by the site itself count (keeps the daily KV writes for real visits)
+  // only page views sent by the site itself count
   const org = request.headers.get("origin") || request.headers.get("referer") || "";
   try { if (new URL(org).host !== new URL(request.url).host) return new Response(null, { status: 204 }); } catch { return new Response(null, { status: 204 }); }
   if (+(request.headers.get("content-length") || 0) > 4000) return new Response(null, { status: 204 });
   let d; try { d = await request.json(); } catch { return new Response(null, { status: 204 }); }
   const c = (v, m) => String(v ?? "").slice(0, m), cf = request.cf || {}, day = new Date().toISOString().slice(0, 10), key = "stat:" + day;
   const page = c(d.p, 80).replace(/\.html$/, "").replace(/^\/en/, "/en ") || "/", u = uaInfo(ua), src = sourceOf(c(d.r, 300), c(d.u, 120));
-  let s; try { s = JSON.parse(await env.EB.get(key) || "null"); } catch {}
+  // the day's totals live in D1 (one row a day): a page view never spends one of KV's daily writes, which sign-in and requests need
+  const D = env.DB; if (D) await D.prepare("CREATE TABLE IF NOT EXISTS stats (day TEXT PRIMARY KEY, data TEXT NOT NULL)").run();
+  // (the first view of a day with no row yet picks up what KV counted earlier that day, so the switch day is not cut in two)
+  let s; try { const row = D && await D.prepare("SELECT data FROM stats WHERE day=?").bind(day).first(); s = JSON.parse((row && row.data) || await env.EB.get(key) || "null"); } catch {}
   s ||= { day, views: 0, visits: 0, visitors: 0, pages: {}, sources: {}, countries: {}, devices: {}, browsers: {}, os: {}, langs: {}, recent: [] };
   s.views++; if (d.ns) { s.visits++; inc(s.sources, src); inc(s.devices, u.device); inc(s.browsers, u.browser); inc(s.os, u.os); inc(s.countries, c(cf.country, 4) || "?"); inc(s.langs, d.l === "en" ? "en" : "ar"); }
   if (d.nv) s.visitors++;
   inc(s.pages, page);
   s.recent.unshift({ at: new Date().toISOString(), page, src, ref: c(d.r, 160), utm: c(d.u, 80), country: c(cf.country, 4), city: c(cf.city, 40), ...u, w: +d.w || 0, nv: !!d.nv, sid: c(d.s, 12) });
   s.recent = s.recent.slice(0, 80);
-  await env.EB.put(key, JSON.stringify(s), { expirationTtl: 400 * 86400 });
+  if (D) await D.prepare("INSERT INTO stats (day, data) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET data=excluded.data").bind(day, JSON.stringify(s)).run();
+  else await env.EB.put(key, JSON.stringify(s), { expirationTtl: 400 * 86400 });
   later(ctx, sweepReminders(env));
   return new Response(null, { status: 204 });
 }
@@ -43,6 +47,8 @@ export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const n = Math.max(1, Math.min(90, parseInt(new URL(request.url).searchParams.get("days")) || 30)), days = [];
   for (let i = n - 1; i >= 0; i--) { const day = new Date(Date.now() - i * 86400e3).toISOString().slice(0, 10); days.push(day); }
-  const vals = await Promise.all(days.map(dd => env.EB.get("stat:" + dd)));
+  // D1 from the switch on; the days before it are still in KV (kept 400 days)
+  let rows = {}; if (env.DB) try { for (const r of (await env.DB.prepare("SELECT day, data FROM stats WHERE day >= ?").bind(days[0]).all()).results || []) rows[r.day] = r.data; } catch {}
+  const vals = await Promise.all(days.map(dd => rows[dd] || env.EB.get("stat:" + dd)));
   return json({ ok: true, days: days.map((dd, i) => { try { return JSON.parse(vals[i]) || { day: dd, views: 0, visits: 0, visitors: 0 }; } catch { return { day: dd, views: 0, visits: 0, visitors: 0 }; } }) });
 }

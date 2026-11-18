@@ -28,7 +28,7 @@ import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendM
 //   GET  /api/work?admin=1&view=notify       studio inbox, delivery log (e-mail / WhatsApp), WhatsApp setup status
 //   POST /api/work { action:"studioRead", ids|all }  { action:"retryNotif", id }  { action:"waConfig", … }  { action:"waTest", phone, lang }
 // Billing (Phase 6): invoices for clients, kept by hand (no payment gateway): six statuses — pending, partial, paid, overdue
-// (pending/partial past the due date), cancelled, refunded. Same numbering as the order invoices (KV "invseq").
+// (pending/partial past the due date), cancelled, refunded. Same numbering as the order invoices (D1 "seq", see newInvoice).
 //   client: GET ?view=invoices | ?invoiceDoc=ID (printable page)
 //   studio: GET ?admin=1&view=billing | ?admin=1&invoiceDoc=ID | ?admin=1&view=reports&from=&to= | ?admin=1&profile=EMAIL
 //           POST { action:"invoice", id?, client_email, project_id, title, period, items:[{desc,qty,unit}], currency, discount, issue_date, due_date, note, send }
