@@ -224,6 +224,7 @@
     if((m=/^w\/tasks(?:\/(all|fresh|progress|waiting|done|closed|upcoming))?$/.exec(h))){ setSec('tasks'); return allTasks(m[1]||'all'); }
     if(h==='w/projects'){ setSec('projects'); return projectsView(); }
     if(h==='w/brand'){ setSec('projects'); return brandView(); }
+    if((m=/^w\/reports(?:\/(r_[a-f0-9]+))?$/.exec(h))){ setSec('projects'); return reportsView(m[1]); }
     if((m=/^w\/t\/(T-[A-Z0-9]+)$/.exec(h))){ setSec('tasks'); return task(m[1]); }
     if((m=/^w\/p\/(p_[a-f0-9]+)(?:\/(talk|files|report)(?:\/(\d{4}-\d{2}))?)?$/.exec(h))){ setSec('projects'); return project(m[1],m[2]||'tasks',false,m[3]); }
     if((m=/^w\/new(?:\/(p_[a-f0-9]+))?$/.exec(h))){ setSec('new'); return newTasks(m[1]); }
@@ -562,14 +563,14 @@
   }
 
   /* ---- uploads: straight from the browser to R2 (presigned), progress from XMLHttpRequest ---- */
-  var BR=AR?{h:'مكتبة الهوية',p:'هويتك البصرية في مكان واحد. يعتمدها الاستوديو تلقائياً في كل مهمة جديدة.',seg:{projects:'المشاريع',brand:'مكتبة الهوية'},
+  var BR=AR?{h:'مكتبة الهوية',p:'هويتك البصرية في مكان واحد. يعتمدها الاستوديو تلقائياً في كل مهمة جديدة.',seg:{projects:'المشاريع',brand:'مكتبة الهوية',reports:'التقارير'},
       logos:'الشعارات',dark:'على خلفية داكنة',light:'على خلفية فاتحة',vector:'ملفات متجهة',colors:'لوحة الألوان المعتمدة',fonts:'الخطوط المعتمدة',style:'الأسلوب والموسيقى',
       styleL:'الأسلوب البصري',styleP:'مثال: هادئ وفاخر، لقطات قريبة، ألوان دافئة',musicL:'الموسيقى',musicP:'مثال: بيانو هادئ، بلا كلمات',
       up:'رفع ملف',none:'لا يوجد شيء بعد.',del:'حذف',copy:'نسخ',copied:'نُسخ',add:'إضافة',name:'الاسم (اختياري)',hex:'الرمز',fname:'اسم الخط',fuse:'الاستخدام (عناوين، نص…)',
       ffiles:'ملفات الخطوط',saved:'حُفظت مكتبة الهوية.',use:'اعتمد مكتبة الهوية في هذه المهمة',useP:'أزل التحديد إن كانت لهذه المهمة ملفات هوية خاصة، وأضفها في الروابط.',
       drop:'اسحب الملفات وأفلتها هنا',dropOr:'أو',pick:'اختر من جهازك',dropCat:'التصنيف',stored:'محفوظ لدى الاستوديو',
       st:{wait:'في الانتظار',up:'يُرفع',done:'اكتمل',fail:'تعذّر الرفع',type:'نوع غير مدعوم',size:'الحجم أكبر من 5 GB'},retry:'أعد المحاولة'}
-    :{h:'Brand library',p:'Your visual identity in one place. The studio applies it to every new task automatically.',seg:{projects:'Projects',brand:'Brand library'},
+    :{h:'Brand library',p:'Your visual identity in one place. The studio applies it to every new task automatically.',seg:{projects:'Projects',brand:'Brand library',reports:'Reports'},
       logos:'Logos',dark:'On dark',light:'On light',vector:'Vector files',colors:'Approved colours',fonts:'Approved fonts',style:'Style and music',
       styleL:'Visual style',styleP:'e.g. calm and premium, close-ups, warm tones',musicL:'Music',musicP:'e.g. quiet piano, no vocals',
       up:'Upload a file',none:'Nothing yet.',del:'Delete',copy:'Copy',copied:'Copied',add:'Add',name:'Name (optional)',hex:'Code',fname:'Font name',fuse:'Use (headings, body…)',
@@ -604,7 +605,7 @@
     ['dragenter','dragover'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.add('over'); }); });
     ['dragleave','drop'].forEach(function(t){ z.addEventListener(t,function(e){ e.preventDefault(); z.classList.remove('over'); }); });
     z.addEventListener('drop',function(e){ go(e.dataTransfer&&e.dataTransfer.files); }); }
-  function seg(on){ return '<nav class="wseg" aria-label="'+BR.h+'">'+['projects','brand'].map(function(k){ return '<a href="#w/'+k+'"'+(k===on?' class="on" aria-current="page"':'')+'>'+BR.seg[k]+'</a>'; }).join('')+'</nav>'; }
+  function seg(on){ return '<nav class="wseg" aria-label="'+BR.h+'">'+['projects','brand','reports'].map(function(k){ return '<a href="#w/'+k+'"'+(k===on?' class="on" aria-current="page"':'')+'>'+BR.seg[k]+'</a>'; }).join('')+'</nav>'; }
 
   /* ---- the brand library: four dark cards; D1 keeps it, R2 keeps its files ---- */
   function brandView(){ loading();
@@ -979,4 +980,15 @@
       var s=f.querySelector('[type=submit]'); s.disabled=true;
       api('',{action:'projectNew',name:n,type:type,description:f.elements.description.value.trim(),cadence:type==='program'?{per:f.elements.per.value,day:f.elements.day.value}:null}).then(function(j){ s.disabled=false;
         if(j&&j.ok){ toast(NP.ok); DASH=null; after(j.id); } else toast(NP.err); }); }; }
+  /* ---- the client's reports: every report they received, each opens as a page they can save as PDF ---- */
+  var RPW=AR?{h:'التقارير',p:'ما أنجزناه معاً، تقريراً بعد تقرير. افتح أي تقرير لتقرأه كاملاً أو تحفظه PDF.',empty:'لم يصلك أي تقرير بعد. يصلك أول تقرير على الموعد المتفق عليه مع الاستوديو.',t:'مهام',v:'نسخ',r:'تقرير',from:'من ',to:' إلى '}
+    :{h:'Reports',p:'What we did together, report by report. Open any of them to read it in full or save it as a PDF.',empty:'No report yet. Your first one arrives on the rhythm agreed with the studio.',t:'tasks',v:'versions',r:'Report',from:'',to:' to '};
+  function reportsView(open){ loading();
+    api('?view=reports').then(function(j){ if(!j.ok) return fail(j);
+      var fd=function(d){ return new Date(d+'T12:00:00Z').toLocaleDateString(AR?'ar-u-nu-latn':'en-GB',{day:'numeric',month:'long'}); }, ttl=function(r){ return RPW.from+fd(r.from)+RPW.to+fd(r.to); };
+      host.innerHTML=head('projects','REPORTS',RPW.h,RPW.p,'')+seg('reports')+(j.reports.length?'<div class="wreps">'+j.reports.map(function(r){
+        return '<button type="button" class="wrep-i glass" data-rp="'+esc(r.id)+'" data-t="'+esc(ttl(r))+'"><span class="k">REPORT</span><b>'+esc(ttl(r))+'</b><span class="muted small">'+((r.nums&&r.nums.done)||0)+' '+RPW.t+' · '+((r.nums&&r.nums.versions)||0)+' '+RPW.v+(r.projects&&r.projects.length?' · '+esc(r.projects.join(AR?'، ':', ')):'')+'</span></button>'; }).join('')+'</div>'
+        :'<div class="wcard glass wempty"><p>'+RPW.empty+'</p></div>');
+      host.querySelectorAll('[data-rp]').forEach(function(b){ b.onclick=function(){ docModal(API+'work?creportDoc='+encodeURIComponent(b.dataset.rp),RPW.r+' · '+b.dataset.t); }; });
+      rise(); if(open){ var b=host.querySelector('[data-rp="'+open+'"]'); if(b) b.click(); } }); }
 })();

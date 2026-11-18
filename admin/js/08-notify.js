@@ -116,6 +116,7 @@
       '<div class="snd-hd"><span class="snd-k">إلى العميل</span><h4 id="sndT">'+esc(o.title)+'</h4><p class="snd-to" data-to>جارٍ تجهيز الرسالة…</p></div>'+
       '<div class="snd-bd"><div class="snd-sd">'+
         (rows.length?'<div class="cfm-rows">'+rows.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div>':'')+
+        (o.noteField?'<label class="snd-note"><span>كلمتك في أعلى التقرير (اختياري)</span><textarea data-note rows="3" dir="auto" maxlength="600"></textarea></label>':'')+
         '<div class="snd-l">القنوات</div><div class="snd-chs">'+ch('email','البريد الإلكتروني')+ch('push','إشعار على أجهزته')+ch('wa','واتساب')+
           '<div class="snd-c on fixed"><span class="snd-i"><svg viewBox="0 0 24 24" aria-hidden="true">'+SNDIC.app+'</svg></span><span class="snd-tx"><b>مساحة العمل</b><small>تُسجَّل دائماً في إشعاراته</small></span></div></div>'+
         '<div class="snd-l">التوقيت</div><div class="snd-seg" role="radiogroup"><button type="button" role="radio" aria-checked="true" data-when="now" class="on">الآن</button><button type="button" role="radio" aria-checked="false" data-when="later">لاحقاً</button><button type="button" role="radio" aria-checked="false" data-when="none">دون إشعار</button></div>'+
@@ -147,7 +148,7 @@
     function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
     function go(){ var c={}; ov.querySelectorAll('[data-ch]').forEach(function(x){ c[x.dataset.ch]=x.checked&&!x.disabled; });
       if(WHEN==='none') c={email:false,push:false,wa:false};
-      var n={ch:c}; if(WHEN==='later'){ var t=at.value?new Date(at.value):null; if(!t||isNaN(t)||t<Date.now()+60000){ toast('اختر موعداً لاحقاً للإرسال',true); at.focus(); return; } n.at=t.toISOString(); }
+      var n={ch:c}; var nt=Q('[data-note]'); if(nt&&nt.value.trim()) n.note=nt.value.trim(); if(WHEN==='later'){ var t=at.value?new Date(at.value):null; if(!t||isNaN(t)||t<Date.now()+60000){ toast('اختر موعداً لاحقاً للإرسال',true); at.focus(); return; } n.at=t.toISOString(); }
       done(n); }
     function key(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); done(false); } }
     ov.addEventListener('change',sync);
@@ -158,6 +159,8 @@
         at.hidden=WHEN!=='later'; if(WHEN==='later'){ if(!at.value){ var d=new Date(Date.now()+864e5); d.setHours(10,0,0,0); at.value=new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16); } at.focus(); } sync(); return; }
       var p=t.closest('[data-pv]'); if(p){ ov.querySelectorAll('[data-pv]').forEach(function(x){ x.classList.toggle('on',x===p); x.setAttribute('aria-selected',x===p); }); Q('[data-pvmail]').hidden=p.dataset.pv!=='mail'; Q('[data-pvwa]').hidden=p.dataset.pv!=='wa'; return; }
       if(t.closest('[data-wcopy]')&&PV&&PV.wa){ (navigator.clipboard?navigator.clipboard.writeText(PV.wa):Promise.reject()).then(function(){ toast('نُسخت الرسالة، وهي جاهزة للّصق في واتساب'); },function(){ toast('تعذّر النسخ',true); }); } });
+    var nt=Q('[data-note]'), ntT=0; if(nt) nt.addEventListener('input',function(){ clearTimeout(ntT); ntT=setTimeout(function(){
+      fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(Object.assign({action:'notifyPreview'},o.pv,{note:nt.value}))}).then(function(r){ return r.json(); }).then(function(j){ var fr=Q('[data-pvmail] iframe'); if(j.ok&&j.html&&fr) fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>'); }); },500); });
     addEventListener('keydown',key,true); ok.focus(); sync(); }); }
   // what the action's own toast says once the choice is known
   function sndSay(n,okText){ if(!n||!okText) return okText; var c=n.ch||{};
@@ -204,7 +207,7 @@
     if(b.dataset.pds) return pendingDo(b.dataset.pds,'pendingSend',null,b);
     if(b.dataset.pdk) return pendingDo(b.dataset.pdk,'pendingSkip',null,b);
     var p=((WORK&&WORK.pending)||[]).concat((NOTI&&NOTI.pending)||[]).filter(function(x){ return String(x.id)===b.dataset.pdr; })[0]; if(!p) return;
-    sendSheet({title:p.title,rows:[['إلى',p.sub||p.recipient]],pv:{kind:p.kind,pending:p.id}}).then(function(n){ if(n) pendingDo(p.id,'pendingSend',n,b); }); });
+    sendSheet({title:p.title,rows:[['إلى',p.sub||p.recipient]],pv:{kind:p.kind,pending:p.id},noteField:p.kind==='periodReport'}).then(function(n){ if(n) pendingDo(p.id,'pendingSend',n,b); }); });
 
   /* ---------------- the notifications centre (Phase 4): seven tabs over one load ---------------- */
   var NTAB='in', NIF='all';

@@ -1260,7 +1260,7 @@ section:has(.tools) .head .eyebrow{font-size:10.5px}
 .inv-bar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--k-card);color:var(--light)}
 .inv-bar b{font-weight:500;font-size:15px;padding-inline:6px}
 .inv-bar .sp{flex:1}
-.inv-bar .btn{padding:9px 16px;font-size:14px}
+.inv-bar .btn{padding:9px 16px;font-size:14px;white-space:nowrap;flex:none}
 .inv-bar .x{position:static!important;width:40px;height:40px;padding:0;justify-content:center;font-size:20px}
 .inv-scroll{flex:1;overflow:auto;padding:16px;-webkit-overflow-scrolling:touch}
 .inv-modal iframe{display:block;width:100%;height:760px;border:0;background:transparent}
@@ -2423,3 +2423,11 @@ nav.dock{view-transition-name:eb-dock}
 .wnp-cad{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wnp-cad[hidden]{display:none}
 @media (max-width:560px){.wnp-cad{grid-template-columns:1fr}}
 .wnp-acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* the client's reports list */
+.wreps{display:grid;gap:10px}
+.wrep-i{display:grid;gap:3px;text-align:start;font:inherit;color:inherit;border:0;cursor:pointer;padding:16px 18px;border-radius:20px}
+.wrep-i .k{font:500 11px Oswald,sans-serif;letter-spacing:.22em;color:var(--k-horizon);direction:ltr;text-align:start}
+.wrep-i b{font-size:16px}
+.wrep-i:hover{filter:brightness(1.08)}
+.wrep-i:focus-visible{outline:2px solid var(--k-horizon);outline-offset:2px}

@@ -93,6 +93,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS scheduled_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, recipient TEXT NOT NULL, kind TEXT NOT NULL, t TEXT NOT NULL, extra TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT, cancelled_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS rule_log (rule TEXT NOT NULL, key TEXT NOT NULL, recipient TEXT NOT NULL DEFAULT '', at TEXT NOT NULL, outcome TEXT NOT NULL DEFAULT 'sent', PRIMARY KEY (rule, key))`,
   `CREATE TABLE IF NOT EXISTS pending_sends (id INTEGER PRIMARY KEY AUTOINCREMENT, rule TEXT NOT NULL, key TEXT NOT NULL, recipient TEXT NOT NULL, kind TEXT NOT NULL, t TEXT NOT NULL, extra TEXT NOT NULL, title TEXT NOT NULL, sub TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, done_at TEXT, outcome TEXT)`,
+  `CREATE TABLE IF NOT EXISTS report_cfg (email TEXT PRIMARY KEY, every INTEGER NOT NULL DEFAULT 0, dow INTEGER NOT NULL DEFAULT 1, mode TEXT NOT NULL DEFAULT 'ask', projects TEXT NOT NULL DEFAULT '"all"', inc TEXT NOT NULL DEFAULT '{}', last_to TEXT, started TEXT, updated_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS client_reports (id TEXT PRIMARY KEY, email TEXT NOT NULL, from_d TEXT NOT NULL, to_d TEXT NOT NULL, data TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', sent_at TEXT, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, no TEXT NOT NULL UNIQUE, client_email TEXT NOT NULL, project_id TEXT, title TEXT NOT NULL DEFAULT '', period TEXT NOT NULL DEFAULT '',
      items TEXT NOT NULL DEFAULT '[]', currency TEXT NOT NULL DEFAULT '$', discount REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, paid REAL NOT NULL DEFAULT 0, refunded REAL NOT NULL DEFAULT 0,
      status TEXT NOT NULL DEFAULT 'pending', issue_date TEXT NOT NULL, due_date TEXT, note TEXT NOT NULL DEFAULT '', payments TEXT NOT NULL DEFAULT '[]', sent_at TEXT, reminded_at TEXT,
@@ -443,7 +445,7 @@ function invoiceArgs(x, kind){ return { t: { client_email: x.client_email, ref: 
 // ==== client notifications (phase 5): one event → in-app + e-mail + WhatsApp, by the client's preferences ====
 const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", date:"tasks", dateNo:"tasks", completed:"tasks", info:"requests", deliver:"deliveries", comment:"comments", project:"projects", file:"projects",
   invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks",
-  invoiceSoon:"billing", invoiceFollow:"billing", reviewWaiting:"deliveries", infoWaiting:"requests" };
+  invoiceSoon:"billing", invoiceFollow:"billing", reviewWaiting:"deliveries", infoWaiting:"requests", periodReport:"projects" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
 const ESSENTIAL = ["deliveries","billing"];   // e-mail for these cannot be switched off
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
@@ -546,7 +548,7 @@ const WA_TXT = {
         invoiceDue: d => `نودّ أن نذكّرك بلطف بالفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
         invoiceSoon: d => `تذكير ودّي: يحلّ موعد استحقاق الفاتورة ${d.no} في ${d.dueText}، والمبلغ ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
         invoiceFollow: d => `نتابع معك بخصوص الفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كان بوسعنا تسهيل الأمر فيسعدنا أن نسمع منك.`,
-        reviewWaiting: d => `النسخة ${d.label} من «${d.title}» (${d.ref}) بانتظار رأيك متى سنح وقتك.`, infoWaiting: d => `ما زلنا بانتظار بعض التفاصيل لبدء «${d.title}» (${d.ref}).`,
+        reviewWaiting: d => `النسخة ${d.label} من «${d.title}» (${d.ref}) بانتظار رأيك متى سنح وقتك.`, periodReport: d => `تقريرك جاهز: ما أنجزناه ${d.name}.`, infoWaiting: d => `ما زلنا بانتظار بعض التفاصيل لبدء «${d.title}» (${d.ref}).`,
         recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو مهمة «${d.title}» (${d.ref}) إلى مشروعك${d.date ? "، وموعد تسليمها المؤكد " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
   en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
         reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
@@ -557,7 +559,7 @@ const WA_TXT = {
         invoiceDue: d => `A gentle reminder about invoice ${d.no}; the remaining balance is ${d.balance}. If you have already settled it, thank you.`,
         invoiceSoon: d => `A gentle reminder: invoice ${d.no} is due on ${d.dueText}, for ${d.balance}. If you have already settled it, thank you.`,
         invoiceFollow: d => `Following up on invoice ${d.no}; ${d.balance} is still due. If we can make it easier, we would be glad to hear from you.`,
-        reviewWaiting: d => `Version ${d.label} of "${d.title}" (${d.ref}) is waiting for your review whenever you have a moment.`, infoWaiting: d => `We are still waiting for a few details to start "${d.title}" (${d.ref}).`,
+        reviewWaiting: d => `Version ${d.label} of "${d.title}" (${d.ref}) is waiting for your review whenever you have a moment.`, periodReport: d => `Your report is ready: what we did ${d.name}.`, infoWaiting: d => `We are still waiting for a few details to start "${d.title}" (${d.ref}).`,
         recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added "${d.title}" (${d.ref}) to your project${d.date ? "; confirmed delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
 // the e-mail for one event, built once: tellClient sends it, the admin's send sheet previews it
 function composeMail(u, t, kind, extra, hash){
@@ -593,6 +595,7 @@ function composeMail(u, t, kind, extra, hash){
                          t.confirmed_date ? `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">موعد التسليم المؤكد: ${h(fmtDate(t.confirmed_date, lang))}</p>` : ""],
     infoWaiting: en ? ["We are still waiting for a few details · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need what we asked for:`, "Send the details", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">As soon as they arrive, we begin.</p>`]
                     : ["ما زلنا بانتظار بعض التفاصيل · " + t.ref, `لنبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b> نحتاج إلى ما طلبناه منك:`, "أرسل التفاصيل", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">حالما تصلنا نبدأ مباشرة.</p>`],
+    periodReport: en ? ["What we did · " + (extra.name || ""), "", "Open the full report"] : ["ما أنجزناه · " + (extra.name || ""), "", "افتح التقرير الكامل"],
     recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
                   : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
     added:   en ? ["New task from the studio · " + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to your project${t.confirmed_date ? `. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
@@ -607,6 +610,7 @@ function composeMail(u, t, kind, extra, hash){
     const wsLink = SITE + (en ? "/en" : "") + "/workspace" + hash;
     const html = extra.inv ? mail(lang, T[0], billTicket(extra.inv, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // invoices: the ticket is the whole e-mail
       : extra.report ? mail(lang, T[0], reportCard(extra.report, lang, T[1] + note, wsLink), null, null, greet({ name: u.name, lang }), { bare: true })   // the monthly report: the scoreboard
+      : extra.preport ? mail(lang, en ? "What we did together" : "ما أنجزناه معاً", periodCard(extra.preport, lang, extra.studioNote || extra.preport.note || ""), T[2], wsLink, greet({ name: u.name, lang }), { label: "REPORT" })   // the periodic report
       : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + (T[3] || ""), T[2] || (en ? "Open in my workspace" : "افتح في مساحة العمل"), wsLink, greet({ name: u.name, lang }));
     return { subject: T[0], html };
 }
@@ -616,9 +620,9 @@ function tellData(t, extra){ return { title: t.title || "", ref: t.ref || "", da
 function cleanNotify(v){ if (!v || typeof v !== "object") return null;
   const ch = { email: !!(v.ch && v.ch.email), push: !!(v.ch && v.ch.push), wa: !!(v.ch && v.ch.wa) };
   const t = v.at ? new Date(v.at) : null, at = t && !isNaN(t) && t > Date.now() + 60000 && t < Date.now() + 90 * 864e5 ? t.toISOString() : null;
-  return { ch, at }; }
+  return { ch, at, note: clip(v.note, 600) }; }
 async function tellAdmin(ctx, env, t, kind, extra){
-  const n = ctx && ctx.notify; extra = n ? { ...(extra || {}), ch: n.ch } : extra;
+  const n = ctx && ctx.notify; extra = n ? { ...(extra || {}), ch: n.ch, ...(n.note ? { studioNote: n.note } : {}) } : extra;
   if (n && n.at) { const D = await db(env); if (D) { await D.prepare("INSERT INTO scheduled_sends (at, recipient, kind, t, extra, created_at) VALUES (?,?,?,?,?,?)")
     .bind(n.at, String(t.client_email || "").toLowerCase(), kind, JSON.stringify(t), JSON.stringify(extra), now()).run(); return; } }
   return tellClient(env, t, kind, extra);
@@ -631,6 +635,7 @@ async function tellClient(env, t, kind, extra){
   const data = tellData(t, extra), ch = extra.ch;   // ch: the admin's channel choice (in-app is always kept)
   // 1) in-app — always on
   if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
+  if (D && kind === "periodReport" && extra.rid) { try { await D.prepare("UPDATE client_reports SET sent_at=?, note=? WHERE id=?").bind(now(), extra.studioNote || "", extra.rid).run(); } catch {} }
   const P = D ? await prefsOf(D, u.email).catch(() => null) : null, jobs = [];
   // 2) e-mail — unless the client switched this category off
   if ((!ch || ch.email) && (!P || P.email_cats[cat] || ESSENTIAL.includes(cat))) jobs.push((async () => {
@@ -799,7 +804,7 @@ function tplSample(kind, lang){
 const PURGE = [["deliverables","client_email"],["comments","client_email"],["files","client_email"],["tasks","client_email"],["recurring","client_email"],["invoices","client_email"],
   ["project_members","email"],["projects","client_email"],["activity","client_email"],["notifications","recipient"],["notify_prefs","email"],["notify_log","recipient"],
   ["scheduled_sends","recipient"],["pending_sends","recipient"],["rule_log","recipient"],["push_subs","email"],["tg_links","email"],["client_tips","email"],
-  ["brand_kits","email"],["brand_assets","email"],["clients","email"]];
+  ["brand_kits","email"],["brand_assets","email"],["report_cfg","email"],["client_reports","email"],["clients","email"]];
 async function kvEach(env, prefix, fn){ let c; do { const r = await env.EB.list({ prefix, cursor: c }); for (const k of r.keys) { let v = null; try { v = JSON.parse(await env.EB.get(k.name)); } catch {} if (v) await fn(k.name, v); } c = r.list_complete ? null : r.cursor; } while (c); }
 async function purgeCounts(env, D, email){
   const n = async (sql, ...a) => ((await D.prepare(sql).bind(...a).first()) || {}).n || 0;
@@ -837,6 +842,93 @@ async function purgeProject(env, D, id){
   await unlinkTeam(env, new Set(tasks.map(t => t.ref)));
   return tasks.length;
 }
+// ---- periodic client reports (19 Nov): what we did since the last report, on the client's rhythm (every N days, on a weekday),
+// for all their projects or the chosen ones; "ask" waits in Today for the studio's word, "auto" goes on its own ----
+const RINC = { done: 1, nums: 1, waiting: 1, next: 1, money: 0 };
+function rcfgOf(row, email){ let pj = "all", inc = {}; try { pj = JSON.parse(row && row.projects || '"all"'); } catch {} try { inc = JSON.parse(row && row.inc || "{}"); } catch {}
+  return { email, every: row ? row.every : 0, dow: row ? row.dow : 1, mode: row && row.mode === "auto" ? "auto" : "ask", projects: pj, inc: { ...RINC, ...inc }, last_to: row ? row.last_to : null, started: row ? row.started : null }; }
+const dAdd = (d, n) => new Date(Date.parse(d + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+function rNext(c){ if (!c.every) return null; const base = c.last_to || (c.started ? dAdd(c.started, -1) : null); if (!base) return null;
+  const t = dAdd(base, c.every); let d = t;   // the chosen weekday nearest the target (within three days either way)
+  for (const k of [0, -1, 1, -2, 2, -3, 3]) { const x = dAdd(t, k); if (new Date(x + "T12:00:00Z").getUTCDay() === c.dow) { d = x; break; } }
+  if (d <= base) d = dAdd(d, 7);
+  return { date: d, from: dAdd(base, 1), to: dAdd(d, -1) }; }
+function rPeriod(R, en){ const f = d => new Date(d + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" });
+  return en ? f(R.from) + " to " + f(R.to) : "من " + f(R.from) + " إلى " + f(R.to); }
+async function periodReport(D, email, from, to, c){
+  const all = (await D.prepare("SELECT id, name, type FROM projects WHERE client_email=? AND status!='archived' ORDER BY created_at").bind(email).all()).results;
+  const want = c.projects === "all" ? all : all.filter(p => (c.projects || []).includes(p.id)), ids = want.map(p => p.id), pn = Object.fromEntries(want.map(p => [p.id, p]));
+  const R = { from, to, every: c.every, inc: c.inc, nums: { done: 0, versions: 0, ontime: null }, projects: [], next: [], money: null };
+  if (!ids.length) return R;
+  const IN = "(" + ids.map(() => "?").join(",") + ")", inR = d => d && String(d).slice(0, 10) >= from && String(d).slice(0, 10) <= to;
+  const tasks = (await D.prepare(`SELECT id, ref, title, project_id, status, confirmed_date, completed_at FROM tasks WHERE project_id IN ${IN}`).bind(...ids).all()).results;
+  const dls = (await D.prepare(`SELECT task_id, label, version, created_at FROM deliverables WHERE project_id IN ${IN}`).bind(...ids).all()).results;
+  const done = tasks.filter(t => t.status === "completed" && inR(t.completed_at)), dated = done.filter(t => t.confirmed_date);
+  R.nums = { done: done.length, versions: dls.filter(x => inR(x.created_at)).length, ontime: dated.length ? Math.round(dated.filter(t => String(t.completed_at).slice(0, 10) <= t.confirmed_date).length * 100 / dated.length) : null };
+  const last = {}; for (const x of dls) if (!last[x.task_id] || x.version > last[x.task_id].version) last[x.task_id] = x;
+  R.projects = want.map(p => ({ name: p.name, type: p.type,
+    done: done.filter(t => t.project_id === p.id).map(t => ({ title: t.title, date: String(t.completed_at).slice(0, 10) })),
+    waiting: tasks.filter(t => t.project_id === p.id && ["feedback","final"].includes(t.status)).map(t => ({ title: t.title, label: (last[t.id] || {}).label || "" })) })).filter(p => p.done.length || p.waiting.length);
+  const horizon = dAdd(to, c.every || 14);
+  R.next = tasks.filter(t => !["completed","rejected","cancelled"].includes(t.status) && t.confirmed_date && t.confirmed_date > to && t.confirmed_date <= horizon)
+    .sort((a, b) => a.confirmed_date < b.confirmed_date ? -1 : 1).slice(0, 12).map(t => ({ title: t.title, project: pn[t.project_id].name, date: t.confirmed_date }));
+  if (c.inc.money) { const inv = (await D.prepare("SELECT no, total, currency, payments, issue_date FROM invoices WHERE client_email=? AND sent_at IS NOT NULL").bind(email).all()).results.map(x => parseI(x));
+    const paid = {}; inv.forEach(x => x.payments.forEach(y => { if (inR(y.date || y.at)) paid[x.currency] = money((paid[x.currency] || 0) + y.amount); }));
+    R.money = { issued: inv.filter(x => inR(x.issue_date)).map(x => ({ no: x.no, total: fmt(x.total, x.currency) })), paid: Object.keys(paid).map(k => fmt(paid[k], k)) }; }
+  return R;
+}
+const RTYPE = { ar: { program: "برنامج", design: "تصاميم", monthly: "تعاون شهري", campaign: "حملة", once: "مشروع لمرة واحدة" }, en: { program: "Program", design: "Design", monthly: "Monthly", campaign: "Campaign", once: "One-off" } };
+// the report inside the e-mail (dark, the site's template)
+function periodCard(R, lang, note){ const en = lang === "en", rtl = !en, s = rtl ? "right" : "left", e = rtl ? "left" : "right", I = R.inc || RINC;
+  const fd = d => new Date(d + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long" });
+  const tile = (v, k, col) => `<td width="33%" style="padding:12px 10px;background:#070C2A;border:1px solid #1B2556;border-radius:14px;text-align:${s};vertical-align:top"><div style="font-size:28px;font-weight:200;color:${col};direction:ltr;text-align:${s}">${v}</div><div style="font-size:12px;color:#9FB0CC">${k}</div></td>`;
+  const sec = t => `<div style="margin:24px 0 6px;font-size:12px;color:#6F7FA0">${t}</div>`;
+  const row = (txt, side, dot) => `<tr><td style="padding:7px 14px;border-top:1px solid #121a44;font-size:13.5px;color:#C3CEE2;text-align:${s}"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-${e}:8px"></span>${h(txt)}${side ? `<span style="float:${e};color:#6F7FA0;font-size:12px">${h(side)}</span>` : ""}</td></tr>`;
+  let b = `<p style="margin:0 0 6px;font-size:12.5px;color:#8E9BB8">${h(rPeriod(R, en))}</p>` + (note ? `<p style="margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(note).replace(/\n/g, "<br>")}</p>` : "");
+  if (I.nums) b += `<table role="presentation" width="100%" cellpadding="0" cellspacing="8" style="border-collapse:separate;margin:0 -8px"><tr>${tile(R.nums.done, en ? "Tasks completed" : "مهام اكتملت", "#3DDC97")}${tile(R.nums.versions, en ? "Versions delivered" : "نسخ سُلّمت", "#3FE0E8")}${tile(R.nums.ontime === null ? "—" : R.nums.ontime + "%", en ? "On time" : "في الموعد", "#F7C76A")}</tr></table>`;
+  const P = R.projects.filter(p => (I.done && p.done.length) || (I.waiting && p.waiting.length));
+  if (P.length) b += sec(en ? "What we did" : "ما أنجزناه") + P.map(p => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;border:1px solid #1B2556;border-radius:14px;border-collapse:separate;background:#0A1033"><tr><td style="padding:12px 14px 4px;text-align:${s}"><span style="font-size:15px;font-weight:700;color:#fff">${h(p.name)}</span> <span style="font-size:11.5px;color:#3FE0E8">${h(RTYPE[en ? "en" : "ar"][p.type] || "")}</span></td></tr>` +
+    (I.done ? p.done.map(t => row(t.title, fd(t.date), "#3DDC97")).join("") : "") + (I.waiting ? p.waiting.map(t => row(t.title + (t.label ? " · " + t.label : ""), en ? "Waiting for your review" : "بانتظار رأيك", "#F7C76A")).join("") : "") + `<tr><td style="padding:4px"></td></tr></table>`).join("");
+  else if (I.done) b += `<p style="margin:16px 0 0;color:#8E9BB8">${en ? "A quiet stretch: nothing was completed in this period." : "فترة هادئة: لم تكتمل مهام في هذه الفترة."}</p>`;
+  if (I.next && R.next.length) b += sec(en ? "Coming next" : "القادم") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` + R.next.map(t => `<tr><td style="padding:8px 0;border-bottom:1px solid #1B2556;font-size:13.5px;color:#C3CEE2;text-align:${s}">${h(t.project)} · ${h(t.title)}</td><td style="padding:8px 0;border-bottom:1px solid #1B2556;font-size:12.5px;color:#9FB0CC;text-align:${e};white-space:nowrap">${h(fd(t.date))}</td></tr>`).join("") + `</table>`;
+  if (R.money && (R.money.issued.length || R.money.paid.length)) b += sec(en ? "Invoices and payments" : "الفواتير والمدفوعات") + `<p style="margin:0;font-size:13.5px;color:#C3CEE2">${R.money.issued.map(x => h(x.no) + " · " + h(x.total)).join("<br>")}${R.money.paid.length ? `<br>${en ? "Paid" : "المدفوع"}: <b style="color:#fff">${h(R.money.paid.join(" · "))}</b>` : ""}</p>`;
+  return b;
+}
+// the printable page (white, the invoice family), for the workspace and its PDF
+function periodPage(R, cl, lang, note){ const en = lang === "en", I = R.inc || RINC, dir = en ? "ltr" : "rtl";
+  const fd = d => new Date(d + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" });
+  const box = (v, k) => `<div style="flex:1;border:1px solid #DDE3EE;border-radius:12px;padding:12px 14px"><div style="font-size:26px;font-weight:300;color:#0E1A5C">${v}</div><div style="font-size:12px;color:#5B6785">${k}</div></div>`;
+  const P = R.projects.filter(p => (I.done && p.done.length) || (I.waiting && p.waiting.length));
+  return `<!doctype html><html lang="${en ? "en" : "ar"}" dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(rPeriod(R, en))}</title>
+<style>@page{size:A4;margin:14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}body{margin:0;background:#fff;color:#04061A;font:14px/1.75 'Segoe UI',Tahoma,Arial,sans-serif}.w{max-width:760px;margin:0 auto;padding:28px 22px}h1{font-size:22px;margin:0}.m{color:#5B6785;font-size:13px}.n{display:flex;gap:10px;margin:18px 0}.p{border:1px solid #DDE3EE;border-radius:12px;margin:10px 0;padding:10px 14px}.p b{font-size:15px}.r{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #EEF1F6;padding:6px 0;font-size:13.5px}.r span:last-child{color:#5B6785;white-space:nowrap}.h{margin:22px 0 4px;font-size:12px;color:#5B6785;letter-spacing:.04em}.note{background:#F1F5FD;border-radius:12px;padding:12px 14px;margin:14px 0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1C45E6;padding-bottom:12px;margin-bottom:16px}</style></head><body><div class="w">
+<div class="top"><img src="/assets/img/invoice-logo.png" alt="EYEBLINK STUDIO" style="height:28px;width:auto"><span class="m">${en ? "Report" : "تقرير"}</span></div>
+<h1>${en ? "What we did together" : "ما أنجزناه معاً"}</h1><div class="m">${h(cl.name || "")} · ${h(rPeriod(R, en))}</div>
+${note ? `<div class="note">${h(note).replace(/\n/g, "<br>")}</div>` : ""}
+${I.nums ? `<div class="n">${box(R.nums.done, en ? "Tasks completed" : "مهام اكتملت")}${box(R.nums.versions, en ? "Versions delivered" : "نسخ سُلّمت")}${box(R.nums.ontime === null ? "—" : R.nums.ontime + "%", en ? "On time" : "في الموعد")}</div>` : ""}
+${P.length ? `<div class="h">${en ? "What we did" : "ما أنجزناه"}</div>` + P.map(p => `<div class="p"><b>${h(p.name)}</b> <span class="m">${h(RTYPE[en ? "en" : "ar"][p.type] || "")}</span>` + (I.done ? p.done.map(t => `<div class="r"><span>${h(t.title)}</span><span>${h(fd(t.date))}</span></div>`).join("") : "") + (I.waiting ? p.waiting.map(t => `<div class="r"><span>${h(t.title)}${t.label ? " · " + h(t.label) : ""}</span><span>${en ? "Waiting for your review" : "بانتظار رأيك"}</span></div>`).join("") : "") + `</div>`).join("") : ""}
+${I.next && R.next.length ? `<div class="h">${en ? "Coming next" : "القادم"}</div>` + R.next.map(t => `<div class="r"><span>${h(t.project)} · ${h(t.title)}</span><span>${h(fd(t.date))}</span></div>`).join("") : ""}
+${R.money && (R.money.issued.length || R.money.paid.length) ? `<div class="h">${en ? "Invoices and payments" : "الفواتير والمدفوعات"}</div>` + R.money.issued.map(x => `<div class="r"><span>${h(x.no)}</span><span>${h(x.total)}</span></div>`).join("") + (R.money.paid.length ? `<div class="r"><span>${en ? "Paid" : "المدفوع"}</span><span>${h(R.money.paid.join(" · "))}</span></div>` : "") : ""}
+<p class="m" style="margin-top:26px">Eyeblink Studio · eyeblinkstudio.com</p></div></body></html>`;
+}
+async function reportArgs(env, D, row){ const u = await userOf(env, row.email), en = u && u.lang === "en", R = JSON.parse(row.data);
+  return { t: { client_email: row.email, ref: "", title: rPeriod(R, en) }, extra: { preport: R, rid: row.id, name: rPeriod(R, en), hash: "#w/reports/" + row.id, studioNote: row.note || undefined } }; }
+async function makeReport(env, D, email, from, to, c){ const R = await periodReport(D, email, from, to, c), id = "r_" + randHex(6);
+  await D.prepare("INSERT INTO client_reports (id, email, from_d, to_d, data, created_at) VALUES (?,?,?,?,?,?)").bind(id, email, from, to, JSON.stringify(R), now()).run();
+  return D.prepare("SELECT * FROM client_reports WHERE id=?").bind(id).first(); }
+// the sweep: reports that are due today (Gulf time), inside the quiet hours, at most hourly
+async function runClientReports(env, D){
+  const Q = (await rulesOf(env)).quiet, g = gulf(), hr = g.getUTCHours(), td = g.toISOString().slice(0, 10);
+  if (hr < Q.from || hr >= Q.to) return;
+  const last = await D.prepare("SELECT v FROM meta WHERE k='crsweep'").first(); if (last && Date.now() - +last.v < 3600e3) return;
+  await D.prepare("INSERT INTO meta (k, v) VALUES ('crsweep', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
+  for (const row of (await D.prepare("SELECT * FROM report_cfg WHERE every>0").all()).results) { const c = rcfgOf(row, row.email), n = rNext(c);
+    if (!n || n.date > td || n.from > n.to) continue;
+    await D.prepare("UPDATE report_cfg SET last_to=? WHERE email=?").bind(n.to, row.email).run();   // claimed first: never twice
+    const r = await makeReport(env, D, row.email, n.from, n.to, c), A = await reportArgs(env, D, r), cl = await D.prepare("SELECT name FROM clients WHERE email=?").bind(row.email).first();
+    if (c.mode === "ask") await D.prepare("INSERT INTO pending_sends (rule, key, recipient, kind, t, extra, title, sub, created_at) VALUES ('creport',?,?,'periodReport',?,?,?,?,?)")
+      .bind(r.id, row.email, JSON.stringify(A.t), JSON.stringify(A.extra), "تقرير دوري · " + ((cl && cl.name) || row.email), rPeriod(JSON.parse(r.data), false), now()).run();
+    else await tellClient(env, A.t, "periodReport", A.extra).catch(() => {}); }
+}
 // to the studio: the in-app inbox in the admin panel + the e-mail/Telegram it already had
 function toStudio(ctx, env, subject, text){
   const m = /T-[A-Z0-9]{4,}/.exec(subject);
@@ -865,12 +957,13 @@ async function sweepNotify(env){ try {
   // the automatic messages (Notifications → rules): at most hourly, inside the quiet hours; then the studio's morning digest
   await runRules(env, D);
   await runDigest(env, D);
+  await runClientReports(env, D);
   // recurring tasks whose date has come
   const rec = (await D.prepare("SELECT * FROM recurring WHERE active=1 AND next_run<=? LIMIT 10").bind(today()).all()).results;
   for (const r of rec) await runRecurring({}, env, D, r, r.next_run);
   // monthly reports switched to automatic: during the first days of the month, once per project
   if (new Date().getUTCDate() <= 5 && (await rulesOf(env)).rules.report.mode !== "off") { const pm = prevMonth();
-    const auto = (await D.prepare("SELECT p.* FROM projects p WHERE p.auto_report=1 AND p.status='active' AND NOT EXISTS (SELECT 1 FROM meta m WHERE m.k='rep:'||p.id||':'||?) LIMIT 5").bind(pm).all()).results;
+    const auto = (await D.prepare("SELECT p.* FROM projects p WHERE p.auto_report=1 AND p.status='active' AND NOT EXISTS (SELECT 1 FROM meta m WHERE m.k='rep:'||p.id||':'||?) AND NOT EXISTS (SELECT 1 FROM report_cfg r WHERE r.email=p.client_email AND r.every>0) LIMIT 5").bind(pm).all()).results;
     for (const p of auto) await sendReport({}, env, D, p, pm); }
 } catch {} }
 
@@ -916,6 +1009,10 @@ export async function onRequestGet(ctx) {
     const month = isMonth(q.get("month")) ? q.get("month") : monthOf(now()), R = await monthReport(D, p, month);
     return q.get("reportDoc") ? htmlRes(reportPage(R, u, u.lang === "en" ? "en" : "ar")) : json({ ok: true, report: R });
   }
+  if (q.get("view") === "reports") return json({ ok: true, reports: (await D.prepare("SELECT id, from_d, to_d, data, sent_at FROM client_reports WHERE email=? AND sent_at IS NOT NULL ORDER BY to_d DESC LIMIT 60").bind(e).all()).results
+    .map(r => { let R = {}; try { R = JSON.parse(r.data); } catch {} return { id: r.id, from: r.from_d, to: r.to_d, nums: R.nums || {}, projects: (R.projects || []).map(p => p.name) }; }) });
+  if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=? AND email=? AND sent_at IS NOT NULL").bind(clip(q.get("creportDoc"), 20), e).first(); if (!r) return htmlRes("not found", 404);
+    return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
   if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)) });
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
     return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
@@ -964,7 +1061,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1236,6 +1333,8 @@ async function adminGet(request, env, q){
     const projects = (await D.prepare("SELECT id, name, client_email, status FROM projects ORDER BY updated_at DESC").all()).results;
     return json({ ok: true, invoices, projects, clients: await clientsList(env), today: today() });
   }
+  if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=?").bind(clip(q.get("creportDoc"), 20)).first(); if (!r) return htmlRes("not found", 404);
+    const u = (await userOf(env, r.email)) || { email: r.email, name: "" }; return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x) return htmlRes("not found", 404);
     const u = (await userOf(env, x.client_email)) || { email: x.client_email, name: "" };
     return htmlRes(billPage(x, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"), { project: x.project_name, email: (await siteSettings(env)).email })); }
@@ -1397,6 +1496,7 @@ async function adminPost(ctx, d){
   if (d.action === "notifyPreview") {   // the send sheet: the exact e-mail, the WhatsApp text to copy, and which channels reach this client
     const kind = clip(d.kind, 20); let t, extra = {};
     if (d.pending) { const p = await D.prepare("SELECT * FROM pending_sends WHERE id=?").bind(+d.pending || 0).first(); if (!p) return json({ ok: false }, 404); t = JSON.parse(p.t); extra = JSON.parse(p.extra); }
+    else if (d.creport) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=?").bind(clip(d.creport, 20)).first(); if (!r) return json({ ok: false }, 404); ({ t, extra } = await reportArgs(env, D, r)); }
     else if (d.invoice) { const x = await invoiceOf(D, d.invoice); if (!x) return json({ ok: false }, 404); ({ t, extra } = invoiceArgs(x, kind)); }
     else if (d.ref) { const row = await D.prepare("SELECT * FROM tasks WHERE ref=? OR id=?").bind(clip(d.ref, 40), clip(d.ref, 40)).first(); if (!row) return json({ ok: false }, 404);
       const o = d.over || {}; t = { ...parse(row), ...(STATUSES.includes(o.status) ? { status: o.status } : {}), ...(isDate(o.confirmed_date) ? { confirmed_date: o.confirmed_date } : {}) };
@@ -1408,6 +1508,7 @@ async function adminPost(ctx, d){
     else if (d.client) {   // something not created yet (a new project, task, invoice): the form's own values
       t = { client_email: String(d.client).toLowerCase().trim(), ref: "", title: clip(d.title, 120), confirmed_date: isDate(d.date) ? d.date : null, status: "accepted" }; extra = { name: clip(d.name, 120), id: "" }; }
     else return json({ ok: false }, 400);
+    if (d.note !== undefined && extra.preport) extra.studioNote = clip(d.note, 600);
     const u = await userOf(env, t.client_email); if (!u) return json({ ok: true, account: false });
     const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
     const m = d.client && /^invoice/.test(kind) ? { subject: "", html: "" } : composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
@@ -1420,6 +1521,27 @@ async function adminPost(ctx, d){
       channels: { email: !!(P ? (P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) : true), push: devices > 0, wa: !!(P && P.consent && P.wa_phone && waReady(env, cfg)) },
       why: { email: P && !(P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) ? "off" : "", push: devices > 0 ? "" : "none", wa: !waReady(env, cfg) ? "meta" : !(P && P.consent && P.wa_phone) ? "consent" : "" } });
   }
+  if (d.action === "reportCfgGet" || d.action === "reportCfgSave") {
+    const email = clip(d.email, 254).toLowerCase(); let row = await D.prepare("SELECT * FROM report_cfg WHERE email=?").bind(email).first();
+    if (d.action === "reportCfgSave") { const every = [0, 7, 14, 30, 45, 60].includes(+d.every) ? +d.every : 0, dow = Math.max(0, Math.min(6, parseInt(d.dow) || 0));
+      const pids = Array.isArray(d.projects) ? d.projects.map(x => clip(x, 40)).slice(0, 50) : "all", inc = {}; for (const k in RINC) inc[k] = d.inc && d.inc[k] ? 1 : 0;
+      await D.prepare("INSERT INTO report_cfg (email, every, dow, mode, projects, inc, started, updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET every=excluded.every, dow=excluded.dow, mode=excluded.mode, projects=excluded.projects, inc=excluded.inc, started=COALESCE(report_cfg.started, excluded.started), updated_at=excluded.updated_at")
+        .bind(email, every, dow, d.mode === "auto" ? "auto" : "ask", JSON.stringify(pids), JSON.stringify(inc), every ? gulf().toISOString().slice(0, 10) : null, at).run();
+      row = await D.prepare("SELECT * FROM report_cfg WHERE email=?").bind(email).first(); }
+    const c = rcfgOf(row, email), reports = (await D.prepare("SELECT id, from_d, to_d, sent_at, created_at, data FROM client_reports WHERE email=? ORDER BY created_at DESC LIMIT 30").bind(email).all()).results
+      .map(r => { let n = {}; try { n = JSON.parse(r.data).nums; } catch {} return { id: r.id, from: r.from_d, to: r.to_d, sent_at: r.sent_at, nums: n }; });
+    return json({ ok: true, cfg: c, next: rNext(c), reports, projects: (await D.prepare("SELECT id, name, type FROM projects WHERE client_email=? AND status!='archived' ORDER BY created_at").bind(email).all()).results });
+  }
+  if (d.action === "reportBuild") {   // "send a report now": from the day after the last one (or the last 30 days) to today
+    const email = clip(d.email, 254).toLowerCase(), c = rcfgOf(await D.prepare("SELECT * FROM report_cfg WHERE email=?").bind(email).first(), email), td = gulf().toISOString().slice(0, 10);
+    const from = isDate(d.from) ? d.from : c.last_to ? dAdd(c.last_to, 1) : dAdd(td, -30), to = isDate(d.to) ? d.to : td;
+    if (from > to) return json({ ok: false, error: "range" }, 400);
+    const r = await makeReport(env, D, email, from, to, c); return json({ ok: true, id: r.id });
+  }
+  if (d.action === "reportSend") { const r = await D.prepare("SELECT * FROM client_reports WHERE id=?").bind(clip(d.id, 20)).first(); if (!r) return json({ ok: false }, 404);
+    const A = await reportArgs(env, D, r);
+    await D.prepare("UPDATE report_cfg SET last_to=? WHERE email=? AND (last_to IS NULL OR last_to<?)").bind(r.to_d, r.email, r.to_d).run();
+    later(ctx, tellAdmin(ctx, env, A.t, "periodReport", A.extra)); return json({ ok: true, scheduled: !!(ctx.notify && ctx.notify.at) }); }
   if (d.action === "rulesGet") return json({ ok: true, ...(await rulesOf(env)), defaults: RULES });
   if (d.action === "rulesSave") {
     const cur = await rulesOf(env), r = d.rules || {}, q = d.quiet || {}, rules = {};

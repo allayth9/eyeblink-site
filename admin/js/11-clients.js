@@ -100,7 +100,7 @@
       '<dl class="pkg-dl"><div><dt>الرابط</dt><dd dir="ltr">'+esc(k.link)+'</dd></div><div><dt>البريد</dt><dd dir="ltr">'+esc(k.email)+'</dd></div><div><dt>كلمة السر المؤقتة</dt><dd dir="ltr" class="pkg-pw">'+esc(k.password)+'</dd></div></dl>'+
       '<pre class="pkg-msg" dir="auto">'+esc(pkgMsg(k))+'</pre>'+
       '<div class="actions"><button class="btn sm primary" type="button" data-pkgcopy>نسخ الرسالة</button><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/'+digits+'?text='+encodeURIComponent(pkgMsg(k))+'">إرسال عبر واتساب'+(digits?'':' (اختر جهة الاتصال)')+'</a><button class="btn sm" type="button" data-pkgpw>نسخ كلمة السر</button></div></section>'; }
-  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['brand','مكتبة الهوية'],['support','الدعم'],['log','سجل النشاط']];
+  var PSECS=[['overview','نظرة عامة'],['projects','المشاريع'],['orders','الطلبات'],['tasks','المهام'],['billing','الفواتير والمدفوعات'],['files','الملفات'],['brand','مكتبة الهوية'],['reports','التقارير'],['support','الدعم'],['log','سجل النشاط']];
   function renderProfile(){ var P=PROF;
     if(P.err) { $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="empty">'+(P.err==='live'?'يعمل هذا القسم على الموقع المنشور.':P.err==='db'?'قاعدة البيانات غير مربوطة.':'تعذّر تحميل ملف العميل.')+'</div></section>'; return; }
     if(!P.d){ $('#panel').innerHTML='<section class="sec"><button class="btn sm" type="button" data-pclose>← كل العملاء</button><div class="skel"><i></i><i></i><i></i></div></section>'; return; }
@@ -125,7 +125,7 @@
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea name="notes" dir="auto" rows="3">'+esc(c.notes||'')+'</textarea></div><div class="actions"><button class="btn primary sm" type="submit">حفظ البيانات</button></div></form>'
         :(c.notes?'<div class="cp-notes"><span class="small muted">ملاحظات داخلية</span><p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p></div>':''))+
       '<nav class="cp-tabs" role="tablist">'+PSECS.map(function(x){ return '<button type="button" role="tab" class="t-'+x[0]+'" aria-selected="'+(PSEC===x[0])+'" data-psec="'+x[0]+'">'+x[1]+(cnt[x[0]]?' <small>'+cnt[x[0]]+'</small>':'')+'</button>'; }).join('')+'</nav></section>';
-    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,brand:pBrand,support:pSupport,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
+    $('#panel').innerHTML=head+pkgCard()+'<div class="cp-body">'+({overview:pOverview,projects:pProjects,orders:pOrders,tasks:pTasks,billing:pBilling,files:pFiles,brand:pBrand,reports:pReports,support:pSupport,log:pLog}[PSEC]||pOverview)(D,ords,listC)+'</div>';
   }
   function kpi(n,l,k){ var fam={'#F5C66B':' ck-wait','#7DD3FC':' ck-ok'}[k]||''; return '<div class="ck'+fam+'"><b>'+n+'</b><span>'+l+'</span></div>'; }
   function due2(D){ var due={},paid={}; D.invoices.forEach(function(x){ if(x.status!=='cancelled') paid[x.currency]=(paid[x.currency]||0)+x.paid-(x.refunded||0); if(x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0) due[x.currency]=(due[x.currency]||0)+x.balance; });
@@ -429,3 +429,34 @@
   document.addEventListener('click',function(e){ var b=e.target.closest('[data-pedit]'); if(!b||TAB!=='clients') return; var id=b.dataset.pedit;
     TAB='tasks'; WSUB='projects'; WPEDIT=id; WOPEN=null; route(); render(); loadWork();
     setTimeout(function(){ var f=document.querySelector('.wpf[data-wpid="'+id+'"]'); if(f){ f.scrollIntoView({block:'center'}); var n=f.elements.name; if(n) n.focus(); } },900); });
+
+  /* ---------------- periodic reports (19 Nov): the client's rhythm, what goes in, and the reports already made ---------------- */
+  var RPC=null, RPT=0, RPF=[[7,'كل أسبوع'],[14,'كل أسبوعين'],[30,'كل شهر'],[45,'كل شهر ونصف'],[60,'كل شهرين'],[0,'يدوياً فقط']], RPD=[[6,'السبت'],[0,'الأحد'],[1,'الاثنين'],[2,'الثلاثاء'],[3,'الأربعاء'],[4,'الخميس']];
+  var RPI=[['done','ما أنجزناه (المهام المكتملة والنسخ المسلّمة)'],['nums','الأرقام: المكتمل، والنسخ، والالتزام بالمواعيد'],['waiting','ما ينتظر رأي العميل'],['next','القادم في الفترة المقبلة'],['money','الفواتير والمدفوعات']];
+  function rfd(d,wk){ return new Date(d+'T12:00:00Z').toLocaleDateString('ar-u-nu-latn',wk?{weekday:'long',day:'numeric',month:'long'}:{day:'numeric',month:'long'}); }
+  function pReports(){ if(!RPC||RPC.email!==PROF.email){ RPC={email:PROF.email}; wpost({action:'reportCfgGet',email:PROF.email}).then(function(j){ if(j.ok){ RPC=Object.assign({email:PROF.email},j); if(PSEC==='reports') renderClients(); } }); return '<section class="sec"><div class="skel"><i></i><i></i></div></section>'; }
+    if(!RPC.cfg) return '<section class="sec"><div class="skel"><i></i><i></i></div></section>';
+    var c=RPC.cfg, P=RPC.projects||[], all=c.projects==='all', on=function(id){ return all||(c.projects||[]).indexOf(id)>=0; }, n=RPC.next;
+    return '<section class="sec rp"><h3>التقارير الدورية</h3><p class="hint">تقرير يقول للعميل ما أنجزناه منذ آخر تقرير، بالتكرار الذي يناسبه.</p>'+
+      '<div><div class="rp-l">التكرار</div><div class="rp-seg" role="group" aria-label="التكرار">'+RPF.map(function(f){ return '<button type="button" data-rpe="'+f[0]+'" aria-pressed="'+(c.every===f[0])+'">'+f[1]+'</button>'; }).join('')+'</div></div>'+
+      '<div class="rp-2"><div><div class="rp-l">يوم الإرسال</div><select data-rpd aria-label="يوم الإرسال">'+RPD.map(function(d){ return '<option value="'+d[0]+'"'+(c.dow===d[0]?' selected':'')+'>'+d[1]+'</option>'; }).join('')+'</select></div>'+
+        '<div><div class="rp-l">قبل الإرسال</div><div class="rp-seg" role="group" aria-label="قبل الإرسال"><button type="button" data-rpm="ask" aria-pressed="'+(c.mode==='ask')+'">أراجعه أولاً</button><button type="button" data-rpm="auto" aria-pressed="'+(c.mode==='auto')+'">يُرسل تلقائياً</button></div></div></div>'+
+      '<div><div class="rp-l">يشمل</div><div class="rp-chips" role="group" aria-label="المشاريع"><button type="button" data-rpp="*" aria-pressed="'+all+'">كل المشاريع</button>'+P.map(function(p){ return '<button type="button" data-rpp="'+esc(p.id)+'" aria-pressed="'+(!all&&on(p.id))+'">'+esc(p.name)+'</button>'; }).join('')+'</div></div>'+
+      '<div><div class="rp-l">في التقرير</div><div class="rp-inc">'+RPI.map(function(i){ return '<label>'+i[1]+'<input class="nc-tog" type="checkbox" data-rpi="'+i[0]+'"'+(c.inc[i[0]]?' checked':'')+'></label>'; }).join('')+'</div></div>'+
+      '<div class="rp-next"><i></i><span>'+(c.every&&n?'التقرير القادم: <b>'+esc(rfd(n.date,1))+'</b> · يغطي من '+esc(rfd(n.from))+' إلى '+esc(rfd(n.to)):c.every?'يبدأ العدّ من اليوم':'يدوياً فقط: أرسل تقريراً متى شئت، ويغطي ما بعد آخر تقرير')+'</span><button class="btn sm" type="button" data-rpnow>أرسل تقريراً الآن…</button></div></section>'+
+      '<section class="sec"><h3>التقارير السابقة</h3>'+((RPC.reports||[]).length?'<div class="rp-list">'+RPC.reports.map(function(r){ return '<div class="rp-row"><div><b>من '+esc(rfd(r.from))+' إلى '+esc(rfd(r.to))+'</b><small>'+(r.nums&&r.nums.done!=null?r.nums.done+' مهام · '+(r.nums.versions||0)+' نسخ':'')+'</small></div><span class="rpill'+(r.sent_at?' on':'')+'">'+(r.sent_at?'أُرسل':'لم يُرسل')+'</span><button class="btn sm" type="button" data-rpv="'+esc(r.id)+'">عرض</button></div>'; }).join('')+'</div>':'<div class="empty">لم يُرسل أي تقرير بعد.</div>')+'</section>'; }
+  function rpSave(){ clearTimeout(RPT); RPT=setTimeout(function(){ var c=RPC.cfg;
+    wpost({action:'reportCfgSave',email:RPC.email,every:c.every,dow:c.dow,mode:c.mode,projects:c.projects,inc:c.inc}).then(function(j){ if(j.ok){ RPC=Object.assign({email:RPC.email},j); toast('حُفظ'); if(PSEC==='reports') renderClients(); } else toast('تعذّر الحفظ',true); }); },350); }
+  document.addEventListener('click',function(e){ if(TAB!=='clients'||PSEC!=='reports'||!RPC||!RPC.cfg) return; var b=e.target.closest('button'); if(!b) return; var c=RPC.cfg;
+    if(b.dataset.rpe!==undefined){ c.every=+b.dataset.rpe; renderClients(); rpSave(); return; }
+    if(b.dataset.rpm){ c.mode=b.dataset.rpm; renderClients(); rpSave(); return; }
+    if(b.dataset.rpp){ var k=b.dataset.rpp, ids=(RPC.projects||[]).map(function(p){ return p.id; });
+      if(k==='*') c.projects='all'; else { var cur=c.projects==='all'?[]:(c.projects||[]).slice(), i=cur.indexOf(k); if(i>=0) cur.splice(i,1); else cur.push(k); c.projects=cur.length&&cur.length<ids.length?cur:'all'; }
+      renderClients(); rpSave(); return; }
+    if(b.dataset.rpv){ docOpen(API+'/work?admin=1&creportDoc='+encodeURIComponent(b.dataset.rpv)); return; }
+    if(b.hasAttribute('data-rpnow')){ b.disabled=true; var em=RPC.email; wpost({action:'reportBuild',email:em}).then(function(j){ b.disabled=false; if(!j.ok) return toast(j.error==='range'?'لا فترة جديدة منذ آخر تقرير':'تعذّر التجهيز',true);
+      sendSheet({title:'تقرير دوري · '+((PROF.d&&PROF.d.client&&PROF.d.client.name)||em),rows:[],pv:{kind:'periodReport',creport:j.id},noteField:true}).then(function(n){ if(!n){ RPC=null; renderClients(); return; }
+        wpost({action:'reportSend',id:j.id,notify:n}).then(function(r){ toast(r.ok?sndSay(n,'أُرسل التقرير'):'تعذّر الإرسال',!r.ok); RPC=null; renderClients(); }); }); }); return; } });
+  document.addEventListener('change',function(e){ if(TAB!=='clients'||PSEC!=='reports'||!RPC||!RPC.cfg) return; var el=e.target;
+    if(el.hasAttribute('data-rpd')){ RPC.cfg.dow=+el.value; rpSave(); }
+    if(el.dataset.rpi){ RPC.cfg.inc[el.dataset.rpi]=el.checked?1:0; rpSave(); } });
