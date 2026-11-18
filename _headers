@@ -1,7 +1,7 @@
 /*
   X-Frame-Options: SAMEORIGIN
   Content-Security-Policy: frame-ancestors 'self'
-  Strict-Transport-Security: max-age=31536000
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 /assets/css/*
   Cache-Control: public, max-age=300, must-revalidate
