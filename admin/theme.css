@@ -62,6 +62,10 @@ body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none
 #tsheet,#dsheet,#cmdk,.scrim{background:rgba(var(--scr),.4);backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%)}
 :root[data-theme="light"] #tsheet,:root[data-theme="light"] #dsheet,:root[data-theme="light"] #cmdk,:root[data-theme="light"] .scrim{background:rgba(var(--k-light-rgb),.45)}
 #tsheet .dbox,#dsheet .dbox{border-radius:24px}
+/* the window's header: edge to edge, with the window's own top corners and frosted material (it stays on top while the form scrolls) */
+#tsheet .dtop,#dsheet .dtop{margin:0 -22px 6px;padding:18px 22px 14px;border-radius:24px 24px 0 0;background:rgba(var(--k-card-rgb),.78);backdrop-filter:blur(18px) saturate(120%);-webkit-backdrop-filter:blur(18px) saturate(120%)}
+:root[data-theme="light"] #tsheet .dtop,:root[data-theme="light"] #dsheet .dtop{background:rgba(var(--k-white-rgb),.86)}
+@media (max-width:700px){ #tsheet .dtop,#dsheet .dtop{margin:0 -14px 6px;padding:14px;border-radius:0} }
 :root[data-theme="light"] .side,:root[data-theme="light"] .top,:root[data-theme="light"] .sec,:root[data-theme="light"] .login .card,:root[data-theme="light"] .cmd,
 :root[data-theme="light"] #tsheet .dbox,:root[data-theme="light"] #dsheet .dbox,:root[data-theme="light"] .toast{
   box-shadow:inset 1.5px 1.5px 0 var(--k-white),inset -1px -1px 0 rgba(var(--k-g3-rgb),.14),inset 0 18px 30px -20px rgba(var(--k-white-rgb),.9),0 0 0 1px rgba(var(--k-g3-rgb),.05),var(--glass-shadow)}
