@@ -27,7 +27,7 @@
   function wdelivs(t){ var L=WORK.deliverables||[], can=['accepted','progress','revision','feedback','final'].indexOf(t.status)>=0, next=(L.length?L[0].version:0)+1;
     var rounds=L.filter(function(d){return d.status==='changes'}).length;
     return '<div class="wdv"><div class="ph"><b>التسليمات'+(rounds?' · جولة التعديل '+rounds:'')+'</b></div>'+
-      (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b> · <span class="wpill tf-'+(d.status==='sent'?'wait':d.status==='approved'?'ok':d.status==='changes'?'fix':'off')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
+      (L.length?L.map(function(d,i){ return '<div class="wdi'+(i===0?' latest':'')+'"><div class="small"><span class="wver'+(d.is_final?' fin':'')+'">'+esc(d.is_final?'Final':d.label)+'</span> <b>'+esc(d.title||t.title)+'</b><button class="wren" type="button" data-wren="'+esc(t.ref)+'" data-wrd="'+esc(d.id)+'" data-wrn="'+esc(d.title||t.title)+'" aria-label="تعديل اسم الفيديو" title="تعديل الاسم">✎</button> · <span class="wpill tf-'+(d.status==='sent'?'wait':d.status==='approved'?'ok':d.status==='changes'?'fix':'off')+'">'+esc(WDS[d.status]||d.status)+'</span> <span class="muted">'+esc(new Date(d.created_at).toLocaleString('ar'))+'</span></div>'+
         '<div>'+wlinks([{url:d.url,label:'افتح الملف'}].concat(d.links||[]))+'</div>'+(d.note?'<div class="small muted">ملاحظتك مع التسليم: '+esc(d.note)+'</div>':'')+
         (isVault(d.url)?'<video class="wrv-a" src="'+esc(d.url.replace(/^https?:\/\/[^\/]+/,''))+'" controls preload="metadata" playsinline></video>':'')+
         ((d.points||[]).length?'<div class="small muted" style="margin-top:6px">الملاحظات على هذه النسخة:</div><ol class="wpts-a">'+d.points.map(function(p,k){ var st=p.status||(p.done?'resolved':'open');
@@ -178,7 +178,7 @@
     var tasksView='<div class="osplit'+(sel?' has-open':'')+'"><ul class="olist">'+
         (queued.length?'<li class="olh">بانتظار قرارك · '+queued.length+'</li>'+queued.map(wtaskRow).join('')+(list.length?'<li class="olh">كل المهام · '+list.length+'</li>':''):'')+list.map(wtaskRow).join('')+
         (rows.length?'':'<li class="olh">لا مهام هنا</li>')+'</ul>'+
-        (sel?'<div class="order item odetail wt tf-'+(TFAM[sel.status]||'new')+'" data-wref="'+esc(sel.ref)+'"><div class="odh"><button class="btn sm oback" type="button" data-wback>‹ كل المهام</button><span class="code">'+esc(sel.ref)+'</span><span class="tag">'+esc(WST[sel.status]||sel.status)+'</span><b>'+esc(sel.title)+'</b><span class="muted small">'+esc(sel.project_name||'')+' · المطلوب '+esc(wd(sel.requested_date))+(sel.confirmed_date?' · المؤكد '+esc(wd(sel.confirmed_date)):'')+'</span></div><div class="body">'+wtaskBody(sel)+'</div></div>'
+        (sel?'<div class="order item odetail wt tf-'+(TFAM[sel.status]||'new')+'" data-wref="'+esc(sel.ref)+'"><div class="odh"><button class="btn sm oback" type="button" data-wback>‹ كل المهام</button><span class="code">'+esc(sel.ref)+'</span><span class="tag">'+esc(WST[sel.status]||sel.status)+'</span><b>'+esc(sel.title)+'</b><button class="wren" type="button" data-wren="'+esc(sel.ref)+'" data-wrn="'+esc(sel.title)+'" aria-label="تعديل اسم المهمة" title="تعديل الاسم">✎</button><span class="muted small">'+esc(sel.project_name||'')+' · المطلوب '+esc(wd(sel.requested_date))+(sel.confirmed_date?' · المؤكد '+esc(wd(sel.confirmed_date)):'')+'</span></div><div class="body">'+wtaskBody(sel)+'</div></div>'
           :'<div class="odetail empty-sel">اختر مهمة من القائمة</div>')+'</div>';
     $('#panel').innerHTML='<section class="sec kcsec"><div class="kcs">'+
         kc(cnt(function(t){return t.status==='new'||t.status==='review'}),'طلبات جديدة','new','orders')+kc(cnt(function(t){return ['accepted','progress','revision'].indexOf(t.status)>=0}),'قيد التنفيذ','prod','k_play')+
@@ -204,6 +204,15 @@
   document.addEventListener('click',function(e){ if(TAB!=='tasks') return; var b=e.target.closest('[data-wsel],[data-wback],[data-wsub]'); if(!b) return;
     if(b.dataset.wsub){ WSUB=b.dataset.wsub; WOPEN=null; route(); renderWork(); return; }
     WOPEN=b.dataset.wsel||null; route(); renderWork(); if(WOPEN) loadWork(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); });
+  // renaming in place: the name turns into a field; Enter or «حفظ» saves, Escape or «إلغاء» leaves it as it was
+  function wrenSave(f){ var v=f.querySelector('input').value.trim(), b=f._b; if(!v&&!b.dataset.wrd) return toast('اكتب الاسم',true);
+    wreq({action:'taskRename',task:b.dataset.wren,deliverable:b.dataset.wrd||undefined,title:v},f.querySelector('[data-wrs]'),'حُفظ الاسم').catch(function(){}); }
+  document.addEventListener('click',function(e){ if(TAB!=='tasks') return; var b=e.target.closest('[data-wren],[data-wrs],[data-wrc]'); if(!b) return;
+    if(b.hasAttribute('data-wren')){ var nm=b.previousElementSibling, f=document.createElement('span'); f.className='wren-f'; f._b=b; f._nm=nm;
+      f.innerHTML='<input dir="auto" maxlength="140" aria-label="'+esc(b.getAttribute('aria-label'))+'"><button class="btn sm primary" type="button" data-wrs>حفظ</button><button class="btn sm" type="button" data-wrc>إلغاء</button>';
+      f.querySelector('input').value=b.dataset.wrn; nm.hidden=true; b.hidden=true; b.after(f); f.querySelector('input').select(); return; }
+    var f2=b.closest('.wren-f'); if(b.hasAttribute('data-wrs')) return wrenSave(f2); f2._nm.hidden=false; f2._b.hidden=false; f2.remove(); });
+  document.addEventListener('keydown',function(e){ var f=e.target.closest&&e.target.closest('.wren-f'); if(!f) return; if(e.key==='Enter'){ e.preventDefault(); wrenSave(f); } else if(e.key==='Escape'){ e.preventDefault(); f.querySelector('[data-wrc]').click(); } });
   document.addEventListener('change',function(e){ var s=e.target; if(TAB!=='tasks') return;
     if(s.hasAttribute('data-wdfile')&&s.files[0]){ var fb=s.closest('.wsend'), bar=fb.querySelector('.wup'), f0=s.files[0]; bar.hidden=false; bar.querySelector('span').textContent='جارٍ الرفع… 0%'; s.disabled=true;
       vaultUpload(f0,function(p){ bar.querySelector('i').style.width=Math.round(p*100)+'%'; bar.querySelector('span').textContent='جارٍ الرفع… '+Math.round(p*100)+'%'; }).then(function(j){ fb.querySelector('[data-wdu]').value=j.url; bar.querySelector('span').textContent='اكتمل الرفع ✓ '+f0.name+' — اضغط الآن «أرسل التسليم للعميل»'; s.disabled=false; })
