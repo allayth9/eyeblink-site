@@ -159,6 +159,10 @@ const MIGRATIONS = [
   "ALTER TABLE tasks ADD COLUMN invoice_id TEXT",
   "ALTER TABLE invoices ADD COLUMN annex TEXT",
   "ALTER TABLE invoices ADD COLUMN links TEXT",
+  // 19 Nov, once: Otad's «أزميل» episodes were filed under one-off works; they are a finished program of their own
+  "INSERT INTO projects (id, client_email, name, type, status, created_at, updated_at) SELECT 'p_azm' || lower(hex(randomblob(5))), c.email, 'أزميل', 'program', 'completed', strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM clients c WHERE (c.name LIKE '%أوتاد%' OR c.name LIKE '%اوتاد%') AND NOT EXISTS (SELECT 1 FROM projects x WHERE x.client_email=c.email AND x.name='أزميل') AND EXISTS (SELECT 1 FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=c.email AND p.single=1 AND (k.title LIKE 'أزميل%' OR k.title LIKE 'ازميل%'))",
+  "UPDATE tasks SET project_id=(SELECT x.id FROM projects x WHERE x.client_email=tasks.client_email AND x.name='أزميل' LIMIT 1), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE (title LIKE 'أزميل%' OR title LIKE 'ازميل%') AND project_id IN (SELECT id FROM projects WHERE single=1) AND EXISTS (SELECT 1 FROM projects x WHERE x.client_email=tasks.client_email AND x.name='أزميل')",
+  "UPDATE deliverables SET project_id=(SELECT k.project_id FROM tasks k WHERE k.id=deliverables.task_id) WHERE task_id IN (SELECT k.id FROM tasks k JOIN projects x ON x.id=k.project_id WHERE x.name='أزميل') AND project_id<>(SELECT k.project_id FROM tasks k WHERE k.id=deliverables.task_id)",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
