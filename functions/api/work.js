@@ -1831,14 +1831,22 @@ async function adminPost(ctx, d){
     // work already finished (before the client joined the workspace, or done off the platform): recorded as completed on its day,
     // so the reports count it in its period; the client is not notified about it
     const dd = d.done ? clip(d.done_date, 10) : ""; if (d.done && (!isDate(dd) || dd > today())) return json({ ok: false, error: "date" }, 400);
-    const id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", st = d.done ? "completed" : cd ? "accepted" : "review";
-    const born = d.done ? dd + "T12:00:00.000Z" : at;
-    await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, confirmed_date, status, assignee, created_by, created_at, updated_at, completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'studio',?,?,?)`)
-      .bind(id, ref, p.id, p.client_email, title, clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, born, born, d.done ? born : null).run();
-    await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, by_studio: true, confirmed_date: cd || null, priority: pr, done_before: d.done ? dd : undefined } });
+    const pr = PRIORITIES.includes(d.priority) ? d.priority : "normal", st = d.done ? "completed" : cd ? "accepted" : "review", born = d.done ? dd + "T12:00:00.000Z" : at;
+    // several at once (4 posters, 3 episodes…): each its own task, named one by one or numbered after the title; with the unit of the client's package
+    const n = Math.max(1, Math.min(30, Math.round(+d.count || 1))), names = Array.isArray(d.names) ? d.names.map(x => clip(x, 140)) : [];
+    const ag = p.in_pkg !== 0 && d.unit ? await agreementOf(D, p.client_email) : null, un = ag && ag.terms.units.find(u => u.id === d.unit) || null;
+    const refs = [];
+    for (let i = 0; i < n; i++) {
+      const id = "t_" + randHex(8), ref = await newRef(D), tt = names[i] || (n > 1 ? title + " " + (i + 1) : title);
+      await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, priority, confirmed_date, status, assignee, created_by, created_at, updated_at, completed_at, unit) VALUES (?,?,?,?,?,?,?,?,?,?,?,'studio',?,?,?,?)`)
+        .bind(id, ref, p.id, p.client_email, tt, un ? un.name : clip(d.type, 60), clip(d.description, 4000), pr, cd || null, st, clip(d.assignee, 80) || null, born, born, d.done ? born : null, un ? un.id : null).run();
+      await act(D, { ...studio, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title: tt, by_studio: true, confirmed_date: cd || null, priority: pr, done_before: d.done ? dd : undefined } });
+      refs.push(ref);
+    }
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
-    if (!d.done) later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref, title, confirmed_date: cd || null, status: st }, "added"));
-    return json({ ok: true, ref });
+    // one message to the client, even for several tasks
+    if (!d.done) later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref: refs[0], title: n > 1 ? title + " (" + n + ")" : title, confirmed_date: cd || null, status: st }, "added"));
+    return json({ ok: true, ref: refs[0], refs });
   }
   if (d.action === "point" || d.action === "pointAdd") {
     const dl = parseD(await D.prepare("SELECT * FROM deliverables WHERE id=?").bind(clip(d.deliverable, 40)).first() || {}); if (!dl.id) return json({ ok: false }, 404);

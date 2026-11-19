@@ -985,6 +985,9 @@ html{-webkit-tap-highlight-color:transparent}
 .cp-use{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px}
 .cp-u{display:grid;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--line)}.cp-u .num{font-family:Oswald,sans-serif;font-size:18px}.cp-u.full{border-color:rgba(var(--k-amber-rgb),.5)}
 .wpkg{margin:4px 0}
+.cl-step{display:flex;gap:6px;align-items:center}.cl-step input{width:70px;text-align:center}
+.cl-names{display:grid;gap:8px}.cl-nl{display:flex;flex-wrap:wrap;gap:6px}.cl-nl[hidden]{display:none}
+.cl-n{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0}.cl-n input{flex:1;min-width:0}.cl-n .num{min-width:20px;color:var(--k-dim);font-family:Oswald,sans-serif}
 .cp-carry{display:grid;gap:8px;margin:10px 0;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
 .cp-cu{display:flex;align-items:center;justify-content:space-between;gap:10px}.cp-cu input{width:90px}
 .wxt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}

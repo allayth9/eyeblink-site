@@ -94,7 +94,8 @@
     ['#clProj [type=submit],.wpf [type=submit]',function(b){ var f=b.form; if(f.dataset.wpid) return null; var n=f.elements.name.value.trim(), c=f.elements.client_email?f.elements.client_email.value:PROF&&PROF.email; if(!n||!c) return null;
       return {title:'مشروع جديد للعميل',rows:[['المشروع',n]],pv:{kind:'project',client:c,name:n}}; }],
     ['#clTask [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!PROF||(E.done&&E.done.checked)) return null;   // work done before: saved quietly, nothing to send
-      return {title:'مهمة جديدة من الاستوديو',rows:[['المهمة',t],['الموعد المؤكد',E.confirmed_date.value&&wd(E.confirmed_date.value)]],pv:{kind:'added',client:PROF.email,title:t,date:E.confirmed_date.value}}; }],
+      var nn=Math.max(1,+(E.count&&E.count.value)||1);
+      return {title:nn>1?nn+' مهام جديدة من الاستوديو':'مهمة جديدة من الاستوديو',rows:[['المهمة',nn>1?t+' ('+nn+')':t],['الموعد المؤكد',E.confirmed_date.value&&wd(E.confirmed_date.value)]],pv:{kind:'added',client:PROF.email,title:t,date:E.confirmed_date.value}}; }],
     ['#clFile [type=submit]',function(b){ var E=b.form.elements, t=E.title.value.trim(); if(!t||!/^https?:\/\/\S+$/i.test(E.url.value.trim())) return null;
       return {title:'مشاركة ملف مع العميل',rows:[['الملف',t]],pv:{kind:'file',project:E.project.value,file:t}}; }],
     ['.cl-pay [type=submit]',function(b){ var id=b.closest('[data-iid]').dataset.iid, x=((PROF&&PROF.d&&PROF.d.invoices)||[]).filter(function(v){ return v.id===id; })[0], a=+b.form.elements.amount.value; if(!(a>0)||!x||!x.sent_at) return null;

@@ -178,7 +178,10 @@
   var TGRP={open:OPENS,done:['completed'],closed:['rejected','cancelled'],all:null};
   function pTasks(D){ var list=D.tasks.filter(function(t){ return (!TGRP[PTF]||TGRP[PTF].indexOf(t.status)>=0)&&(!PROF.proj||t.project_id===PROF.proj); }), act=D.projects.filter(function(p){ return p.status==='active'||p.status==='paused'; }), td=D.today;
     return '<section class="sec"><div class="ph"><h3>المهام</h3>'+(act.length?'<button class="btn sm primary" type="button" data-pnewt>+ مهمة جديدة</button>':'')+'</div>'+
-      '<form class="cl-task" id="clTask" hidden novalidate><div class="row"><div class="field"><label>المشروع *</label><select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(PROF.proj===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div><div class="field"><label>العنوان *</label><input name="title" dir="auto" required></div></div>'+
+      '<form class="cl-task" id="clTask" hidden novalidate><div class="row"><div class="field"><label>المشروع *</label><select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(PROF.proj===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div><div class="field"><label>العنوان *</label><input name="title" dir="auto" required placeholder="مثلاً: بوستر، أو حلقة"></div></div>'+
+        '<div class="row"><div class="field cl-cnt"><label>العدد</label><div class="cl-step"><button type="button" class="btn sm" data-cstep="-1" aria-label="أقل">−</button><input name="count" type="number" min="1" max="30" value="1" dir="ltr"><button type="button" class="btn sm" data-cstep="1" aria-label="أكثر">+</button></div></div>'+
+          (D.agreement?'<div class="field"><label>الوحدة من باقة العميل</label><select name="unit"><option value="">—</option>'+D.agreement.units.map(function(u){ return '<option value="'+esc(u.id)+'">'+esc(u.name)+'</option>'; }).join('')+'</select></div>':'')+'</div>'+
+        '<div class="cl-names" hidden><label class="check"><input type="checkbox" name="named" data-cnamed> سمِّ كل واحدة باسمها <span class="small muted">(وإلا تُرقَّم بعد العنوان: بوستر 1، بوستر 2…)</span></label><div class="cl-nl" hidden></div></div>'+
         '<div class="row"><div class="field"><label>الأولوية</label><select name="priority">'+Object.keys(WPR).map(function(k){ return '<option value="'+k+'">'+WPR[k]+'</option>'; }).join('')+'</select></div><div class="field"><label>تاريخ الاستحقاق</label><input name="confirmed_date" type="date"></div><div class="field"><label>المسؤول عن التنفيذ</label><input name="assignee" dir="auto" placeholder="اختياري"></div></div>'+
         '<div class="field"><label>الوصف</label><textarea name="description" dir="auto" rows="2"></textarea></div>'+
         '<div class="row cl-done"><label class="check"><input type="checkbox" name="done" data-tdone> مهمة منجزة سابقاً</label><div class="field" data-tdd hidden><label>تاريخ الإنجاز</label><input name="done_date" type="date" max="'+new Date().toISOString().slice(0,10)+'" value="'+new Date().toISOString().slice(0,10)+'"></div></div>'+
@@ -264,7 +267,9 @@
       creq({action:'project',client_email:PROF.email,name:E.name.value.trim(),type:E.type.value,start_date:E.start_date.value,end_date:E.end_date.value,quota:E.quota.value,description:E.description.value.trim()},b,'أُنشئ المشروع').catch(function(){}); return; }
     if(f.id==='clTask'){ if(!E.title.value.trim()){ toast('اكتب عنوان المهمة',true); return; }
       var dn=E.done.checked; if(dn&&!E.done_date.value){ toast('اختر تاريخ الإنجاز',true); return; }
-      creq({action:'studioTask',project:E.project.value,title:E.title.value.trim(),priority:E.priority.value,confirmed_date:E.confirmed_date.value,assignee:E.assignee.value.trim(),description:E.description.value.trim(),done:dn,done_date:dn?E.done_date.value:''},b,dn?'سُجّلت المهمة مكتملة':'أُنشئت المهمة ووصل إشعار إلى العميل').catch(function(){}); return; }
+      var cnt=Math.max(1,Math.min(30,+E.count.value||1)), nm=E.named&&E.named.checked?[].map.call(f.querySelectorAll('.cl-nl input'),function(i){ return i.value.trim(); }):[];
+      creq({action:'studioTask',project:E.project.value,title:E.title.value.trim(),priority:E.priority.value,confirmed_date:E.confirmed_date.value,assignee:E.assignee.value.trim(),description:E.description.value.trim(),done:dn,done_date:dn?E.done_date.value:'',
+        count:cnt,names:nm,unit:E.unit?E.unit.value:''},b,dn?(cnt>1?'سُجّلت '+cnt+' مهام مكتملة':'سُجّلت المهمة مكتملة'):(cnt>1?'أُنشئت '+cnt+' مهام ووصل إشعار واحد إلى العميل':'أُنشئت المهمة ووصل إشعار إلى العميل')).catch(function(){}); return; }
     if(f.id==='clFile'){ var u=E.url.value.trim(); if(!E.title.value.trim()||!/^https?:\/\/\S+$/i.test(u)){ toast('اكتب الاسم ورابطاً يبدأ بـ https://',true); return; }
       creq({action:'studioFile',project:E.project.value,category:E.category.value,title:E.title.value.trim(),url:u},b,'أُضيف الملف').catch(function(){}); return; }
     if(f.classList.contains('cl-pay')){ var id=f.closest('[data-iid]').dataset.iid, amt=+E.amount.value; if(!(amt>0)){ toast('اكتب مبلغاً صحيحاً',true); return; }
@@ -388,6 +393,14 @@
     if((b=e.target.closest('[data-avset]'))){ var inp=document.querySelector('[data-avfile]'); if(inp) inp.click(); return; }
     if((b=e.target.closest('[data-avbrand]'))){ var a=brandPic(PROF.d||{}); if(a) avFrom(String(a.url).replace(/^https?:\/\/[^\/]+/,''),b); return; }
     if((b=e.target.closest('[data-avdel]'))){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='تأكيد الحذف'; return; } avSave(null,b,'حُذفت الصورة'); } });
+  // several at once: the count, then (optional) a name for each one; the names follow the title as you type it
+  function clNames(f){ var n=Math.max(1,Math.min(30,+f.elements.count.value||1)), box=f.querySelector('.cl-names'), nl=f.querySelector('.cl-nl'), on=f.elements.named.checked, t=f.elements.title.value.trim();
+    box.hidden=n<2; nl.hidden=!on||n<2; if(!on||n<2) return; var old=[].map.call(nl.querySelectorAll('input'),function(i){ return i.dataset.typed?i.value:null; });
+    nl.innerHTML=''; for(var i=0;i<n;i++){ var r=document.createElement('div'); r.className='cl-n'; r.innerHTML='<span class="num">'+(i+1)+'</span><input dir="auto" maxlength="140" aria-label="اسم رقم '+(i+1)+'">'; var inp=r.querySelector('input');
+      if(old[i]!=null){ inp.value=old[i]; inp.dataset.typed='1'; } else inp.value=t?t+' '+(i+1):''; inp.oninput=function(){ this.dataset.typed='1'; }; nl.appendChild(r); } }
+  document.addEventListener('click',function(e){ var b=e.target.closest('[data-cstep]'); if(!b) return; var f=b.closest('form'), i=f.elements.count; i.value=Math.max(1,Math.min(30,(+i.value||1)+(+b.dataset.cstep))); clNames(f); });
+  document.addEventListener('input',function(e){ var i=e.target; if(TAB!=='clients'||!i.form||i.form.id!=='clTask') return; if(i.name==='count'||i.name==='title') clNames(i.form); });
+  document.addEventListener('change',function(e){ if(e.target.hasAttribute&&e.target.hasAttribute('data-cnamed')) clNames(e.target.form); });
   // «done before»: the completion date shows, and the note under the form says what will (and will not) happen
   document.addEventListener('change',function(e){ var c=e.target; if(TAB!=='clients'||!c.hasAttribute('data-tdone')) return; var f=c.form;
     f.querySelector('[data-tdd]').hidden=!c.checked; f.querySelectorAll('[data-th]').forEach(function(p){ p.hidden=(p.dataset.th==='1')!==c.checked; }); });
