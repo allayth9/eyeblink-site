@@ -43,11 +43,12 @@
     if(!it.length){ var pj=(BFORM&&BFORM.project&&ids[BFORM.project])?BFORM.project:(P.length===1?P[0].id:''); f._sc.keys[pj]=1; }
     f._init=it; f.querySelector('.bgroups').innerHTML=''; bGroups(f,true); bAgree(f,x); }
   // what this client agreed to, per project: a monthly package or a price per unit; one click fills this month's invoice from it
-  function bAgree(f,x){ var box=f.querySelector('.bagree'); if(!box) return; var P=x?[]:bPN(f).filter(function(p){ return p.terms; });
-    box.innerHTML=P.map(function(p){ var t=p.terms, u=t.units.map(function(u){ return u.name+(t.mode==='package'?' '+u.inc:' '+u.price+(t.cur||'')); }).join('، ');
-      return '<div class="bag"><div><b>'+esc(p.name)+'</b> <span class="tag">'+(t.mode==='package'?'باقة شهرية · '+t.price+(t.cur||''):'سعر للوحدة')+'</span><div class="small muted">'+esc(u)+'</div></div>'+
-        '<button class="btn sm primary" type="button" data-bmb="'+esc(p.id)+'">عبّئ فاتورة هذا الشهر</button></div>'; }).join('')+
-      (P.length?'':(x||!f.elements.email.value?'':'<p class="hint">لا يوجد اتفاق لمشاريع هذا العميل، فالفاتورة تُكتب يدوياً. يُضاف الاتفاق من «تعديل» المشروع ← «اتفاق المشروع».</p>')); }
+  function bAgree(f,x){ var box=f.querySelector('.bagree'); if(!box) return; var em=f.elements.email.value, t=!x&&em&&(BILL.agreements||{})[em];
+    if(!t){ box.innerHTML=x||!em?'':'<p class="hint">لا توجد باقة لهذا العميل، فالفاتورة تُكتب يدوياً. تُضاف الباقة من ملف العميل ← المشاريع ← «باقة العميل».</p>'; return; }
+    var out=bPN(f).filter(function(p){ return p.in_pkg===0; }), u=t.units.map(function(u){ return u.name+(t.mode==='package'?' '+u.inc:' '+u.price+(t.cur||'')); }).join('، ');
+    box.innerHTML='<div class="bag"><div><b>باقة العميل</b> <span class="tag">'+(t.mode==='package'?'باقة شهرية · '+t.price+(t.cur||''):'سعر للوحدة')+'</span><div class="small muted">'+esc(u)+'</div>'+
+      (out.length?'<div class="small muted">خارج الباقة: '+esc(out.map(function(p){ return p.name; }).join('، '))+' (تُكتب بنودها يدوياً)</div>':'')+'</div>'+
+      '<button class="btn sm primary" type="button" data-bmb="'+esc(em)+'">عبّئ فاتورة هذا الشهر</button></div>'; }
   function bGroups(f,first){ var P=bPN(f), sc=f._sc, nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
     var keys=P.filter(function(p){ return sc.all||sc.keys[p.id]; }).map(function(p){ return p.id; }).concat(sc.keys['']?['']:[]); if(!keys.length){ sc.keys['']=1; keys=['']; }
     var chip=function(k,l,on){ return '<button type="button" class="bsc" data-bsc="'+esc(k)+'" aria-pressed="'+!!on+'">'+esc(l)+'</button>'; };
@@ -140,7 +141,7 @@
     bpost({action:'invoice',id:f.dataset.bid||undefined,client_email:E.email.value,scope:f._sc&&f._sc.all&&bPN(f).length>1?'all':undefined,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,note:E.note.value.trim(),send:E.send.checked},
       f.querySelector('button[type=submit]'),E.send.checked?'حُفظت الفاتورة وأُرسلت إلى العميل':'حُفظت الفاتورة').then(function(j){ if(j.ok){ BFORM=null; BOPEN='ws:'+j.id; route(true); } }); });
   document.addEventListener('click',function(e){ if(TAB!=='billing') return; var b=e.target.closest('button'); if(!b) return;
-    if(b.dataset.bmb){ wpost({action:'monthBill',project:b.dataset.bmb}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true); if(!j.items.length) return toast('لا بنود لهذا الشهر بعد',true);
+    if(b.dataset.bmb){ wpost({action:'monthBill',email:b.dataset.bmb}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true); if(!j.items.length) return toast('لا بنود لهذا الشهر بعد',true);
         BFORM={email:j.email,project:j.project,items:j.items,title:j.title,currency:j.cur}; renderBilling(); toast('عُبّئت فاتورة الشهر من الاتفاق، راجعها قبل الإرسال'); }); return; }
     if(b.hasAttribute('data-bpurge')){ wpost({action:'invoicesPurge'}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true);
         purgeWin({title:'حذف كل الفواتير',sub:'لبداية نظيفة بعد الفواتير التجريبية. الطلبات والعملاء والمشاريع تبقى كما هي.',counts:[[j.invoices,' فاتورة للعملاء'],[j.orders,' فاتورة على الطلبات'],['0001',' رقم الفاتورة القادمة (يبدأ الترقيم من جديد)',1]],

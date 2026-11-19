@@ -120,7 +120,7 @@
       '<div class="row"><div class="field"><label>الوصف (يظهر للعميل)</label><textarea name="description" dir="auto">'+esc(p.description||'')+'</textarea></div><div class="field"><label>المخرجات المتفق عليها شهرياً (اختياري)</label><input type="number" min="0" name="quota" value="'+esc(p.quota||'')+'"><p class="hint">عدد المهام المتفق عليه شهرياً. يراه العميل، وتُعلَّم المهام الزائدة بـ«خارج الحصة» دون منعها.</p></div></div>'+
       '<div class="row"><div class="field"><label>رابط مجلد المشروع على Google Drive (اختياري)</label><input name="drive_url" dir="ltr" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(p.drive_url||'')+'"></div>'+
         '<div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="auto_report"'+(p.auto_report?' checked':'')+'> أرسل التقرير الشهري للعميل تلقائياً أول كل شهر</label></div></div>'+
-      termsForm(p.terms)+
+      '<label class="check wpkg"><input type="checkbox" name="in_pkg"'+(p.in_pkg===0?'':' checked')+'> ضمن باقة العميل <span class="small muted">(مهامه تُحسب من باقته الشهرية؛ أزل التحديد لمشروع يُفوتر وحده)</span></label>'+
       '<div class="actions"><button class="btn primary sm" type="submit">'+(p.id?'حفظ المشروع':'إنشاء المشروع')+'</button>'+(p.id?'<button class="btn sm" type="button" data-wpx>إلغاء</button><button class="btn sm danger" type="button" data-wpdel="'+esc(p.id)+'">حذف المشروع…</button>':'')+'</div></form>'; }
   /* ---- the project's agreement: a monthly package or a price per unit, and the extras a task may carry (the client approves each before the work) ---- */
   var XK={flat:'مبلغ ثابت',pct:'نسبة من سعر الوحدة',dur:'حسب المدة'};
@@ -132,12 +132,12 @@
     '<input data-k="max" type="number" min="1" placeholder="الحد (ث)" value="'+esc(x.max||50)+'"'+(x.kind==='dur'?'':' hidden')+'><input data-k="step" type="number" min="1" placeholder="الخطوة (ث)" value="'+esc(x.step||30)+'"'+(x.kind==='dur'?'':' hidden')+'>'+
     '<button type="button" class="linkbtn" data-trm aria-label="حذف">×</button></div>'; }
   function termsForm(t){ var m=(t&&t.mode)||'';
-    return '<details class="wterms"'+(t?' open':'')+'><summary>اتفاق المشروع <span class="small muted">'+(m==='package'?'باقة شهرية':m==='unit'?'سعر للوحدة':'بلا حساب')+'</span></summary>'+
+    return '<details class="wterms"'+(t?' open':'')+'><summary>باقة العميل <span class="small muted">'+(m==='package'?'باقة شهرية':m==='unit'?'سعر للوحدة':'بلا حساب')+'</span></summary>'+
       '<div class="wt-modes" role="radiogroup">'+[['','بلا حساب'],['package','باقة شهرية'],['unit','سعر للوحدة']].map(function(o){ return '<label class="check"><input type="radio" name="t_mode" value="'+o[0]+'"'+(o[0]===m?' checked':'')+'> '+o[1]+'</label>'; }).join('')+'</div>'+
       '<div class="wt-body"'+(m?'':' hidden')+'><div class="row wt-pkg"'+(m==='package'?'':' hidden')+'><div class="field"><label>سعر الباقة الشهري</label><input name="t_price" type="number" min="0" step="any" value="'+esc(t&&t.price||'')+'"></div><div class="field"><label>العملة</label><input name="t_cur" dir="ltr" value="'+esc(t&&t.cur||'$')+'"></div></div>'+
         '<div class="small muted">الوحدات <span class="wt-uh">'+(m==='unit'?'(الاسم · السعر)':'(الاسم · العدد بالباقة · سعر الوحدة الإضافية)')+'</span></div><div class="wt-units">'+((t&&t.units)||[{}]).map(function(u){ return tUnit(u,m); }).join('')+'</div><button type="button" class="btn sm" data-tadd="u">+ وحدة</button>'+
         '<div class="small muted">الطلبات الإضافية <span>(اختيارية، يوافق عليها العميل قبل التنفيذ)</span></div><div class="wt-extras">'+((t&&t.extras)||[]).map(tExtra).join('')+'</div><button type="button" class="btn sm" data-tadd="x">+ طلب إضافي</button>'+
-        '<p class="hint">الوحدات تظهر للعميل عند إنشاء المهمة، ويرى ما استهلكه من الباقة وسعر الوحدة الإضافية فقط. ترحيل غير المستهلك يدويّ، من زر «الرصيد المرحّل» على المشروع في ملف العميل.</p></div></details>'; }
+        '<p class="hint">الوحدات تظهر للعميل عند إنشاء أي مهمة في مشروع ضمن الباقة، ويرى ما استهلكه وسعر الوحدة الإضافية فقط. ترحيل غير المستهلك يدويّ، من «الرصيد المرحّل».</p></div></details>'; }
   function termsOf(f){ var m=(f.querySelector('input[name=t_mode]:checked')||{}).value; if(!m) return null;
     var row=function(r){ var o={}; r.querySelectorAll('[data-k]').forEach(function(i){ o[i.dataset.k]=i.value.trim(); }); return o; };
     return {mode:m,price:f.elements.t_price.value,cur:f.elements.t_cur.value,
@@ -153,7 +153,7 @@
   // a task's unit and extras (from its project's agreement)
   document.addEventListener('change',function(e){ var s=e.target; if(!s.dataset||!s.dataset.wunit) return; wreq({action:'taskUnit',task:s.dataset.wunit,unit:s.value},null,'حُفظت الوحدة').catch(function(){}); });
   var XST={pending:'بانتظار موافقة العميل',accepted:'وافق العميل',declined:'طلب العميل الالتزام بالإطار المتفق عليه'};
-  function wterms(t){ var p=(WORK.projects||[]).filter(function(x){ return x.id===t.project_id; })[0], T=p&&p.terms; if(!T) return '';
+  function wterms(t){ var p=(WORK.projects||[]).filter(function(x){ return x.id===t.project_id; })[0], T=p&&p.in_pkg!==0&&(WORK.agreements||{})[t.client_email]; if(!T) return '';
     var ex=t.extras, done=ex&&ex.state==='accepted', on={}, dur=T.extras.some(function(x){ return x.kind==='dur'; }); (ex&&ex.items||[]).forEach(function(x){ on[x.id]=1; });
     return '<div class="wxt"><div class="row"><div class="field"><label>الوحدة</label><select data-wunit="'+esc(t.ref)+'"><option value="">—</option>'+T.units.map(function(u){ return '<option value="'+esc(u.id)+'"'+(u.id===t.unit?' selected':'')+'>'+esc(u.name)+'</option>'; }).join('')+'</select></div></div>'+
       (ex?'<div class="wx-now"><span class="tag '+(ex.state==='accepted'?'ok':ex.state==='declined'?'':'pr-high')+'">'+esc(XST[ex.state]||ex.state)+'</span> '+ex.items.map(function(x){ return esc(x.name+(x.detail?' ('+x.detail+')':'')+' · '+x.amount+(ex.cur||'')); }).join('، ')+'</div>':'')+
@@ -211,7 +211,7 @@
     if(!s.dataset.wf) return; WF[s.dataset.wf]=s.value; renderWork(); });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList.contains('wpf')) return; e.preventDefault(); var E=f.elements;
     var body={action:'project',id:f.dataset.wpid||undefined,client_email:E.client_email.value,name:E.name.value.trim(),type:E.type.value,status:E.status.value,start_date:E.start_date.value,end_date:E.end_date.value,
-      description:E.description.value.trim(),quota:E.quota.value,terms:termsOf(f),cadence:E.type.value==='program'?{days:[].map.call(f.querySelectorAll('input[name=cad_day]:checked'),function(i){return i.value})}:null,drive_url:E.drive_url.value.trim(),auto_report:E.auto_report.checked,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
+      description:E.description.value.trim(),quota:E.quota.value,in_pkg:E.in_pkg.checked,cadence:E.type.value==='program'?{days:[].map.call(f.querySelectorAll('input[name=cad_day]:checked'),function(i){return i.value})}:null,drive_url:E.drive_url.value.trim(),auto_report:E.auto_report.checked,services:[].map.call(f.querySelectorAll('input[name=svc]:checked'),function(i){return i.value})};
     wreq(body,f.querySelector('button[type=submit]'),f.dataset.wpid?'حُفظ المشروع':'أُنشئ المشروع وأُرسل بريد إلى العميل').then(function(){ WPEDIT=null; }).catch(function(){}); });
   document.addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||TAB!=='tasks') return; var box=b.closest('.wtb');
     if(b.dataset.wpe){ WPEDIT=b.dataset.wpe; renderWork(); return; }

@@ -293,7 +293,7 @@
       .concat((j.recurring||[]).map(function(r){ return {d:r.next_run,h:'<li><span class="wz-row"><b class="wz-d">'+esc(d8(r.next_run))+'</b><span class="wz-t"><b><bdi>'+esc(r.title)+'</bdi> <span class="tprio p-rec">'+HM.rec+'</span></b><small class="muted"><bdi>'+esc(r.project_name)+'</bdi></small></span></span></li>'}; }))
       .sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:0; }).map(function(x){ return x.h; })
       .concat((j.moves||[]).map(function(t){ var cr=t.change_request||{}; return '<li class="wz-mv"><a href="#w/t/'+esc(t.ref)+'"><b class="wz-d">'+esc(d8(t.confirmed_date))+' '+ar+' '+esc(d8(cr.date))+'</b><span class="wz-t"><b>'+HM.move+': <bdi>'+esc(t.title)+'</bdi></b><small class="muted">'+HM.moveP+'</small></span></a></li>'; }));
-    host.innerHTML=head('overview','WORKSPACE','<span class="wgreet">'+esc(greet(first))+'</span>',U2.hiP)+welcome(j,c,act)+z1+
+    host.innerHTML=head('overview','WORKSPACE','<span class="wgreet">'+esc(greet(first))+'</span>',U2.hiP)+welcome(j,c,act)+z1+agCard(j.agreement,j.projects)+
       (j.projects.length?'<section class="wsec">'+wh(HM.z2,'#A78BFA','<a class="wh-more" href="#w/projects">'+U2.allProj+' '+ar+'</a>')+(act.length?'<div class="wprojects">'+act.slice(0,6).map(projCard).join('')+'</div>':'<p class="muted small">'+T.empty+'</p>')+'</section>'+
         '<div class="wz3"><section class="wsec">'+wh(HM.z3a,'#E07BE0')+(vers.length?'<ul class="wz-l2">'+vers.join('')+'</ul>':'<p class="muted small">'+HM.noV+'</p>')+'</section>'+
         '<section class="wsec">'+wh(HM.z3b,'#F5C66B')+(dates.length?'<ul class="wz-l2">'+dates.join('')+'</ul>':'<p class="muted small">'+HM.noD+'</p>')+'</section></div>'
@@ -310,7 +310,7 @@
     return '<aside class="wwel glass" role="note"><div><b>'+HM.w.h+'</b><p>'+esc(line)+'</p></div>'+btn+'<button type="button" class="wwel-x" aria-label="'+HM.w.x+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></aside>'; }
   function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
     return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
-      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(agMeters(p)||(p.quota?quotaBar(p.month_tasks||0,p.quota):''))+'</a>'+
+      '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(agPull(p)||(p.quota&&!(DASH&&DASH.agreement)?quotaBar(p.month_tasks||0,p.quota):''))+'</a>'+
       (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
@@ -325,7 +325,7 @@
     api('?view=dash').then(function(j){ if(!j.ok) return fail(j); j._at=Date.now(); DASH=j; var all=false;
       var draw=function(){ var L2=j.projects.filter(function(p){ return all||p.status==='active'||p.status==='paused'; });
         host.querySelector('.wprojects').innerHTML=L2.length?L2.map(projCard).join(''):'<div class="wcard glass wempty"><p>'+T.empty+'</p></div>'; };
-      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,'<div class="wph-acts">'+(j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+'<button type="button" class="eb-metal wnp-btn">'+ICO.plus+'<span>'+NP.btn+'</span></button></div>')+seg('projects')+npForm()+'<div class="wprojects wprojects-lg"></div>';
+      host.innerHTML=head('projects','PROJECTS',U2.nav.projects,U2.projectsP,'<div class="wph-acts">'+(j.projects.some(function(p){ return p.status==='completed'||p.status==='archived'; })?'<label class="wtoggle"><input type="checkbox"> '+U2.showAll+'</label>':'')+'<button type="button" class="eb-metal wnp-btn">'+ICO.plus+'<span>'+NP.btn+'</span></button></div>')+seg('projects')+agCard(j.agreement,j.projects)+npForm()+'<div class="wprojects wprojects-lg"></div>';
       bindNP(host,function(){ projectsView(); });
       var tg=host.querySelector('.wtoggle input'); if(tg) tg.onchange=function(){ all=tg.checked; draw(); };
       draw(); rise(); }); }
@@ -465,9 +465,9 @@
           brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
       var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
         f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
-        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&!pp.agreement&&pp.quota&&(pp.month_tasks||0)+n>pp.quota);
+        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&!agOf(pp)&&pp.quota&&(pp.month_tasks||0)+n>pp.quota);
         // a project with an agreement: its units are the task types
-        var ag=pp&&pp.agreement, dl=f.querySelector('#wTypes'); if(!dl._all) dl._all=dl.innerHTML;
+        var ag=agOf(pp), dl=f.querySelector('#wTypes'); if(!dl._all) dl._all=dl.innerHTML;
         dl.innerHTML=ag?ag.units.map(function(u){ return '<option value="'+esc(u.name)+'">'; }).join(''):dl._all; [].forEach.call(list.children,function(c){ agNote(c,f); }); };
       f.elements.project.onchange=sync;
       f.querySelector('.wm-addb').onclick=function(){ var last=list.lastElementChild, x=last?read(last):null; var d=card(x?{type:x.type,date:x.requested_date,prio:x.priority}:null); d.querySelector('[name=title]').focus(); d.scrollIntoView({block:'center',behavior:'smooth'}); };
@@ -534,7 +534,7 @@
       '<div class="wcard glass wphead" style="--k:'+(TYPEC[p.type]||'#3FE0E8')+'"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
         '<dl class="wmeta">'+(p.start_date?'<div><dt>'+T.start+'</dt><dd>'+esc(d8(p.start_date))+'</dd></div>':'')+(p.end_date?'<div><dt>'+T.end+'</dt><dd>'+esc(d8(p.end_date))+'</dd></div>':'')+
         ((p.services||[]).length?'<div><dt>'+T.services+'</dt><dd>'+p.services.map(function(s){ var sv=(C().services||[]).filter(function(x){return x.id===s})[0]; return '<span class="tag">'+esc(sv?L(sv.name):s)+'</span>'; }).join(' ')+'</dd></div>':'')+'</dl></div>'+
-        '<div class="wphx">'+(agMeters(p)||(p.quota?quotaBar(j.quota_used||0,p.quota):''))+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
+        '<div class="wphx">'+(j.agreement&&p.in_pkg!==0?agMeters(j.agreement,(DASH&&DASH.projects)||[p]):(p.quota?quotaBar(j.quota_used||0,p.quota):''))+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
         (p.status==='active'?'<a class="btn btn-primary" href="#w/new/'+esc(p.id)+'">+ '+T.newTask+'</a>':'')+'</div></div>'+
       '<div class="acct-tabs wptabs" role="tablist">'+[['tasks',T.tabs.tasks,j.tasks.length,'#6E8BFF'],['talk',T.tabs.talk,nc,'#8FA2FF'],['files',T.tabs.files,nf,'#5EF0B0'],['report',T.x.report,0,'#7DD3FC']].map(function(x){
         return '<a role="tab" style="--k:'+x[3]+'" href="#w/p/'+esc(p.id)+(x[0]==='tasks'?'':'/'+x[0])+'" aria-selected="'+(tab===x[0])+'">'+x[1]+(x[2]?' <small>'+x[2]+'</small>':'')+'</a>'; }).join('')+'</div><div class="wpbody"></div>';
@@ -1006,15 +1006,24 @@
       var s=f.querySelector('[type=submit]'); s.disabled=true;
       api('',{action:'projectNew',name:n,type:type,description:f.elements.description.value.trim(),cadence:type==='program'?{days:[].map.call(f.querySelectorAll('input[name=day]:checked'),function(i){return i.value})}:null}).then(function(j){ s.disabled=false;
         if(j&&j.ok){ toast(NP.ok); DASH=null; after(j.id); } else toast(NP.err); }); }; }
-  /* ---- the project's agreement, as the client sees it: what the package holds this month, and extras to approve ---- */
+  /* ---- the client's package, as the client sees it: what the package holds this month, and extras to approve ---- */
   var AGT=AR?{h:'باقتك هذا الشهر',over:'هذه خارج باقتك لهذا الشهر، وتُحتسب بسعر الوحدة الإضافية ',xH:'إضافة بانتظار موافقتك',xP:'تتجاوز هذه المهمة الإطار المتفق عليه، فتُضاف إلى فاتورة هذا الشهر:',
-      ok:'موافق',no:'لنلتزم بالإطار المتفق عليه',noDur:function(s){ return 'لنختصره إلى '+s+' ثانية'; },okT:'شكراً لك، وصلت موافقتك',noT:'وصل طلبك، وسنلتزم بالإطار المتفق عليه',acc:'وافقت على الإضافة',dec:'طلبت الالتزام بالإطار المتفق عليه',of:' من ',cy:function(n){ return '+'+n+' مرحّلة'; }}
+      ok:'موافق',no:'لنلتزم بالإطار المتفق عليه',noDur:function(s){ return 'لنختصره إلى '+s+' ثانية'; },okT:'شكراً لك، وصلت موافقتك',noT:'وصل طلبك، وسنلتزم بالإطار المتفق عليه',acc:'وافقت على الإضافة',dec:'طلبت الالتزام بالإطار المتفق عليه',of:' من ',cy:function(n){ return '+'+n+' مرحّلة'; },pull:'من باقتك هذا الشهر: ',none:'لا شيء بعد'}
     :{h:'Your package this month',over:'This one is past your package for this month, and counts at the extra unit price of ',xH:'An addition awaits your approval',xP:'This task goes beyond the scope we agreed on, so the following is added to this month\'s invoice:',
-      ok:'Approve',no:'Keep to the agreed scope',noDur:function(s){ return 'Shorten it to '+s+' seconds'; },okT:'Thank you, your approval arrived',noT:'Noted. We will keep to the agreed scope',acc:'You approved the addition',dec:'You asked to keep to the agreed scope',of:' of ',cy:function(n){ return '+'+n+' carried over'; }};
-  function agMeters(p){ var a=p.agreement; if(!a||a.mode!=='package') return ''; var U=a.units.filter(function(u){ return u.inc; }); if(!U.length) return '';
-    return '<div class="wag"><span class="wag-h">'+AGT.h+'</span>'+U.map(function(u){ var n=(a.used||{})[u.id]||0, cy=+((a.carried||{})[u.id])||0, have=u.inc+cy, pc=Math.min(100,Math.round(n*100/have));
-      return '<div class="wag-r'+(n>=have?' full':'')+'"><span>'+esc(u.name)+(cy?' <small class="muted">'+AGT.cy(cy)+'</small>':'')+'</span><b dir="ltr">'+n+' / '+have+'</b><i><s style="width:'+pc+'%"></s></i></div>'; }).join('')+'</div>'; }
-  function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0], a=pp&&pp.agreement;
+      ok:'Approve',no:'Keep to the agreed scope',noDur:function(s){ return 'Shorten it to '+s+' seconds'; },okT:'Thank you, your approval arrived',noT:'Noted. We will keep to the agreed scope',acc:'You approved the addition',dec:'You asked to keep to the agreed scope',of:' of ',cy:function(n){ return '+'+n+' carried over'; },pull:'From your package this month: ',none:'nothing yet'};
+  // the package belongs to the client: every project in it draws from the same units; each project keeps its own colour in the bar
+  var AGC=['var(--k-g1)','var(--k-g2)','var(--k-g3)','var(--k-horizon)','var(--k-g4)','var(--k-hour)'];
+  function agOf(p){ return p&&p.in_pkg!==0&&DASH&&DASH.agreement||null; }
+  function agMeters(a,projects){ if(!a||a.mode!=='package') return ''; var U=a.units.filter(function(u){ return u.inc; }); if(!U.length) return '';
+    var ids=[], nm={}; (projects||[]).forEach(function(p){ nm[p.id]=p.name; }); U.forEach(function(u){ Object.keys((a.by||{})[u.id]||{}).forEach(function(k){ if(ids.indexOf(k)<0) ids.push(k); }); });
+    return '<div class="wag"><span class="wag-h">'+AGT.h+'</span>'+U.map(function(u){ var n=(a.used||{})[u.id]||0, cy=+((a.carried||{})[u.id])||0, have=u.inc+cy, by=(a.by||{})[u.id]||{};
+      return '<div class="wag-r'+(n>=have?' full':'')+'"><span>'+esc(u.name)+(cy?' <small class="muted">'+AGT.cy(cy)+'</small>':'')+'</span><b dir="ltr">'+n+' / '+have+'</b><i>'+
+        ids.map(function(k){ return by[k]?'<s style="width:'+Math.min(100,by[k]*100/have)+'%;background:'+(n>=have?'var(--k-amber)':AGC[ids.indexOf(k)%AGC.length])+'"></s>':''; }).join('')+'</i></div>'; }).join('')+
+      (ids.length>1?'<div class="wag-k">'+ids.map(function(k,i){ return '<span><i style="background:'+AGC[i%AGC.length]+'"></i>'+esc(nm[k]||'')+'</span>'; }).join('')+'</div>':'')+'</div>'; }
+  function agCard(a,projects){ var m=agMeters(a,projects); return m?'<section class="wcard glass wagc">'+m+'</section>':''; }
+  function agPull(p){ var a=agOf(p); if(!a) return ''; var w=a.units.map(function(u){ var n=((a.by||{})[u.id]||{})[p.id]; return n?u.name+' '+n:''; }).filter(Boolean);
+    return '<p class="small muted wag-p">'+AGT.pull+(w.length?w.join('، '):AGT.none)+'</p>'; }
+  function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0], a=agOf(pp);
     var v=String(d.querySelector('[name=type]').value||'').trim().toLowerCase(), u=a&&a.mode==='package'?a.units.filter(function(x){ return x.name.toLowerCase()===v; })[0]:null;
     var full=u&&u.inc&&((a.used||{})[u.id]||0)>=u.inc+(+((a.carried||{})[u.id])||0)&&u.price; el.hidden=!full; if(full) el.textContent=AGT.over+'('+u.price+(a.cur||'')+')'; }
   function xtraBox(t){ var x=t.extras; if(!x||!x.items||!x.items.length) return '';

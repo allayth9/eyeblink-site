@@ -982,6 +982,9 @@ html{-webkit-tap-highlight-color:transparent}
 @media (max-width:700px){.wt-row{flex-wrap:wrap}.wt-row>[data-k=name]{flex:1 1 100%}}
 .bagree{display:grid;gap:8px}.bagree:empty{display:none}
 .bag{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;border:1px solid rgba(var(--k-horizon-rgb),.3);background:rgba(var(--k-horizon-rgb),.05)}
+.cp-use{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px}
+.cp-u{display:grid;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--line)}.cp-u .num{font-family:Oswald,sans-serif;font-size:18px}.cp-u.full{border-color:rgba(var(--k-amber-rgb),.5)}
+.wpkg{margin:4px 0}
 .cp-carry{display:grid;gap:8px;margin:10px 0;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
 .cp-cu{display:flex;align-items:center;justify-content:space-between;gap:10px}.cp-cu input{width:90px}
 .wxt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}

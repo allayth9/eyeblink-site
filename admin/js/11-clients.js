@@ -148,14 +148,14 @@
   }
   function pProjects(D,ords){ var em=PROF.email, canP=D.account?D.user.role==='client':(D.client&&D.client.status!=='archived');
     var val=function(pid){ var o={}; D.invoices.filter(function(x){ return x.project_id===pid&&x.status!=='cancelled'; }).forEach(function(x){ o[x.currency]=(o[x.currency]||0)+x.total; }); return o; };
-    return '<section class="sec"><div class="ph"><h3>المشاريع ('+D.projects.length+')</h3>'+(canP?'<button class="btn sm primary" type="button" data-pnewp>+ مشروع جديد</button>':'')+'</div>'+
+    return clientPkg(D)+'<section class="sec"><div class="ph"><h3>المشاريع ('+D.projects.length+')</h3>'+(canP?'<button class="btn sm primary" type="button" data-pnewp>+ مشروع جديد</button>':'')+'</div>'+
       (!canP?'<p class="hint">رقِّ الحساب إلى عميل متعاقد أو أرسل له دعوة لتتمكن من فتح مشروع له.</p>':'')+
       '<form class="cl-proj" id="clProj" hidden novalidate><div class="row"><div class="field"><label>اسم المشروع *</label><input name="name" dir="auto" required></div><div class="field"><label>النوع</label><select name="type">'+Object.keys(WPT).map(function(k){ return '<option value="'+k+'">'+WPT[k]+'</option>'; }).join('')+'</select></div></div>'+
         '<div class="row"><div class="field"><label>تاريخ البدء</label><input name="start_date" type="date"></div><div class="field"><label>تاريخ التسليم</label><input name="end_date" type="date"></div><div class="field"><label>الحصة الشهرية (مهام)</label><input name="quota" type="number" min="0" dir="ltr"></div></div>'+
         '<div class="field"><label>وصف مختصر</label><textarea name="description" dir="auto" rows="2"></textarea></div><div class="actions"><button class="btn primary sm" type="submit">إنشاء المشروع</button></div></form>'+
       (D.projects.length?'<div class="cp-projs">'+D.projects.map(function(p){ var lo=ords.filter(function(o){ return o.projectId===p.id; }).length, fl=D.files.filter(function(f){ return f.project_id===p.id; }).length+D.delivered.filter(function(x){ return x.project_id===p.id; }).length, late=p.status==='active'&&p.end_date&&p.end_date<D.today;
-        return '<article class="cp-proj'+(late?' late':'')+'"><div class="ph"><div><b>'+esc(p.name)+'</b> <span class="small muted">'+esc((WPT[p.type]||p.type)+(typeof cadTxt==='function'?cadTxt(p):''))+'</span></div><div class="cp-pa"><button class="btn sm" type="button" data-pedit="'+esc(p.id)+'">تعديل</button>'+(p.terms?'<button class="btn sm" type="button" data-pmb="'+esc(p.id)+'">فاتورة الشهر</button>':'')+(p.terms&&p.terms.mode==='package'?'<button class="btn sm" type="button" data-pcarry="'+esc(p.id)+'">الرصيد المرحّل</button>':'')+'<select data-pstat="'+esc(p.id)+'" aria-label="حالة المشروع">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(p.status===k?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div></div>'+
-          carryForm(p)+(p.description?'<p class="small cp-desc">'+esc(p.description)+'</p>':'')+
+        return '<article class="cp-proj'+(late?' late':'')+'"><div class="ph"><div><b>'+esc(p.name)+'</b> <span class="small muted">'+esc((WPT[p.type]||p.type)+(typeof cadTxt==='function'?cadTxt(p):''))+'</span></div><div class="cp-pa"><button class="btn sm" type="button" data-pedit="'+esc(p.id)+'">تعديل</button>'+(D.agreement?'<span class="tag'+(p.in_pkg===0?'':' ok')+'">'+(p.in_pkg===0?'خارج الباقة':'ضمن الباقة')+'</span>':'')+'<select data-pstat="'+esc(p.id)+'" aria-label="حالة المشروع">'+Object.keys(WPS).map(function(k){ return '<option value="'+k+'"'+(p.status===k?' selected':'')+'>'+WPS[k]+'</option>'; }).join('')+'</select></div></div>'+
+          (p.description?'<p class="small cp-desc">'+esc(p.description)+'</p>':'')+
           '<div class="cp-meta small"><span>البدء: <b>'+esc(wd(p.start_date))+'</b></span><span>التسليم: <b class="'+(late?'late':'')+'">'+esc(wd(p.end_date))+'</b></span><span>المهام: <b>'+p.open_tasks+'</b> مفتوحة · <b>'+p.done_tasks+'</b> مكتملة</span><span>الطلبات المرتبطة: <b>'+lo+'</b></span><span>الملفات: <b>'+fl+'</b></span><span>القيمة: <b>'+mmap(val(p.id))+'</b></span></div>'+
           '<div class="actions"><button class="btn sm" type="button" data-pgo="tasks" data-pproj="'+esc(p.id)+'">مهامه</button><button class="btn sm" type="button" data-pgo="files" data-pproj="'+esc(p.id)+'">ملفاته</button><button class="btn sm" type="button" data-pspace="'+esc(p.id)+'">مساحة المشروع (النقاش والجدول والتقارير)</button></div></article>'; }).join('')+'</div>'
         :'<div class="empty small">لا توجد مشاريع لهذا العميل بعد.</div>')+'</section>';
@@ -244,7 +244,7 @@
     if(el.hasAttribute('data-pfilter')){ PROF.proj=el.value||null; renderClients(); return; }
     if(el.dataset.pstat){ var p=PROF.d.projects.filter(function(x){ return x.id===el.dataset.pstat; })[0]; if(!p) return;
       creq({action:'project',id:p.id,client_email:PROF.email,name:p.name,description:p.description,type:p.type,status:el.value,services:p.services,start_date:p.start_date,end_date:p.end_date,quota:p.quota,drive_url:p.drive_url,auto_report:!!p.auto_report},null,'تحدّثت حالة المشروع').catch(function(){}); } });
-  document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||!/^cl(Add|Edit|Proj|Task|File)$/.test(f.id)&&!f.classList.contains('cl-pay')) return; e.preventDefault(); var E=f.elements, b=f.querySelector('[type=submit]');
+  document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||!/^cl(Add|Edit|Proj|Task|File|Terms)$/.test(f.id)&&!f.classList.contains('cl-pay')) return; e.preventDefault(); var E=f.elements, b=f.querySelector('[type=submit]');
     if(f.id==='clAdd'){ var em=E.email.value.trim().toLowerCase(), nm=E.name.value.trim(), mode=(f.querySelector('[name=mode]:checked')||{}).value||'ready', lang=E.lang.value, pn=E.pname.value.trim(), ph=E.phone.value.trim();
       if(!nm){ toast('اكتب اسم العميل',true); E.name.focus(); return; } if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ toast('اكتب بريداً صحيحاً',true); E.email.focus(); return; }
       b.disabled=true;
@@ -258,6 +258,7 @@
         return accReq({action:'createAccount',email:em,name:nm,lang:lang,mail:E.mail.checked},null).then(function(r){
           return proj().then(function(){ PKG={email:em,name:nm,password:r.password,link:r.link,lang:r.lang,phone:ph,project:pn,sent:r.sent}; done('جاهز: أرسل للعميل بيانات الدخول'); }); },function(){ done(); });
       }).catch(function(){ b.disabled=false; }); return; }
+    if(f.id==='clTerms'){ creq({action:'clientTerms',email:PROF.email,terms:termsOf(f)},b,'حُفظت باقة العميل').catch(function(){}); return; }
     if(f.id==='clEdit'){ creq({action:'clientSave',email:PROF.email,name:E.name.value.trim(),company:E.company.value.trim(),phone:E.phone.value.trim(),status:E.status.value,notes:E.notes.value},b,'حُفظت بيانات العميل').catch(function(){}); return; }
     if(f.id==='clProj'){ if(!E.name.value.trim()){ toast('اكتب اسم المشروع',true); return; }
       creq({action:'project',client_email:PROF.email,name:E.name.value.trim(),type:E.type.value,start_date:E.start_date.value,end_date:E.end_date.value,quota:E.quota.value,description:E.description.value.trim()},b,'أُنشئ المشروع').catch(function(){}); return; }
@@ -294,11 +295,11 @@
     if(b.dataset.pfc){ PFC=b.dataset.pfc; renderClients(); return; }
     if(b.dataset.pspace){ TAB='tasks'; WF={status:'',client:PROF.email,project:''}; render(); loadWork(); loadSpace(b.dataset.pspace); scrollTo(0,0); return; }
     if(b.dataset.topen){ TAB='tasks'; WOPEN=b.dataset.topen; route(); render(); loadWork(); scrollTo(0,0); return; }
-    if(b.dataset.pcarry){ if(CARRY&&CARRY.pid===b.dataset.pcarry){ CARRY=null; renderClients(); return; }
-      creq({action:'carryInfo',project:b.dataset.pcarry},b,null).then(function(j){ CARRY={pid:b.dataset.pcarry,j:j}; renderClients(); }).catch(function(){}); return; }
+    if(b.hasAttribute('data-pcarry')){ if(CARRY){ CARRY=null; renderClients(); return; }
+      creq({action:'carryInfo',email:PROF.email},b,null).then(function(j){ CARRY={j:j}; renderClients(); }).catch(function(){}); return; }
     if(b.dataset.pcsave){ var fm=b.closest('.cp-carry'), u={}; fm.querySelectorAll('[data-cu]').forEach(function(i){ u[i.dataset.cu]=i.value; });
-      creq({action:'carrySave',project:CARRY.pid,month:CARRY.j.month,units:u},b,'حُفظ الرصيد المرحّل').then(function(){ CARRY=null; }).catch(function(){}); return; }
-    if(b.dataset.pmb){ creq({action:'monthBill',project:b.dataset.pmb},b,null).then(function(j){ if(!j.items.length){ toast('لا بنود لهذا الشهر بعد',true); return; }
+      creq({action:'carrySave',email:PROF.email,month:CARRY.j.month,units:u},b,'حُفظ الرصيد المرحّل').then(function(){ CARRY=null; }).catch(function(){}); return; }
+    if(b.hasAttribute('data-cmb')){ creq({action:'monthBill',email:PROF.email},b,null).then(function(j){ if(!j.items.length){ toast('لا بنود لهذا الشهر بعد',true); return; }
         TAB='billing'; BFORM={email:j.email,project:j.project,items:j.items,title:j.title,currency:j.cur}; render(); if(!BILL) loadBilling(); scrollTo(0,0); }).catch(function(){}); return; }
     if(b.dataset.pinv){ TAB='billing'; BFORM={email:b.dataset.pinv}; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
     if(b.hasAttribute('data-iedit')){ TAB='billing'; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
@@ -365,7 +366,14 @@
   // ---- the client's brand library: the studio can fill it in or correct it (the client sees the same library in the workspace) ----
   // carried units: what was left last month is offered, the studio decides what moves into this month
   var CARRY=null;
-  function carryForm(p){ if(!CARRY||CARRY.pid!==p.id) return ''; var j=CARRY.j, MN=function(m){ return new Date(m+'-15T12:00:00Z').toLocaleDateString('ar-u-nu-latn',{month:'long'}); };
+  // the client's package: one agreement for all their projects in it; what was used this month, the month's invoice and the carried units
+  function clientPkg(D){ var A=D.agreement, use=A&&A.use||{used:{},by:{}}, PN={}; D.projects.forEach(function(p){ PN[p.id]=p.name; });
+    var m=new Date().toISOString().slice(0,7), cy=(A&&A.carry&&A.carry[m])||{};
+    return '<section class="sec cp-pkg"><div class="ph"><h3>باقة العميل</h3>'+(A?'<div class="cp-pa"><button class="btn sm primary" type="button" data-cmb>فاتورة الشهر</button>'+(A.mode==='package'?'<button class="btn sm" type="button" data-pcarry>الرصيد المرحّل</button>':'')+'</div>':'')+'</div>'+
+      (A&&A.mode==='package'?'<div class="cp-use">'+A.units.map(function(u){ var n=use.used[u.id]||0, have=u.inc+(+cy[u.id]||0), by=use.by[u.id]||{};
+        return '<div class="cp-u'+(n>=have?' full':'')+'"><b>'+esc(u.name)+'</b><span class="num">'+n+' / '+have+(cy[u.id]?' <small class="muted">(+'+cy[u.id]+' مرحّلة)</small>':'')+'</span><small class="muted">'+esc(Object.keys(by).map(function(k){ return (PN[k]||'مشروع')+' '+by[k]; }).join('، '))+'</small></div>'; }).join('')+'</div>':'')+
+      carryForm()+'<form id="clTerms" novalidate>'+termsForm(A)+'<div class="actions"><button class="btn sm primary" type="submit">حفظ باقة العميل</button></div></form></section>'; }
+  function carryForm(){ if(!CARRY) return ''; var j=CARRY.j, MN=function(m){ return new Date(m+'-15T12:00:00Z').toLocaleDateString('ar-u-nu-latn',{month:'long'}); };
     return '<div class="cp-carry"><b>الرصيد المرحّل إلى '+esc(MN(j.month))+'</b><p class="small muted">يُضاف إلى باقة هذا الشهر. بجانب كل وحدة ما بقي من '+esc(MN(j.prev))+'.</p>'+
       j.units.map(function(u){ var cur=j.current[u.id]; return '<label class="cp-cu"><span>'+esc(u.name)+' <small class="muted">بقي '+u.left+'</small></span><input type="number" min="0" data-cu="'+esc(u.id)+'" value="'+(cur!=null?cur:u.left)+'"></label>'; }).join('')+
       '<div class="actions"><button class="btn sm primary" type="button" data-pcsave="1">حفظ الرصيد المرحّل</button></div></div>'; }

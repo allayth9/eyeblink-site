@@ -144,6 +144,11 @@ const MIGRATIONS = [
   "ALTER TABLE tasks ADD COLUMN unit TEXT",
   "ALTER TABLE tasks ADD COLUMN extras TEXT",
   "ALTER TABLE projects ADD COLUMN carry TEXT",
+  // 19 Nov: the package belongs to the client (all their projects draw from it); a project can stand outside it
+  "ALTER TABLE clients ADD COLUMN terms TEXT",
+  "ALTER TABLE clients ADD COLUMN carry TEXT",
+  "ALTER TABLE projects ADD COLUMN in_pkg INTEGER NOT NULL DEFAULT 1",
+  "UPDATE clients SET terms=(SELECT p.terms FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1), carry=(SELECT p.carry FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1) WHERE terms IS NULL",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -190,28 +195,35 @@ function extraCost(x, unit, sec){
   return { amount: amt(steps * x.amount), detail: steps ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} · +${steps * x.step}s` : "" };
 }
 const unitOf = (terms, name) => { const n = String(name || "").trim().toLowerCase(); return terms && n ? (terms.units.find(u => u.name.toLowerCase() === n) || null) : null; };
-async function usageOf(D, pid, month){ const o = {};
-  for (const r of (await D.prepare("SELECT unit, COUNT(*) AS n FROM tasks WHERE project_id=? AND unit IS NOT NULL AND substr(created_at,1,7)=? AND status NOT IN ('cancelled','rejected') GROUP BY unit").bind(pid, month).all()).results) o[r.unit] = r.n;
-  return o; }
-// the client's view of the agreement: what is included and what one more costs (package); never the package price or per-unit prices
-async function forClientP(D, p){ if (!p) return p; const t = p.terms, cy = carryOf(p, monthOf(now())); delete p.terms; delete p.carry; if (!t) return p;
-  p.agreement = { mode: t.mode, cur: t.cur, used: await usageOf(D, p.id, monthOf(now())), carried: cy, units: t.units.map(u => ({ id: u.id, name: u.name, ...(t.mode === "package" ? { inc: u.inc, price: u.price || undefined } : {}) })) };
-  return p; }
-// the month's invoice lines for one project: the package (or the units done), units past the package, and the extras the client approved
-async function monthLines(D, p, month){
-  const t = p.terms; if (!t) return [];
-  const tasks = (await D.prepare("SELECT ref, title, unit, status, created_at, completed_at, extras FROM tasks WHERE project_id=? AND status NOT IN ('cancelled','rejected')").bind(p.id).all()).results.map(parse);
+// the client's agreement (clients.terms / clients.carry); projects with in_pkg=1 draw from it
+async function agreementOf(D, email){ const r = await D.prepare("SELECT terms, carry FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); if (!r || !r.terms) return null;
+  let terms, carry; try { terms = JSON.parse(r.terms); } catch { return null; } try { carry = r.carry ? JSON.parse(r.carry) : {}; } catch { carry = {}; } return { terms, carry }; }
+const PKG = "(SELECT id FROM projects WHERE client_email=?1 AND in_pkg=1)";
+// units used this month across the client's projects in the package: in total, and by project
+async function usageOf(D, email, month){ const used = {}, by = {};
+  for (const r of (await D.prepare(`SELECT unit, project_id, COUNT(*) AS n FROM tasks WHERE project_id IN ${PKG} AND unit IS NOT NULL AND substr(created_at,1,7)=?2 AND status NOT IN ('cancelled','rejected') GROUP BY unit, project_id`).bind(email, month).all()).results) {
+    used[r.unit] = (used[r.unit] || 0) + r.n; (by[r.unit] ||= {})[r.project_id] = r.n; }
+  return { used, by }; }
+// a project as the client reads it: never the raw agreement
+async function forClientP(D, p){ if (!p) return p; delete p.terms; delete p.carry; return p; }
+// the client's view of their package: what is included, what was used (and by which project), what one more costs; never the package price or per-unit prices
+async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = monthOf(now()), u = await usageOf(D, email, m);
+  return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
+// the month's invoice lines for one client: the package (or the units done), units past the package, and the extras the client approved (under their project)
+async function monthLines(D, email, month){
+  const a = await agreementOf(D, email); if (!a) return []; const t = a.terms;
+  const tasks = (await D.prepare(`SELECT ref, title, unit, status, created_at, completed_at, extras, project_id FROM tasks WHERE project_id IN ${PKG} AND status NOT IN ('cancelled','rejected')`).bind(email).all()).results.map(parse);
   const inM = d => String(d || "").slice(0, 7) === month, out = [], MN = new Date(month + "-15T12:00:00Z").toLocaleDateString("ar-u-nu-latn", { month: "long", year: "numeric" });
   if (t.mode === "package") {
-    out.push({ desc: "الباقة الشهرية · " + MN, qty: 1, unit: t.price, project: p.id });
+    out.push({ desc: "الباقة الشهرية · " + MN, qty: 1, unit: t.price, project: "" });
     const used = {}; tasks.filter(x => x.unit && inM(x.created_at)).forEach(x => used[x.unit] = (used[x.unit] || 0) + 1);
-    const cy = carryOf(p, month);
-    for (const u of t.units) { const have = u.inc + (+cy[u.id] || 0), more = (used[u.id] || 0) - have; if (more > 0 && u.price) out.push({ desc: u.name + " إضافي (" + (used[u.id]) + " من " + have + ")", qty: more, unit: u.price, project: p.id }); }
+    const cy = carryOf(a, month);
+    for (const u of t.units) { const have = u.inc + (+cy[u.id] || 0), more = (used[u.id] || 0) - have; if (more > 0 && u.price) out.push({ desc: u.name + " إضافي (" + used[u.id] + " من " + have + ")", qty: more, unit: u.price, project: "" }); }
   } else {
-    for (const u of t.units) { const n = tasks.filter(x => x.unit === u.id && x.status === "completed" && inM(x.completed_at)).length; if (n && u.price) out.push({ desc: u.name + " · " + MN, qty: n, unit: u.price, project: p.id }); }
+    for (const u of t.units) { const n = tasks.filter(x => x.unit === u.id && x.status === "completed" && inM(x.completed_at)).length; if (n && u.price) out.push({ desc: u.name + " · " + MN, qty: n, unit: u.price, project: "" }); }
   }
   for (const x of tasks) if (x.extras && x.extras.state === "accepted" && inM(x.completed_at || x.created_at))
-    for (const e of x.extras.items || []) out.push({ desc: x.title + " · " + e.name + (e.detail ? " (" + e.detail + ")" : ""), qty: 1, unit: e.amount, project: p.id });
+    for (const e of x.extras.items || []) out.push({ desc: x.title + " · " + e.name + (e.detail ? " (" + e.detail + ")" : ""), qty: 1, unit: e.amount, project: x.project_id });
   return out;
 }
 function parseA(a){ try { a.data = JSON.parse(a.data || "{}"); } catch { a.data = {}; } return a; }
@@ -1083,7 +1095,7 @@ export async function onRequestGet(ctx) {
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(cparse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
     const recurring = (await D.prepare("SELECT id, title, every, dow, dom, due_days, next_run, active FROM recurring WHERE project_id=? AND active=1 ORDER BY next_run").bind(p.id).all()).results;
-    return json({ ok: true, me: e, project: await forClientP(D, p), tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
+    return json({ ok: true, me: e, project: await forClientP(D, p), agreement: await clientAgreement(D, e), tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
   }
   if (q.get("task")) {
     const t = cparse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
@@ -1114,14 +1126,14 @@ export async function onRequestGet(ctx) {
   const waiting = (await D.prepare(`SELECT t.ref, t.title, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
       AND t.status IN ('info','feedback','final') ORDER BY t.updated_at DESC LIMIT 10`).bind(e).all()).results;
   const bills = await D.prepare("SELECT COUNT(*) AS open, SUM(CASE WHEN due_date<?2 THEN 1 ELSE 0 END) AS overdue FROM invoices WHERE client_email=?1 AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(e, today()).first();
-  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, brand_n: brandN, brand_gap: { clear: !gap.clear, colors: !gap.colors }, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
+  return json({ ok: true, projects, counts, tasks, upcoming, waiting, due, delivered, recurring, moves, tips, agreement: await clientAgreement(D, e), brand_n: brandN, brand_gap: { clear: !gap.clear, colors: !gap.colors }, unread: await unreadN(), bills: { open: (bills && bills.open) || 0, overdue: (bills && bills.overdue) || 0 } });
 }
 
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","clientTerms","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1224,13 +1236,14 @@ export async function onRequestPost(ctx) {
     if (n + items.length > 40) return json({ ok: false, error: "too many attempts" }, 429);
     let used = p.quota ? await quotaUse(D, p.id) : 0; const made = [];
     const lib = items.some(x => x.brand_lib) ? await brandOf(D, p.client_email) : null, libLinks = lib ? lib.assets.filter(a => a.kind !== "other").map(a => ({ label: (u.lang === "en" ? "Brand library · " : "مكتبة الهوية · ") + a.title, url: a.url })) : [];
+    const ag = p.in_pkg !== 0 ? await agreementOf(D, p.client_email) : null;
     for (const x of items) {
       const title = clip(x.title, 140), rd = clip(x.requested_date, 10), id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief && lib && x.brand_lib ? { ...x.brief, brand: brandBrief(lib, u.lang !== "en") } : lib && x.brand_lib ? { brand: brandBrief(lib, u.lang !== "en") } : x.brief);
       const over = p.quota && used >= p.quota ? 1 : 0; used++;   // flagged for the studio, never blocked
       await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(x.type, 60), clip(x.description, 4000), clip(x.details, 6000), clip(x.notes, 3000), pr, rd || null,
         JSON.stringify(cleanLinks((Array.isArray(x.links) ? x.links : []).concat(x.brand_lib ? libLinks : []))), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
-      const un = unitOf(parseP({ ...p }).terms, x.type); if (un) await D.prepare("UPDATE tasks SET unit=? WHERE id=?").bind(un.id, id).run();
+      const un = unitOf(ag && ag.terms, x.type); if (un) await D.prepare("UPDATE tasks SET unit=? WHERE id=?").bind(un.id, id).run();
       await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
       made.push({ id, ref, title, rd, pr, over: !!over });
     }
@@ -1354,6 +1367,7 @@ async function clientsList(env){ const out = []; let cursor;
 // ==== client records (phase 9) ====
 const CSTATUS = ["active","paused","archived"];
 const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || "");
+async function agreementsAll(D){ const o = {}; for (const r of (await D.prepare("SELECT email, terms FROM clients WHERE terms IS NOT NULL").all()).results) { try { o[r.email] = JSON.parse(r.terms); } catch {} } return o; }
 async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
 async function ensureClients(D, list){   // a stable id for every client the studio works with (never overwrites what the studio wrote)
   const st = list.filter(x => x && isEmail(x.email)).map(x => D.prepare("INSERT OR IGNORE INTO clients (id, email, name, created_at, updated_at) VALUES (?,?,?,?,?)").bind("c_" + randHex(6), x.email.toLowerCase(), clip(x.name, 120), now(), now()));
@@ -1399,8 +1413,8 @@ async function adminGet(request, env, q){
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=? AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p ORDER BY p.updated_at DESC`).bind(monthOf(now())).all()).results.map(parseP);
   if (q.get("view") === "billing") {
     const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
-    const projects = (await D.prepare("SELECT id, name, client_email, status, terms FROM projects ORDER BY updated_at DESC").all()).results.map(p => { try { p.terms = p.terms ? JSON.parse(p.terms) : null; } catch { p.terms = null; } return p; });
-    return json({ ok: true, invoices, projects, clients: await clientsList(env), today: today() });
+    const projects = (await D.prepare("SELECT id, name, client_email, status, in_pkg FROM projects ORDER BY updated_at DESC").all()).results;
+    return json({ ok: true, invoices, projects, agreements: await agreementsAll(D), clients: await clientsList(env), today: today() });
   }
   if (q.get("brandZip")) { const em = clip(q.get("brandZip"), 254).toLowerCase(), c = await clientRow(D, em), uu = await userOf(env, em);
     return brandZip(env, await brandKit(D, em), (c && (c.company || c.name)) || (uu && uu.name) || em.split("@")[0]); }
@@ -1431,7 +1445,8 @@ async function adminGet(request, env, q){
     const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
-    return json({ ok: true, client: cr, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    const ag = await agreementOf(D, em);
+    return json({ ok: true, client: cr, agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
@@ -1469,7 +1484,7 @@ async function adminGet(request, env, q){
   const clients = await clientsList(env);
   const inboxUnread = (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient='studio' AND read_at IS NULL").first()).n;
   const pending = (await D.prepare("SELECT id, rule, recipient, kind, title, sub, created_at FROM pending_sends WHERE done_at IS NULL ORDER BY id LIMIT 50").all()).results;   // "ask me first" messages, for Today
-  return json({ ok: true, tasks, projects, clients, activity, deliverables, comments, inboxUnread, pending, today: today() });
+  return json({ ok: true, tasks, projects, clients, agreements: await agreementsAll(D), activity, deliverables, comments, inboxUnread, pending, today: today() });
 }
 
 async function adminPost(ctx, d){
@@ -1673,7 +1688,7 @@ async function adminPost(ctx, d){
       await D.prepare("UPDATE projects SET client_email=?, name=?, description=?, type=?, status=?, services=?, start_date=?, end_date=?, quota=?, drive_url=?, auto_report=?, updated_at=? WHERE id=?")
         .bind(email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, p.id).run();
       await D.prepare("UPDATE projects SET cadence=? WHERE id=?").bind(cadenceOf(f.type, d.cadence), p.id).run();
-      if (d.terms !== undefined) await D.prepare("UPDATE projects SET terms=? WHERE id=?").bind(cleanTerms(d.terms), p.id).run();
+      if (d.in_pkg !== undefined) await D.prepare("UPDATE projects SET in_pkg=? WHERE id=?").bind(d.in_pkg ? 1 : 0, p.id).run();
       await act(D, { ...studio, client_email: email, project_id: p.id, kind: "project_updated", data: { name: f.name, status: f.status } });
       return json({ ok: true, id: p.id });
     }
@@ -1681,7 +1696,7 @@ async function adminPost(ctx, d){
     await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
       .bind(id, email, f.name, f.description, f.type, f.status, f.services, f.start_date, f.end_date, f.quota, f.drive_url, f.auto_report, at, at).run();
     await D.prepare("UPDATE projects SET cadence=? WHERE id=?").bind(cadenceOf(f.type, d.cadence), id).run();
-    if (d.terms !== undefined) await D.prepare("UPDATE projects SET terms=? WHERE id=?").bind(cleanTerms(d.terms), id).run();
+    if (d.in_pkg !== undefined) await D.prepare("UPDATE projects SET in_pkg=? WHERE id=?").bind(d.in_pkg ? 1 : 0, id).run();
     await act(D, { ...studio, client_email: email, project_id: id, kind: "project_created", data: { name: f.name } });
     later(ctx, tellAdmin(ctx, env, { client_email: email }, "project", { id, name: f.name }));
     return json({ ok: true, id });
@@ -1762,7 +1777,8 @@ async function adminPost(ctx, d){
   }
   if (d.action === "taskUnit" || d.action === "taskExtras") {
     const t = parse(await D.prepare("SELECT * FROM tasks WHERE ref=?").bind(clip(d.task, 20)).first()); if (!t) return json({ ok: false, error: "task" }, 404);
-    const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(t.project_id).first()), terms = p && p.terms; if (!terms) return json({ ok: false, error: "terms" }, 409);
+    const p = await D.prepare("SELECT in_pkg FROM projects WHERE id=?").bind(t.project_id).first(), ag = p && p.in_pkg !== 0 ? await agreementOf(D, t.client_email) : null, terms = ag && ag.terms;
+    if (!terms) return json({ ok: false, error: "terms" }, 409);
     if (d.action === "taskUnit") { const un = terms.units.find(x => x.id === d.unit) || null;
       await D.prepare("UPDATE tasks SET unit=?, type=COALESCE(?, type), updated_at=? WHERE id=?").bind(un ? un.id : null, un ? un.name : null, at, t.id).run(); return json({ ok: true }); }
     if (t.extras && t.extras.state === "accepted") return json({ ok: false, error: "accepted" }, 409);   // the client already approved these: leave them be
@@ -1777,38 +1793,36 @@ async function adminPost(ctx, d){
     return json({ ok: true, extras: ex });
   }
   // carrying unused units into a month, by hand: the panel offers what was left last month, the studio decides
+  // the client's package itself, saved from their profile
+  if (d.action === "clientTerms") {
+    const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
+    if (!(await clientRow(D, email))) { const u = await userOf(env, email); if (!u) return json({ ok: false, error: "client" }, 404); await ensureClients(D, [{ email, name: u.name }]); }
+    await D.prepare("UPDATE clients SET terms=?, updated_at=? WHERE email=?").bind(cleanTerms(d.terms), at, email).run();
+    await act(D, { ...studio, client_email: email, kind: "terms_set", data: { mode: d.terms && d.terms.mode || null } });
+    return json({ ok: true });
+  }
+  // carrying unused units into a month, by hand, for the whole client: the panel offers what was left last month, the studio decides
   if (d.action === "carryInfo" || d.action === "carrySave") {
-    const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first()); if (!p || !p.terms || p.terms.mode !== "package") return json({ ok: false, error: "terms" }, 404);
+    const email = d.email ? clip(d.email, 254).toLowerCase() : ((await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(clip(d.project, 40)).first()) || {}).client_email;
+    const a = email && await agreementOf(D, email); if (!a || a.terms.mode !== "package") return json({ ok: false, error: "terms" }, 404);
     const month = /^\d{4}-\d{2}$/.test(d.month || "") ? d.month : monthOf(now()), pm = monthBefore(month);
     if (d.action === "carrySave") {
-      const units = {}; for (const u of p.terms.units) { const n = Math.max(0, Math.min(999, Math.round(+((d.units || {})[u.id]) || 0))); if (n) units[u.id] = n; }
-      const c = { ...(p.carry || {}), [month]: units }; Object.keys(c).sort().slice(0, -6).forEach(k => delete c[k]);   // the last six months are enough
-      await D.prepare("UPDATE projects SET carry=?, updated_at=? WHERE id=?").bind(JSON.stringify(c), at, p.id).run();
-      await act(D, { ...studio, client_email: p.client_email, project_id: p.id, kind: "carry_set", data: { month, units } });
+      const units = {}; for (const u of a.terms.units) { const n = Math.max(0, Math.min(999, Math.round(+((d.units || {})[u.id]) || 0))); if (n) units[u.id] = n; }
+      const c = { ...(a.carry || {}), [month]: units }; Object.keys(c).sort().slice(0, -6).forEach(k => delete c[k]);   // the last six months are enough
+      await D.prepare("UPDATE clients SET carry=?, updated_at=? WHERE email=?").bind(JSON.stringify(c), at, email).run();
+      await act(D, { ...studio, client_email: email, kind: "carry_set", data: { month, units } });
       return json({ ok: true });
     }
-    const used = await usageOf(D, p.id, pm), pc = carryOf(p, pm);
-    return json({ ok: true, month, prev: pm, current: carryOf(p, month),
-      units: p.terms.units.map(u => ({ id: u.id, name: u.name, left: Math.max(0, u.inc + (+pc[u.id] || 0) - (used[u.id] || 0)) })) });
-  }
-  // a clean start for billing (test invoices): every client invoice, and the invoices on requests (the requests stay); the numbering starts again.
-  // preview first; with confirm a JSON copy goes to R2 before anything is removed
-  if (d.action === "invoicesPurge") {
-    const rows = (await D.prepare("SELECT * FROM invoices").all()).results, orders = [];
-    await kvEach(env, "order:", async (k, o) => { if (o.invoice || (o.deposit && o.deposit.invoice)) orders.push([k, o]); });
-    if (!d.confirm) return json({ ok: true, invoices: rows.length, orders: orders.length });
-    if (env.R2) await env.R2.put("backups/purge/" + Date.now() + "-invoices.json", JSON.stringify({ at, invoices: rows, orders: orders.map(([k, o]) => ({ key: k, invoice: o.invoice || null, deposit: o.deposit || null })) })).catch(() => {});
-    await D.prepare("DELETE FROM invoices").run();
-    for (const [k, o] of orders) { delete o.invoice; if (o.deposit) delete o.deposit.invoice; await env.EB.put(k, JSON.stringify(o)); }
-    await D.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
-    await D.prepare("DELETE FROM seq WHERE name='inv'").run(); await env.EB.put("invseq", "0");
-    return json({ ok: true, invoices: rows.length, orders: orders.length });
+    const used = (await usageOf(D, email, pm)).used, pc = carryOf(a, pm);
+    return json({ ok: true, email, month, prev: pm, current: carryOf(a, month),
+      units: a.terms.units.map(u => ({ id: u.id, name: u.name, left: Math.max(0, u.inc + (+pc[u.id] || 0) - (used[u.id] || 0)) })) });
   }
   if (d.action === "monthBill") {
-    const p = parseP(await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first()); if (!p || !p.terms) return json({ ok: false, error: "terms" }, 404);
-    const month = /^\d{4}-\d{2}$/.test(d.month || "") ? d.month : monthOf(now());
-    return json({ ok: true, email: p.client_email, project: p.id, cur: p.terms.cur, month, items: await monthLines(D, p, month),
-      title: p.name + " · " + new Date(month + "-15T12:00:00Z").toLocaleDateString("ar-u-nu-latn", { month: "long", year: "numeric" }) });
+    const email = d.email ? clip(d.email, 254).toLowerCase() : ((await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(clip(d.project, 40)).first()) || {}).client_email;
+    const a = email && await agreementOf(D, email); if (!a) return json({ ok: false, error: "terms" }, 404);
+    const month = /^\d{4}-\d{2}$/.test(d.month || "") ? d.month : monthOf(now()), c = await clientRow(D, email), u = await userOf(env, email);
+    return json({ ok: true, email, project: "", cur: a.terms.cur, month, items: await monthLines(D, email, month),
+      title: ((c && (c.company || c.name)) || (u && u.name) || email) + " · " + new Date(month + "-15T12:00:00Z").toLocaleDateString("ar-u-nu-latn", { month: "long", year: "numeric" }) });
   }
   if (d.action === "studioTask") {
     const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
