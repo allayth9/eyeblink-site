@@ -165,6 +165,8 @@ const MIGRATIONS = [
   "UPDATE deliverables SET project_id=(SELECT k.project_id FROM tasks k WHERE k.id=deliverables.task_id) WHERE task_id IN (SELECT k.id FROM tasks k JOIN projects x ON x.id=k.project_id WHERE x.name='أزميل') AND project_id<>(SELECT k.project_id FROM tasks k WHERE k.id=deliverables.task_id)",
   // once: «أزميل» joins Otad's periodic report when the report lists chosen projects
   "UPDATE report_cfg SET projects=json_insert(projects,'$[#]',(SELECT x.id FROM projects x WHERE x.client_email=report_cfg.email AND x.name='أزميل' LIMIT 1)) WHERE json_valid(projects) AND json_type(projects)='array' AND EXISTS (SELECT 1 FROM projects x WHERE x.client_email=report_cfg.email AND x.name='أزميل') AND NOT EXISTS (SELECT 1 FROM json_each(report_cfg.projects) j JOIN projects x ON x.id=j.value WHERE x.client_email=report_cfg.email AND x.name='أزميل')",
+  // 20 Nov, once: the work an older invoice lists by name is linked to that invoice (only names used once by the client)
+  "UPDATE tasks SET invoice_id=(SELECT i.id FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title ORDER BY i.created_at LIMIT 1) WHERE invoice_id IS NULL AND status NOT IN ('cancelled','rejected') AND (SELECT COUNT(*) FROM tasks t2 WHERE t2.client_email=tasks.client_email AND t2.title=tasks.title AND t2.status NOT IN ('cancelled','rejected'))=1 AND EXISTS (SELECT 1 FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND i.annex IS NOT NULL AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title)",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -201,7 +203,7 @@ function cleanTerms(t){ if (!t || !TMODES.includes(t.mode)) return null;
   const extras = (Array.isArray(t.extras) ? t.extras : []).slice(0, 12).map(x => ({ id: id(x.id, "x"), name: clip(x.name, 60), kind: XKINDS.includes(x.kind) ? x.kind : "flat", amount: amt(x.amount),
     ...(x.kind === "dur" ? { max: Math.max(1, Math.min(3600, Math.round(+x.max || 50))), step: Math.max(1, Math.min(3600, Math.round(+x.step || 30))) } : {}) })).filter(x => x.name && x.amount > 0);
   if (!units.length) return null;
-  return JSON.stringify({ mode: t.mode, price: t.mode === "package" ? amt(t.price) : 0, cur: clip(t.cur, 8) || "$", start: /^\d{4}-\d{2}$/.test(t.start || "") ? t.start : null, units, extras });
+  return JSON.stringify({ mode: t.mode, price: t.mode === "package" ? amt(t.price) : 0, cur: clip(t.cur, 8) || "$", start: /^\d{4}-\d{2}(-\d{2})?$/.test(t.start || "") ? t.start : null, units, extras });
 }
 // what one extra costs on a task of this unit; sec: the piece's length (for «by length»)
 function extraCost(x, unit, sec){
@@ -225,15 +227,18 @@ async function singlesOf(D, email){
     .bind(id, e, "أعمال منفردة", "", at, at).run();
   return D.prepare("SELECT * FROM projects WHERE id=?").bind(id).first();
 }
-// units used this month across the client's projects in the package: in total, and by project
+// the package's running period: from the day the current package started (a package can take three weeks or two months), else the calendar month
+const cycleOf = a => a && /^\d{4}-\d{2}-\d{2}$/.test(a.terms.start || "") ? a.terms.start : monthOf(now());
+const cycleLabel = (k, en) => k.length === 10 ? (en ? "since " : "منذ ") + new Date(k + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : rMonth(k, en);
+// units used in a period (a month «YYYY-MM», or since a day «YYYY-MM-DD») across the client's projects in the package: in total, and by project
 async function usageOf(D, email, month){ const used = {}, by = {};
-  for (const r of (await D.prepare(`SELECT unit, project_id, COUNT(*) AS n FROM tasks WHERE project_id IN ${PKG} AND unit IS NOT NULL AND substr(created_at,1,7)=?2 AND status NOT IN ('cancelled','rejected') GROUP BY unit, project_id`).bind(email, month).all()).results) {
+  for (const r of (await D.prepare(`SELECT unit, project_id, COUNT(*) AS n FROM tasks WHERE project_id IN ${PKG} AND unit IS NOT NULL AND (CASE WHEN length(?2)=10 THEN substr(created_at,1,10)>=?2 ELSE substr(created_at,1,7)=?2 END) AND status NOT IN ('cancelled','rejected') GROUP BY unit, project_id`).bind(email, month).all()).results) {
     used[r.unit] = (used[r.unit] || 0) + r.n; (by[r.unit] ||= {})[r.project_id] = r.n; }
   return { used, by }; }
 // a project as the client reads it: never the raw agreement
 async function forClientP(D, p, en){ if (!p) return p; delete p.terms; delete p.carry; if (p.single) p.name = en ? "One-off work" : "أعمال منفردة"; return p; }
 // the client's view of their package: what is included, what was used (and by which project), what one more costs; never the package price or per-unit prices
-async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = monthOf(now()), u = await usageOf(D, email, m);
+async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = cycleOf(a), u = await usageOf(D, email, m);
   return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
 const monthsFrom = (a, b) => { const out = []; let m = a; for (let i = 0; i < 60 && m <= b; i++) { out.push(m); const d = new Date(m + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); m = d.toISOString().slice(0, 7); } return out; };
 async function releaseInvoice(D, id){ await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_billed WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_pay WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM credits WHERE invoice_id=?").bind(id)]); }
@@ -248,10 +253,11 @@ async function unbilledOf(D, email){
   // a package is paid toward as the work goes (one can take three weeks or two months): no calendar months here, just its price
   if (t && t.mode === "package") out.price = t.price;
   // work an earlier invoice already lists in its annex, even one made before tasks were linked to invoices
-  const covered = new Set(); for (const x of (await D.prepare("SELECT annex FROM invoices WHERE client_email=? AND status!='cancelled' AND annex IS NOT NULL").bind(email).all()).results) {
-    try { for (const g of JSON.parse(x.annex)) for (const i of g.items) covered.add((typeof i === "string" ? i : i.t) + "|" + (g.k || "")); } catch {} }
-  const listed = r => covered.has(r.title + "|" + pn(r)) || covered.has(r.title + "|أعمال منفردة");   // a work moved out of one-off works keeps its old heading there
-  for (const r of rows) { if (r.invoice_id || listed(r)) continue;
+  const covered = new Map(); for (const x of (await D.prepare("SELECT annex FROM invoices WHERE client_email=? AND status!='cancelled' AND annex IS NOT NULL").bind(email).all()).results) {
+    try { for (const g of JSON.parse(x.annex)) for (const i of g.items) { const k = (typeof i === "string" ? i : i.t) + "|" + (g.k || ""); covered.set(k, (covered.get(k) || 0) + 1); } } catch {} }
+  // each mention covers one work (oldest first); a work moved out of one-off works keeps its old heading there
+  const listed = r => { for (const k of [r.title + "|" + pn(r), r.title + "|أعمال منفردة"]) if (covered.get(k) > 0) { covered.set(k, covered.get(k) - 1); return true; } return false; };
+  for (const r of rows) { if (r.invoice_id) { listed(r); continue; } if (listed(r)) continue;   // a linked work uses up its own mention
     if (t && t.mode === "package" && inPkg(r)) out.pkgTasks.push({ id: r.id, title: r.title, pname: pn(r), date: String(r.completed_at || r.created_at || "").slice(0, 10), done: r.status === "completed" });
     if (r.extras && r.extras.state === "accepted") out.extras.push({ id: r.id, title: r.title, pname: pn(r), pid: r.project_id, items: r.extras.items.map(e => ({ name: e.name, detail: e.detail || "", amount: e.amount })) });
     if (r.status !== "completed") { out.open.push({ title: r.title, pname: pn(r), status: r.status, pkg: !!inPkg(r) }); continue; }
@@ -1043,7 +1049,7 @@ async function periodReport(D, email, from, to, c){
     const cr = await creditOf(D, email); R.money = { issued: inv.filter(x => inR(x.issue_date)).map(x => ({ no: x.no, total: fmt(x.total, x.currency) })), paid: Object.keys(paid).map(k => fmt(paid[k], k)), credit: cr > 0 ? fmt(cr, "$") : "" }; }
   // the client's package in the month the report ends in: what was used of each unit (with the carried units)
   const ag = await agreementOf(D, email);
-  if (ag && ag.terms.mode === "package") { const m = to.slice(0, 7), use = (await usageOf(D, email, m)).used, cy = carryOf(ag, m);
+  if (ag && ag.terms.mode === "package") { const m = /^\d{4}-\d{2}-\d{2}$/.test(ag.terms.start || "") && ag.terms.start <= to ? ag.terms.start : to.slice(0, 7), use = (await usageOf(D, email, m)).used, cy = carryOf(ag, m);
     R.pkg = { month: m, units: ag.terms.units.filter(u => u.inc).map(u => ({ name: u.name, used: use[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })) }; }
   return R;
 }
@@ -1076,7 +1082,7 @@ ${I.nums ? `<table role="presentation" width="100%" cellpadding="0" cellspacing=
     if (REEL_STRIP(p.type) && !p.single) return head + `<div ${D} style="background:#070b26;border-radius:14px;padding:10px 8px;text-align:${s};font-size:0">` + p.items.map((t, i) => `<div style="display:inline-block;width:96px;margin:4px;vertical-align:top;border-radius:8px;padding:9px;background:${t.wait ? "#2a2310" : "#12298E"};background-image:linear-gradient(160deg,${t.wait ? "#3a2b0c,#1a1430 60%,#0A1033" : "#1C45E6,#12298E 45%,#0A1033"});border:1px solid ${t.wait ? "#5c4a20" : "#2B3C8F"};text-align:${s}"><div style="${N}font-size:28px;font-weight:200;line-height:1;color:#fff;direction:ltr;text-align:${s}">${reelNo(t.title, i)}</div><div style="${F}font-size:12px;font-weight:600;color:#fff;margin-top:14px;line-height:1.4">${h(t.title)}</div><div style="${N}font-size:10.5px;letter-spacing:.06em;color:${t.wait ? "#F5C26B" : "#9FDCFF"};margin-top:4px">${t.wait ? h((t.label ? t.label + " · " : "") + (en ? "awaiting you" : "بانتظارك")) : reelD(t.date)}</div></div>`).join("") + `</div>`;
     return head + `<div style="font-size:0">` + p.items.map(t => `<div style="display:inline-block;box-sizing:border-box;width:47%;margin:0 0 6px 0;margin-${e}:3%;vertical-align:top;border:1px solid #1B2556;border-radius:10px;padding:9px 11px;background:#070b26;text-align:${s}"><div style="${F}font-size:13px;color:#fff">${h(t.title)}</div><div style="${N}font-size:10.5px;letter-spacing:.06em;color:${t.wait ? "#F5C26B" : "#6F7FA0"}">${t.wait ? (en ? "AWAITING YOU" : "بانتظارك") : reelD(t.date)}</div></div>`).join("") + `</div>`; }).join("");
   else if (I.done) b += `<p ${D} style="${F}margin:22px 0 0;color:#8E9BB8;text-align:${s}">${en ? "A quiet stretch: nothing was completed in this period." : "فترة هادئة: لم يكتمل عمل في هذه الفترة."}</p>`;
-  if (I.nums && R.pkg && R.pkg.units.length) b += sec((en ? "Your package · " : "باقتك · ") + h(rMonth(R.pkg.month, en))) + `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0">` + R.pkg.units.map(u => { const pc = Math.min(100, Math.round(u.used * 100 / Math.max(1, u.have)));
+  if (I.nums && R.pkg && R.pkg.units.length) b += sec((en ? "Your package · " : "باقتك · ") + h(cycleLabel(R.pkg.month, en))) + `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0">` + R.pkg.units.map(u => { const pc = Math.min(100, Math.round(u.used * 100 / Math.max(1, u.have)));
     return `<tr><td style="${F}padding:7px 0;width:80px;font-size:13.5px;color:#C3CEE2;text-align:${s}">${h(u.name)}</td><td style="padding:7px 10px"><div style="height:10px;border-radius:5px;background:#141c48"><div style="height:10px;width:${pc}%;border-radius:5px;background:${u.used > u.have ? "#F5C26B" : "#3FE0E8"};background-image:linear-gradient(90deg,#3FE0E8,#2E62FF)"></div></div></td><td style="${N}padding:7px 0;width:60px;font-size:13px;color:#AEBBD2;text-align:${e};direction:ltr">${u.used} / ${u.have}</td></tr>`; }).join("") + `</table>`;
   if (I.next && R.next.length) b += sec(en ? "Coming next" : "القادم", en ? "confirmed delivery dates" : "مواعيد التسليم المؤكدة") + `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0">` + R.next.map(t => `<tr><td style="${N}padding:8px 0;width:74px;font-size:13px;letter-spacing:.06em;color:#3FE0E8;text-align:${s};vertical-align:top">${reelD(t.date)}</td><td style="${F}padding:8px 0;border-bottom:1px solid #1B2556;font-size:13.5px;color:#fff;text-align:${s}">${h(t.title)} <span style="color:#6F7FA0;font-size:12px">${h(t.project)}</span></td></tr>`).join("") + `</table>`;
   if (R.money && (R.money.issued.length || R.money.paid.length || R.money.credit)) b += sec(en ? "Invoices and payments" : "الفواتير والمدفوعات") + `<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0"><tr>` +
@@ -1138,7 +1144,7 @@ ${note ? `<p class="note">${h(note).replace(/\n/g, "<br>")}</p>` : ""}
 ${P.length ? `<section class="sec"><div class="sh"><h2>${en ? "The work, by program" : "الأعمال حسب البرنامج"}</h2><small>${en ? "Each frame is a work finished in this period" : "كل كادر عمل اكتمل في هذه الفترة"}</small></div>` +
   P.map(p => `<div class="prog"><div class="ph"><b>${h(p.name)}</b>${tag(p)}<span class="cnt">${h(reelCount(p.items.length, en))}</span></div>` + (REEL_STRIP(p.type) && !p.single ? `<div class="strip">${p.items.map(fr).join("")}</div>` : `<div class="tiles">${p.items.map(tile).join("")}</div>`) + `</div>`).join("") + `</section>`
   : I.done ? `<section class="sec"><p class="quiet">${en ? "A quiet stretch: nothing was completed in this period." : "فترة هادئة: لم يكتمل عمل في هذه الفترة."}</p></section>` : ""}
-${I.nums && R.pkg && R.pkg.units.length ? `<section class="sec"><div class="sh"><h2>${(en ? "Your package · " : "باقتك · ") + h(rMonth(R.pkg.month, en))}</h2><small>${en ? "What the month used of the package" : "ما استُخدم من الباقة الشهرية"}</small></div><div class="pk">` + R.pkg.units.map(u => `<div class="pkr"><span>${h(u.name)}</span>${seg(u)}<span class="v">${u.used} / ${u.have}</span></div>`).join("") + `</div></section>` : ""}
+${I.nums && R.pkg && R.pkg.units.length ? `<section class="sec"><div class="sh"><h2>${(en ? "Your package · " : "باقتك · ") + h(cycleLabel(R.pkg.month, en))}</h2><small>${en ? "What the month used of the package" : "ما استُخدم من الباقة الشهرية"}</small></div><div class="pk">` + R.pkg.units.map(u => `<div class="pkr"><span>${h(u.name)}</span>${seg(u)}<span class="v">${u.used} / ${u.have}</span></div>`).join("") + `</div></section>` : ""}
 ${I.next && R.next.length ? `<section class="sec"><div class="sh"><h2>${en ? "Coming next" : "القادم"}</h2><small>${en ? "Confirmed delivery dates" : "مواعيد التسليم المؤكدة"}</small></div><div class="tl">` + R.next.map(t => `<div class="tli"><span class="dt">${reelD(t.date)}</span><b>${h(t.title)}</b><small>${h(t.project)}</small></div>`).join("") + `</div></section>` : ""}
 ${money.length ? `<section class="sec"><div class="sh"><h2>${en ? "Invoices and payments" : "الفواتير والمدفوعات"}</h2></div><div class="money">` + money.map(x => `<div class="mb"><b>${h(x[0])}</b><span>${h(x[1])}</span></div>`).join("") + `</div></section>` : ""}
 <footer class="end"><span>EYEBLINKSTUDIO.COM</span><span>END OF REEL</span></footer></article></body></html>`;
@@ -1535,7 +1541,7 @@ const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || "");
 // every client's package, with this month's use and carried units (the Today page warns when one runs past it)
 async function agreementsAll(D){ const o = {}, m = monthOf(now());
   for (const r of (await D.prepare("SELECT email, terms, carry FROM clients WHERE terms IS NOT NULL").all()).results) { try { const t = JSON.parse(r.terms), c = r.carry ? JSON.parse(r.carry) : {};
-    t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {};
+    const k = /^\d{4}-\d{2}-\d{2}$/.test(t.start || "") ? t.start : m; t._used = (await usageOf(D, r.email, k)).used; t._carry = c[k] || {};
     // what no invoice covers yet, roughly: past package months (the running month is not «late» yet), approved extras, finished work outside the package
     const ub = await unbilledOf(D, r.email);
     t._owed = { months: 0, amount: amt(ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
@@ -1619,7 +1625,7 @@ async function adminGet(request, env, q){
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
     const ag = await agreementOf(D, em), credits = (await D.prepare("SELECT * FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 60").bind(em).all()).results;
-    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, cycleOf(ag)) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
