@@ -237,10 +237,6 @@ async function clientAgreement(D, email){ const a = await agreementOf(D, email);
   return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
 const monthsFrom = (a, b) => { const out = []; let m = a; for (let i = 0; i < 60 && m <= b; i++) { out.push(m); const d = new Date(m + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); m = d.toISOString().slice(0, 7); } return out; };
 async function releaseInvoice(D, id){ await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_billed WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_pay WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM credits WHERE invoice_id=?").bind(id)]); }
-// what the invoices so far put toward one month of the package (a month billed whole the old way counts as its price)
-async function pkgBilledOf(D, email, m, price){ const r = await D.prepare("SELECT SUM(amount) AS s, COUNT(DISTINCT invoice_id) AS n FROM pkg_pay WHERE email=? AND month=? AND kind='pkg'").bind(email, m).first();
-  const old = await D.prepare("SELECT 1 FROM pkg_billed WHERE email=? AND month=?").bind(email, m).first();
-  return { month: m, amount: amt((r.s || 0) + (old ? +price || 0 : 0)), count: (r.n || 0) + (old ? 1 : 0) }; }
 async function creditOf(D, email){ return amt((await D.prepare("SELECT SUM(amount) AS s FROM credits WHERE email=?").bind(email).first()).s || 0); }
 // everything a client owes that no invoice covers yet: the package's months, extras they approved, work outside the package, units at a price;
 // what is still in progress (shown, not billed); and their prepaid credit
@@ -249,19 +245,13 @@ async function unbilledOf(D, email){
   const rows = (await D.prepare(`SELECT k.id, k.ref, k.title, k.unit, k.status, k.created_at, k.completed_at, k.extras, k.invoice_id, k.project_id, p.name AS pname, p.in_pkg, p.single
       FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=? AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at`).bind(email).all()).results.map(parse);
   const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, pkg: !!(t && t.mode === "package"), months: [], pkgTasks: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
-  if (t && t.mode === "package") {
-    const billed = new Set((await D.prepare("SELECT month FROM pkg_billed WHERE email=?").bind(email).all()).results.map(r => r.month));
-    const first = t.start || (rows.filter(inPkg).map(r => monthOf(r.created_at)).sort()[0]) || now7;
-    const pays = (await D.prepare("SELECT month, kind, SUM(amount) AS s, COUNT(DISTINCT invoice_id) AS n FROM pkg_pay WHERE email=? GROUP BY month, kind").bind(email).all()).results;
-    for (const m of monthsFrom(first, now7)) { if (billed.has(m)) continue;
-      const mine = rows.filter(r => inPkg(r) && monthOf(r.created_at) === m), cy = carryOf(a, m), used = {}, pp = pays.find(p => p.month === m && p.kind === "pkg");
-      mine.forEach(r => used[r.unit] = (used[r.unit] || 0) + 1);
-      const paid = amt(pp ? pp.s : 0), remaining = amt(Math.max(0, t.price - paid)), over = pays.some(p => p.month === m && p.kind === "over") ? [] :
-        t.units.map(u => ({ name: u.name, qty: (used[u.id] || 0) - u.inc - (+cy[u.id] || 0), price: u.price })).filter(o => o.qty > 0 && o.price);
-      if (remaining <= 0.009 && !over.length) continue;
-      out.months.push({ month: m, price: t.price, paid, remaining, count: pp ? pp.n : 0, units: t.units.filter(u => u.inc).map(u => ({ name: u.name, used: used[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })), over, current: m === now7 }); }
-  }
-  for (const r of rows) { if (r.invoice_id) continue;
+  // a package is paid toward as the work goes (one can take three weeks or two months): no calendar months here, just its price
+  if (t && t.mode === "package") out.price = t.price;
+  // work an earlier invoice already lists in its annex, even one made before tasks were linked to invoices
+  const covered = new Set(); for (const x of (await D.prepare("SELECT annex FROM invoices WHERE client_email=? AND status!='cancelled' AND annex IS NOT NULL").bind(email).all()).results) {
+    try { for (const g of JSON.parse(x.annex)) for (const i of g.items) covered.add((typeof i === "string" ? i : i.t) + "|" + (g.k || "")); } catch {} }
+  const listed = r => covered.has(r.title + "|" + pn(r)) || covered.has(r.title + "|أعمال منفردة");   // a work moved out of one-off works keeps its old heading there
+  for (const r of rows) { if (r.invoice_id || listed(r)) continue;
     if (t && t.mode === "package" && inPkg(r)) out.pkgTasks.push({ id: r.id, title: r.title, pname: pn(r), date: String(r.completed_at || r.created_at || "").slice(0, 10), done: r.status === "completed" });
     if (r.extras && r.extras.state === "accepted") out.extras.push({ id: r.id, title: r.title, pname: pn(r), pid: r.project_id, items: r.extras.items.map(e => ({ name: e.name, detail: e.detail || "", amount: e.amount })) });
     if (r.status !== "completed") { out.open.push({ title: r.title, pname: pn(r), status: r.status, pkg: !!inPkg(r) }); continue; }
@@ -488,7 +478,7 @@ function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || 
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
 function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40), ...(i && i.group === "pkg" ? { group: "pkg" } : {}) })).filter(i => i.desc); }
 // lines under their project's heading when an invoice spans more than one
-function invGroups(items, en){ const g = []; for (const i of items) { const k = i.pname || (i.group === "pkg" && !i.project ? (en ? "Monthly package" : "الباقة الشهرية") : ""); let x = g.find(y => y.k === k); if (!x) g.push(x = { k, items: [] }); x.items.push(i); }
+function invGroups(items, en){ const g = []; for (const i of items) { const k = i.pname || (i.group === "pkg" && !i.project ? (en ? "Package" : "الباقة") : ""); let x = g.find(y => y.k === k); if (!x) g.push(x = { k, items: [] }); x.items.push(i); }
   return g.sort((a, b) => (a.k === "") - (b.k === "")); }
 function invCovers(x, en){ let s = null; try { s = JSON.parse(x.scope || "null"); } catch {}
   if (s === "all") return en ? "All projects" : "كل المشاريع";
@@ -1547,8 +1537,8 @@ async function agreementsAll(D){ const o = {}, m = monthOf(now());
   for (const r of (await D.prepare("SELECT email, terms, carry FROM clients WHERE terms IS NOT NULL").all()).results) { try { const t = JSON.parse(r.terms), c = r.carry ? JSON.parse(r.carry) : {};
     t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {};
     // what no invoice covers yet, roughly: past package months (the running month is not «late» yet), approved extras, finished work outside the package
-    const ub = await unbilledOf(D, r.email), past = ub.months.filter(x => !x.current);
-    t._owed = { months: past.length, amount: amt(past.reduce((a, x) => a + x.remaining + x.over.reduce((b, v) => b + v.qty * v.price, 0), 0) + ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
+    const ub = await unbilledOf(D, r.email);
+    t._owed = { months: 0, amount: amt(ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
     o[r.email] = t; } catch {} }
   return o; }
 async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
@@ -1629,7 +1619,7 @@ async function adminGet(request, env, q){
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
     const ag = await agreementOf(D, em), credits = (await D.prepare("SELECT * FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 60").bind(em).all()).results;
-    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())), billed: await pkgBilledOf(D, em, monthOf(now()), ag.terms.price) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {

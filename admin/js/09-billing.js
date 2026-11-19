@@ -38,7 +38,7 @@
   /* what the invoice covers: one project, several, all of them, or general lines; each group holds its own lines */
   // the group of lines without a project: «الباقة الشهرية» when it holds package lines, «بنود أخرى» otherwise
   function noProj(f){ var g=f.querySelector('.bgrp[data-proj=""]'); if(!g) return 'بنود أخرى'; var r=[].filter.call(g.querySelectorAll('.bitem'),function(x){ return x.children[0].value.trim(); }), p=r.filter(function(x){ return x.dataset.grp==='pkg'; }).length;
-    var l=p&&p===r.length?'الباقة الشهرية':p?'الباقة الشهرية وبنود أخرى':'بنود أخرى', h=g.querySelector('.bgh b'); if(h) h.textContent=l; return l; }
+    var l=p&&p===r.length?'الباقة':p?'الباقة وبنود أخرى':'بنود أخرى', h=g.querySelector('.bgh b'); if(h) h.textContent=l; return l; }
   function bPN(f){ var em=f.elements.email.value; return (BILL.projects||[]).filter(function(p){ return p.client_email===em&&p.status!=='archived'; }); }
   function bRow(i){ var d=document.createElement('div'); d.className='bitem'; i=i||{}; if(i.group) d.dataset.grp=i.group;
     d.innerHTML='<input name="desc" dir="auto" placeholder="البيان" value="'+esc(i.desc||'')+'"><input name="qty" type="number" min="0" step="any" placeholder="الكمية" value="'+esc(i.qty||1)+'"><input name="unit" type="number" min="0" step="any" placeholder="سعر الوحدة" value="'+esc(i.unit===''||i.unit==null?'':i.unit)+'"><button type="button" class="linkbtn" data-brm aria-label="حذف البند">×</button>'; return d; }
@@ -60,14 +60,11 @@
     if(BFORM&&BFORM.built&&BFORM.email===em){ box.innerHTML='<div class="bag"><div><b>عُبّئت من الشغل غير المفوتر</b><div class="small muted">'+esc(BFORM.built)+'</div></div><button class="btn sm" type="button" data-bowe-redo>اختر من جديد</button></div>'; return; }
     var o=OWE[em]; if(!o){ box.innerHTML='<p class="hint">جارٍ جمع الشغل غير المفوتر…</p>'; wpost({action:'unbilled',email:em}).then(function(j){ if(!j.ok) return; OWE[em]=j; if(f.isConnected&&f.elements.email.value===em) bAgree(f,null); }); return; }
     var c=o.cur||'$', $=function(v){ return pfmt(v,c); }, ck=function(k,on,lab,side){ return '<label class="bow"><input type="checkbox" data-ow="'+esc(k)+'"'+(on?' checked':'')+'><span>'+lab+'</span>'+(side||'')+'</label>'; };
-    var any=o.months.length||(o.pkgTasks||[]).length||o.extras.length||o.units.length||o.others.length;
+    var any=(o.pkg&&o.price>0)||(o.pkgTasks||[]).length||o.extras.length||o.units.length||o.others.length;
     box.innerHTML='<div class="bowe"><div class="ph"><b>غير مفوتر حتى الآن</b>'+(o.credit>0?'<span class="tag ok">رصيد مقدّم '+esc($(o.credit))+'</span>':'')+'</div>'+
-      (o.months.length?'<div class="bow-g"><span class="small muted">دفعة من الباقة الشهرية</span>'+o.months.map(function(m,i){ var paid=m.paid>0, opt=function(v,l,on){ return '<label><input type="radio" name="owa'+i+'" value="'+v+'"'+(on?' checked':'')+'><span>'+l+'</span></label>'; };
-          return '<div class="bow-m"><div class="bow"><span>الباقة · '+esc(MN(m.month))+(m.current?' <small class="muted">(الشهر الجاري)</small>':'')+' <small class="muted">'+esc(m.units.map(function(u){ return u.name+' '+u.used+'/'+u.have; }).join('، '))+'</small></span><b dir="ltr">'+esc($(m.price))+'</b></div>'+
-            (paid?'<p class="small muted">فوتر منها '+esc($(m.paid))+' في '+(m.count===1?'دفعة واحدة':m.count===2?'دفعتين':m.count+' دفعات')+(m.remaining>0?'، والمتبقي '+esc($(m.remaining)):'، فالباقة مغطاة')+'</p>':'')+
-            (paid&&!(m.remaining>0)?'':'<div class="bow-a" role="radiogroup" aria-label="المبلغ من الباقة">'+(paid?opt('rest','المتبقي · '+esc($(m.remaining)),m.remaining>0):opt('half','50% · '+esc($(m.price/2)),false))+opt('full','كاملة · '+esc($(m.price)),!paid)+opt('other','مبلغ آخر',false)+opt('none','لا شيء',paid&&!(m.remaining>0))+
-            '<input type="number" min="0" step="any" class="bow-p" data-owx="'+i+'" placeholder="المبلغ" dir="ltr" hidden></div>')+
-          m.over.map(function(v,k){ return ck('m'+i+'o'+k,true,esc(v.name)+' إضافي · '+esc(MN(m.month))+' <small class="muted">('+v.qty+')</small>','<b dir="ltr">'+esc($(v.qty*v.price))+'</b>'); }).join('')+'</div>'; }).join('')+'</div>':'')+
+      (o.pkg&&o.price>0?'<div class="bow-g"><span class="small muted">دفعة من الباقة</span><div class="bow-m"><div class="bow"><span>سعر الباقة</span><b dir="ltr">'+esc($(o.price))+'</b></div>'+
+        '<div class="bow-a" role="radiogroup" aria-label="المبلغ من الباقة">'+[['half','50% · '+$(o.price/2)],['full','كاملة · '+$(o.price)],['other','مبلغ آخر'],['none','لا شيء']].map(function(x){ return '<label><input type="radio" name="owa0" value="'+x[0]+'"'+(x[0]==='full'?' checked':'')+'><span>'+esc(x[1])+'</span></label>'; }).join('')+
+        '<input type="number" min="0" step="any" class="bow-p" data-owx="0" placeholder="المبلغ" dir="ltr" hidden></div></div></div>':'')+
       (o.pkgTasks&&o.pkgTasks.length?'<div class="bow-g"><span class="small muted">الشغل الذي تغطيه هذه الدفعة (ضمن الباقة، لم تذكره فاتورة بعد)</span>'+o.pkgTasks.map(function(x,i){ return ck('p'+i,x.done,esc(x.title)+' <small class="muted">· '+esc(x.pname)+' · '+(x.done?esc(wd(x.date)):'قيد التنفيذ')+'</small>'); }).join('')+'</div>':'')+
       (o.extras.length?'<div class="bow-g"><span class="small muted">إضافات وافق عليها العميل</span>'+o.extras.map(function(e,i){ var sum=e.items.reduce(function(a,x){ return a+x.amount; },0);
           return ck('x'+i,true,esc(e.title)+' <small class="muted">· '+esc(e.pname)+' · '+esc(e.items.map(function(x){ return x.name; }).join('، '))+'</small>','<b dir="ltr">'+esc($(sum))+'</b>'); }).join('')+'</div>':'')+
@@ -80,11 +77,10 @@
       (any?'<div class="actions"><button class="btn sm primary" type="button" data-bowe>ضع المحدد في الفاتورة</button></div>':'<p class="hint">لا يوجد شغل غير مفوتر لهذا العميل. يمكنك كتابة بنود حرة كالمعتاد.</p>')+'</div>'; }
   function bOweApply(f){ var em=f.elements.email.value, o=OWE[em]; if(!o) return; var on=function(k){ var i=f.querySelector('[data-ow="'+k+'"]'); return i&&i.checked; };
     var items=[], tasks=[], pkg=[], annex={}, miss=false, parts=[];
-    o.months.forEach(function(m,i){ var r=f.querySelector('input[name="owa'+i+'"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="'+i+'"]');
-      var a=w==='half'?m.price/2:w==='full'?m.price:w==='rest'?m.remaining:w==='other'?+(x&&x.value)||0:0; a=Math.round(a*100)/100;
-      if(w==='other'&&!(a>0)){ miss=true; if(x) x.focus(); return; }
-      if(a>0){ items.push({desc:(a===m.price?'الباقة الشهرية · '+MN(m.month):a===m.remaining&&m.paid?'الدفعة المتبقية من الباقة الشهرية · '+MN(m.month):a===m.price/2?'دفعة الباقة الشهرية · '+MN(m.month)+' · 50%':'دفعة من الباقة الشهرية · '+MN(m.month)),qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:m.month,amount:a,kind:'pkg'}); }
-      m.over.forEach(function(v,k){ if(on('m'+i+'o'+k)){ items.push({desc:v.name+' إضافي · '+MN(m.month),qty:v.qty,unit:v.price,project:'',group:'pkg'}); pkg.push({month:m.month,amount:v.qty*v.price,kind:'over'}); } }); });
+    if(o.pkg&&o.price>0){ var r=f.querySelector('input[name="owa0"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="0"]');
+      var a=Math.round((w==='half'?o.price/2:w==='full'?o.price:w==='other'?+(x&&x.value)||0:0)*100)/100;
+      if(w==='other'&&!(a>0)){ miss=true; if(x) x.focus(); }
+      else if(a>0){ items.push({desc:a===o.price?'الباقة كاملة':a===o.price/2?'دفعة الباقة · 50%':'دفعة من الباقة',qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:new Date().toISOString().slice(0,7),amount:a,kind:'pkg'}); } }
     if(miss) return toast('اكتب المبلغ من الباقة',true);
     (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push({t:x.title,d:x.done?x.date:''}); });
     if(pkg.length) parts.push('دفعة من الباقة');
