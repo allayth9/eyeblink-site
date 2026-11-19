@@ -186,7 +186,8 @@ export function ticketHTML(t){
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
   ${t.lines.map(x => x.head ? `<tr><td colspan="2" ${D} style="${F}padding:14px 0 2px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#3FE0E8;text-align:${s}">${h(x.head)}</td></tr>` : `<tr><td ${D} style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#C3CEE2;text-align:${s}">${h(x.name)}${x.qty && x.qty !== 1 ? ` <span style="color:#6F7FA0;font-size:12.5px;${nb}">× ${x.qty}</span>` : ""}</td><td style="${F}padding:12px 0;border-bottom:1px solid ${line};font-size:14px;color:#EEF2F6;text-align:${e};${nb}">${h(x.amount)}</td></tr>`).join("")}
  </table>
- <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px">${t.totals.map(x => row(x[0], x[1], x[2], x[3])).join("")}</table>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px">${t.totals.map(x => row(x[0], x[1], x[2], x[3])).join("")}</table>
+ ${t.after || ""}
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#070C2A" style="margin-top:18px;background:#070C2A;border:1px solid ${line};border-radius:14px;border-collapse:separate"><tr>
   <td ${D} style="${F}padding:12px 14px;font-size:13px;color:#AEBBD2;text-align:${s}">${rtl?"الحالة":"Status"}</td>
   <td style="${F}padding:12px 14px;font-size:13px;font-weight:700;color:${t.status[1]};text-align:${e}">● ${h(t.status[0])}</td>

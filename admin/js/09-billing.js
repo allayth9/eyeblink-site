@@ -86,12 +86,12 @@
       if(a>0){ items.push({desc:(a===m.price?'الباقة الشهرية · '+MN(m.month):a===m.remaining&&m.paid?'الدفعة المتبقية من الباقة الشهرية · '+MN(m.month):a===m.price/2?'دفعة الباقة الشهرية · '+MN(m.month)+' · 50%':'دفعة من الباقة الشهرية · '+MN(m.month)),qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:m.month,amount:a,kind:'pkg'}); }
       m.over.forEach(function(v,k){ if(on('m'+i+'o'+k)){ items.push({desc:v.name+' إضافي · '+MN(m.month),qty:v.qty,unit:v.price,project:'',group:'pkg'}); pkg.push({month:m.month,amount:v.qty*v.price,kind:'over'}); } }); });
     if(miss) return toast('اكتب المبلغ من الباقة',true);
-    (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push(x.title); });
+    (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push({t:x.title,d:x.done?x.date:''}); });
     if(pkg.length) parts.push('دفعة من الباقة');
     o.extras.forEach(function(e,i){ if(!on('x'+i)) return; tasks.push(e.id); e.items.forEach(function(x){ items.push({desc:e.title+' · '+x.name+(x.detail?' ('+x.detail+')':''),qty:1,unit:x.amount,project:e.pid||''}); }); });
     o.units.forEach(function(u,i){ if(!on('u'+i)) return; tasks.push(u.id); items.push({desc:u.title+' · '+u.unit,qty:1,unit:u.price,project:u.pid||''}); });
     o.others.forEach(function(x,i){ if(!on('r'+i)) return; var w=f.querySelector('input[name="owr'+i+'"]:checked');
-      if(w&&w.value==='pkg'){ tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push(x.title); return; }
+      if(w&&w.value==='pkg'){ tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push({t:x.title,d:x.date||''}); return; }
       var pr=f.querySelector('[data-owp="'+i+'"]'); if(!pr||pr.value===''){ miss=true; if(pr) pr.focus(); return; } tasks.push(x.id); items.push({desc:x.title,qty:1,unit:+pr.value,project:x.pid||''}); });
     if(miss) return toast('اكتب سعر كل عمل محدد خارج الباقة',true);
     if(!items.length) return toast('لم تحدد شيئاً',true);

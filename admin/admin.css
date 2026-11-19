@@ -992,6 +992,7 @@ html{-webkit-tap-highlight-color:transparent}
 .bowe .ph{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .bow-g{display:grid;gap:4px}.bow{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:0}.bow input[type=checkbox]{width:auto;flex:none}.bow span{flex:1;min-width:0}
 .bow b{font-family:Oswald,sans-serif;font-weight:400;flex:none}.bow-p{width:110px;flex:none}
+.snd-img{display:block;width:100%;max-width:220px;aspect-ratio:4/5;object-fit:cover;border-radius:10px;margin-bottom:8px}
 .wren{background:none;border:0;padding:2px 6px;margin-inline-start:4px;color:var(--k-mist);cursor:pointer;border-radius:6px;font-size:13px;line-height:1}.wren:hover,.wren:focus-visible{color:var(--k-horizon);background:rgba(var(--k-horizon-rgb),.08)}
 .wren-f{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:100%}.wren-f input{min-width:0;width:min(320px,100%);padding:5px 10px;font-size:14px}
 .cp-billed{margin:0 0 10px;font-size:13.5px;color:var(--mist)}.cp-billed .num{font-family:Oswald,sans-serif;color:var(--k-light)}

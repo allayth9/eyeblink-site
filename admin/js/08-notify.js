@@ -147,7 +147,7 @@
       if(!o.nopv){ var fr=document.createElement('iframe'); fr.title='معاينة البريد'; fr.setAttribute('sandbox','allow-same-origin allow-popups'); fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>');
         fr.onload=function(){ try{ fr.style.height=fr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var box=Q('[data-pvmail]'); box.innerHTML=''; box.appendChild(fr);
         Q('[data-wtxt]').innerHTML=sndWa(j.wa); var ph=String(j.phone||'').replace(/\D/g,''); if(ph){ var a=Q('[data-wopen]'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(j.wa); a.hidden=false; } }
-      sync(); }).catch(function(){ Q('[data-to]').textContent='تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; });
+      waCardMount(ov,j); sync(); }).catch(function(){ Q('[data-to]').textContent='تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; });
     function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
     function go(){ var c={}; ov.querySelectorAll('[data-ch]').forEach(function(x){ c[x.dataset.ch]=x.checked&&!x.disabled; });
       if(WHEN==='none') c={email:false,push:false,wa:false};
@@ -161,10 +161,45 @@
       var w=t.closest('[data-when]'); if(w){ WHEN=w.dataset.when; ov.querySelectorAll('[data-when]').forEach(function(x){ x.classList.toggle('on',x===w); x.setAttribute('aria-checked',x===w); });
         at.hidden=WHEN!=='later'; if(WHEN==='later'){ if(!at.value){ var d=new Date(Date.now()+864e5); d.setHours(10,0,0,0); at.value=new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16); } at.focus(); } sync(); return; }
       var p=t.closest('[data-pv]'); if(p){ ov.querySelectorAll('[data-pv]').forEach(function(x){ x.classList.toggle('on',x===p); x.setAttribute('aria-selected',x===p); }); Q('[data-pvmail]').hidden=p.dataset.pv!=='mail'; Q('[data-pvwa]').hidden=p.dataset.pv!=='wa'; return; }
+      if(t.closest('[data-wshare]')&&PV&&PV.blob){ navigator.share({files:[new File([PV.blob],'eyeblink.png',{type:'image/png'})],text:PV.wa}).catch(function(){}); return; }
+      if(t.closest('[data-wimg]')&&PV&&PV.blob){ var fail=function(){ toast('تعذّر نسخ الصورة، نزّلها بدلاً من ذلك',true); };
+        try{ navigator.clipboard.write([new ClipboardItem({'image/png':PV.blob})]).then(function(){ toast('نُسخت الصورة، الصقها في المحادثة ثم انسخ الرسالة'); },fail); }catch(_){ fail(); } return; }
       if(t.closest('[data-wcopy]')&&PV&&PV.wa){ (navigator.clipboard?navigator.clipboard.writeText(PV.wa):Promise.reject()).then(function(){ toast('نُسخت الرسالة، وهي جاهزة للّصق في واتساب'); },function(){ toast('تعذّر النسخ',true); }); } });
     var nt=Q('[data-note]'), ntT=0; if(nt) nt.addEventListener('input',function(){ clearTimeout(ntT); ntT=setTimeout(function(){
       fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify(Object.assign({action:'notifyPreview'},o.pv,{note:nt.value}))}).then(function(r){ return r.json(); }).then(function(j){ var fr=Q('[data-pvmail] iframe'); if(j.ok&&j.html&&fr) fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>'); }); },500); });
     addEventListener('keydown',key,true); ok.focus(); sync(); }); }
+  /* the picture beside a WhatsApp message: 1080×1350 (4:5, shown whole in a chat), the invoice ticket's colours, the brand's type */
+  var CARDF=null;
+  function cardFonts(){ if(CARDF) return CARDF; var f=new FontFace('EYEN Ammon','url(/assets/fonts/eyen-ammon-bold.woff2)',{weight:'700'}); try{ document.fonts.add(f); }catch(_){}
+    CARDF=Promise.all([f.load(),document.fonts.load('400 30px Hayyakum'),document.fonts.load('500 30px Hayyakum'),document.fonts.load('300 60px Oswald'),document.fonts.load('400 30px Oswald')]).catch(function(){}); return CARDF; }
+  function cardPic(src){ return new Promise(function(r){ var i=new Image(); i.onload=function(){ r(i); }; i.onerror=function(){ r(null); }; i.src=src; }); }
+  function waCardBlob(c,lang){ var rtl=lang!=='en';
+    return Promise.all([cardFonts(),cardPic('/assets/img/email-logo.png')]).then(function(a){ var logo=a[1], W=1080, H=1350, P=88, cv=document.createElement('canvas'); cv.width=W; cv.height=H; var x=cv.getContext('2d');
+      x.fillStyle='#0A1033'; x.fillRect(0,0,W,H); var g=x.createRadialGradient(rtl?0:W,0,0,rtl?0:W,0,H*1.15); g.addColorStop(0,'#1C45E6'); g.addColorStop(.34,'#12298E'); g.addColorStop(.72,'#0A1033'); x.fillStyle=g; x.fillRect(0,0,W,H);
+      var R=rtl?W-P:P, L=rtl?P:W-P, A=rtl?'right':'left', B=rtl?'left':'right', MAXW=W-2*P;
+      function tx(s,X,Y,font,col,al,sp,dir){ x.font=font; x.fillStyle=col; x.textAlign=al; x.direction=dir||(rtl?'rtl':'ltr'); x.letterSpacing=sp||'0px'; x.fillText(s,X,Y); x.letterSpacing='0px'; }
+      function wrap(s,font,max,n){ x.font=font; var out=[], cur=''; String(s||'').split(/\s+/).forEach(function(w){ var t=cur?cur+' '+w:w; if(x.measureText(t).width>max&&cur){ out.push(cur); cur=w; } else cur=t; }); if(cur) out.push(cur);
+        if(out.length>n){ out=out.slice(0,n); out[n-1]=out[n-1].replace(/\s*\S*$/,'')+'…'; } return out; }
+      if(logo){ var lw=300, lh=logo.height*lw/logo.width; x.drawImage(logo,rtl?W-P-lw:P,P,lw,lh); }
+      tx(c.label||'',L,P+34,'400 24px Oswald','#9FDCFF',B,'7px','ltr');
+      var y=H-P; tx('EYEBLINKSTUDIO.COM',R,y,'400 22px Oswald','#6F7FA0',A,'5px','ltr'); y-=76;
+      if(c.meta&&c.meta.length){ var cw=MAXW/2; c.meta.forEach(function(m,i){ var X=rtl?R-i*cw:R+i*cw; tx(m[0],X,y-48,'400 26px Oswald, Hayyakum','#9FB0CC',A); tx(m[1],X,y,'500 34px Oswald, Hayyakum','#FFFFFF',A); });
+        x.fillStyle='#2B3C8F'; x.fillRect(P,y-100,MAXW,2); y-=150; }
+      if(c.pill){ var ok=c.pill[1]==='ok'; x.font='500 30px Oswald, Hayyakum'; var pw=x.measureText(c.pill[0]).width+60, ph=66, px=rtl?R-pw:R; y-=ph;
+        x.beginPath(); x.roundRect(px,y,pw,ph,33); x.fillStyle=ok?'rgba(110,231,176,.14)':'rgba(63,224,232,.12)'; x.fill(); x.lineWidth=2; x.strokeStyle=ok?'rgba(110,231,176,.45)':'rgba(63,224,232,.45)'; x.stroke();
+        tx(c.pill[0],px+pw/2,y+43,'500 30px Oswald, Hayyakum',ok?'#6EE7B0':'#3FE0E8','center'); y-=44; }
+      var sub=wrap(c.sub,'400 34px Oswald, Hayyakum',MAXW,2); for(var i=sub.length-1;i>=0;i--){ tx(sub[i],R,y,'400 34px Oswald, Hayyakum','#C3CEE2',A); y-=54; }
+      y-=18;
+      if(c.big){ tx(c.big,R,y,'300 190px Oswald','#FFFFFF',A,'0px','ltr'); }
+      else { var tl=wrap(c.title,'600 70px Oswald, "EYEN Ammon"',MAXW,4); for(var k=tl.length-1;k>=0;k--){ tx(tl[k],R,y,'600 70px Oswald, "EYEN Ammon"','#FFFFFF',A); y-=96; } }
+      return new Promise(function(r){ cv.toBlob(r,'image/png'); }); }); }
+  // the card in each WhatsApp bubble of the send sheet, and the ways to send it
+  function waCardMount(ov,j){ if(!j.card) return; waCardBlob(j.card,j.lang).then(function(b){ if(!b||!ov.isConnected) return; j.blob=b; var u=URL.createObjectURL(b);
+      var share=false; try{ share=!!(navigator.canShare&&navigator.canShare({files:[new File([b],'eyeblink.png',{type:'image/png'})]})); }catch(_){}
+      ov.querySelectorAll('.snd-bub').forEach(function(bb){ if(bb.querySelector('.snd-img')) return; var im=document.createElement('img'); im.className='snd-img'; im.src=u; im.alt='بطاقة الرسالة'; bb.prepend(im); });
+      ov.querySelectorAll('.snd-wact').forEach(function(w){ if(w.querySelector('[data-wimg]')) return;
+        w.insertAdjacentHTML('beforeend',(share?'<button type="button" class="btn sm primary" data-wshare>شارك الصورة مع الرسالة</button>':'')+'<button type="button" class="btn sm" data-wimg>انسخ الصورة</button><a class="btn sm" data-wdl download="eyeblink-'+esc(j.card.label.toLowerCase().replace(/\s+/g,'-'))+'.png" href="'+u+'">نزّل الصورة</a>'); });
+      ov.querySelectorAll('.snd-nt').forEach(function(n){ n.textContent='من رقم الاستوديو: انسخ الصورة والصقها في المحادثة، ثم انسخ الرسالة والصقها تعليقاً عليها. ومن الهاتف: «شارك الصورة مع الرسالة» يرسلهما معاً.'; }); }).catch(function(){}); }
   // what the action's own toast says once the choice is known
   function sndSay(n,okText){ if(!n||!okText) return okText; var c=n.ch||{};
     if(!(c.email||c.push||c.wa)) return 'تم، دون إشعار العميل خارج مساحة عمله';

@@ -535,12 +535,26 @@ ${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:b
  ${last ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${dt(last.date || last.at)}</div></td>` : ""}
 </tr></table></td></tr>
 ${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.7;color:${ink};text-align:${s}">${h(x.note).replace(/\n/g, "<br>")}</td></tr>` : ""}
-${(x.annex || []).length ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.8;color:${ink};text-align:${s}"><div style="font-weight:bold;margin-bottom:4px">${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</div>${x.annex.map(g => `<div style="color:${grey}">${h(g.k)}${g.k ? ": " : ""}<span style="color:${ink}">${g.items.map(h).join("، ")}</span></div>`).join("")}</td></tr>` : ""}
+${(x.annex || []).length ? (() => { const R = annexRows(x.annex, en), ah = `padding:0 0 6px;border-bottom:1px solid ${ink};${F}font-size:10.5px;font-weight:bold;color:${grey};`, ad = `padding:7px 0;border-bottom:1px solid ${rule};${F}font-size:12px;`;
+  return `<tr><td style="padding:20px 30px 0"><div style="${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;margin-bottom:8px;text-align:${s}">${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr><td style="${ah}text-align:${s}">${en ? "Work" : "العمل"}</td><td style="${ah}text-align:${s}">${en ? "Project" : "البرنامج"}</td><td style="${ah}text-align:${e};width:92px">${en ? "Delivered" : "التسليم"}</td></tr>
+${R.map(r => `<tr><td style="${ad}color:${ink};text-align:${s}">${h(r.t)}</td><td style="${ad}color:${grey};text-align:${s}">${h(r.k)}</td><td style="${ad}color:${grey};text-align:${e};${nb}">${h(r.date)}</td></tr>`).join("")}
+<tr><td colspan="3" style="padding:8px 0 0;${F}font-size:11px;color:${grey};text-align:${s}">${annexCount(R.length, en)}</td></tr></table></td></tr>`; })() : ""}
 <tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
 </table>`;
 }
 // the invoice inside an e-mail: the cinema ticket (shared ticketHTML); the printable page (billPage) keeps the white document above
 const BILL_TCOL = { pending:"#F0B43C", partial:"#F0B43C", paid:"#3DDC97", overdue:"#FF6B6B", cancelled:"#9AA6BF", refunded:"#8FA2FF" };
+// «the work covered by this invoice» as rows: the work, its project, and when it was delivered
+function annexRows(annex, en){ const dd = v => v ? new Date(v + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : "—";
+  return [].concat(...(annex || []).map(g => g.items.map(i => typeof i === "string" ? { t: i, k: g.k || "", date: "—" } : { t: i.t, k: g.k || "", date: dd(i.d) }))); }
+const annexCount = (n, en) => en ? n + (n === 1 ? " work" : " works") : n === 1 ? "عمل واحد" : n === 2 ? "عملان" : n <= 10 ? n + " أعمال" : n + " عملاً";
+function annexTicket(annex, en){ const R = annexRows(annex, en); if (!R.length) return ""; const s = en ? "left" : "right", e = en ? "right" : "left", D = `dir="${en ? "ltr" : "rtl"}"`;
+  const F = en ? "font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;" : "font-family:'Segoe UI',Tahoma,'Geeza Pro',Arial,sans-serif;", ah = `${F}padding:0 0 6px;border-bottom:1px solid #24306A;font-size:11px;color:#9FB0CC;`, ad = `${F}padding:8px 0;border-bottom:1px solid #1B2556;font-size:13px;`, more = R.length - 8;
+  return `<div ${D} style="${F}margin-top:20px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#3FE0E8;text-align:${s}">${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</div>
+<table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:8px"><tr><td style="${ah}text-align:${s}">${en ? "Work" : "العمل"}</td><td style="${ah}text-align:${s}">${en ? "Project" : "البرنامج"}</td><td style="${ah}text-align:${e}">${en ? "Delivered" : "التسليم"}</td></tr>
+${R.slice(0, 8).map(r => `<tr><td style="${ad}color:#EEF2F6;text-align:${s}">${h(r.t)}</td><td style="${ad}color:#9FB0CC;text-align:${s}">${h(r.k)}</td><td style="${ad}color:#9FB0CC;text-align:${e};white-space:nowrap">${h(r.date)}</td></tr>`).join("")}
+<tr><td colspan="3" style="${F}padding:8px 0 0;font-size:12px;color:#9FB0CC;text-align:${s}">${more > 0 ? (en ? `and ${more} more · the full list is on the invoice` : `و${annexCount(more, false)} أخرى · القائمة كاملة في الفاتورة`) : annexCount(R.length, en)}</td></tr></table>`; }
 function billTicket(x, lang, intro, link){
   const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], c = x.currency || "$", st = x.state || x.status;
   const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
@@ -554,7 +568,7 @@ function billTicket(x, lang, intro, link){
   const totals = [[L.total, fmt(x.total, c)]].concat(x.paid ? [[L.paid, fmt(x.paid, c)]] : []).concat(x.refunded ? [[L.refunded, "−" + fmt(x.refunded, c)]] : [])
     .concat(st !== "cancelled" && st !== "refunded" ? [[L.bal, fmt(x.balance, c), 1, x.balance > 0 ? BILL_TCOL[st] : "#3DDC97"]] : []);
   return ticketHTML({ lang: en ? "en" : "ar", label: "INVOICE", amount: fmt(open ? x.balance : x.total, c), caption: cap + (covers ? '<br><span style="color:#9FB0CC">' + (multi || covers !== x.project_name ? (en ? "Covers: " : "تشمل: ") : h(L.project) + ": ") + h(covers) + "</span>" : ""),
-    meta: [[L.no, x.no, 1], [L.issued, dt(x.issue_date)]], intro, lines: items, totals, status: [S[st] || st, BILL_TCOL[st] || "#EEF2F6"],
+    meta: [[L.no, x.no, 1], [L.issued, dt(x.issue_date)]], intro, lines: items, totals, after: annexTicket(x.annex, en), status: [S[st] || st, BILL_TCOL[st] || "#EEF2F6"],
     cta: [en ? "View the invoice" : "عرض الفاتورة", link], pdf: [en ? "Download PDF" : "تحميل PDF", SITE + "/api/work?invoiceDoc=" + encodeURIComponent(x.id)],
     note: (x.note ? h(x.note).replace(/\n/g, "<br>") + "<br>" : "") + h(L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]) });
 }
@@ -573,6 +587,19 @@ const CAT = { accept:"tasks", reject:"tasks", progress:"tasks", status:"tasks", 
   invoice:"billing", invoicePaid:"billing", invoiceDue:"billing", recurring:"tasks", report:"projects", added:"tasks",
   invoiceSoon:"billing", invoiceFollow:"billing", reviewWaiting:"deliveries", infoWaiting:"requests", periodReport:"projects", extras:"requests" };
 const CATS = ["tasks","requests","deliveries","comments","projects","billing"];
+// the picture that goes with a WhatsApp message (drawn by the panel): an amount for invoices, otherwise the message's title, with two facts under it
+function waCard(kind, t, extra, subject, line, en){
+  const cat = CAT[kind] || "tasks", x = extra.inv, dd = v => v ? new Date(String(v).slice(0, 10) + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : "";
+  const label = { billing: "INVOICE", deliveries: "DELIVERY", tasks: kind === "added" ? "NEW TASK" : "TASK", requests: "REQUEST", comments: "MESSAGE", projects: /report/i.test(kind) ? "REPORT" : "PROJECT" }[cat] || "UPDATE";
+  if (x) { const st = x.state || x.status, paid = st === "paid", last = x.payments.length ? x.payments[x.payments.length - 1] : null;
+    return { label, big: fmt(paid ? x.total : x.balance, x.currency), sub: (en ? "Invoice " : "فاتورة ") + x.no + (x.title ? " · " + x.title : ""),
+      pill: paid ? [en ? "Paid in full · thank you" : "مدفوعة بالكامل · شكراً لك", "ok"] : [en ? "Amount due" : "المبلغ المستحق", "wait"],
+      meta: paid && last ? [[en ? "Paid on" : "تاريخ الدفع", dd(last.date)], [en ? "Method" : "الطريقة", last.method || "—"]] : [[en ? "Issued" : "تاريخ الإصدار", dd(x.issue_date)], [en ? "Due by" : "الاستحقاق", dd(x.due_date) || "—"]] }; }
+  if (!subject) return null;
+  const meta = []; if (t.confirmed_date) meta.push([en ? "Delivery" : "موعد التسليم", dd(t.confirmed_date)]); if (t.ref) meta.push([en ? "Task" : "المهمة", t.ref]);
+  const end = s => s.replace(/\s*\.$/, "");   // a design carries no full stop at the end of a line
+  return { label, title: end(subject.replace(/ · T-[A-Z0-9]+$/, "")), sub: end(String(line || "").replace(/\s+/g, " ").trim().slice(0, 150)),
+    pill: kind === "deliver" ? [en ? "Awaiting your review" : "بانتظار ملاحظاتك", "wait"] : kind === "completed" ? [en ? "Completed" : "اكتملت", "ok"] : null, meta: meta.slice(0, 2) }; }
 const ESSENTIAL = ["deliveries","billing"];   // e-mail for these cannot be switched off
 const WA_DEFAULT = { tasks:true, requests:true, deliveries:true, comments:false, projects:false, billing:true };
 const CONSENT_V = "wa-v1";
@@ -1637,7 +1664,7 @@ async function adminPost(ctx, d){
     for (const m of months) await D.prepare("INSERT OR IGNORE INTO pkg_billed (email, month, invoice_id) VALUES (?,?,?)").bind(email, m, id).run();
     const pk = (Array.isArray(L.pkg) ? L.pkg : []).slice(0, 24).map(x => ({ month: String(x && x.month || ""), amount: amt(x && x.amount), kind: x && x.kind === "over" ? "over" : "pkg" })).filter(x => /^\d{4}-\d{2}$/.test(x.month) && x.amount > 0);
     for (const x of pk) await D.prepare("INSERT INTO pkg_pay (invoice_id, email, month, amount, kind, created_at) VALUES (?,?,?,?,?,?)").bind(id, email, x.month, x.amount, x.kind, at).run();
-    const annex = (Array.isArray(d.annex) ? d.annex : []).slice(0, 40).map(g => ({ k: clip(g.k, 80), items: (Array.isArray(g.items) ? g.items : []).slice(0, 200).map(x => clip(x, 140)) })).filter(g => g.items.length);
+    const annex = (Array.isArray(d.annex) ? d.annex : []).slice(0, 40).map(g => ({ k: clip(g.k, 80), items: (Array.isArray(g.items) ? g.items : []).slice(0, 200).map(x => x && typeof x === "object" ? { t: clip(x.t, 140), d: isDate(x.d) ? x.d : "" } : clip(x, 140)).filter(x => x && (x.t || typeof x === "string")) })).filter(g => g.items.length);
     let credit = Math.min(amt(d.credit), await creditOf(D, email), total); credit = credit > 0.009 ? amt(credit) : 0;
     await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, pkg: pk, credit }), id).run();
     const pays0 = [], rc = d.received && typeof d.received === "object" ? d.received : null, rest = amt(total - credit);
@@ -1715,7 +1742,7 @@ async function adminPost(ctx, d){
     const devices = (await D.prepare("SELECT (SELECT COUNT(*) FROM push_subs WHERE email=?) + (SELECT COUNT(*) FROM tg_links WHERE email=?) AS n").bind(u.email, u.email).first()).n;
     const line = shortText(lang, kind, tellData(t, extra), ST_LABEL[lang], 700), link = SITE + (en ? "/en" : "") + "/workspace" + hash, first = String(u.name || "").trim().split(/\s+/)[0];
     const wa = (en ? "Hello" + (first ? " " + first : "") + "," : "مرحباً" + (first ? " " + first : "") + "،") + "\n\n*" + m.subject.replace(/\*/g, "") + "*\n" + line + "\n\n" + link + "\n\n" + (en ? "With our regards,\n*Eyeblink Studio*" : "مع خالص التقدير،\n*Eyeblink Studio*");
-    return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, phone: (P && P.wa_phone) || (cl && cl.phone) || "",
+    return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, card: waCard(kind, t, extra, m.subject, line, en), phone: (P && P.wa_phone) || (cl && cl.phone) || "",
       channels: { email: !!(P ? (P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) : true), push: devices > 0, wa: !!(P && P.consent && P.wa_phone && waReady(env, cfg)) },
       why: { email: P && !(P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) ? "off" : "", push: devices > 0 ? "" : "none", wa: !waReady(env, cfg) ? "meta" : !(P && P.consent && P.wa_phone) ? "consent" : "" } });
   }
