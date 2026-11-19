@@ -467,9 +467,10 @@ const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
 function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
-function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40) })).filter(i => i.desc); }
+function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40), ...(i && i.group === "pkg" ? { group: "pkg" } : {}) })).filter(i => i.desc); }
 // lines under their project's heading when an invoice spans more than one
-function invGroups(items){ const g = []; for (const i of items) { const k = i.pname || ""; let x = g.find(y => y.k === k); if (!x) g.push(x = { k, items: [] }); x.items.push(i); } return g; }
+function invGroups(items, en){ const g = []; for (const i of items) { const k = i.pname || (i.group === "pkg" && !i.project ? (en ? "Monthly package" : "الباقة الشهرية") : ""); let x = g.find(y => y.k === k); if (!x) g.push(x = { k, items: [] }); x.items.push(i); }
+  return g.sort((a, b) => (a.k === "") - (b.k === "")); }
 function invCovers(x, en){ let s = null; try { s = JSON.parse(x.scope || "null"); } catch {}
   if (s === "all") return en ? "All projects" : "كل المشاريع";
   const names = [...new Set(x.items.map(i => i.pname).filter(Boolean))]; return names.length ? names.join(en ? ", " : "، ") : (x.project_name || ""); }
@@ -506,7 +507,7 @@ function billHTML(x, cl, lang, opt){
 ${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:bold;color:${ink};text-align:${s}">${h(x.title)}</td></tr>` : ""}
 <tr><td style="padding:${x.title ? 12 : 26}px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
  <tr><td style="${th}text-align:${s}">${L.desc}</td><td style="${th}text-align:center;width:52px">${L.qty}</td><td style="${th}text-align:${e};width:92px">${L.unit}</td><td style="${th}text-align:${e};width:92px">${L.amount}</td></tr>
- ${invGroups(x.items).flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (lang === "en" ? "General" : "بنود عامة") }] : []).concat(g.items)).map(i => i.head ? `<tr><td colspan="4" style="padding:14px 0 4px;${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;text-align:${s}">${h(i.head)}</td></tr>` : `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
+ ${invGroups(x.items, lang === "en").flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (lang === "en" ? "Other items" : "بنود أخرى") }] : []).concat(g.items)).map(i => i.head ? `<tr><td colspan="4" style="padding:14px 0 4px;${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;text-align:${s}">${h(i.head)}</td></tr>` : `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
 </table>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;margin-${s}:auto;width:260px;max-width:100%">
  ${x.discount ? tot(L.sub, fmt(sub, c)) + tot(L.disc, "−" + fmt(x.discount, c)) : ""}
@@ -533,8 +534,8 @@ function billTicket(x, lang, intro, link){
   const open = st === "pending" || st === "partial" || st === "overdue", B = s => '<b style="color:#fff">' + h(s) + "</b>";
   const cap = open ? (st === "overdue" ? (en ? "Due since " : "مستحقة منذ ") + B(dt(x.due_date)) : (en ? "Amount due · by " : "المبلغ المستحق · حتى ") + B(dt(x.due_date)))
             : st === "paid" ? (en ? "Paid in full · thank you" : "مدفوعة بالكامل · شكراً لك") : h(S[st] || st);
-  const G = invGroups(x.items), multi = G.length > 1;
-  const items = [].concat(...G.map(g => (multi ? [{ head: g.k || (en ? "General" : "بنود عامة") }] : []).concat(g.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })))))
+  const G = invGroups(x.items, en), multi = G.length > 1;
+  const items = [].concat(...G.map(g => (multi ? [{ head: g.k || (en ? "Other items" : "بنود أخرى") }] : []).concat(g.items.map(i => ({ name: i.desc, qty: i.qty, amount: fmt(i.unit * i.qty, c) })))))
     .concat(x.discount ? [{ name: L.disc, qty: 1, amount: "−" + fmt(x.discount, c) }] : []);
   const covers = invCovers(x, en);
   const totals = [[L.total, fmt(x.total, c)]].concat(x.paid ? [[L.paid, fmt(x.paid, c)]] : []).concat(x.refunded ? [[L.refunded, "−" + fmt(x.refunded, c)]] : [])
