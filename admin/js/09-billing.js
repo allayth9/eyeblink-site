@@ -69,7 +69,10 @@
       (o.extras.length?'<div class="bow-g"><span class="small muted">إضافات وافق عليها العميل</span>'+o.extras.map(function(e,i){ var sum=e.items.reduce(function(a,x){ return a+x.amount; },0);
           return ck('x'+i,true,esc(e.title)+' <small class="muted">· '+esc(e.pname)+' · '+esc(e.items.map(function(x){ return x.name; }).join('، '))+'</small>','<b dir="ltr">'+esc($(sum))+'</b>'); }).join('')+'</div>':'')+
       (o.units.length?'<div class="bow-g"><span class="small muted">وحدات منجزة بسعرها</span>'+o.units.map(function(u,i){ return ck('u'+i,true,esc(u.title)+' <small class="muted">· '+esc(u.pname)+' · '+esc(u.unit)+'</small>','<b dir="ltr">'+esc($(u.price))+'</b>'); }).join('')+'</div>':'')+
-      (o.others.length?'<div class="bow-g"><span class="small muted">أعمال منفردة وخارج الباقة (اكتب السعر)</span>'+o.others.map(function(x,i){ return ck('r'+i,false,esc(x.title)+' <small class="muted">· '+esc(x.pname)+'</small>','<input type="number" min="0" step="any" class="bow-p" data-owp="'+i+'" placeholder="السعر" dir="ltr">'); }).join('')+'</div>':'')+
+      // other finished work: for a package client each one is either covered by this payment (no price) or billed at its own price
+      (o.others.length?'<div class="bow-g"><span class="small muted">'+(o.pkg?'أعمال منجزة أخرى: ضمن الباقة، أو بسعر منفصل':'أعمال منجزة خارج الاتفاق (اكتب السعر)')+'</span>'+o.others.map(function(x,i){ var pr='<input type="number" min="0" step="any" class="bow-p" data-owp="'+i+'" placeholder="السعر" dir="ltr"'+(o.pkg?' hidden':'')+'>';
+          return '<div class="bow bow-r"><label class="bow-c"><input type="checkbox" data-ow="r'+i+'"><span>'+esc(x.title)+' <small class="muted">· '+esc(x.pname)+'</small></span></label>'+
+            (o.pkg?'<div class="bow-a" role="radiogroup" aria-label="طريقة احتساب '+esc(x.title)+'"><label><input type="radio" name="owr'+i+'" value="pkg" checked><span>ضمن الباقة</span></label><label><input type="radio" name="owr'+i+'" value="price"><span>بسعر</span></label>'+pr+'</div>':pr)+'</div>'; }).join('')+'</div>':'')+
       (o.open.filter(function(x){ return !x.pkg; }).length?'<div class="bow-g"><span class="small muted">قيد التنفيذ (لا تُفوتر الآن، وتظهر في الفاتورة التالية)</span><div class="small">'+esc(o.open.filter(function(x){ return !x.pkg; }).slice(0,12).map(function(x){ return x.title+(x.pname?' · '+x.pname:''); }).join('، '))+(o.open.filter(function(x){ return !x.pkg; }).length>12?'…':'')+'</div></div>':'')+
       (any?'<div class="actions"><button class="btn sm primary" type="button" data-bowe>ضع المحدد في الفاتورة</button></div>':'<p class="hint">لا يوجد شغل غير مفوتر لهذا العميل. يمكنك كتابة بنود حرة كالمعتاد.</p>')+'</div>'; }
   function bOweApply(f){ var em=f.elements.email.value, o=OWE[em]; if(!o) return; var on=function(k){ var i=f.querySelector('[data-ow="'+k+'"]'); return i&&i.checked; };
@@ -84,7 +87,9 @@
     if(pkg.length) parts.push('دفعة من الباقة');
     o.extras.forEach(function(e,i){ if(!on('x'+i)) return; tasks.push(e.id); e.items.forEach(function(x){ items.push({desc:e.title+' · '+x.name+(x.detail?' ('+x.detail+')':''),qty:1,unit:x.amount,project:e.pid||''}); }); });
     o.units.forEach(function(u,i){ if(!on('u'+i)) return; tasks.push(u.id); items.push({desc:u.title+' · '+u.unit,qty:1,unit:u.price,project:u.pid||''}); });
-    o.others.forEach(function(x,i){ if(!on('r'+i)) return; var pr=f.querySelector('[data-owp="'+i+'"]'); if(!pr||pr.value===''){ miss=true; if(pr) pr.focus(); return; } tasks.push(x.id); items.push({desc:x.title,qty:1,unit:+pr.value,project:x.pid||''}); });
+    o.others.forEach(function(x,i){ if(!on('r'+i)) return; var w=f.querySelector('input[name="owr'+i+'"]:checked');
+      if(w&&w.value==='pkg'){ tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push(x.title); return; }
+      var pr=f.querySelector('[data-owp="'+i+'"]'); if(!pr||pr.value===''){ miss=true; if(pr) pr.focus(); return; } tasks.push(x.id); items.push({desc:x.title,qty:1,unit:+pr.value,project:x.pid||''}); });
     if(miss) return toast('اكتب سعر كل عمل محدد خارج الباقة',true);
     if(!items.length) return toast('لم تحدد شيئاً',true);
     var n=tasks.length; if(n) parts.push(n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام');
@@ -179,6 +184,7 @@
   document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f) bformSync(f); });
   document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; }
     if(s.name==='rcv'){ s.closest('.brcv').querySelector('.row').hidden=!s.checked; return; }
+    if(/^owr\d+$/.test(s.name)){ var px=s.closest('.bow-a').querySelector('[data-owp]'); px.hidden=s.value!=='price'; var cb=s.closest('.bow-r').querySelector('[data-ow]'); cb.checked=true; if(!px.hidden) px.focus(); return; }
     if(/^owa\d+$/.test(s.name)){ var ox=s.closest('.bow-a').querySelector('[data-owx]'); ox.hidden=s.value!=='other'; if(!ox.hidden) ox.focus(); return; }
     var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ if(BFORM) BFORM.items=null; f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;

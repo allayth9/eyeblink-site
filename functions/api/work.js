@@ -242,7 +242,7 @@ async function unbilledOf(D, email){
   const a = await agreementOf(D, email), t = a && a.terms, cur = (t && t.cur) || "$", now7 = monthOf(now());
   const rows = (await D.prepare(`SELECT k.id, k.ref, k.title, k.unit, k.status, k.created_at, k.completed_at, k.extras, k.invoice_id, k.project_id, p.name AS pname, p.in_pkg, p.single
       FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=? AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at`).bind(email).all()).results.map(parse);
-  const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, months: [], pkgTasks: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
+  const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, pkg: !!(t && t.mode === "package"), months: [], pkgTasks: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
   if (t && t.mode === "package") {
     const billed = new Set((await D.prepare("SELECT month FROM pkg_billed WHERE email=?").bind(email).all()).results.map(r => r.month));
     const first = t.start || (rows.filter(inPkg).map(r => monthOf(r.created_at)).sort()[0]) || now7;
