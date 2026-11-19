@@ -326,7 +326,12 @@ async function act(D, a){ await D.prepare("INSERT INTO activity (at, actor, acto
 const MINE = "(SELECT id FROM projects WHERE client_email=?1 UNION SELECT project_id FROM project_members WHERE email=?1)";
 async function myProject(D, email, id){ return D.prepare(`SELECT * FROM projects WHERE id=?2 AND id IN ${MINE}`).bind(email, id).first(); }
 async function myTask(D, email, ref){ return D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.ref=?2 AND t.project_id IN ${MINE}`).bind(email, ref).first(); }
-async function userOf(env, email){ const v = await env.EB.get("user:" + String(email || "").toLowerCase()); return v ? JSON.parse(v) : null; }
+// the name the studio gave a client (clients.name) is their name everywhere: e-mails, invoices, notices; an account still holding the old one is brought in line
+async function userOf(env, email){ const v = await env.EB.get("user:" + String(email || "").toLowerCase()); if (!v) return null; const u = JSON.parse(v);
+  if (u.role === "client" && env.DB) { const c = await env.DB.prepare("SELECT name FROM clients WHERE email=?").bind(u.email).first().catch(() => null);
+    if (c && c.name && c.name !== u.name) { u.name = c.name; await env.EB.put("user:" + u.email, JSON.stringify(u)); } }
+  return u; }
+async function studioNames(env){ if (!env.DB) return {}; const r = await env.DB.prepare("SELECT email, name FROM clients WHERE name IS NOT NULL AND name<>''").all().catch(() => ({ results: [] })); return Object.fromEntries(r.results.map(x => [x.email, x.name])); }
 const adminLink = ref => SITE + "/admin/#tasks/" + ref;
 const ST_LABEL = { ar:{ new:"طلب جديد", review:"قيد المراجعة", info:"بانتظار معلوماتك", accepted:"تم القبول", progress:"قيد التنفيذ", feedback:"بانتظار ملاحظاتك", revision:"تعديلات مطلوبة", final:"التسليم النهائي", completed:"مكتملة", rejected:"مرفوضة", cancelled:"ملغاة" },
                    en:{ new:"New request", review:"Under review", info:"Awaiting your information", accepted:"Accepted", progress:"In progress", feedback:"Awaiting your feedback", revision:"Revision requested", final:"Final delivery", completed:"Completed", rejected:"Rejected", cancelled:"Cancelled" } };
@@ -1440,8 +1445,8 @@ async function addFile(ctx, D, o){
   return json({ ok: true, id });
 }
 
-async function clientsList(env){ const out = []; let cursor;
-  do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") out.push({ email: u.email, name: u.name, lang: u.lang || "ar" }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
+async function clientsList(env){ const out = [], N = await studioNames(env); let cursor;
+  do { const r = await env.EB.list({ prefix: "user:", cursor }); for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v); if (u.role === "client") out.push({ email: u.email, name: N[u.email] || u.name, lang: u.lang || "ar" }); } cursor = r.list_complete ? null : r.cursor; } while (cursor);
   return out; }
 // ==== client records (phase 9) ====
 const CSTATUS = ["active","paused","archived"];
@@ -1460,10 +1465,10 @@ async function ensureClients(D, list){   // a stable id for every client the stu
   const st = list.filter(x => x && isEmail(x.email)).map(x => D.prepare("INSERT OR IGNORE INTO clients (id, email, name, created_at, updated_at) VALUES (?,?,?,?,?)").bind("c_" + randHex(6), x.email.toLowerCase(), clip(x.name, 120), now(), now()));
   for (let i = 0; i < st.length; i += 50) await D.batch(st.slice(i, i + 50));
 }
-async function allUsers(env){ const out = []; let cursor;
+async function allUsers(env){ const out = [], N = await studioNames(env); let cursor;
   do { const r = await env.EB.list({ prefix: "user:", cursor });
     for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v);
-      out.push({ email: u.email, name: u.name, role: u.role === "client" ? "client" : "customer", lang: u.lang || "ar", created: u.createdAt || null, lastLogin: u.lastLogin || null, orders: (u.orders || []).length, clientSince: u.clientSince || null, pic: u.pic || null }); }
+      out.push({ email: u.email, name: (u.role === "client" && N[u.email]) || u.name, role: u.role === "client" ? "client" : "customer", lang: u.lang || "ar", created: u.createdAt || null, lastLogin: u.lastLogin || null, orders: (u.orders || []).length, clientSince: u.clientSince || null, pic: u.pic || null }); }
     cursor = r.list_complete ? null : r.cursor; } while (cursor && out.length < 3000);
   return out; }
 async function clientsOverview(env, D){
@@ -1850,6 +1855,7 @@ async function adminPost(ctx, d){
       .bind(f.name, f.company, f.phone, f.logo_url, f.notes, f.status, f.status === "archived" ? (old.archived_at || at) : null, at, old.id).run();
     else await D.prepare("INSERT INTO clients (id, email, name, company, phone, logo_url, notes, status, created_at, updated_at, archived_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
       .bind("c_" + randHex(6), email, f.name, f.company, f.phone, f.logo_url, f.notes, f.status, at, at, f.status === "archived" ? at : null).run();
+    if (u && f.name && u.name !== f.name) { u.name = f.name; await env.EB.put("user:" + u.email, JSON.stringify(u)); }   // their account carries the same name
     await act(D, { ...studio, client_email: email, kind: old ? "client_updated" : "client_added", data: { name: f.name } });
     return json({ ok: true, id: (await clientRow(D, email)).id, account: !!u, role: u ? (u.role === "client" ? "client" : "customer") : null });
   }

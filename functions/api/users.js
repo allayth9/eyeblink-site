@@ -5,9 +5,11 @@ import { isAdmin, json, randHex, pbkdf2 } from "../_lib/shared.js";
 export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
   const out = []; let cursor;
+  // a client is shown by the name the studio gave them
+  const N = env.DB ? Object.fromEntries((await env.DB.prepare("SELECT email, name FROM clients WHERE name IS NOT NULL AND name<>''").all().catch(() => ({ results: [] }))).results.map(x => [x.email, x.name])) : {};
   do { const r = await env.EB.list({ prefix: "user:", cursor });
     for (const k of r.keys) { const v = await env.EB.get(k.name); if (!v) continue; const u = JSON.parse(v);
-      out.push({ email: u.email, name: u.name, provider: u.provider, google: !!u.google, hasPassword: !!u.hash, createdAt: u.createdAt, lastLogin: u.lastLogin, orders: (u.orders || []).length,
+      out.push({ email: u.email, name: (u.role === "client" && N[u.email]) || u.name, provider: u.provider, google: !!u.google, hasPassword: !!u.hash, createdAt: u.createdAt, lastLogin: u.lastLogin, orders: (u.orders || []).length,
       role: u.role === "client" ? "client" : "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "", log: (u.log || []).slice(0, 12) }); }
     cursor = r.list_complete ? null : r.cursor; } while (cursor && out.length < 2000);
   out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
