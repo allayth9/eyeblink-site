@@ -58,6 +58,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS credits (id TEXT PRIMARY KEY, email TEXT NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT '$', method TEXT, note TEXT, date TEXT, invoice_id TEXT, created_at TEXT NOT NULL)`,
   // which months of a client's package an invoice already covers
   `CREATE TABLE IF NOT EXISTS pkg_billed (email TEXT NOT NULL, month TEXT NOT NULL, invoice_id TEXT NOT NULL, PRIMARY KEY (email, month))`,
+  `CREATE TABLE IF NOT EXISTS pkg_pay (invoice_id TEXT NOT NULL, email TEXT NOT NULL, month TEXT NOT NULL, amount REAL NOT NULL, kind TEXT NOT NULL DEFAULT 'pkg', created_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, client_email TEXT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', type TEXT NOT NULL DEFAULT 'custom',
      status TEXT NOT NULL DEFAULT 'active', services TEXT NOT NULL DEFAULT '[]', start_date TEXT, end_date TEXT, quota INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
@@ -229,7 +230,11 @@ async function forClientP(D, p, en){ if (!p) return p; delete p.terms; delete p.
 async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = monthOf(now()), u = await usageOf(D, email, m);
   return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
 const monthsFrom = (a, b) => { const out = []; let m = a; for (let i = 0; i < 60 && m <= b; i++) { out.push(m); const d = new Date(m + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); m = d.toISOString().slice(0, 7); } return out; };
-async function releaseInvoice(D, id){ await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_billed WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM credits WHERE invoice_id=?").bind(id)]); }
+async function releaseInvoice(D, id){ await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_billed WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_pay WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM credits WHERE invoice_id=?").bind(id)]); }
+// what the invoices so far put toward one month of the package (a month billed whole the old way counts as its price)
+async function pkgBilledOf(D, email, m, price){ const r = await D.prepare("SELECT SUM(amount) AS s, COUNT(DISTINCT invoice_id) AS n FROM pkg_pay WHERE email=? AND month=? AND kind='pkg'").bind(email, m).first();
+  const old = await D.prepare("SELECT 1 FROM pkg_billed WHERE email=? AND month=?").bind(email, m).first();
+  return { month: m, amount: amt((r.s || 0) + (old ? +price || 0 : 0)), count: (r.n || 0) + (old ? 1 : 0) }; }
 async function creditOf(D, email){ return amt((await D.prepare("SELECT SUM(amount) AS s FROM credits WHERE email=?").bind(email).first()).s || 0); }
 // everything a client owes that no invoice covers yet: the package's months, extras they approved, work outside the package, units at a price;
 // what is still in progress (shown, not billed); and their prepaid credit
@@ -237,18 +242,21 @@ async function unbilledOf(D, email){
   const a = await agreementOf(D, email), t = a && a.terms, cur = (t && t.cur) || "$", now7 = monthOf(now());
   const rows = (await D.prepare(`SELECT k.id, k.ref, k.title, k.unit, k.status, k.created_at, k.completed_at, k.extras, k.invoice_id, k.project_id, p.name AS pname, p.in_pkg, p.single
       FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=? AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at`).bind(email).all()).results.map(parse);
-  const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, months: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
+  const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, months: [], pkgTasks: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
   if (t && t.mode === "package") {
     const billed = new Set((await D.prepare("SELECT month FROM pkg_billed WHERE email=?").bind(email).all()).results.map(r => r.month));
     const first = t.start || (rows.filter(inPkg).map(r => monthOf(r.created_at)).sort()[0]) || now7;
+    const pays = (await D.prepare("SELECT month, kind, SUM(amount) AS s, COUNT(DISTINCT invoice_id) AS n FROM pkg_pay WHERE email=? GROUP BY month, kind").bind(email).all()).results;
     for (const m of monthsFrom(first, now7)) { if (billed.has(m)) continue;
-      const mine = rows.filter(r => inPkg(r) && monthOf(r.created_at) === m), cy = carryOf(a, m), used = {};
+      const mine = rows.filter(r => inPkg(r) && monthOf(r.created_at) === m), cy = carryOf(a, m), used = {}, pp = pays.find(p => p.month === m && p.kind === "pkg");
       mine.forEach(r => used[r.unit] = (used[r.unit] || 0) + 1);
-      out.months.push({ month: m, price: t.price, units: t.units.filter(u => u.inc).map(u => ({ name: u.name, used: used[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })),
-        over: t.units.map(u => ({ name: u.name, qty: (used[u.id] || 0) - u.inc - (+cy[u.id] || 0), price: u.price })).filter(o => o.qty > 0 && o.price),
-        annex: mine.filter(r => r.status === "completed").map(r => ({ id: r.id, title: r.title, pname: pn(r) })), current: m === now7 }); }
+      const paid = amt(pp ? pp.s : 0), remaining = amt(Math.max(0, t.price - paid)), over = pays.some(p => p.month === m && p.kind === "over") ? [] :
+        t.units.map(u => ({ name: u.name, qty: (used[u.id] || 0) - u.inc - (+cy[u.id] || 0), price: u.price })).filter(o => o.qty > 0 && o.price);
+      if (remaining <= 0.009 && !over.length) continue;
+      out.months.push({ month: m, price: t.price, paid, remaining, count: pp ? pp.n : 0, units: t.units.filter(u => u.inc).map(u => ({ name: u.name, used: used[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })), over, current: m === now7 }); }
   }
   for (const r of rows) { if (r.invoice_id) continue;
+    if (t && t.mode === "package" && inPkg(r)) out.pkgTasks.push({ id: r.id, title: r.title, pname: pn(r), date: String(r.completed_at || r.created_at || "").slice(0, 10), done: r.status === "completed" });
     if (r.extras && r.extras.state === "accepted") out.extras.push({ id: r.id, title: r.title, pname: pn(r), pid: r.project_id, items: r.extras.items.map(e => ({ name: e.name, detail: e.detail || "", amount: e.amount })) });
     if (r.status !== "completed") { out.open.push({ title: r.title, pname: pn(r), status: r.status, pkg: !!inPkg(r) }); continue; }
     if (t && t.mode === "unit" && inPkg(r)) { const u = t.units.find(x => x.id === r.unit); out.units.push({ id: r.id, title: r.title, pname: pn(r), unit: u.name, price: u.price, pid: r.project_id }); }
@@ -522,7 +530,7 @@ ${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:b
  ${last ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${dt(last.date || last.at)}</div></td>` : ""}
 </tr></table></td></tr>
 ${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.7;color:${ink};text-align:${s}">${h(x.note).replace(/\n/g, "<br>")}</td></tr>` : ""}
-${(x.annex || []).length ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.8;color:${ink};text-align:${s}"><div style="font-weight:bold;margin-bottom:4px">${en ? "This invoice includes" : "تشمل هذه الفاتورة"}</div>${x.annex.map(g => `<div style="color:${grey}">${h(g.k)}${g.k ? ": " : ""}<span style="color:${ink}">${g.items.map(h).join("، ")}</span></div>`).join("")}</td></tr>` : ""}
+${(x.annex || []).length ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.8;color:${ink};text-align:${s}"><div style="font-weight:bold;margin-bottom:4px">${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</div>${x.annex.map(g => `<div style="color:${grey}">${h(g.k)}${g.k ? ": " : ""}<span style="color:${ink}">${g.items.map(h).join("، ")}</span></div>`).join("")}</td></tr>` : ""}
 <tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
 </table>`;
 }
@@ -1444,7 +1452,7 @@ async function agreementsAll(D){ const o = {}, m = monthOf(now());
     t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {};
     // what no invoice covers yet, roughly: past package months (the running month is not «late» yet), approved extras, finished work outside the package
     const ub = await unbilledOf(D, r.email), past = ub.months.filter(x => !x.current);
-    t._owed = { months: past.length, amount: amt(past.reduce((a, x) => a + x.price + x.over.reduce((b, v) => b + v.qty * v.price, 0), 0) + ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
+    t._owed = { months: past.length, amount: amt(past.reduce((a, x) => a + x.remaining + x.over.reduce((b, v) => b + v.qty * v.price, 0), 0) + ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
     o[r.email] = t; } catch {} }
   return o; }
 async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
@@ -1525,7 +1533,7 @@ async function adminGet(request, env, q){
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
     const ag = await agreementOf(D, em), credits = (await D.prepare("SELECT * FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 60").bind(em).all()).results;
-    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())), billed: await pkgBilledOf(D, em, monthOf(now()), ag.terms.price) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
@@ -1622,12 +1630,18 @@ async function adminPost(ctx, d){
     const L = d.links && typeof d.links === "object" ? d.links : {}, tids = (Array.isArray(L.tasks) ? L.tasks : []).map(x => clip(x, 40)).slice(0, 400), months = (Array.isArray(L.months) ? L.months : []).filter(m => /^\d{4}-\d{2}$/.test(m)).slice(0, 60);
     for (const tid of tids) await D.prepare("UPDATE tasks SET invoice_id=? WHERE id=? AND client_email=? AND invoice_id IS NULL").bind(id, tid, email).run();
     for (const m of months) await D.prepare("INSERT OR IGNORE INTO pkg_billed (email, month, invoice_id) VALUES (?,?,?)").bind(email, m, id).run();
+    const pk = (Array.isArray(L.pkg) ? L.pkg : []).slice(0, 24).map(x => ({ month: String(x && x.month || ""), amount: amt(x && x.amount), kind: x && x.kind === "over" ? "over" : "pkg" })).filter(x => /^\d{4}-\d{2}$/.test(x.month) && x.amount > 0);
+    for (const x of pk) await D.prepare("INSERT INTO pkg_pay (invoice_id, email, month, amount, kind, created_at) VALUES (?,?,?,?,?,?)").bind(id, email, x.month, x.amount, x.kind, at).run();
     const annex = (Array.isArray(d.annex) ? d.annex : []).slice(0, 40).map(g => ({ k: clip(g.k, 80), items: (Array.isArray(g.items) ? g.items : []).slice(0, 200).map(x => clip(x, 140)) })).filter(g => g.items.length);
     let credit = Math.min(amt(d.credit), await creditOf(D, email), total); credit = credit > 0.009 ? amt(credit) : 0;
-    await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, credit }), id).run();
+    await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, pkg: pk, credit }), id).run();
+    const pays0 = [], rc = d.received && typeof d.received === "object" ? d.received : null, rest = amt(total - credit);
     if (credit) { const en0 = u && u.lang === "en";
       await D.prepare("INSERT INTO credits (id, email, amount, currency, method, note, date, invoice_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind("cr_" + randHex(6), email, -credit, cur, "invoice", n.no, issue, id, at).run();
-      await D.prepare("UPDATE invoices SET paid=?, status=?, payments=? WHERE id=?").bind(credit, credit + 0.009 >= total ? "paid" : "partial", JSON.stringify([{ amount: credit, method: en0 ? "From your prepaid credit" : "من الرصيد المقدّم", credit: true, date: issue, at }]), id).run(); }
+      pays0.push({ amount: credit, method: en0 ? "From your prepaid credit" : "من الرصيد المقدّم", credit: true, date: issue, at }); }
+    if (rc && rest > 0.009) pays0.push({ amount: rest, method: clip(rc.method, 80), date: isDate(rc.date) ? rc.date : issue, note: "", at });
+    if (pays0.length) { const paid0 = amt(pays0.reduce((a, p) => a + p.amount, 0));
+      await D.prepare("UPDATE invoices SET paid=?, status=?, payments=? WHERE id=?").bind(paid0, paid0 + 0.009 >= total ? "paid" : "partial", JSON.stringify(pays0), id).run(); }
     await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_issued", data: { no: n.no, total, cur, sent: !!d.send } });
     if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice", ctx));
     return json({ ok: true, id, no: n.no });
@@ -1930,7 +1944,7 @@ async function adminPost(ctx, d){
     if (!d.confirm) return json({ ok: true, invoices: rows.length, orders: orders.length });
     if (env.R2) await env.R2.put("backups/purge/" + Date.now() + "-invoices.json", JSON.stringify({ at, invoices: rows, orders: orders.map(([k, o]) => ({ key: k, invoice: o.invoice || null, deposit: o.deposit || null })) })).catch(() => {});
     await D.prepare("DELETE FROM invoices").run();
-    await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id IS NOT NULL"), D.prepare("DELETE FROM pkg_billed"), D.prepare("DELETE FROM credits WHERE invoice_id IS NOT NULL")]);
+    await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id IS NOT NULL"), D.prepare("DELETE FROM pkg_billed"), D.prepare("DELETE FROM pkg_pay"), D.prepare("DELETE FROM credits WHERE invoice_id IS NOT NULL")]);
     for (const [k, o] of orders) { delete o.invoice; if (o.deposit) delete o.deposit.invoice; await env.EB.put(k, JSON.stringify(o)); }
     await D.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
     await D.prepare("DELETE FROM seq WHERE name='inv'").run(); await env.EB.put("invseq", "0");

@@ -33,6 +33,7 @@
       (!x&&f.credit>0?'<div class="field bcred"><label>يُخصم من الرصيد المقدّم</label><input name="credit" type="number" min="0" step="any" dir="ltr" value="'+esc(f.credit)+'"><p class="hint">يُسجَّل دفعةً على الفاتورة، ويقلّ رصيد العميل بقدره.</p></div>':'')+
       '<div class="row"><div class="field"><label>خصم</label><input name="discount" type="number" min="0" step="any" value="'+esc(x&&x.discount?x.discount:'')+'"></div><div class="field"><label>تاريخ الإصدار</label><input name="issue" type="date" value="'+esc(x?x.issue_date:td)+'"></div><div class="field"><label>تاريخ الاستحقاق</label><input name="due" type="date" value="'+esc(due)+'"></div></div>'+
       '<div class="field"><label>ملاحظة على الفاتورة (اختياري)</label><textarea name="note" dir="auto">'+esc(x?x.note:'')+'</textarea></div>'+
+      (x?'':'<div class="brcv"><label class="check"><input type="checkbox" name="rcv"> الدفعة وصلت (تُنشأ الفاتورة مدفوعة)</label><div class="row" hidden><div class="field"><label>تاريخ الوصول</label><input name="rdate" type="date" value="'+esc(td)+'"></div><div class="field"><label>الطريقة</label><select name="rmeth">'+(typeof payList==='function'?payList():[]).map(function(m){ return '<option>'+esc(m.name)+'</option>'; }).join('')+'<option>أخرى</option></select></div></div></div>')+
       '<div class="actions"><b class="btot">—</b><label class="check"><input type="checkbox" name="send"'+(x&&x.sent_at?'':' checked')+'> '+(x&&x.sent_at?'أعد إرسالها للعميل بعد الحفظ':'أرسلها للعميل الآن (بريد + إشعار)')+'</label><button class="btn primary sm" type="submit">'+(x?'حفظ الفاتورة':'إنشاء الفاتورة')+'</button><button class="btn sm" type="button" data-bx>إلغاء</button></div></form>'; }
   /* what the invoice covers: one project, several, all of them, or general lines; each group holds its own lines */
   // the group of lines without a project: «الباقة الشهرية» when it holds package lines, «بنود أخرى» otherwise
@@ -56,22 +57,31 @@
     if(BFORM&&BFORM.built&&BFORM.email===em){ box.innerHTML='<div class="bag"><div><b>عُبّئت من الشغل غير المفوتر</b><div class="small muted">'+esc(BFORM.built)+'</div></div><button class="btn sm" type="button" data-bowe-redo>اختر من جديد</button></div>'; return; }
     var o=OWE[em]; if(!o){ box.innerHTML='<p class="hint">جارٍ جمع الشغل غير المفوتر…</p>'; wpost({action:'unbilled',email:em}).then(function(j){ if(!j.ok) return; OWE[em]=j; if(f.isConnected&&f.elements.email.value===em) bAgree(f,null); }); return; }
     var c=o.cur||'$', $=function(v){ return pfmt(v,c); }, ck=function(k,on,lab,side){ return '<label class="bow"><input type="checkbox" data-ow="'+esc(k)+'"'+(on?' checked':'')+'><span>'+lab+'</span>'+(side||'')+'</label>'; };
-    var any=o.months.length||o.extras.length||o.units.length||o.others.length;
+    var any=o.months.length||(o.pkgTasks||[]).length||o.extras.length||o.units.length||o.others.length;
     box.innerHTML='<div class="bowe"><div class="ph"><b>غير مفوتر حتى الآن</b>'+(o.credit>0?'<span class="tag ok">رصيد مقدّم '+esc($(o.credit))+'</span>':'')+'</div>'+
-      (o.months.length?'<div class="bow-g"><span class="small muted">الباقة الشهرية</span>'+o.months.map(function(m,i){ return ck('m'+i,true,'الباقة · '+esc(MN(m.month))+(m.current?' <small class="muted">(الشهر الجاري)</small>':'')+' <small class="muted">'+esc(m.units.map(function(u){ return u.name+' '+u.used+'/'+u.have; }).join('، '))+'</small>','<b dir="ltr">'+esc($(m.price))+'</b>')+
-          m.over.map(function(v,k){ return ck('m'+i+'o'+k,true,'&nbsp;&nbsp;'+esc(v.name)+' إضافي · '+esc(MN(m.month))+' <small class="muted">('+v.qty+')</small>','<b dir="ltr">'+esc($(v.qty*v.price))+'</b>'); }).join(''); }).join('')+'</div>':'')+
+      (o.months.length?'<div class="bow-g"><span class="small muted">دفعة من الباقة الشهرية</span>'+o.months.map(function(m,i){ var paid=m.paid>0, opt=function(v,l,on){ return '<label><input type="radio" name="owa'+i+'" value="'+v+'"'+(on?' checked':'')+'><span>'+l+'</span></label>'; };
+          return '<div class="bow-m"><div class="bow"><span>الباقة · '+esc(MN(m.month))+(m.current?' <small class="muted">(الشهر الجاري)</small>':'')+' <small class="muted">'+esc(m.units.map(function(u){ return u.name+' '+u.used+'/'+u.have; }).join('، '))+'</small></span><b dir="ltr">'+esc($(m.price))+'</b></div>'+
+            (paid?'<p class="small muted">فوتر منها '+esc($(m.paid))+' في '+(m.count===1?'دفعة واحدة':m.count===2?'دفعتين':m.count+' دفعات')+(m.remaining>0?'، والمتبقي '+esc($(m.remaining)):'، فالباقة مغطاة')+'</p>':'')+
+            (paid&&!(m.remaining>0)?'':'<div class="bow-a" role="radiogroup" aria-label="المبلغ من الباقة">'+(paid?opt('rest','المتبقي · '+esc($(m.remaining)),m.remaining>0):opt('half','50% · '+esc($(m.price/2)),false))+opt('full','كاملة · '+esc($(m.price)),!paid)+opt('other','مبلغ آخر',false)+opt('none','لا شيء',paid&&!(m.remaining>0))+
+            '<input type="number" min="0" step="any" class="bow-p" data-owx="'+i+'" placeholder="المبلغ" dir="ltr" hidden></div>')+
+          m.over.map(function(v,k){ return ck('m'+i+'o'+k,true,esc(v.name)+' إضافي · '+esc(MN(m.month))+' <small class="muted">('+v.qty+')</small>','<b dir="ltr">'+esc($(v.qty*v.price))+'</b>'); }).join('')+'</div>'; }).join('')+'</div>':'')+
+      (o.pkgTasks&&o.pkgTasks.length?'<div class="bow-g"><span class="small muted">الشغل الذي تغطيه هذه الدفعة (ضمن الباقة، لم تذكره فاتورة بعد)</span>'+o.pkgTasks.map(function(x,i){ return ck('p'+i,x.done,esc(x.title)+' <small class="muted">· '+esc(x.pname)+' · '+(x.done?esc(wd(x.date)):'قيد التنفيذ')+'</small>'); }).join('')+'</div>':'')+
       (o.extras.length?'<div class="bow-g"><span class="small muted">إضافات وافق عليها العميل</span>'+o.extras.map(function(e,i){ var sum=e.items.reduce(function(a,x){ return a+x.amount; },0);
           return ck('x'+i,true,esc(e.title)+' <small class="muted">· '+esc(e.pname)+' · '+esc(e.items.map(function(x){ return x.name; }).join('، '))+'</small>','<b dir="ltr">'+esc($(sum))+'</b>'); }).join('')+'</div>':'')+
       (o.units.length?'<div class="bow-g"><span class="small muted">وحدات منجزة بسعرها</span>'+o.units.map(function(u,i){ return ck('u'+i,true,esc(u.title)+' <small class="muted">· '+esc(u.pname)+' · '+esc(u.unit)+'</small>','<b dir="ltr">'+esc($(u.price))+'</b>'); }).join('')+'</div>':'')+
       (o.others.length?'<div class="bow-g"><span class="small muted">أعمال منفردة وخارج الباقة (اكتب السعر)</span>'+o.others.map(function(x,i){ return ck('r'+i,false,esc(x.title)+' <small class="muted">· '+esc(x.pname)+'</small>','<input type="number" min="0" step="any" class="bow-p" data-owp="'+i+'" placeholder="السعر" dir="ltr">'); }).join('')+'</div>':'')+
-      (o.open.length?'<div class="bow-g"><span class="small muted">قيد التنفيذ (لا تُفوتر الآن، وتظهر في الفاتورة التالية)</span><div class="small">'+esc(o.open.slice(0,12).map(function(x){ return x.title+(x.pname?' · '+x.pname:''); }).join('، '))+(o.open.length>12?'…':'')+'</div></div>':'')+
+      (o.open.filter(function(x){ return !x.pkg; }).length?'<div class="bow-g"><span class="small muted">قيد التنفيذ (لا تُفوتر الآن، وتظهر في الفاتورة التالية)</span><div class="small">'+esc(o.open.filter(function(x){ return !x.pkg; }).slice(0,12).map(function(x){ return x.title+(x.pname?' · '+x.pname:''); }).join('، '))+(o.open.filter(function(x){ return !x.pkg; }).length>12?'…':'')+'</div></div>':'')+
       (any?'<div class="actions"><button class="btn sm primary" type="button" data-bowe>ضع المحدد في الفاتورة</button></div>':'<p class="hint">لا يوجد شغل غير مفوتر لهذا العميل. يمكنك كتابة بنود حرة كالمعتاد.</p>')+'</div>'; }
   function bOweApply(f){ var em=f.elements.email.value, o=OWE[em]; if(!o) return; var on=function(k){ var i=f.querySelector('[data-ow="'+k+'"]'); return i&&i.checked; };
-    var items=[], tasks=[], months=[], annex={}, miss=false, parts=[];
-    o.months.forEach(function(m,i){ if(!on('m'+i)) return; items.push({desc:'الباقة الشهرية · '+MN(m.month),qty:1,unit:m.price,project:'',group:'pkg'}); months.push(m.month);
-      m.annex.forEach(function(a){ tasks.push(a.id); (annex[a.pname]=annex[a.pname]||[]).push(a.title); });
-      m.over.forEach(function(v,k){ if(on('m'+i+'o'+k)) items.push({desc:v.name+' إضافي · '+MN(m.month),qty:v.qty,unit:v.price,project:'',group:'pkg'}); }); });
-    if(months.length) parts.push(months.length===1?'شهر من الباقة':months.length===2?'شهران من الباقة':months.length+' أشهر من الباقة');
+    var items=[], tasks=[], pkg=[], annex={}, miss=false, parts=[];
+    o.months.forEach(function(m,i){ var r=f.querySelector('input[name="owa'+i+'"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="'+i+'"]');
+      var a=w==='half'?m.price/2:w==='full'?m.price:w==='rest'?m.remaining:w==='other'?+(x&&x.value)||0:0; a=Math.round(a*100)/100;
+      if(w==='other'&&!(a>0)){ miss=true; if(x) x.focus(); return; }
+      if(a>0){ items.push({desc:(a===m.price?'الباقة الشهرية · '+MN(m.month):a===m.remaining&&m.paid?'الدفعة المتبقية من الباقة الشهرية · '+MN(m.month):a===m.price/2?'دفعة الباقة الشهرية · '+MN(m.month)+' · 50%':'دفعة من الباقة الشهرية · '+MN(m.month)),qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:m.month,amount:a,kind:'pkg'}); }
+      m.over.forEach(function(v,k){ if(on('m'+i+'o'+k)){ items.push({desc:v.name+' إضافي · '+MN(m.month),qty:v.qty,unit:v.price,project:'',group:'pkg'}); pkg.push({month:m.month,amount:v.qty*v.price,kind:'over'}); } }); });
+    if(miss) return toast('اكتب المبلغ من الباقة',true);
+    (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push(x.title); });
+    if(pkg.length) parts.push('دفعة من الباقة');
     o.extras.forEach(function(e,i){ if(!on('x'+i)) return; tasks.push(e.id); e.items.forEach(function(x){ items.push({desc:e.title+' · '+x.name+(x.detail?' ('+x.detail+')':''),qty:1,unit:x.amount,project:e.pid||''}); }); });
     o.units.forEach(function(u,i){ if(!on('u'+i)) return; tasks.push(u.id); items.push({desc:u.title+' · '+u.unit,qty:1,unit:u.price,project:u.pid||''}); });
     o.others.forEach(function(x,i){ if(!on('r'+i)) return; var pr=f.querySelector('[data-owp="'+i+'"]'); if(!pr||pr.value===''){ miss=true; if(pr) pr.focus(); return; } tasks.push(x.id); items.push({desc:x.title,qty:1,unit:+pr.value,project:x.pid||''}); });
@@ -79,7 +89,7 @@
     if(!items.length) return toast('لم تحدد شيئاً',true);
     var n=tasks.length; if(n) parts.push(n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام');
     var tot=items.reduce(function(a,i){ return a+i.qty*i.unit; },0);
-    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,months:months},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
+    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,pkg:pkg},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
     renderBilling(); }
   function bGroups(f,first){ var P=bPN(f), sc=f._sc, nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
     var keys=P.filter(function(p){ return sc.all||sc.keys[p.id]; }).map(function(p){ return p.id; }).concat(sc.keys['']?['']:[]); if(!keys.length){ sc.keys['']=1; keys=['']; }
@@ -167,11 +177,14 @@
     var f=$('#panel').querySelector('.bform'); if(f){ if(!f.querySelector('.btk')){ var tk=document.createElement('aside'); tk.className='btk'; tk.setAttribute('aria-live','polite'); f.appendChild(tk); } bInit(f,BFORM&&BFORM.id?BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]:null); }
   }
   document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f) bformSync(f); });
-  document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; } var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ if(BFORM) BFORM.items=null; f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
+  document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; }
+    if(s.name==='rcv'){ s.closest('.brcv').querySelector('.row').hidden=!s.checked; return; }
+    if(/^owa\d+$/.test(s.name)){ var ox=s.closest('.bow-a').querySelector('[data-owx]'); ox.hidden=s.value!=='other'; if(!ox.hidden) ox.focus(); return; }
+    var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ if(BFORM) BFORM.items=null; f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;
     var items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:nn(r.children[1].value)||1,unit:nn(r.children[2].value),project:r.closest('.bgrp').dataset.proj||'',group:r.dataset.grp||undefined}; }).filter(function(i){ return i.desc; });
     bpost({action:'invoice',id:f.dataset.bid||undefined,client_email:E.email.value,scope:f._sc&&f._sc.all&&bPN(f).length>1?'all':undefined,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,note:E.note.value.trim(),send:E.send.checked,
-      links:!f.dataset.bid&&BFORM&&BFORM.links||undefined,annex:!f.dataset.bid&&BFORM&&BFORM.annex||undefined,credit:E.credit?E.credit.value:undefined},
+      links:!f.dataset.bid&&BFORM&&BFORM.links||undefined,annex:!f.dataset.bid&&BFORM&&BFORM.annex||undefined,credit:E.credit?E.credit.value:undefined,received:E.rcv&&E.rcv.checked?{date:E.rdate.value,method:E.rmeth.value}:undefined},
       f.querySelector('button[type=submit]'),E.send.checked?'حُفظت الفاتورة وأُرسلت إلى العميل':'حُفظت الفاتورة').then(function(j){ if(j.ok){ delete OWE[E.email.value]; BFORM=null; BOPEN='ws:'+j.id; route(true); } }); });
   document.addEventListener('click',function(e){ if(TAB!=='billing') return; var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-bowe')){ bOweApply(b.closest('.bform')); return; }
