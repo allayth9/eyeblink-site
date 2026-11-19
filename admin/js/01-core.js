@@ -197,7 +197,9 @@
         rep:{p:'process.steps', split:{all:'كل المراحل', addL:'+ مرحلة', sub:function(x){ var a=String((x.p&&x.p.ar)||'').replace(/\s+/g,' ').trim(); return a.length>70?a.slice(0,68)+'…':a; }}, name:function(x,i){return (i+1)+'. '+((x.h&&x.h.ar)||'')}, add:function(){return {h:bi(),p:bi()}}, fields:[{p:'h', t:'bi', l:'المرحلة'},{p:'p', t:'bita', l:'الشرح'}]}} ]},
     {id:'payments', title:'طرق الدفع', secs:[
       {h:'نصوص القسم', fields:[{p:'payments.h', t:'bi', l:'العنوان'},{p:'payments.p', t:'bita', l:'الوصف'}]},
-      {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.', rep:{p:'payments.methods', split:{all:'كل الطرق', addL:'+ طريقة', thumb:function(x){ return x.logo||''; }, logo:1, tag:function(x){ return x.enabled===false?['مخفية','off']:null; }},
+      {h:'الطرق المعروضة على الموقع', hint:'تظهر في صفحة الباقات وأسفل كل صفحة. ارفع شعار كل طريقة من ملفات الشركة الرسمية (Brand kit)، أو اتركها فيظهر الاسم.',
+        // a ready «bank transfer» method (e.g. a client paying into a partner's account abroad); its account details go in «تفاصيل الدفع الخاصة»
+        extra:function(){ return ((C.payments&&C.payments.methods)||[]).some(function(m){ return m.id==='bank'; })?'':'<p><button class="btn sm" type="button" data-addbank>+ تحويل بنكي (حساب بنكي)</button></p>'; }, rep:{p:'payments.methods', split:{all:'كل الطرق', addL:'+ طريقة', thumb:function(x){ return x.logo||''; }, logo:1, tag:function(x){ return x.enabled===false?['مخفية','off']:null; }},
         name:function(x){return x.name||'طريقة'}, add:function(){return {id:'pay-'+Date.now().toString(36),name:'',logo:'',enabled:true}},
         fields:[{row:[{p:'name', t:'text', l:'الاسم', ltr:1},{p:'enabled', t:'check', l:'ظاهرة على الموقع'}]},{p:'logo', t:'media', l:'الشعار (PNG أو SVG بخلفية شفافة)', accept:'image/*'},{p:'id', t:'text', l:'المعرّف', ltr:1}]}},
       {h:'الدفع التلقائي والتذكير', hint:'«عربون» = يدفع العميل نسبة قبل البدء والباقي قبل التسليم، ولكل دفعة فاتورتها. يصل التذكير إلى العميل مرة واحدة إن لم يرفع الإيصال.', fields:[
@@ -287,7 +289,7 @@
     if(tab.settings) return renderSettings();
     var cur=Math.min(SECT[tab.id]||0,tab.secs.length-1);
     $('#panel').innerHTML=secNav(tab)+tab.secs.map(function(s,si){ if(si!==cur) return '';   // one section on screen; the tabs above switch
-      var html='<section class="sec" id="sec-'+si+'"><h3>'+esc(s.h)+'</h3>'+(s.hint?'<p class="hint">'+esc(s.hint)+'</p>':'');
+      var html='<section class="sec" id="sec-'+si+'"><h3>'+esc(s.h)+'</h3>'+(s.hint?'<p class="hint">'+esc(s.hint)+'</p>':'')+(s.extra?s.extra():'');
       if(s.fields) html+=s.fields.map(function(f){return field(C,f)}).join('');
       if(s.priv==='payments'){ var pm=(P&&P.payments)||{};
         html+=((C.payments&&C.payments.methods)||[]).map(function(m){ return '<div class="field"><label>'+esc(m.name||m.id)+'</label><textarea data-priv="payments.'+esc(m.id)+'" dir="auto" placeholder="مثال: Binance ID / رقم المحفظة / بريد PayPal">'+esc(pm[m.id]||'')+'</textarea></div>'; }).join('');

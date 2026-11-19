@@ -54,6 +54,10 @@ const cadenceOf = (type, c) => { if (type !== "program" || !c) return null;
   const pick = new Set([].concat(c.days || c.day || []).map(String)), days = DAYS.filter(d => pick.has(d));
   return days.length ? JSON.stringify({ days }) : null; };
 const SCHEMA = [
+  // money a client paid ahead (an advance, «سلفة»): positive rows; using it on an invoice adds a negative row tied to that invoice
+  `CREATE TABLE IF NOT EXISTS credits (id TEXT PRIMARY KEY, email TEXT NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT '$', method TEXT, note TEXT, date TEXT, invoice_id TEXT, created_at TEXT NOT NULL)`,
+  // which months of a client's package an invoice already covers
+  `CREATE TABLE IF NOT EXISTS pkg_billed (email TEXT NOT NULL, month TEXT NOT NULL, invoice_id TEXT NOT NULL, PRIMARY KEY (email, month))`,
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, client_email TEXT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', type TEXT NOT NULL DEFAULT 'custom',
      status TEXT NOT NULL DEFAULT 'active', services TEXT NOT NULL DEFAULT '[]', start_date TEXT, end_date TEXT, quota INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
@@ -150,6 +154,10 @@ const MIGRATIONS = [
   "ALTER TABLE projects ADD COLUMN in_pkg INTEGER NOT NULL DEFAULT 1",
   "UPDATE clients SET terms=(SELECT p.terms FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1), carry=(SELECT p.carry FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1) WHERE terms IS NULL",
   "ALTER TABLE projects ADD COLUMN single INTEGER NOT NULL DEFAULT 0",
+  // 19 Nov: billing from the work itself: a task remembers the invoice it went on; an invoice keeps what it covers
+  "ALTER TABLE tasks ADD COLUMN invoice_id TEXT",
+  "ALTER TABLE invoices ADD COLUMN annex TEXT",
+  "ALTER TABLE invoices ADD COLUMN links TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -186,7 +194,7 @@ function cleanTerms(t){ if (!t || !TMODES.includes(t.mode)) return null;
   const extras = (Array.isArray(t.extras) ? t.extras : []).slice(0, 12).map(x => ({ id: id(x.id, "x"), name: clip(x.name, 60), kind: XKINDS.includes(x.kind) ? x.kind : "flat", amount: amt(x.amount),
     ...(x.kind === "dur" ? { max: Math.max(1, Math.min(3600, Math.round(+x.max || 50))), step: Math.max(1, Math.min(3600, Math.round(+x.step || 30))) } : {}) })).filter(x => x.name && x.amount > 0);
   if (!units.length) return null;
-  return JSON.stringify({ mode: t.mode, price: t.mode === "package" ? amt(t.price) : 0, cur: clip(t.cur, 8) || "$", units, extras });
+  return JSON.stringify({ mode: t.mode, price: t.mode === "package" ? amt(t.price) : 0, cur: clip(t.cur, 8) || "$", start: /^\d{4}-\d{2}$/.test(t.start || "") ? t.start : null, units, extras });
 }
 // what one extra costs on a task of this unit; sec: the piece's length (for «by length»)
 function extraCost(x, unit, sec){
@@ -220,6 +228,33 @@ async function forClientP(D, p, en){ if (!p) return p; delete p.terms; delete p.
 // the client's view of their package: what is included, what was used (and by which project), what one more costs; never the package price or per-unit prices
 async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = monthOf(now()), u = await usageOf(D, email, m);
   return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
+const monthsFrom = (a, b) => { const out = []; let m = a; for (let i = 0; i < 60 && m <= b; i++) { out.push(m); const d = new Date(m + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); m = d.toISOString().slice(0, 7); } return out; };
+async function releaseInvoice(D, id){ await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM pkg_billed WHERE invoice_id=?").bind(id), D.prepare("DELETE FROM credits WHERE invoice_id=?").bind(id)]); }
+async function creditOf(D, email){ return amt((await D.prepare("SELECT SUM(amount) AS s FROM credits WHERE email=?").bind(email).first()).s || 0); }
+// everything a client owes that no invoice covers yet: the package's months, extras they approved, work outside the package, units at a price;
+// what is still in progress (shown, not billed); and their prepaid credit
+async function unbilledOf(D, email){
+  const a = await agreementOf(D, email), t = a && a.terms, cur = (t && t.cur) || "$", now7 = monthOf(now());
+  const rows = (await D.prepare(`SELECT k.id, k.ref, k.title, k.unit, k.status, k.created_at, k.completed_at, k.extras, k.invoice_id, k.project_id, p.name AS pname, p.in_pkg, p.single
+      FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=? AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at`).bind(email).all()).results.map(parse);
+  const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, months: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
+  if (t && t.mode === "package") {
+    const billed = new Set((await D.prepare("SELECT month FROM pkg_billed WHERE email=?").bind(email).all()).results.map(r => r.month));
+    const first = t.start || (rows.filter(inPkg).map(r => monthOf(r.created_at)).sort()[0]) || now7;
+    for (const m of monthsFrom(first, now7)) { if (billed.has(m)) continue;
+      const mine = rows.filter(r => inPkg(r) && monthOf(r.created_at) === m), cy = carryOf(a, m), used = {};
+      mine.forEach(r => used[r.unit] = (used[r.unit] || 0) + 1);
+      out.months.push({ month: m, price: t.price, units: t.units.filter(u => u.inc).map(u => ({ name: u.name, used: used[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })),
+        over: t.units.map(u => ({ name: u.name, qty: (used[u.id] || 0) - u.inc - (+cy[u.id] || 0), price: u.price })).filter(o => o.qty > 0 && o.price),
+        annex: mine.filter(r => r.status === "completed").map(r => ({ id: r.id, title: r.title, pname: pn(r) })), current: m === now7 }); }
+  }
+  for (const r of rows) { if (r.invoice_id) continue;
+    if (r.extras && r.extras.state === "accepted") out.extras.push({ id: r.id, title: r.title, pname: pn(r), pid: r.project_id, items: r.extras.items.map(e => ({ name: e.name, detail: e.detail || "", amount: e.amount })) });
+    if (r.status !== "completed") { out.open.push({ title: r.title, pname: pn(r), status: r.status, pkg: !!inPkg(r) }); continue; }
+    if (t && t.mode === "unit" && inPkg(r)) { const u = t.units.find(x => x.id === r.unit); out.units.push({ id: r.id, title: r.title, pname: pn(r), unit: u.name, price: u.price, pid: r.project_id }); }
+    else if (!inPkg(r)) out.others.push({ id: r.id, title: r.title, pname: pn(r), pid: r.project_id, date: String(r.completed_at || "").slice(0, 10) }); }
+  return out;
+}
 // the month's invoice lines for one client: the package (or the units done), units past the package, and the extras the client approved (under their project)
 async function monthLines(D, email, month){
   const a = await agreementOf(D, email); if (!a) return []; const t = a.terms;
@@ -430,7 +465,7 @@ async function sendReport(ctx, env, D, p, month){
 // ==== billing (phase 6) ====
 const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
-function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
+function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
 function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40) })).filter(i => i.desc); }
 // lines under their project's heading when an invoice spans more than one
@@ -486,6 +521,7 @@ ${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:b
  ${last ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${dt(last.date || last.at)}</div></td>` : ""}
 </tr></table></td></tr>
 ${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.7;color:${ink};text-align:${s}">${h(x.note).replace(/\n/g, "<br>")}</td></tr>` : ""}
+${(x.annex || []).length ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.8;color:${ink};text-align:${s}"><div style="font-weight:bold;margin-bottom:4px">${en ? "This invoice includes" : "تشمل هذه الفاتورة"}</div>${x.annex.map(g => `<div style="color:${grey}">${h(g.k)}${g.k ? ": " : ""}<span style="color:${ink}">${g.items.map(h).join("، ")}</span></div>`).join("")}</td></tr>` : ""}
 <tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
 </table>`;
 }
@@ -967,7 +1003,7 @@ async function periodReport(D, email, from, to, c){
     .sort((a, b) => a.confirmed_date < b.confirmed_date ? -1 : 1).slice(0, 12).map(t => ({ title: t.title, project: pn[t.project_id].name, date: t.confirmed_date }));
   if (c.inc.money) { const inv = (await D.prepare("SELECT no, total, currency, payments, issue_date FROM invoices WHERE client_email=? AND sent_at IS NOT NULL").bind(email).all()).results.map(x => parseI(x));
     const paid = {}; inv.forEach(x => x.payments.forEach(y => { if (inR(y.date || y.at)) paid[x.currency] = money((paid[x.currency] || 0) + y.amount); }));
-    R.money = { issued: inv.filter(x => inR(x.issue_date)).map(x => ({ no: x.no, total: fmt(x.total, x.currency) })), paid: Object.keys(paid).map(k => fmt(paid[k], k)) }; }
+    const cr = await creditOf(D, email); R.money = { issued: inv.filter(x => inR(x.issue_date)).map(x => ({ no: x.no, total: fmt(x.total, x.currency) })), paid: Object.keys(paid).map(k => fmt(paid[k], k)), credit: cr > 0 ? fmt(cr, "$") : "" }; }
   // the client's package in the month the report ends in: what was used of each unit (with the carried units)
   const ag = await agreementOf(D, email);
   if (ag && ag.terms.mode === "package") { const m = to.slice(0, 7), use = (await usageOf(D, email, m)).used, cy = carryOf(ag, m);
@@ -991,6 +1027,7 @@ function periodCard(R, lang, note){ const en = lang === "en", rtl = !en, s = rtl
     (I.done ? p.done.map(t => row(t.title, fd(t.date), "#3DDC97")).join("") : "") + (I.waiting ? p.waiting.map(t => row(t.title + (t.label ? " · " + t.label : ""), en ? "Waiting for your review" : "بانتظار رأيك", "#F7C76A")).join("") : "") + `<tr><td style="padding:4px"></td></tr></table>`).join("");
   else if (I.done) b += `<p style="margin:16px 0 0;color:#8E9BB8">${en ? "A quiet stretch: nothing was completed in this period." : "فترة هادئة: لم تكتمل مهام في هذه الفترة."}</p>`;
   if (I.next && R.next.length) b += sec(en ? "Coming next" : "القادم") + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` + R.next.map(t => `<tr><td style="padding:8px 0;border-bottom:1px solid #1B2556;font-size:13.5px;color:#C3CEE2;text-align:${s}">${h(t.project)} · ${h(t.title)}</td><td style="padding:8px 0;border-bottom:1px solid #1B2556;font-size:12.5px;color:#9FB0CC;text-align:${e};white-space:nowrap">${h(fd(t.date))}</td></tr>`).join("") + `</table>`;
+  if (R.money && R.money.credit) b += `<p style="margin:10px 0 0;font-size:13px;color:#9FB0CC">${en ? "Your prepaid credit: " : "رصيدك المقدّم: "}<b style="color:#3FE0E8;direction:ltr">${h(R.money.credit)}</b></p>`;
   if (R.money && (R.money.issued.length || R.money.paid.length)) b += sec(en ? "Invoices and payments" : "الفواتير والمدفوعات") + `<p style="margin:0;font-size:13.5px;color:#C3CEE2">${R.money.issued.map(x => h(x.no) + " · " + h(x.total)).join("<br>")}${R.money.paid.length ? `<br>${en ? "Paid" : "المدفوع"}: <b style="color:#fff">${h(R.money.paid.join(" · "))}</b>` : ""}</p>`;
   return b;
 }
@@ -1115,7 +1152,7 @@ export async function onRequestGet(ctx) {
     .map(r => { let R = {}; try { R = JSON.parse(r.data); } catch {} return { id: r.id, from: r.from_d, to: r.to_d, nums: R.nums || {}, projects: (R.projects || []).map(p => p.name) }; }) });
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=? AND email=? AND sent_at IS NOT NULL").bind(clip(q.get("creportDoc"), 20), e).first(); if (!r) return htmlRes("not found", 404);
     return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
-  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)) });
+  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
     return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
   if (q.get("view") === "prefs") { const cfg = await waConfig(env), tg = await tgConf(env), link = await D.prepare("SELECT username, linked_at FROM tg_links WHERE email=?").bind(e).first();
@@ -1166,7 +1203,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","clientTerms","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1403,7 +1440,11 @@ const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || "");
 // every client's package, with this month's use and carried units (the Today page warns when one runs past it)
 async function agreementsAll(D){ const o = {}, m = monthOf(now());
   for (const r of (await D.prepare("SELECT email, terms, carry FROM clients WHERE terms IS NOT NULL").all()).results) { try { const t = JSON.parse(r.terms), c = r.carry ? JSON.parse(r.carry) : {};
-    t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {}; o[r.email] = t; } catch {} }
+    t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {};
+    // what no invoice covers yet, roughly: past package months (the running month is not «late» yet), approved extras, finished work outside the package
+    const ub = await unbilledOf(D, r.email), past = ub.months.filter(x => !x.current);
+    t._owed = { months: past.length, amount: amt(past.reduce((a, x) => a + x.price + x.over.reduce((b, v) => b + v.qty * v.price, 0), 0) + ub.extras.reduce((a, e) => a + e.items.reduce((b, x) => b + x.amount, 0), 0) + ub.units.reduce((a, u) => a + u.price, 0)), others: ub.others.length, credit: ub.credit };
+    o[r.email] = t; } catch {} }
   return o; }
 async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
 async function ensureClients(D, list){   // a stable id for every client the studio works with (never overwrites what the studio wrote)
@@ -1482,8 +1523,8 @@ async function adminGet(request, env, q){
     const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
-    const ag = await agreementOf(D, em);
-    return json({ ok: true, client: cr, agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
+    const ag = await agreementOf(D, em), credits = (await D.prepare("SELECT * FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 60").bind(em).all()).results;
+    return json({ ok: true, client: cr, credits, credit: await creditOf(D, em), agreement: ag ? { ...ag.terms, carry: ag.carry, use: await usageOf(D, em, monthOf(now())) } : null, account: !!u0, files, delivered, brand: await brandOf(D, em), today: today(), user: { name: u.name, email: u.email, role: u.role || "customer", clientSince: u.clientSince || null, clientVia: u.clientVia || null, lang: u.lang || "ar", created: u.created || u.createdAt || null, google: !!u.google, log: (u.log || []).slice(-20) },
       projects, tasks, invoices, activity, sends, prefs: { email_cats: P.email_cats, wa_cats: P.wa_cats, consent: P.consent, wa_phone: P.wa_phone ? "+" + P.wa_phone.replace(/\d(?=\d{4})/g, "•") : "", wa_consent_at: P.wa_consent_at, wa_withdrawn_at: P.wa_withdrawn_at } });
   }
   if (q.get("view") === "notify") {
@@ -1576,6 +1617,16 @@ async function adminPost(ctx, d){
     await D.prepare("INSERT INTO invoices (id, no, client_email, project_id, title, period, items, currency, discount, total, paid, refunded, status, issue_date, due_date, note, payments, sent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,'pending',?,?,?,'[]',?,?,?)")
       .bind(id, n.no, email, pid, title, period, JSON.stringify(items), cur, disc, total, issue, due, note, d.send ? at : null, at, at).run();
     await D.prepare("UPDATE invoices SET scope=? WHERE id=?").bind(JSON.stringify(scope), id).run();
+    // built from the work: the tasks and package months it covers can never be billed again; the annex lists the work inside the package
+    const L = d.links && typeof d.links === "object" ? d.links : {}, tids = (Array.isArray(L.tasks) ? L.tasks : []).map(x => clip(x, 40)).slice(0, 400), months = (Array.isArray(L.months) ? L.months : []).filter(m => /^\d{4}-\d{2}$/.test(m)).slice(0, 60);
+    for (const tid of tids) await D.prepare("UPDATE tasks SET invoice_id=? WHERE id=? AND client_email=? AND invoice_id IS NULL").bind(id, tid, email).run();
+    for (const m of months) await D.prepare("INSERT OR IGNORE INTO pkg_billed (email, month, invoice_id) VALUES (?,?,?)").bind(email, m, id).run();
+    const annex = (Array.isArray(d.annex) ? d.annex : []).slice(0, 40).map(g => ({ k: clip(g.k, 80), items: (Array.isArray(g.items) ? g.items : []).slice(0, 200).map(x => clip(x, 140)) })).filter(g => g.items.length);
+    let credit = Math.min(amt(d.credit), await creditOf(D, email), total); credit = credit > 0.009 ? amt(credit) : 0;
+    await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, credit }), id).run();
+    if (credit) { const en0 = u && u.lang === "en";
+      await D.prepare("INSERT INTO credits (id, email, amount, currency, method, note, date, invoice_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind("cr_" + randHex(6), email, -credit, cur, "invoice", n.no, issue, id, at).run();
+      await D.prepare("UPDATE invoices SET paid=?, status=?, payments=? WHERE id=?").bind(credit, credit + 0.009 >= total ? "paid" : "partial", JSON.stringify([{ amount: credit, method: en0 ? "From your prepaid credit" : "من الرصيد المقدّم", credit: true, date: issue, at }]), id).run(); }
     await act(D, { ...studio, client_email: email, project_id: pid, kind: "invoice_issued", data: { no: n.no, total, cur, sent: !!d.send } });
     if (d.send) later(ctx, invoiceMail(env, await invoiceOf(D, id), "invoice", ctx));
     return json({ ok: true, id, no: n.no });
@@ -1603,7 +1654,8 @@ async function adminPost(ctx, d){
       return json({ ok: true, status: y.state });
     }
     if (d.action === "invoiceStatus") {
-      if (d.status === "cancelled") { if (x.paid > 0) return json({ ok: false, error: "paid" }, 409); const y = await save({ status: "cancelled" }, "invoice_status", { to: "cancelled" }); return json({ ok: true, status: y.state }); }
+      if (d.status === "cancelled") { const cash = x.payments.filter(p => !p.credit).reduce((a, p) => a + p.amount, 0); if (cash > 0) return json({ ok: false, error: "paid" }, 409);
+        await releaseInvoice(D, x.id); const y = await save({ status: "cancelled", paid: 0, payments: [] }, "invoice_status", { to: "cancelled" }); return json({ ok: true, status: y.state }); }
       if (d.status === "refunded") { if (x.paid <= 0) return json({ ok: false, error: "nothing paid" }, 409); const amt = d.amount !== undefined && d.amount !== "" ? money(d.amount) : x.paid; if (amt <= 0 || amt > x.paid + 0.009) return json({ ok: false, error: "amount" }, 400);
         const y = await save({ status: "refunded", refunded: amt }, "invoice_status", { to: "refunded", amount: amt, cur: x.currency }); return json({ ok: true, status: y.state }); }
       if (d.status === "reopen") { if (x.status !== "cancelled" && x.status !== "refunded") return json({ ok: false, error: "state" }, 409); const y = await save({ status: byPaid(x.paid), refunded: 0 }, "invoice_status", { to: "reopened" }); return json({ ok: true, status: y.state }); }
@@ -1614,7 +1666,7 @@ async function adminPost(ctx, d){
       await act(D, { ...studio, client_email: x.client_email, project_id: x.project_id, kind: "invoice_reminded", data: { no: x.no } });
       later(ctx, invoiceMail(env, x, "invoiceDue", ctx)); return json({ ok: true, scheduled: !!(ctx.notify && ctx.notify.at) }); }
     if (d.action === "invoiceSend") { if (x.status === "cancelled") return json({ ok: false, error: "state" }, 409); const y = await save({ sent_at: x.sent_at || at }, "invoice_sent", {}); later(ctx, invoiceMail(env, y, y.status === "paid" ? "invoicePaid" : "invoice", ctx)); return json({ ok: true }); }
-    if (d.action === "invoiceDelete") { if (x.sent_at || x.paid > 0) return json({ ok: false, error: "sent" }, 409); await D.prepare("DELETE FROM invoices WHERE id=?").bind(x.id).run(); return json({ ok: true }); }
+    if (d.action === "invoiceDelete") { if (x.sent_at || x.payments.some(p => !p.credit)) return json({ ok: false, error: "sent" }, 409); await releaseInvoice(D, x.id); await D.prepare("DELETE FROM invoices WHERE id=?").bind(x.id).run(); return json({ ok: true }); }
   }
   if (d.action === "notifyPreview") {   // the send sheet: the exact e-mail, the WhatsApp text to copy, and which channels reach this client
     const kind = clip(d.kind, 20); let t, extra = {};
@@ -1834,6 +1886,18 @@ async function adminPost(ctx, d){
   }
   // carrying unused units into a month, by hand: the panel offers what was left last month, the studio decides
   // the client's package itself, saved from their profile
+  if (d.action === "unbilled") { const email = clip(d.email, 254).toLowerCase(); return json({ ok: true, ...(await unbilledOf(D, email)) }); }
+  if (d.action === "creditAdd") {   // an advance («سلفة») the client sent before the work is done
+    const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
+    const a = amt(d.amount); if (!(a > 0)) return json({ ok: false, error: "amount" }, 400);
+    await D.prepare("INSERT INTO credits (id, email, amount, currency, method, note, date, invoice_id, created_at) VALUES (?,?,?,?,?,?,?,NULL,?)")
+      .bind("cr_" + randHex(6), email, a, clip(d.currency, 8) || "$", clip(d.method, 80), clip(d.note, 300), isDate(d.date) ? d.date : today(), at).run();
+    await act(D, { ...studio, client_email: email, kind: "credit_added", data: { amount: a, cur: clip(d.currency, 8) || "$" } });
+    return json({ ok: true, credit: await creditOf(D, email) });
+  }
+  if (d.action === "creditDel") { const r = await D.prepare("SELECT * FROM credits WHERE id=? AND invoice_id IS NULL").bind(clip(d.id, 20)).first(); if (!r) return json({ ok: false }, 404);
+    if (r.amount > (await creditOf(D, r.email)) + 0.009) return json({ ok: false, error: "used" }, 409);   // already spent on an invoice
+    await D.prepare("DELETE FROM credits WHERE id=?").bind(r.id).run(); return json({ ok: true }); }
   if (d.action === "clientTerms") {
     const email = clip(d.email, 254).toLowerCase(); if (!isEmail(email)) return json({ ok: false, error: "email" }, 400);
     if (!(await clientRow(D, email))) { const u = await userOf(env, email); if (!u) return json({ ok: false, error: "client" }, 404); await ensureClients(D, [{ email, name: u.name }]); }
@@ -1856,6 +1920,20 @@ async function adminPost(ctx, d){
     const used = (await usageOf(D, email, pm)).used, pc = carryOf(a, pm);
     return json({ ok: true, email, month, prev: pm, current: carryOf(a, month),
       units: a.terms.units.map(u => ({ id: u.id, name: u.name, left: Math.max(0, u.inc + (+pc[u.id] || 0) - (used[u.id] || 0)) })) });
+  }
+  // a clean start for billing (test invoices): every client invoice, and the invoices on requests (the requests stay); the numbering starts again.
+  // preview first; with confirm a JSON copy goes to R2 before anything is removed
+  if (d.action === "invoicesPurge") {
+    const rows = (await D.prepare("SELECT * FROM invoices").all()).results, orders = [];
+    await kvEach(env, "order:", async (k, o) => { if (o.invoice || (o.deposit && o.deposit.invoice)) orders.push([k, o]); });
+    if (!d.confirm) return json({ ok: true, invoices: rows.length, orders: orders.length });
+    if (env.R2) await env.R2.put("backups/purge/" + Date.now() + "-invoices.json", JSON.stringify({ at, invoices: rows, orders: orders.map(([k, o]) => ({ key: k, invoice: o.invoice || null, deposit: o.deposit || null })) })).catch(() => {});
+    await D.prepare("DELETE FROM invoices").run();
+    await D.batch([D.prepare("UPDATE tasks SET invoice_id=NULL WHERE invoice_id IS NOT NULL"), D.prepare("DELETE FROM pkg_billed"), D.prepare("DELETE FROM credits WHERE invoice_id IS NOT NULL")]);
+    for (const [k, o] of orders) { delete o.invoice; if (o.deposit) delete o.deposit.invoice; await env.EB.put(k, JSON.stringify(o)); }
+    await D.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
+    await D.prepare("DELETE FROM seq WHERE name='inv'").run(); await env.EB.put("invseq", "0");
+    return json({ ok: true, invoices: rows.length, orders: orders.length });
   }
   if (d.action === "monthBill") {
     const email = d.email ? clip(d.email, 254).toLowerCase() : ((await D.prepare("SELECT client_email FROM projects WHERE id=?").bind(clip(d.project, 40)).first()) || {}).client_email;

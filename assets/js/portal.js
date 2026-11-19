@@ -757,7 +757,7 @@
       L2.forEach(function(x){ if(x.state==='cancelled'||x.state==='refunded') return; var c=x.currency; by[c]=by[c]||{due:0,paid:0}; by[c].due+=x.balance; by[c].paid+=x.paid; });
       var cur=Object.keys(by);
       setTimeout(function(){ var h=host.querySelector('.curhost'); if(h&&window.EBCur) EBCur.pick(h); },0);
-      host.innerHTML=head('invoices','INVOICES',T.bl.h,T.bl.p)+'<div class="curhost"><span>'+(document.documentElement.lang==='en'?'Show the equivalent in':'اعرض المعادل بعملة')+'</span></div>'+
+      host.innerHTML=head('invoices','INVOICES',T.bl.h,T.bl.p)+(j.credit>0?'<p class="wnote wcred">'+(AR?'رصيدك المقدّم لدى الاستوديو: ':'Your prepaid credit with the studio: ')+'<b dir="ltr">'+esc(money(j.credit,j.creditCur))+'</b>'+(AR?'، ويُخصم تلقائياً من فاتورتك القادمة.':', taken off your next invoice automatically.')+'</p>':'')+'<div class="curhost"><span>'+(document.documentElement.lang==='en'?'Show the equivalent in':'اعرض المعادل بعملة')+'</span></div>'+
         (cur.length?'<div class="wkpis wkpis3">'+cur.map(function(c){ return '<div class="wkpi glass" style="--k:#F5C66B"><b dir="ltr">'+esc(money(by[c].due,c))+'</b><span>'+T.bl.open+'</span></div><div class="wkpi glass" style="--k:#5EF0B0"><b dir="ltr">'+esc(money(by[c].paid,c))+'</b><span>'+T.bl.paidAll+'</span></div>'; }).join('')+
           '<div class="wkpi glass" style="--k:#ff8c9c"><b>'+L2.filter(function(x){return x.state==='overdue'}).length+'</b><span>'+T.bl.overdue+'</span></div></div>':'')+
         (L2.length?'<div class="wtable"><table><thead><tr><th>'+T.bl.no+'</th><th>'+T.status+'</th><th>'+T.bl.issued+'</th><th>'+T.bl.due+'</th><th>'+T.bl.total+'</th><th>'+T.bl.bal+'</th><th></th></tr></thead><tbody>'+L2.map(function(x){

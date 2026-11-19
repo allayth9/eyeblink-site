@@ -201,8 +201,17 @@
             (t.requested_date?'<span class="small muted">طلب العميل: '+esc(wd(t.requested_date))+'</span>':'')+'</div></article>'; }).join('')+'</div>'
         :'<div class="empty small">'+(D.tasks.length?'لا توجد مهام في هذا الاختيار.':'لا توجد مهام بعد.')+'</div>')+'</section>';
   }
+  // money the client sent ahead of the work: added here, taken off the next invoice built for them
+  function credCard(D){ var L=D.credits||[], cur=(L[0]&&L[0].currency)||'$', pm=(typeof payList==='function'?payList():[]);
+    return '<section class="sec cp-cred"><div class="ph"><h3>الرصيد المقدّم (السُّلف)</h3><b class="num" dir="ltr">'+esc(pfmt(D.credit||0,cur))+'</b></div>'+
+      '<p class="hint">دفعات وصلت قبل انتهاء الشغل. تُخصم تلقائياً من أول فاتورة تُبنى لهذا العميل من الشغل غير المفوتر.</p>'+
+      (L.length?'<div class="cp-crl">'+L.map(function(c){ var use=c.invoice_id; return '<div class="cp-cr'+(use?' used':'')+'"><span dir="ltr" class="num">'+(c.amount>0?'+':'')+esc(pfmt(c.amount,c.currency))+'</span><span>'+esc(use?'خُصمت في الفاتورة '+(c.note||''):(c.method||'دفعة مقدّمة')+(c.note?' · '+c.note:''))+'</span><small class="muted">'+esc(wd(c.date))+'</small>'+
+        (use?'':'<button class="btn sm danger" type="button" data-crdel="'+esc(c.id)+'">حذف</button>')+'</div>'; }).join('')+'</div>':'')+
+      '<form id="clCred" class="row" novalidate><div class="field"><label>المبلغ</label><input name="amount" type="number" min="0" step="any" dir="ltr" required></div><div class="field"><label>العملة</label><input name="currency" dir="ltr" value="'+esc(cur)+'"></div>'+
+        '<div class="field"><label>الطريقة</label><select name="method">'+pm.map(function(m){ return '<option>'+esc(m.name)+'</option>'; }).join('')+'<option>أخرى</option></select></div><div class="field"><label>التاريخ</label><input name="date" type="date" value="'+esc(D.today)+'"></div>'+
+        '<div class="field"><label>ملاحظة</label><input name="note" dir="auto" placeholder="مثلاً: سلفة عن حلقات ديسمبر"></div><div class="field"><label>&nbsp;</label><button class="btn sm primary" type="submit">+ تسجيل دفعة مقدّمة</button></div></form></section>'; }
   function pBilling(D){ var m=due2(D), ob=orderBills().filter(function(o){ return o.email===PROF.email; });
-    return '<section class="sec"><div class="ph"><h3>الفواتير ('+D.invoices.length+')</h3><button class="btn sm primary" type="button" data-pinv="'+esc(PROF.email)+'">+ فاتورة جديدة</button></div>'+
+    return credCard(D)+'<section class="sec"><div class="ph"><h3>الفواتير ('+D.invoices.length+')</h3><button class="btn sm primary" type="button" data-pinv="'+esc(PROF.email)+'">+ فاتورة جديدة</button></div>'+
       '<div class="ckpis">'+kpi(mmap(m.due),'المتبقي المستحق','#F5C66B')+kpi(mmap(m.paid),'إجمالي المدفوع','#5EF0B0')+kpi(D.invoices.filter(function(x){ return x.state==='overdue'; }).length,'فواتير متأخرة','#ff8c9c')+'</div>'+
       (D.invoices.length?'<div class="cp-invs">'+D.invoices.map(function(x){ var st=x.sent_at?x.state:'draft', canPay=x.sent_at&&['pending','partial','overdue'].indexOf(x.state)>=0;
         return '<article class="cp-inv" data-iid="'+esc(x.id)+'"><div class="ph"><div><b dir="ltr">'+esc(x.no)+'</b> '+esc(x.title||'')+' <span class="small muted">'+esc(x.project_name||'')+'</span></div><span class="npill bs-'+esc(st)+'">'+esc(BST[st])+'</span></div>'+
@@ -248,7 +257,7 @@
     if(el.hasAttribute('data-pfilter')){ PROF.proj=el.value||null; renderClients(); return; }
     if(el.dataset.pstat){ var p=PROF.d.projects.filter(function(x){ return x.id===el.dataset.pstat; })[0]; if(!p) return;
       creq({action:'project',id:p.id,client_email:PROF.email,name:p.name,description:p.description,type:p.type,status:el.value,services:p.services,start_date:p.start_date,end_date:p.end_date,quota:p.quota,drive_url:p.drive_url,auto_report:!!p.auto_report},null,'تحدّثت حالة المشروع').catch(function(){}); } });
-  document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||!/^cl(Add|Edit|Proj|Task|File|Terms)$/.test(f.id)&&!f.classList.contains('cl-pay')) return; e.preventDefault(); var E=f.elements, b=f.querySelector('[type=submit]');
+  document.addEventListener('submit',function(e){ var f=e.target; if(TAB!=='clients'||!/^cl(Add|Edit|Proj|Task|File|Terms|Cred)$/.test(f.id)&&!f.classList.contains('cl-pay')) return; e.preventDefault(); var E=f.elements, b=f.querySelector('[type=submit]');
     if(f.id==='clAdd'){ var em=E.email.value.trim().toLowerCase(), nm=E.name.value.trim(), mode=(f.querySelector('[name=mode]:checked')||{}).value||'ready', lang=E.lang.value, pn=E.pname.value.trim(), ph=E.phone.value.trim();
       if(!nm){ toast('اكتب اسم العميل',true); E.name.focus(); return; } if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ toast('اكتب بريداً صحيحاً',true); E.email.focus(); return; }
       b.disabled=true;
@@ -262,6 +271,8 @@
         return accReq({action:'createAccount',email:em,name:nm,lang:lang,mail:E.mail.checked},null).then(function(r){
           return proj().then(function(){ PKG={email:em,name:nm,password:r.password,link:r.link,lang:r.lang,phone:ph,project:pn,sent:r.sent}; done('جاهز: أرسل للعميل بيانات الدخول'); }); },function(){ done(); });
       }).catch(function(){ b.disabled=false; }); return; }
+    if(f.id==='clCred'){ if(!(+E.amount.value>0)){ toast('اكتب المبلغ',true); return; }
+      creq({action:'creditAdd',email:PROF.email,amount:E.amount.value,currency:E.currency.value.trim()||'$',method:E.method.value,date:E.date.value,note:E.note.value.trim()},b,'سُجّلت الدفعة المقدّمة').catch(function(){}); return; }
     if(f.id==='clTerms'){ creq({action:'clientTerms',email:PROF.email,terms:termsOf(f)},b,'حُفظت باقة العميل').catch(function(){}); return; }
     if(f.id==='clEdit'){ creq({action:'clientSave',email:PROF.email,name:E.name.value.trim(),company:E.company.value.trim(),phone:E.phone.value.trim(),status:E.status.value,notes:E.notes.value},b,'حُفظت بيانات العميل').catch(function(){}); return; }
     if(f.id==='clProj'){ if(!E.name.value.trim()){ toast('اكتب اسم المشروع',true); return; }
@@ -305,8 +316,8 @@
       creq({action:'carryInfo',email:PROF.email},b,null).then(function(j){ CARRY={j:j}; renderClients(); }).catch(function(){}); return; }
     if(b.dataset.pcsave){ var fm=b.closest('.cp-carry'), u={}; fm.querySelectorAll('[data-cu]').forEach(function(i){ u[i.dataset.cu]=i.value; });
       creq({action:'carrySave',email:PROF.email,month:CARRY.j.month,units:u},b,'حُفظ الرصيد المرحّل').then(function(){ CARRY=null; }).catch(function(){}); return; }
-    if(b.hasAttribute('data-cmb')){ creq({action:'monthBill',email:PROF.email},b,null).then(function(j){ if(!j.items.length){ toast('لا بنود لهذا الشهر بعد',true); return; }
-        TAB='billing'; BFORM={email:j.email,project:j.project,items:j.items,title:j.title,currency:j.cur}; render(); if(!BILL) loadBilling(); scrollTo(0,0); }).catch(function(){}); return; }
+    if(b.hasAttribute('data-cmb')){ TAB='billing'; BFORM={email:PROF.email}; BOPEN=null; route(); render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
+    if(b.hasAttribute('data-crdel')){ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='متأكد؟'; return; } creq({action:'creditDel',id:b.dataset.crdel},b,'حُذفت الدفعة المقدّمة').catch(function(){}); return; }
     if(b.dataset.pinv){ TAB='billing'; BFORM={email:b.dataset.pinv}; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
     if(b.hasAttribute('data-iedit')){ TAB='billing'; render(); if(!BILL) loadBilling(); scrollTo(0,0); return; }
     if(b.hasAttribute('data-ipay')){ var fpay=b.closest('[data-iid]').querySelector('.cl-pay'); fpay.hidden=!fpay.hidden; if(!fpay.hidden) fpay.querySelector('input').focus(); return; }
@@ -375,7 +386,7 @@
   // the client's package: one agreement for all their projects in it; what was used this month, the month's invoice and the carried units
   function clientPkg(D){ var A=D.agreement, use=A&&A.use||{used:{},by:{}}, PN={}; D.projects.forEach(function(p){ PN[p.id]=p.name; });
     var m=new Date().toISOString().slice(0,7), cy=(A&&A.carry&&A.carry[m])||{};
-    return '<section class="sec cp-pkg"><div class="ph"><h3>باقة العميل</h3>'+(A?'<div class="cp-pa"><button class="btn sm primary" type="button" data-cmb>فاتورة الشهر</button>'+(A.mode==='package'?'<button class="btn sm" type="button" data-pcarry>الرصيد المرحّل</button>':'')+'</div>':'')+'</div>'+
+    return '<section class="sec cp-pkg"><div class="ph"><h3>باقة العميل</h3>'+(A?'<div class="cp-pa"><button class="btn sm primary" type="button" data-cmb>فاتورة من الشغل غير المفوتر</button>'+(A.mode==='package'?'<button class="btn sm" type="button" data-pcarry>الرصيد المرحّل</button>':'')+'</div>':'')+'</div>'+
       (A&&A.mode==='package'?'<div class="cp-use">'+A.units.map(function(u){ var n=use.used[u.id]||0, have=u.inc+(+cy[u.id]||0), by=use.by[u.id]||{};
         return '<div class="cp-u'+(n>=have?' full':'')+'"><b>'+esc(u.name)+'</b><span class="num">'+n+' / '+have+(cy[u.id]?' <small class="muted">(+'+cy[u.id]+' مرحّلة)</small>':'')+'</span><small class="muted">'+esc(Object.keys(by).map(function(k){ return (PN[k]||'مشروع')+' '+by[k]; }).join('، '))+'</small></div>'; }).join('')+'</div>':'')+
       carryForm()+'<form id="clTerms" novalidate>'+termsForm(A)+'<div class="actions"><button class="btn sm primary" type="submit">حفظ باقة العميل</button></div></form></section>'; }

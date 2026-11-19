@@ -134,13 +134,14 @@
   function termsForm(t){ var m=(t&&t.mode)||'';
     return '<details class="wterms"'+(t?' open':'')+'><summary>باقة العميل <span class="small muted">'+(m==='package'?'باقة شهرية':m==='unit'?'سعر للوحدة':'بلا حساب')+'</span></summary>'+
       '<div class="wt-modes" role="radiogroup">'+[['','بلا حساب'],['package','باقة شهرية'],['unit','سعر للوحدة']].map(function(o){ return '<label class="check"><input type="radio" name="t_mode" value="'+o[0]+'"'+(o[0]===m?' checked':'')+'> '+o[1]+'</label>'; }).join('')+'</div>'+
-      '<div class="wt-body"'+(m?'':' hidden')+'><div class="row wt-pkg"'+(m==='package'?'':' hidden')+'><div class="field"><label>سعر الباقة الشهري</label><input name="t_price" type="number" min="0" step="any" value="'+esc(t&&t.price||'')+'"></div><div class="field"><label>العملة</label><input name="t_cur" dir="ltr" value="'+esc(t&&t.cur||'$')+'"></div></div>'+
+      '<div class="wt-body"'+(m?'':' hidden')+'><div class="row wt-pkg"'+(m==='package'?'':' hidden')+'><div class="field"><label>سعر الباقة الشهري</label><input name="t_price" type="number" min="0" step="any" value="'+esc(t&&t.price||'')+'"></div>'+
+        '<div class="field"><label>بداية الباقة (أول شهر)</label><input name="t_start" type="month" value="'+esc(t&&t.start||'')+'"></div><div class="field"><label>العملة</label><input name="t_cur" dir="ltr" value="'+esc(t&&t.cur||'$')+'"></div></div>'+
         '<div class="small muted">الوحدات <span class="wt-uh">'+(m==='unit'?'(الاسم · السعر)':'(الاسم · العدد بالباقة · سعر الوحدة الإضافية)')+'</span></div><div class="wt-units">'+((t&&t.units)||[{}]).map(function(u){ return tUnit(u,m); }).join('')+'</div><button type="button" class="btn sm" data-tadd="u">+ وحدة</button>'+
         '<div class="small muted">الطلبات الإضافية <span>(اختيارية، يوافق عليها العميل قبل التنفيذ)</span></div><div class="wt-extras">'+((t&&t.extras)||[]).map(tExtra).join('')+'</div><button type="button" class="btn sm" data-tadd="x">+ طلب إضافي</button>'+
         '<p class="hint">الوحدات تظهر للعميل عند إنشاء أي مهمة في مشروع ضمن الباقة، ويرى ما استهلكه وسعر الوحدة الإضافية فقط. ترحيل غير المستهلك يدويّ، من «الرصيد المرحّل».</p></div></details>'; }
   function termsOf(f){ var m=(f.querySelector('input[name=t_mode]:checked')||{}).value; if(!m) return null;
     var row=function(r){ var o={}; r.querySelectorAll('[data-k]').forEach(function(i){ o[i.dataset.k]=i.value.trim(); }); return o; };
-    return {mode:m,price:f.elements.t_price.value,cur:f.elements.t_cur.value,
+    return {mode:m,price:f.elements.t_price.value,cur:f.elements.t_cur.value,start:f.elements.t_start?f.elements.t_start.value:'',
       units:[].map.call(f.querySelectorAll('[data-tu]'),function(r){ var o=row(r); o.id=r.dataset.tu; return o; }),
       extras:[].map.call(f.querySelectorAll('[data-tx]'),function(r){ var o=row(r); o.id=r.dataset.tx; return o; })}; }
   document.addEventListener('change',function(e){ var i=e.target, f=i.closest('.wterms'); if(!f) return;

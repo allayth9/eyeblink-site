@@ -168,7 +168,7 @@
     Object.keys(AG).forEach(function(em){ var t=AG[em], g={tab:'clients',email:em}; if(t.mode!=='package') return;
       var over=t.units.filter(function(u){ return u.inc&&((t._used||{})[u.id]||0)>u.inc+(+((t._carry||{})[u.id])||0); });
       if(over.length) add('info','تجاوز الباقة هذا الشهر',esc(CN[em]||em)+' · '+esc(over.map(function(u){ return u.name+' '+((t._used||{})[u.id]||0)+' من '+(u.inc+(+((t._carry||{})[u.id])||0)); }).join('، '))+' · تُضاف إلى فاتورة الشهر',g);
-      if(+t0.slice(8,10)>=26) add('info','وقت فاتورة الشهر',esc(CN[em]||em)+' · «عبّئ فاتورة هذا الشهر» من باقته',g); });
+      var ow=t._owed; if(ow&&(ow.amount>0||ow.others)) add(ow.months?'warn':'info','شغل غير مفوتر',esc(CN[em]||em)+' · '+(ow.amount>0?'نحو <span dir="ltr">'+esc(pfmt(ow.amount,t.cur||'$'))+'</span>':'')+(ow.months?' · '+(ow.months===1?'شهر من الباقة':ow.months===2?'شهران من الباقة':ow.months+' أشهر من الباقة'):'')+(ow.others?' · '+ow.others+' أعمال خارج الباقة بلا سعر':'')+(ow.credit>0?' · رصيد مقدّم <span dir="ltr">'+esc(pfmt(ow.credit,t.cur||'$'))+'</span>':''),{tab:'billing',email:em}); });
     ((BILL&&BILL.invoices)||[]).forEach(function(x){ if(x.state==='overdue') add('crit','فاتورة متأخرة','<span dir="ltr">'+esc(x.no)+'</span>'+(x.balance?' · '+esc(x.balance)+' '+esc(x.currency||''):''),{tab:'billing'},x.due_date); });
     if(TEAM&&TEAM.apps){ var na=TEAM.apps.filter(function(a){return a.status==='new'}).length; if(na) add('info',na+(na>1?' طلبات انضمام جديدة':' طلب انضمام جديد'),'من صفحة «انضم للفريق»',{tab:'team',sub:'apps'});
       var mn=function(e){ var m=TEAM.members.filter(function(x){return x.email===e})[0]; return m?m.name:e; }, due=0, cur='$';
@@ -267,6 +267,7 @@
     if(g.tab==='tasks'){ WOPEN=g.ref||null; go('tasks'); return; }
     if(g.tab==='support'){ SOPEN=g.id||null; go('support'); return; }
     if(g.tab==='clients'&&g.email){ go('clients'); loadProfile(g.email,g.sec||'projects'); return; }
+    if(g.tab==='billing'&&g.email){ BFORM={email:g.email}; BOPEN=null; go('billing'); return; }
     if(g.tab==='team'){ TSUB=g.task?'tasks':(g.sub||TSUB); go('team'); if(g.task) setTimeout(function(){ openTTask(g.task); },60); return; }
     go(g.tab);
   });

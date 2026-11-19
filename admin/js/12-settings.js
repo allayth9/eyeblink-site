@@ -119,6 +119,8 @@
     else if(a==='logoutAll'){ tfaPost({action:'logoutAll'}).then(function(){ location.reload(); }).catch(tfaFail); }
   });
   // the background slider shows its value as it moves
+  document.addEventListener('click',function(e){ if(!e.target.closest('[data-addbank]')) return; C.payments=C.payments||{}; C.payments.methods=C.payments.methods||[];
+    C.payments.methods.push({id:'bank',name:'تحويل بنكي',logo:'/assets/img/pay-bank.svg',enabled:true}); dirty(); render(); toast('أُضيف «تحويل بنكي». اكتب تفاصيل الحساب في «تفاصيل الدفع الخاصة» ثم انشر التعديلات'); });
   // the panel's own background: its strength follows the setting, live while the slider moves
   function skyOp(v){ if(v==null) v=C&&C.settings&&C.settings.adminBgOpacity; v=v==null||v===''?100:Math.max(0,Math.min(100,+v)); document.documentElement.style.setProperty('--sky-op',v/100); }
   document.addEventListener('input',function(e){ if(e.target.id==='skyOp'){ var o=document.querySelector('[data-skyv]'); if(o) o.textContent=e.target.value+'%'; skyOp(e.target.value); } });
