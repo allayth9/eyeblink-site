@@ -994,6 +994,7 @@ html{-webkit-tap-highlight-color:transparent}
 .bow b{font-family:Oswald,sans-serif;font-weight:400;flex:none}.bow-p{width:110px;flex:none}
 .cp-crl{display:grid;gap:6px;margin:8px 0}.cp-cr{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:8px 10px;border-radius:10px;border:1px solid var(--line)}
 .cp-cr span:nth-child(2){flex:1}.cp-cr.used{opacity:.7}.cp-cred .ph .num{font-family:Oswald,sans-serif;font-size:20px}
+.rp-range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13.5px}.rp-range input{width:auto}.rp-range small{flex-basis:100%}
 .cp-carry{display:grid;gap:8px;margin:10px 0;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
 .cp-cu{display:flex;align-items:center;justify-content:space-between;gap:10px}.cp-cu input{width:90px}
 .wxt{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
