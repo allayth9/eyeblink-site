@@ -614,47 +614,49 @@ async function waSend(env, cfg, to, lang, p){
     const e = j.error || {}; return { ok: false, error: (e.code ? e.code + ": " : "HTTP " + r.status + ": ") + String(e.message || "").slice(0, 200), retry: r.status === 429 || r.status >= 500 || [130429, 131056, 131000, 2].includes(e.code) };
   } catch { return { ok: false, error: "network", retry: true }; }
 }
+// Arabic counts: «مهمة»، «مهمتين»، «3 مهام»، «11 مهمة» (and «مهمة جديدة»، «مهمتان جديدتان»… with fresh)
+const arTasks = (n, fresh) => !(n > 1) ? (fresh ? "مهمة جديدة" : "مهمة") : n === 2 ? (fresh ? "مهمتان جديدتان" : "مهمتين") : n <= 10 ? n + (fresh ? " مهام جديدة" : " مهام") : n + (fresh ? " مهمة جديدة" : " مهمة");
 const WA_TXT = {
-  ar: { accept: d => `قُبلت مهمة «${d.title}» (${d.ref})، وموعد التسليم المؤكد ${d.dateText}.`, info: d => `نحتاج إلى بعض المعلومات منك لبدء مهمة «${d.title}» (${d.ref}).`,
-        reject: d => `بخصوص مهمة «${d.title}» (${d.ref}): تعذّر تنفيذها كما طُلبت، والسبب موضّح في مساحة العمل.`, progress: d => `بدأنا تنفيذ «${d.title}» (${d.ref}).`,
-        status: d => `أصبحت حالة «${d.title}» (${d.ref}): ${d.statusText}.`, date: d => `أصبح موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`, dateNo: d => `بقي موعد تسليم «${d.title}» (${d.ref}) ${d.dateText}.`,
-        completed: d => `اكتملت مهمة «${d.title}» (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}» (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}» (${d.ref}) جاهزة للمراجعة.`,
-        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
+  ar: { accept: d => `قُبلت مهمة «${d.title}»${d.w || ""} (${d.ref})، وموعد التسليم المؤكد ${d.dateText}.`, info: d => `نحتاج إلى بعض المعلومات منك لبدء مهمة «${d.title}»${d.w || ""} (${d.ref}).`,
+        reject: d => `بخصوص مهمة «${d.title}»${d.w || ""} (${d.ref}): تعذّر تنفيذها كما طُلبت، والسبب موضّح في مساحة العمل.`, progress: d => `بدأنا تنفيذ «${d.title}»${d.w || ""} (${d.ref}).`,
+        status: d => `أصبحت حالة «${d.title}»${d.w || ""} (${d.ref}): ${d.statusText}.`, date: d => `أصبح موعد تسليم «${d.title}»${d.w || ""} (${d.ref}) ${d.dateText}.`, dateNo: d => `بقي موعد تسليم «${d.title}»${d.w || ""} (${d.ref}) ${d.dateText}.`,
+        completed: d => `اكتملت مهمة «${d.title}»${d.w || ""} (${d.ref}). شكراً لك!`, deliver: d => d.final ? `التسليم النهائي لـ«${d.title}»${d.w || ""} (${d.ref}) جاهز للمراجعة.` : `النسخة ${d.label} من «${d.title}»${d.w || ""} (${d.ref}) جاهزة للمراجعة.`,
+        comment: d => `تعليق جديد من الاستوديو على «${d.title}»${d.w || ""}${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `فتحنا لك مشروع «${d.name}» في مساحة العمل.`, file: d => `أضفنا ملف «${d.file}» إلى مشروع «${d.name}».`,
         invoice: d => `صدرت لك فاتورة جديدة ${d.no} بقيمة ${d.amount}${d.dueText ? "، وتاريخ استحقاقها " + d.dueText : ""}.`, invoicePaid: d => `وصلت دفعتك ${d.paidNow || ""} للفاتورة ${d.no}. شكراً لك!`,
         invoiceDue: d => `نودّ أن نذكّرك بلطف بالفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
         invoiceSoon: d => `تذكير ودّي: يحلّ موعد استحقاق الفاتورة ${d.no} في ${d.dueText}، والمبلغ ${d.balance}. إن كنت قد أتممت الدفع فلك جزيل الشكر.`,
         invoiceFollow: d => `نتابع معك بخصوص الفاتورة ${d.no}، والمبلغ المتبقي ${d.balance}. إن كان بوسعنا تسهيل الأمر فيسعدنا أن نسمع منك.`,
-        reviewWaiting: d => `النسخة ${d.label} من «${d.title}» (${d.ref}) بانتظار رأيك متى سنح وقتك.`, periodReport: d => `تقريرك جاهز: ما أنجزناه ${d.name}.`, extras: d => `على «${d.title}» (${d.ref}) إضافة صغيرة بانتظار موافقتك: ${d.note}.`, infoWaiting: d => `ما زلنا بانتظار بعض التفاصيل لبدء «${d.title}» (${d.ref}).`,
-        recurring: d => `أُضيفت مهمة «${d.title}» (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو مهمة «${d.title}» (${d.ref}) إلى مشروعك${d.date ? "، وموعد تسليمها المؤكد " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
-  en: { accept: d => `Your task "${d.title}" (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}" (${d.ref}).`,
-        reject: d => `About "${d.title}" (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}" (${d.ref}).`,
-        status: d => `"${d.title}" (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}" (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}" (${d.ref}) stays ${d.dateText}.`,
-        completed: d => `"${d.title}" (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}" (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}" (${d.ref}) is ready for review.`,
-        comment: d => `New comment from the studio on "${d.title}"${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
+        reviewWaiting: d => `النسخة ${d.label} من «${d.title}»${d.w || ""} (${d.ref}) بانتظار رأيك متى سنح وقتك.`, periodReport: d => `تقريرك جاهز: ما أنجزناه ${d.name}.`, extras: d => `على «${d.title}»${d.w || ""} (${d.ref}) إضافة صغيرة بانتظار موافقتك: ${d.note}.`, infoWaiting: d => `ما زلنا بانتظار بعض التفاصيل لبدء «${d.title}»${d.w || ""} (${d.ref}).`,
+        recurring: d => `أُضيفت مهمة «${d.title}»${d.w || ""} (${d.ref}) ضمن الجدول الدوري، وموعد تسليمها المؤكد ${d.dateText}.`, added: d => `أضاف الاستوديو ${arTasks(d.count)} «${d.title}» إلى ${d.to || "مشروعك"}${d.date ? "، وموعد التسليم المبدئي " + d.dateText : ""}.`, report: d => `التقرير الشهري لمشروع «${d.name}» جاهز.` },
+  en: { accept: d => `Your task "${d.title}"${d.w || ""} (${d.ref}) is accepted. Confirmed delivery: ${d.dateText}.`, info: d => `We need a little more information to start "${d.title}"${d.w || ""} (${d.ref}).`,
+        reject: d => `About "${d.title}"${d.w || ""} (${d.ref}): we can't take it as requested — the reason is in your workspace.`, progress: d => `We started working on "${d.title}"${d.w || ""} (${d.ref}).`,
+        status: d => `"${d.title}"${d.w || ""} (${d.ref}) is now: ${d.statusText}.`, date: d => `The delivery date of "${d.title}"${d.w || ""} (${d.ref}) is now ${d.dateText}.`, dateNo: d => `The delivery date of "${d.title}"${d.w || ""} (${d.ref}) stays ${d.dateText}.`,
+        completed: d => `"${d.title}"${d.w || ""} (${d.ref}) is complete. Thank you!`, deliver: d => d.final ? `The final delivery of "${d.title}"${d.w || ""} (${d.ref}) is ready for review.` : `Version ${d.label} of "${d.title}"${d.w || ""} (${d.ref}) is ready for review.`,
+        comment: d => `New comment from the studio on "${d.title}"${d.w || ""}${d.ref ? " (" + d.ref + ")" : ""}.`, project: d => `We opened the project "${d.name}" in your workspace.`, file: d => `We added "${d.file}" to the files of "${d.name}".`,
         invoice: d => `A new invoice ${d.no} for ${d.amount} is ready${d.dueText ? ", due " + d.dueText : ""}.`, invoicePaid: d => `We received your payment ${d.paidNow || ""} for invoice ${d.no}. Thank you!`,
         invoiceDue: d => `A gentle reminder about invoice ${d.no}; the remaining balance is ${d.balance}. If you have already settled it, thank you.`,
         invoiceSoon: d => `A gentle reminder: invoice ${d.no} is due on ${d.dueText}, for ${d.balance}. If you have already settled it, thank you.`,
         invoiceFollow: d => `Following up on invoice ${d.no}; ${d.balance} is still due. If we can make it easier, we would be glad to hear from you.`,
-        reviewWaiting: d => `Version ${d.label} of "${d.title}" (${d.ref}) is waiting for your review whenever you have a moment.`, periodReport: d => `Your report is ready: what we did ${d.name}.`, extras: d => `A small addition on "${d.title}" (${d.ref}) awaits your approval: ${d.note}.`, infoWaiting: d => `We are still waiting for a few details to start "${d.title}" (${d.ref}).`,
-        recurring: d => `"${d.title}" (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added "${d.title}" (${d.ref}) to your project${d.date ? "; confirmed delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
+        reviewWaiting: d => `Version ${d.label} of "${d.title}"${d.w || ""} (${d.ref}) is waiting for your review whenever you have a moment.`, periodReport: d => `Your report is ready: what we did ${d.name}.`, extras: d => `A small addition on "${d.title}"${d.w || ""} (${d.ref}) awaits your approval: ${d.note}.`, infoWaiting: d => `We are still waiting for a few details to start "${d.title}"${d.w || ""} (${d.ref}).`,
+        recurring: d => `"${d.title}"${d.w || ""} (${d.ref}) was added from your recurring schedule; confirmed delivery ${d.dateText}.`, added: d => `The studio added ${d.count > 1 ? d.count + " tasks" : "a task"}, "${d.title}", to ${d.to || "your project"}${d.date ? "; provisional delivery " + d.dateText : ""}.`, report: d => `The monthly report for "${d.name}" is ready.` } };
 // the e-mail for one event, built once: tellClient sends it, the admin's send sheet previews it
 function composeMail(u, t, kind, extra, hash){
   extra = extra || {}; const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const T = {
-    accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["قُبلت مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    info:    en ? ["We need a little more · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need:`] : ["نحتاج إلى أمر بسيط منك · " + t.ref, `لنبدأ مهمة <b style="color:#fff">${h(t.title)}</b> نحتاج إلى ما يلي:`],
-    reject:  en ? ["About your task · " + t.ref, `We can't take <b style="color:#fff">${h(t.title)}</b> as requested.`] : ["بخصوص مهمتك · " + t.ref, `تعذّر علينا تنفيذ مهمة <b style="color:#fff">${h(t.title)}</b> كما طُلبت.`],
-    progress:en ? ["Work has started · " + t.ref, `We started working on <b style="color:#fff">${h(t.title)}</b>.`] : ["بدأ العمل · " + t.ref, `بدأنا تنفيذ <b style="color:#fff">${h(t.title)}</b>.`],
-    date:    en ? ["New delivery date · " + t.ref, `The confirmed delivery date for <b style="color:#fff">${h(t.title)}</b> is now <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["موعد تسليم جديد · " + t.ref, `أصبح موعد التسليم المؤكد لمهمة <b style="color:#fff">${h(t.title)}</b> <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    dateNo:  en ? ["About the date change · " + t.ref, `We kept the delivery date of <b style="color:#fff">${h(t.title)}</b> on <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                : ["بخصوص تغيير الموعد · " + t.ref, `بقي موعد تسليم <b style="color:#fff">${h(t.title)}</b> كما هو: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    completed: en ? ["Task completed · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is complete. Thank you!`] : ["اكتملت المهمة · " + t.ref, `اكتملت مهمة <b style="color:#fff">${h(t.title)}</b>. شكراً لك!`],
-    status:  en ? ["Task update · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> is now: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`] : ["تحديث على مهمتك · " + t.ref, `أصبحت حالة مهمة <b style="color:#fff">${h(t.title)}</b>: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`],
-    deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
-                 : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b> — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. اطّلع عليها وأرسل إلينا موافقتك أو ملاحظاتك.`],
-    comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>:`],
+    accept:  en ? ["Task accepted · " + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} is accepted. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
+                : ["قُبلت مهمتك · " + t.ref, `قبلنا مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""}. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    info:    en ? ["We need a little more · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b>${t.where || ""} we need:`] : ["نحتاج إلى أمر بسيط منك · " + t.ref, `لنبدأ مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""} نحتاج إلى ما يلي:`],
+    reject:  en ? ["About your task · " + t.ref, `We can't take <b style="color:#fff">${h(t.title)}</b>${t.where || ""} as requested.`] : ["بخصوص مهمتك · " + t.ref, `تعذّر علينا تنفيذ مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""} كما طُلبت.`],
+    progress:en ? ["Work has started · " + t.ref, `We started working on <b style="color:#fff">${h(t.title)}</b>${t.where || ""}.`] : ["بدأ العمل · " + t.ref, `بدأنا تنفيذ <b style="color:#fff">${h(t.title)}</b>${t.where || ""}.`],
+    date:    en ? ["New delivery date · " + t.ref, `The confirmed delivery date for <b style="color:#fff">${h(t.title)}</b>${t.where || ""} is now <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
+                : ["موعد تسليم جديد · " + t.ref, `أصبح موعد التسليم المؤكد لمهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""} <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    dateNo:  en ? ["About the date change · " + t.ref, `We kept the delivery date of <b style="color:#fff">${h(t.title)}</b>${t.where || ""} on <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
+                : ["بخصوص تغيير الموعد · " + t.ref, `بقي موعد تسليم <b style="color:#fff">${h(t.title)}</b>${t.where || ""} كما هو: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    completed: en ? ["Task completed · " + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} is complete. Thank you!`] : ["اكتملت المهمة · " + t.ref, `اكتملت مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""}. شكراً لك!`],
+    status:  en ? ["Task update · " + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} is now: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`] : ["تحديث على مهمتك · " + t.ref, `أصبحت حالة مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""}: <b style="color:#3FE0E8">${h(L[t.status] || t.status)}</b>.`],
+    deliver: en ? [(extra && extra.final ? "Final delivery is ready · " : "Version " + (extra && extra.label) + " is ready · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} — <b style="color:#3FE0E8">${h(extra && extra.label)}</b> is ready for you. Take a look and send us your approval or your notes.`]
+                 : [(extra && extra.final ? "التسليم النهائي جاهز · " : "النسخة " + (extra && extra.label) + " جاهزة · ") + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} — النسخة <b style="color:#3FE0E8">${h(extra && extra.label)}</b> جاهزة. اطّلع عليها وأرسل إلينا موافقتك أو ملاحظاتك.`],
+    comment: en ? ["New comment from the studio" + (t.ref ? " · " + t.ref : ""), `On <b style="color:#fff">${h(t.title)}</b>${t.where || ""}:`] : ["تعليق جديد من الاستوديو" + (t.ref ? " · " + t.ref : ""), `على <b style="color:#fff">${h(t.title)}</b>${t.where || ""}:`],
     invoice: en ? ["Invoice " + extra.no + " · Eyeblink Studio", `Your invoice <b style="color:#fff">${h(extra.no)}</b> for <b style="color:#3FE0E8">${h(extra.amount)}</b> is below${extra.due ? ", due <b style=\"color:#fff\">" + h(fmtDate(extra.due, lang)) + "</b>" : ""}.`]
                  : ["فاتورة " + extra.no + " · Eyeblink Studio", `تجد أدناه فاتورتك <b style="color:#fff">${h(extra.no)}</b> بقيمة <b style="color:#3FE0E8">${h(extra.amount)}</b>${extra.due ? "، وتاريخ استحقاقها <b style=\"color:#fff\">" + h(fmtDate(extra.due, lang)) + "</b>" : ""}.`],
     invoicePaid: en ? ["Payment received · " + extra.no, `We received <b style="color:#3FE0E8">${h(extra.paidNow || "")}</b> for invoice <b style="color:#fff">${h(extra.no)}</b>. Thank you! The updated invoice is below.`]
@@ -665,19 +667,19 @@ function composeMail(u, t, kind, extra, hash){
                     : ["تذكير ودّي · الفاتورة " + extra.no + " تستحق قريباً", `نودّ أن نذكّرك بلطف بأن الفاتورة <b style="color:#fff">${h(extra.no)}</b> يحلّ موعد استحقاقها في <b style="color:#fff">${h(fmtDate(extra.due, lang))}</b>، والمبلغ <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كنت قد أتممت الدفع فلك جزيل الشكر.`],
     invoiceFollow: en ? ["About invoice " + extra.no, `We are following up on invoice <b style="color:#fff">${h(extra.no)}</b>; the remaining balance is <b style="color:#3FE0E8">${h(extra.balance)}</b>. If we can make it easier, with another payment method or a date that suits you better, we would be glad to hear from you.`]
                       : ["بخصوص الفاتورة " + extra.no, `نتابع معك بخصوص الفاتورة <b style="color:#fff">${h(extra.no)}</b>، والمبلغ المتبقي <b style="color:#3FE0E8">${h(extra.balance)}</b>. إن كان بوسعنا تسهيل الأمر، كطريقة دفع أخرى أو موعد يناسبك أكثر، فيسعدنا أن نسمع منك.`],
-    reviewWaiting: en ? ["Version " + extra.label + " is waiting for your review · " + t.ref, `We recently sent you version <b style="color:#3FE0E8">${h(extra.label)}</b> of <b style="color:#fff">${h(t.title)}</b>. We look forward to your thoughts whenever you have a moment; your approval or notes help us finish on time.`, "Review the version",
+    reviewWaiting: en ? ["Version " + extra.label + " is waiting for your review · " + t.ref, `We recently sent you version <b style="color:#3FE0E8">${h(extra.label)}</b> of <b style="color:#fff">${h(t.title)}</b>${t.where || ""}. We look forward to your thoughts whenever you have a moment; your approval or notes help us finish on time.`, "Review the version",
                          t.confirmed_date ? `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">Confirmed delivery: ${h(fmtDate(t.confirmed_date, lang))}</p>` : ""]
-                      : ["النسخة " + extra.label + " بانتظار رأيك · " + t.ref, `أرسلنا إليك مؤخراً النسخة <b style="color:#3FE0E8">${h(extra.label)}</b> من <b style="color:#fff">${h(t.title)}</b>. نتطلع إلى رأيك متى سنح وقتك؛ فموافقتك أو ملاحظاتك تساعدنا على إكمال العمل في موعده.`, "راجع النسخة",
+                      : ["النسخة " + extra.label + " بانتظار رأيك · " + t.ref, `أرسلنا إليك مؤخراً النسخة <b style="color:#3FE0E8">${h(extra.label)}</b> من <b style="color:#fff">${h(t.title)}</b>${t.where || ""}. نتطلع إلى رأيك متى سنح وقتك؛ فموافقتك أو ملاحظاتك تساعدنا على إكمال العمل في موعده.`, "راجع النسخة",
                          t.confirmed_date ? `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">موعد التسليم المؤكد: ${h(fmtDate(t.confirmed_date, lang))}</p>` : ""],
-    infoWaiting: en ? ["We are still waiting for a few details · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b> we need what we asked for:`, "Send the details", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">As soon as they arrive, we begin.</p>`]
-                    : ["ما زلنا بانتظار بعض التفاصيل · " + t.ref, `لنبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b> نحتاج إلى ما طلبناه منك:`, "أرسل التفاصيل", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">حالما تصلنا نبدأ مباشرة.</p>`],
-    extras: en ? ["A small addition awaits your approval · " + t.ref, `Before we start <b style="color:#fff">${h(t.title)}</b>, we would like to share what goes beyond the scope we agreed on: <b style="color:#3FE0E8">${h(extra.note || "")}</b>. We would be glad to hear what you prefer.`, "Review it"]
-                : ["إضافة بانتظار موافقتك · " + t.ref, `قبل أن نبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b>، نودّ أن نطلعك على ما يتجاوز الإطار المتفق عليه: <b style="color:#3FE0E8">${h(extra.note || "")}</b>. يسعدنا أن نعرف ما تفضّله.`, "راجع الإضافة"],
+    infoWaiting: en ? ["We are still waiting for a few details · " + t.ref, `To start <b style="color:#fff">${h(t.title)}</b>${t.where || ""} we need what we asked for:`, "Send the details", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">As soon as they arrive, we begin.</p>`]
+                    : ["ما زلنا بانتظار بعض التفاصيل · " + t.ref, `لنبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b>${t.where || ""} نحتاج إلى ما طلبناه منك:`, "أرسل التفاصيل", `<p style="margin:16px 0 0;font-size:13px;color:#8E9BB8">حالما تصلنا نبدأ مباشرة.</p>`],
+    extras: en ? ["A small addition awaits your approval · " + t.ref, `Before we start <b style="color:#fff">${h(t.title)}</b>${t.where || ""}, we would like to share what goes beyond the scope we agreed on: <b style="color:#3FE0E8">${h(extra.note || "")}</b>. We would be glad to hear what you prefer.`, "Review it"]
+                : ["إضافة بانتظار موافقتك · " + t.ref, `قبل أن نبدأ تنفيذ <b style="color:#fff">${h(t.title)}</b>${t.where || ""}، نودّ أن نطلعك على ما يتجاوز الإطار المتفق عليه: <b style="color:#3FE0E8">${h(extra.note || "")}</b>. يسعدنا أن نعرف ما تفضّله.`, "راجع الإضافة"],
     periodReport: en ? ["What we did · " + (extra.name || ""), "", "Open the full report"] : ["ما أنجزناه · " + (extra.name || ""), "", "افتح التقرير الكامل"],
-    recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b> was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
-                  : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b> ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
-    added:   en ? ["New task from the studio · " + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to your project${t.confirmed_date ? `. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
-                 : ["مهمة جديدة من الاستوديو · " + t.ref, `أضاف الاستوديو مهمة <b style="color:#fff">${h(t.title)}</b> إلى مشروعك${t.confirmed_date ? `. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`],
+    recurring: en ? ["Recurring task added · " + t.ref, `<b style="color:#fff">${h(t.title)}</b>${t.where || ""} was added from your recurring schedule. Confirmed delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`]
+                  : ["مهمة دورية جديدة · " + t.ref, `أُضيفت مهمة <b style="color:#fff">${h(t.title)}</b>${t.where || ""} ضمن الجدول الدوري المتفق عليه. موعد التسليم المؤكد: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>.`],
+    added:   en ? [(extra.count > 1 ? extra.count + " new tasks from the studio · " : "New task from the studio · ") + t.ref, `The studio added <b style="color:#fff">${h(t.title)}</b> to ${h(extra.to || "your project")}${t.confirmed_date ? `. Provisional delivery date: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`]
+                 : [arTasks(extra.count, true) + " من الاستوديو · " + t.ref, `أضاف الاستوديو ${arTasks(extra.count)} <b style="color:#fff">${h(t.title)}</b> إلى ${h(extra.to || "مشروعك")}${t.confirmed_date ? `. موعد التسليم المبدئي: <b style="color:#3FE0E8">${h(fmtDate(t.confirmed_date, lang))}</b>` : ""}.`],
     report:  en ? ["Monthly report · " + (extra.name || ""), `Here is the monthly report for <b style="color:#fff">${h(extra.name || "")}</b>.`] : ["التقرير الشهري · " + (extra.name || ""), `تجد أدناه التقرير الشهري لمشروع <b style="color:#fff">${h(extra.name || "")}</b>.`],
     file:    en ? ["New file in " + (extra && extra.name), `The studio added <b style="color:#fff">${h(extra && extra.file)}</b> to the files of <b style="color:#fff">${h(extra && extra.name)}</b>.`]
                  : ["ملف جديد في مشروع " + (extra && extra.name), `أضاف الاستوديو ملف <b style="color:#fff">${h(extra && extra.file)}</b> إلى ملفات مشروع <b style="color:#fff">${h(extra && extra.name)}</b>.`],
@@ -692,7 +694,7 @@ function composeMail(u, t, kind, extra, hash){
       : mail(lang, T[0], `<p style="margin:0">${T[1]}</p>` + note + (T[3] || ""), T[2] || (en ? "Open in my workspace" : "افتح في مساحة العمل"), wsLink, greet({ name: u.name, lang }));
     return { subject: T[0], html };
 }
-function tellData(t, extra){ return { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
+function tellData(t, extra){ return { title: t.title || "", ref: t.ref || "", date: t.confirmed_date || null, status: t.status || null, label: extra.label, final: extra.final || undefined, name: extra.name, project: extra.project, to: extra.to, w: extra.w || "", count: extra.count || undefined, file: extra.file, note: extra.note ? excerpt(extra.note, 160) : undefined,
     no: extra.no, amount: extra.amount, balance: extra.balance, paidNow: extra.paidNow, due: extra.due || undefined, month: extra.month }; }
 // the admin's choice from the send sheet: { ch:{ email, push, wa }, at } — at = a later time (kept in scheduled_sends until then)
 function cleanNotify(v){ if (!v || typeof v !== "object") return null;
@@ -710,6 +712,10 @@ async function tellClient(env, t, kind, extra){
   const u = await userOf(env, t.client_email); if (!u) return;
   const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
+  if (D && t.ref && !extra.to) { try { const pr = await D.prepare("SELECT p.name, p.type, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.ref=?").bind(t.ref).first();
+    if (pr) { const nm = pr.single ? (en ? "One-off work" : "أعمال منفردة") : pr.name, prog = !en && pr.type === "program" && !/^برنامج/.test(nm);
+      extra = { ...extra, project: nm, to: en ? `"${nm}"` : (prog ? "برنامج " : "") + "«" + nm + "»" }; extra.w = en ? " in " + extra.to : " ضمن " + extra.to; } } catch {} }
+  t = { ...t, where: extra.w ? h(extra.w) : "" };
   const data = tellData(t, extra), ch = extra.ch;   // ch: the admin's channel choice (in-app is always kept)
   // 1) in-app — always on
   if (D) { try { await D.prepare("INSERT INTO notifications (recipient, kind, cat, link, data, created_at) VALUES (?,?,?,?,?,?)").bind(u.email, kind, cat, hash, JSON.stringify(data), now()).run(); } catch {} }
@@ -954,8 +960,13 @@ async function periodReport(D, email, from, to, c){
   if (c.inc.money) { const inv = (await D.prepare("SELECT no, total, currency, payments, issue_date FROM invoices WHERE client_email=? AND sent_at IS NOT NULL").bind(email).all()).results.map(x => parseI(x));
     const paid = {}; inv.forEach(x => x.payments.forEach(y => { if (inR(y.date || y.at)) paid[x.currency] = money((paid[x.currency] || 0) + y.amount); }));
     R.money = { issued: inv.filter(x => inR(x.issue_date)).map(x => ({ no: x.no, total: fmt(x.total, x.currency) })), paid: Object.keys(paid).map(k => fmt(paid[k], k)) }; }
+  // the client's package in the month the report ends in: what was used of each unit (with the carried units)
+  const ag = await agreementOf(D, email);
+  if (ag && ag.terms.mode === "package") { const m = to.slice(0, 7), use = (await usageOf(D, email, m)).used, cy = carryOf(ag, m);
+    R.pkg = { month: m, units: ag.terms.units.filter(u => u.inc).map(u => ({ name: u.name, used: use[u.id] || 0, have: u.inc + (+cy[u.id] || 0) })) }; }
   return R;
 }
+const rMonth = (m, en) => new Date(m + "-15T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { month: "long", year: "numeric" });
 const RTYPE = { ar: { program: "برنامج", design: "تصاميم", monthly: "تعاون شهري", campaign: "حملة", once: "مشروع لمرة واحدة" }, en: { program: "Program", design: "Design", monthly: "Monthly", campaign: "Campaign", once: "One-off" } };
 // the report inside the e-mail (dark, the site's template)
 function periodCard(R, lang, note){ const en = lang === "en", rtl = !en, s = rtl ? "right" : "left", e = rtl ? "left" : "right", I = R.inc || RINC;
@@ -965,6 +976,8 @@ function periodCard(R, lang, note){ const en = lang === "en", rtl = !en, s = rtl
   const row = (txt, side, dot) => `<tr><td style="padding:7px 14px;border-top:1px solid #121a44;font-size:13.5px;color:#C3CEE2;text-align:${s}"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-${e}:8px"></span>${h(txt)}${side ? `<span style="float:${e};color:#6F7FA0;font-size:12px">${h(side)}</span>` : ""}</td></tr>`;
   let b = `<p style="margin:0 0 6px;font-size:12.5px;color:#8E9BB8">${h(rPeriod(R, en))}</p>` + (note ? `<p style="margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#121a48;color:#DCE3F0">${h(note).replace(/\n/g, "<br>")}</p>` : "");
   if (I.nums) b += `<table role="presentation" width="100%" cellpadding="0" cellspacing="8" style="border-collapse:separate;margin:0 -8px"><tr>${tile(R.nums.done, en ? "Tasks completed" : "مهام اكتملت", "#3DDC97")}${tile(R.nums.versions, en ? "Versions delivered" : "نسخ سُلّمت", "#3FE0E8")}${tile(R.nums.ontime === null ? "—" : R.nums.ontime + "%", en ? "On time" : "في الموعد", "#F7C76A")}</tr></table>`;
+  if (I.nums && R.pkg && R.pkg.units.length) b += sec((en ? "Your package · " : "باقتك · ") + rMonth(R.pkg.month, en)) + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` +
+    R.pkg.units.map(u => `<tr><td style="padding:7px 0;border-bottom:1px solid #1B2556;font-size:13.5px;color:#C3CEE2;text-align:${s}">${h(u.name)}</td><td style="padding:7px 0;border-bottom:1px solid #1B2556;font-size:13.5px;color:${u.used >= u.have ? "#F7C76A" : "#3FE0E8"};text-align:${e};direction:ltr">${u.used} / ${u.have}</td></tr>`).join("") + `</table>`;
   const P = R.projects.filter(p => (I.done && p.done.length) || (I.waiting && p.waiting.length));
   if (P.length) b += sec(en ? "What we did" : "ما أنجزناه") + P.map(p => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;border:1px solid #1B2556;border-radius:14px;border-collapse:separate;background:#0A1033"><tr><td style="padding:12px 14px 4px;text-align:${s}"><span style="font-size:15px;font-weight:700;color:#fff">${h(p.name)}</span> <span style="font-size:11.5px;color:#3FE0E8">${h(RTYPE[en ? "en" : "ar"][p.type] || "")}</span></td></tr>` +
     (I.done ? p.done.map(t => row(t.title, fd(t.date), "#3DDC97")).join("") : "") + (I.waiting ? p.waiting.map(t => row(t.title + (t.label ? " · " + t.label : ""), en ? "Waiting for your review" : "بانتظار رأيك", "#F7C76A")).join("") : "") + `<tr><td style="padding:4px"></td></tr></table>`).join("");
@@ -984,6 +997,7 @@ function periodPage(R, cl, lang, note){ const en = lang === "en", I = R.inc || R
 <h1>${en ? "What we did together" : "ما أنجزناه معاً"}</h1><div class="m">${h(cl.name || "")} · ${h(rPeriod(R, en))}</div>
 ${note ? `<div class="note">${h(note).replace(/\n/g, "<br>")}</div>` : ""}
 ${I.nums ? `<div class="n">${box(R.nums.done, en ? "Tasks completed" : "مهام اكتملت")}${box(R.nums.versions, en ? "Versions delivered" : "نسخ سُلّمت")}${box(R.nums.ontime === null ? "—" : R.nums.ontime + "%", en ? "On time" : "في الموعد")}</div>` : ""}
+${I.nums && R.pkg && R.pkg.units.length ? `<div class="h">${en ? "Your package · " : "باقتك · "}${h(rMonth(R.pkg.month, en))}</div>` + R.pkg.units.map(u => `<div class="r"><span>${h(u.name)}</span><span dir="ltr">${u.used} / ${u.have}</span></div>`).join("") : ""}
 ${P.length ? `<div class="h">${en ? "What we did" : "ما أنجزناه"}</div>` + P.map(p => `<div class="p"><b>${h(p.name)}</b> <span class="m">${h(RTYPE[en ? "en" : "ar"][p.type] || "")}</span>` + (I.done ? p.done.map(t => `<div class="r"><span>${h(t.title)}</span><span>${h(fd(t.date))}</span></div>`).join("") : "") + (I.waiting ? p.waiting.map(t => `<div class="r"><span>${h(t.title)}${t.label ? " · " + h(t.label) : ""}</span><span>${en ? "Waiting for your review" : "بانتظار رأيك"}</span></div>`).join("") : "") + `</div>`).join("") : ""}
 ${I.next && R.next.length ? `<div class="h">${en ? "Coming next" : "القادم"}</div>` + R.next.map(t => `<div class="r"><span>${h(t.project)} · ${h(t.title)}</span><span>${h(fd(t.date))}</span></div>`).join("") : ""}
 ${R.money && (R.money.issued.length || R.money.paid.length) ? `<div class="h">${en ? "Invoices and payments" : "الفواتير والمدفوعات"}</div>` + R.money.issued.map(x => `<div class="r"><span>${h(x.no)}</span><span>${h(x.total)}</span></div>`).join("") + (R.money.paid.length ? `<div class="r"><span>${en ? "Paid" : "المدفوع"}</span><span>${h(R.money.paid.join(" · "))}</span></div>` : "") : ""}
@@ -1378,7 +1392,11 @@ async function clientsList(env){ const out = []; let cursor;
 // ==== client records (phase 9) ====
 const CSTATUS = ["active","paused","archived"];
 const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || "");
-async function agreementsAll(D){ const o = {}; for (const r of (await D.prepare("SELECT email, terms FROM clients WHERE terms IS NOT NULL").all()).results) { try { o[r.email] = JSON.parse(r.terms); } catch {} } return o; }
+// every client's package, with this month's use and carried units (the Today page warns when one runs past it)
+async function agreementsAll(D){ const o = {}, m = monthOf(now());
+  for (const r of (await D.prepare("SELECT email, terms, carry FROM clients WHERE terms IS NOT NULL").all()).results) { try { const t = JSON.parse(r.terms), c = r.carry ? JSON.parse(r.carry) : {};
+    t._used = (await usageOf(D, r.email, m)).used; t._carry = c[m] || {}; o[r.email] = t; } catch {} }
+  return o; }
 async function clientRow(D, email){ return D.prepare("SELECT * FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); }
 async function ensureClients(D, list){   // a stable id for every client the studio works with (never overwrites what the studio wrote)
   const st = list.filter(x => x && isEmail(x.email)).map(x => D.prepare("INSERT OR IGNORE INTO clients (id, email, name, created_at, updated_at) VALUES (?,?,?,?,?)").bind("c_" + randHex(6), x.email.toLowerCase(), clip(x.name, 120), now(), now()));
@@ -1857,7 +1875,8 @@ async function adminPost(ctx, d){
     }
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
     // one message to the client, even for several tasks
-    if (!d.done) later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref: refs[0], title: n > 1 ? title + " (" + n + ")" : title, confirmed_date: cd || null, status: st }, "added"));
+    const all = Array.from({ length: n }, (_, i) => names[i] || (n > 1 ? title + " " + (i + 1) : title));
+    if (!d.done) later(ctx, tellAdmin(ctx, env, { client_email: p.client_email, ref: refs[0], title: n > 1 ? all.slice(0, 4).join("، ") + (n > 4 ? "…" : "") : title, confirmed_date: cd || null, status: st }, "added", { count: n }));
     return json({ ok: true, ref: refs[0], refs });
   }
   if (d.action === "point" || d.action === "pointAdd") {

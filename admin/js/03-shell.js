@@ -159,7 +159,16 @@
     ((WORK&&WORK.tasks)||[]).forEach(function(t){ if(/completed|rejected|cancelled/.test(t.status)) return; var g={tab:'tasks',ref:t.ref};
       if(t.confirmed_date&&t.confirmed_date<t0&&t.status!=='final') add('crit','مهمة عميل متأخرة',esc(t.title)+' · '+esc(t.project_name||''),g,t.confirmed_date);
       else if(t.status==='new') add('warn','مهمة جديدة من عميل',esc(t.title)+' · '+esc(t.project_name||''),g);
-      if(t.change_request&&t.change_request.status==='pending') add('warn','طلب تغيير موعد',esc(t.title),g); });
+      if(t.change_request&&t.change_request.status==='pending') add('warn','طلب تغيير موعد',esc(t.title),g);
+      // an extra on a task: the client asked to keep to the agreed scope, or has not answered for two days
+      if(t.extras&&t.extras.state==='declined') add('warn','العميل طلب الالتزام بالإطار المتفق عليه',esc(t.title)+' · '+esc(t.project_name||''),g,t.extras.at);
+      else if(t.extras&&t.extras.state==='pending'&&hrs(t.extras.at)>48) add('info','إضافة بانتظار موافقة العميل',esc(t.title)+' · '+esc(t.project_name||''),g,t.extras.at); });
+    // the packages: a client past a unit this month (it goes on the month's invoice), and the end of the month (time for the invoice)
+    var AG=(WORK&&WORK.agreements)||{}, CN={}; ((WORK&&WORK.clients)||[]).forEach(function(c){ CN[c.email]=c.name||c.email; });
+    Object.keys(AG).forEach(function(em){ var t=AG[em], g={tab:'clients',email:em}; if(t.mode!=='package') return;
+      var over=t.units.filter(function(u){ return u.inc&&((t._used||{})[u.id]||0)>u.inc+(+((t._carry||{})[u.id])||0); });
+      if(over.length) add('info','تجاوز الباقة هذا الشهر',esc(CN[em]||em)+' · '+esc(over.map(function(u){ return u.name+' '+((t._used||{})[u.id]||0)+' من '+(u.inc+(+((t._carry||{})[u.id])||0)); }).join('، '))+' · تُضاف إلى فاتورة الشهر',g);
+      if(+t0.slice(8,10)>=26) add('info','وقت فاتورة الشهر',esc(CN[em]||em)+' · «عبّئ فاتورة هذا الشهر» من باقته',g); });
     ((BILL&&BILL.invoices)||[]).forEach(function(x){ if(x.state==='overdue') add('crit','فاتورة متأخرة','<span dir="ltr">'+esc(x.no)+'</span>'+(x.balance?' · '+esc(x.balance)+' '+esc(x.currency||''):''),{tab:'billing'},x.due_date); });
     if(TEAM&&TEAM.apps){ var na=TEAM.apps.filter(function(a){return a.status==='new'}).length; if(na) add('info',na+(na>1?' طلبات انضمام جديدة':' طلب انضمام جديد'),'من صفحة «انضم للفريق»',{tab:'team',sub:'apps'});
       var mn=function(e){ var m=TEAM.members.filter(function(x){return x.email===e})[0]; return m?m.name:e; }, due=0, cur='$';
@@ -257,6 +266,7 @@
     if(g.tab==='orders'&&g.key) return goOrder(g.key);
     if(g.tab==='tasks'){ WOPEN=g.ref||null; go('tasks'); return; }
     if(g.tab==='support'){ SOPEN=g.id||null; go('support'); return; }
+    if(g.tab==='clients'&&g.email){ go('clients'); loadProfile(g.email,g.sec||'projects'); return; }
     if(g.tab==='team'){ TSUB=g.task?'tasks':(g.sub||TSUB); go('team'); if(g.task) setTimeout(function(){ openTTask(g.task); },60); return; }
     go(g.tab);
   });
