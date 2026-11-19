@@ -149,6 +149,7 @@ const MIGRATIONS = [
   "ALTER TABLE clients ADD COLUMN carry TEXT",
   "ALTER TABLE projects ADD COLUMN in_pkg INTEGER NOT NULL DEFAULT 1",
   "UPDATE clients SET terms=(SELECT p.terms FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1), carry=(SELECT p.carry FROM projects p WHERE p.client_email=clients.email AND p.terms IS NOT NULL ORDER BY p.updated_at DESC LIMIT 1) WHERE terms IS NULL",
+  "ALTER TABLE projects ADD COLUMN single INTEGER NOT NULL DEFAULT 0",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -199,13 +200,23 @@ const unitOf = (terms, name) => { const n = String(name || "").trim().toLowerCas
 async function agreementOf(D, email){ const r = await D.prepare("SELECT terms, carry FROM clients WHERE email=?").bind(String(email || "").toLowerCase()).first(); if (!r || !r.terms) return null;
   let terms, carry; try { terms = JSON.parse(r.terms); } catch { return null; } try { carry = r.carry ? JSON.parse(r.carry) : {}; } catch { carry = {}; } return { terms, carry }; }
 const PKG = "(SELECT id FROM projects WHERE client_email=?1 AND in_pkg=1)";
+// each client's «one-off work»: one standing project for the work that belongs to no project (a single episode, a logo…);
+// made the first time it is chosen; in the package, but only tasks given a unit draw from it
+const SINGLE = "__single";
+async function singlesOf(D, email){
+  const e = String(email || "").toLowerCase(), have = await D.prepare("SELECT * FROM projects WHERE client_email=? AND single=1").bind(e).first(); if (have) return have;
+  const id = "p_" + randHex(6), at = now();
+  await D.prepare("INSERT INTO projects (id, client_email, name, description, type, status, services, start_date, end_date, quota, drive_url, auto_report, created_at, updated_at, in_pkg, single) VALUES (?,?,?,?,'custom','active','[]',NULL,NULL,NULL,NULL,0,?,?,1,1)")
+    .bind(id, e, "أعمال منفردة", "", at, at).run();
+  return D.prepare("SELECT * FROM projects WHERE id=?").bind(id).first();
+}
 // units used this month across the client's projects in the package: in total, and by project
 async function usageOf(D, email, month){ const used = {}, by = {};
   for (const r of (await D.prepare(`SELECT unit, project_id, COUNT(*) AS n FROM tasks WHERE project_id IN ${PKG} AND unit IS NOT NULL AND substr(created_at,1,7)=?2 AND status NOT IN ('cancelled','rejected') GROUP BY unit, project_id`).bind(email, month).all()).results) {
     used[r.unit] = (used[r.unit] || 0) + r.n; (by[r.unit] ||= {})[r.project_id] = r.n; }
   return { used, by }; }
 // a project as the client reads it: never the raw agreement
-async function forClientP(D, p){ if (!p) return p; delete p.terms; delete p.carry; return p; }
+async function forClientP(D, p, en){ if (!p) return p; delete p.terms; delete p.carry; if (p.single) p.name = en ? "One-off work" : "أعمال منفردة"; return p; }
 // the client's view of their package: what is included, what was used (and by which project), what one more costs; never the package price or per-unit prices
 async function clientAgreement(D, email){ const a = await agreementOf(D, email); if (!a) return null; const t = a.terms, m = monthOf(now()), u = await usageOf(D, email, m);
   return { mode: t.mode, cur: t.cur, used: u.used, by: u.by, carried: carryOf(a, m), units: t.units.map(x => ({ id: x.id, name: x.name, ...(t.mode === "package" ? { inc: x.inc, price: x.price || undefined } : {}) })) }; }
@@ -1095,7 +1106,7 @@ export async function onRequestGet(ctx) {
     const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(cparse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
     const recurring = (await D.prepare("SELECT id, title, every, dow, dom, due_days, next_run, active FROM recurring WHERE project_id=? AND active=1 ORDER BY next_run").bind(p.id).all()).results;
-    return json({ ok: true, me: e, project: await forClientP(D, p), agreement: await clientAgreement(D, e), tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
+    return json({ ok: true, me: e, project: await forClientP(D, p, u.lang === "en"), agreement: await clientAgreement(D, e), tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
   }
   if (q.get("task")) {
     const t = cparse(await myTask(D, e, q.get("task"))); if (!t) return json({ ok: false }, 404);
@@ -1107,7 +1118,7 @@ export async function onRequestGet(ctx) {
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
       (SELECT MIN(t.confirmed_date) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${open}) AND t.confirmed_date >= ?3) AS next_date,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=?2 AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p WHERE p.id IN ${MINE} ORDER BY p.status='active' DESC, p.updated_at DESC`).bind(e, monthOf(now()), today()).all()).results.map(parseP);
-  for (const p of projects) await forClientP(D, p);
+  for (const p of projects) await forClientP(D, p, u.lang === "en");
   const counts = {}; for (const r of (await D.prepare(`SELECT status, COUNT(*) AS n FROM tasks WHERE project_id IN ${MINE} GROUP BY status`).bind(e).all()).results) counts[r.status] = r.n;
   const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 12`).bind(e).all()).results.map(cparse);
   const upcoming = (await D.prepare(`SELECT t.ref, t.title, t.confirmed_date, t.status, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE}
@@ -1224,7 +1235,7 @@ export async function onRequestPost(ctx) {
   }
 
   if (d.action === "task" || d.action === "tasks") {
-    const p = await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
+    const p = d.project === SINGLE ? await singlesOf(D, u.email) : await myProject(D, u.email, clip(d.project, 40)); if (!p) return json({ ok: false, error: "project" }, 404);
     if (p.status !== "active") return json({ ok: false, error: "project closed" }, 409);
     const items = d.action === "tasks" ? (Array.isArray(d.items) ? d.items.slice(0, 10) : []) : [d];
     if (!items.length) return json({ ok: false, error: "title" }, 400);
@@ -1825,7 +1836,8 @@ async function adminPost(ctx, d){
       title: ((c && (c.company || c.name)) || (u && u.name) || email) + " · " + new Date(month + "-15T12:00:00Z").toLocaleDateString("ar-u-nu-latn", { month: "long", year: "numeric" }) });
   }
   if (d.action === "studioTask") {
-    const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
+    const p = d.project === SINGLE ? (isEmail(clip(d.client_email, 254).toLowerCase()) ? await singlesOf(D, clip(d.client_email, 254)) : null)
+      : await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false, error: "project" }, 404);
     const title = clip(d.title, 140); if (!title) return json({ ok: false, error: "title" }, 400);
     const cd = clip(d.confirmed_date, 10); if (cd && !isDate(cd)) return json({ ok: false, error: "date" }, 400);
     // work already finished (before the client joined the workspace, or done off the platform): recorded as completed on its day,

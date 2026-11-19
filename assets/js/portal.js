@@ -308,8 +308,8 @@
     var line=rv?HM.w.review(rv.title):inf?HM.w.info(inf.title):bill?HM.w.bill(bill.no):none&&act.length?HM.w.first:HM.w.calm,
       btn=rv?'<a class="btn btn-primary" href="#w/t/'+esc(rv.ref)+'">'+HM.w.go+'</a>':inf?'<a class="btn btn-primary" href="#w/t/'+esc(inf.ref)+'">'+HM.act.info+'</a>':bill?'<a class="btn btn-primary" href="#w/invoices/'+esc(bill.id)+'">'+HM.act.bill+'</a>':none&&act.length?'<a class="btn btn-primary" href="#w/new">'+HM.w.new+'</a>':'';
     return '<aside class="wwel glass" role="note"><div><b>'+HM.w.h+'</b><p>'+esc(line)+'</p></div>'+btn+'<button type="button" class="wwel-x" aria-label="'+HM.w.x+'">'+SVG('<path d="M6 6l12 12M18 6 6 18"/>')+'</button></aside>'; }
-  function projCard(p){ var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
-    return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(T.types[p.type]||p.type)+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
+  function projCard(p){ if(p.single&&!(p.open_tasks||p.done_tasks)) return ''; var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
+    return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(p.single?SGK:(T.types[p.type]||p.type))+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
       '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(agPull(p)||(p.quota&&!(DASH&&DASH.agreement)?quotaBar(p.month_tasks||0,p.quota):''))+'</a>'+
       (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
@@ -433,7 +433,8 @@
       if(!act.some(function(p){return p.id===pid})) pid=act[0].id;
       var minD=new Date().toISOString().slice(0,10);
       host.innerHTML=head('new','NEW TASKS',U2.nw.h,U2.nw.p)+
-        '<form class="wmulti form" id="wNew" novalidate><div class="wm-top wcard glass"><label>'+T.project+'<select name="project">'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===pid?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></label>'+
+        '<form class="wmulti form" id="wNew" novalidate><div class="wm-top wcard glass"><label>'+T.project+'<select name="project">'+act.filter(function(p){ return !p.single; }).map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===pid?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+
+          '<option value="__single"'+(pid==='__single'||act.some(function(p){ return p.single&&p.id===pid; })?' selected':'')+'>'+SGL+'</option></select></label>'+
           '<p class="wnote warn wqn" hidden>'+T.x.overNote+'</p>'+gapNote()+'</div><datalist id="wTypes">'+types.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist><datalist id="wFmts">'+T.x.fmts.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'+
           '<div class="wm-list"></div><div class="wm-add"><button type="button" class="wm-addb">'+ICO.plus+'<span>'+U2.nw.add+'</span></button><small class="muted">'+U2.nw.copy+'</small></div>'+
           '<div class="wm-bar glass"><span class="wm-count"></span><p class="msg" role="alert"></p><button class="btn btn-primary" type="submit">'+U2.nw.review+'</button></div></form>';
@@ -465,7 +466,7 @@
           brief:['goal','audience','format','duration','tone','message','cta','music'].reduce(function(o,b){ var v=q('b_'+b).value.trim(); if(v) o[b]=v; return o; },{})}; };
       var sync=function(){ var n=list.children.length; [].forEach.call(list.children,function(c,i){ c.querySelector('.wm-n').textContent=i+1; c.querySelector('.wm-rm').hidden=n<2; });
         f.querySelector('.wm-count').textContent=U2.nw.count(n); f.querySelector('.wm-addb').disabled=n>=10; f.querySelector('.wm-addb').title=n>=10?U2.nw.max:'';
-        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]; f.querySelector('.wqn').hidden=!(pp&&!agOf(pp)&&pp.quota&&(pp.month_tasks||0)+n>pp.quota);
+        var pp=act.filter(function(x){return x.id===f.elements.project.value})[0]||(f.elements.project.value==='__single'?{id:'__single',in_pkg:1}:null); f.querySelector('.wqn').hidden=!(pp&&!agOf(pp)&&pp.quota&&(pp.month_tasks||0)+n>pp.quota);
         // a project with an agreement: its units are the task types
         var ag=agOf(pp), dl=f.querySelector('#wTypes'); if(!dl._all) dl._all=dl.innerHTML;
         dl.innerHTML=ag?ag.units.map(function(u){ return '<option value="'+esc(u.name)+'">'; }).join(''):dl._all; [].forEach.call(list.children,function(c){ agNote(c,f); }); };
@@ -531,7 +532,7 @@
   function drawProject(j,tab,month){ var p=j.project, F='all';
     var nf=(j.files||[]).length+(j.delivered||[]).length, nc=(j.comments||[]).length;
     host.innerHTML='<a class="wback" href="#w/projects">← '+U2.nav.projects+'</a>'+
-      '<div class="wcard glass wphead" style="--k:'+(TYPEC[p.type]||'#3FE0E8')+'"><div><span class="k">'+esc(T.types[p.type]||p.type)+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
+      '<div class="wcard glass wphead" style="--k:'+(TYPEC[p.type]||'#3FE0E8')+'"><div><span class="k">'+esc(p.single?SGK:(T.types[p.type]||p.type))+' · '+esc(T.pst[p.status]||p.status)+'</span><h2>'+esc(p.name)+'</h2>'+(p.description?'<p class="muted">'+para(p.description)+'</p>':'')+
         '<dl class="wmeta">'+(p.start_date?'<div><dt>'+T.start+'</dt><dd>'+esc(d8(p.start_date))+'</dd></div>':'')+(p.end_date?'<div><dt>'+T.end+'</dt><dd>'+esc(d8(p.end_date))+'</dd></div>':'')+
         ((p.services||[]).length?'<div><dt>'+T.services+'</dt><dd>'+p.services.map(function(s){ var sv=(C().services||[]).filter(function(x){return x.id===s})[0]; return '<span class="tag">'+esc(sv?L(sv.name):s)+'</span>'; }).join(' ')+'</dd></div>':'')+'</dl></div>'+
         '<div class="wphx">'+(j.agreement&&p.in_pkg!==0?agMeters(j.agreement,(DASH&&DASH.projects)||[p]):(p.quota?quotaBar(j.quota_used||0,p.quota):''))+(p.drive_url?'<a class="wdrive" href="'+esc(p.drive_url)+'" target="_blank" rel="noopener noreferrer">📁 '+T.x.drive+'</a>':'')+
@@ -1023,7 +1024,9 @@
   function agCard(a,projects){ var m=agMeters(a,projects); return m?'<section class="wcard glass wagc">'+m+'</section>':''; }
   function agPull(p){ var a=agOf(p); if(!a) return ''; var w=a.units.map(function(u){ var n=((a.by||{})[u.id]||{})[p.id]; return n?u.name+' '+n:''; }).filter(Boolean);
     return '<p class="small muted wag-p">'+AGT.pull+(w.length?w.join('، '):AGT.none)+'</p>'; }
-  function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0], a=agOf(pp);
+  var SGL=AR?'أعمال منفردة · خارج المشاريع':'One-off work · outside your projects';
+  var SGK=AR?'خارج المشاريع':'Outside your projects';
+  function agNote(d,f){ var el=d.querySelector('.wag-over'); if(!el) return; var pid=f.elements.project.value, pp=((DASH&&DASH.projects)||[]).filter(function(x){ return x.id===pid; })[0]||(pid==='__single'?{in_pkg:1}:null), a=agOf(pp);
     var v=String(d.querySelector('[name=type]').value||'').trim().toLowerCase(), u=a&&a.mode==='package'?a.units.filter(function(x){ return x.name.toLowerCase()===v; })[0]:null;
     var full=u&&u.inc&&((a.used||{})[u.id]||0)>=u.inc+(+((a.carried||{})[u.id])||0)&&u.price; el.hidden=!full; if(full) el.textContent=AGT.over+'('+u.price+(a.cur||'')+')'; }
   function xtraBox(t){ var x=t.extras; if(!x||!x.items||!x.items.length) return '';
