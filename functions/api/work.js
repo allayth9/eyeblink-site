@@ -707,14 +707,22 @@ async function tellAdmin(ctx, env, t, kind, extra){
     .bind(n.at, String(t.client_email || "").toLowerCase(), kind, JSON.stringify(t), JSON.stringify(extra), now()).run(); return; } }
   return tellClient(env, t, kind, extra);
 }
+// where a task sits, in words: «حلقة 4» ضمن برنامج «محراب» — from its ref, or (before it exists) from the chosen project; "__single" is one-off work
+async function projWhere(D, pid, ref, en){
+  let pr = null;
+  try { pr = pid === "__single" ? { name: "", single: 1 } : pid ? await D.prepare("SELECT name, type, single FROM projects WHERE id=?").bind(String(pid).slice(0, 40)).first()
+    : ref ? await D.prepare("SELECT p.name, p.type, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.ref=?").bind(ref).first() : null; } catch {}
+  if (!pr) return {};
+  const nm = pr.single ? (en ? "One-off work" : "أعمال منفردة") : pr.name, prog = !en && pr.type === "program" && !/^برنامج/.test(nm);
+  const to = en ? `"${nm}"` : (prog ? "برنامج " : "") + "«" + nm + "»";
+  return { project: nm, to, w: en ? " in " + to : " ضمن " + to };
+}
 async function tellClient(env, t, kind, extra){
   extra = extra || {};
   const u = await userOf(env, t.client_email); if (!u) return;
   const D = await db(env).catch(() => null), cat = CAT[kind] || "tasks", lang = u.lang === "en" ? "en" : "ar", en = lang === "en", L = ST_LABEL[lang];
   const hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
-  if (D && t.ref && !extra.to) { try { const pr = await D.prepare("SELECT p.name, p.type, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.ref=?").bind(t.ref).first();
-    if (pr) { const nm = pr.single ? (en ? "One-off work" : "أعمال منفردة") : pr.name, prog = !en && pr.type === "program" && !/^برنامج/.test(nm);
-      extra = { ...extra, project: nm, to: en ? `"${nm}"` : (prog ? "برنامج " : "") + "«" + nm + "»" }; extra.w = en ? " in " + extra.to : " ضمن " + extra.to; } } catch {} }
+  if (D && t.ref && !extra.to) extra = { ...extra, ...(await projWhere(D, null, t.ref, en)) };
   t = { ...t, where: extra.w ? h(extra.w) : "" };
   const data = tellData(t, extra), ch = extra.ch;   // ch: the admin's channel choice (in-app is always kept)
   // 1) in-app — always on
@@ -1626,6 +1634,9 @@ async function adminPost(ctx, d){
     if (d.note !== undefined && extra.preport) extra.studioNote = clip(d.note, 600);
     const u = await userOf(env, t.client_email); if (!u) return json({ ok: true, account: false });
     const lang = u.lang === "en" ? "en" : "ar", en = lang === "en", hash = extra.hash || (kind === "project" ? "#w/p/" + extra.id : "#w/t/" + t.ref);
+    if (!extra.to && (d.pid || t.ref)) extra = { ...extra, ...(await projWhere(D, d.pid, t.ref, en)) };
+    if (+d.count > 1) extra.count = Math.min(30, Math.round(+d.count));
+    t = { ...t, where: extra.w ? h(extra.w) : "" };
     const m = d.client && /^invoice/.test(kind) ? { subject: "", html: "" } : composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
     if (d.client && / · $/.test(m.subject)) { const s2 = m.subject.slice(0, -3); m.html = m.html.split(h(m.subject)).join(h(s2)); m.subject = s2; }   // no task number before it exists
     const P = await prefsOf(D, u.email).catch(() => null), cfg = await waConfig(env), cl = await D.prepare("SELECT phone FROM clients WHERE email=?").bind(u.email).first();
