@@ -1727,6 +1727,9 @@ async function adminPost(ctx, d){
       const x = await invoiceOf(D, d.id); if (!x) return json({ ok: false }, 404);
       if (x.status === "cancelled" || x.status === "refunded") return json({ ok: false, error: "state" }, 409);
       if (total + 0.009 < x.paid) return json({ ok: false, error: "below paid" }, 400);
+      const no2 = clip(String(d.no || "").trim(), 40);   // a corrected number (one no other invoice carries)
+      if (no2 && no2 !== x.no) { if (await D.prepare("SELECT 1 FROM invoices WHERE no=? AND id<>?").bind(no2, x.id).first()) return json({ ok: false, error: "no taken" }, 409);
+        await D.batch([D.prepare("UPDATE invoices SET no=? WHERE id=?").bind(no2, x.id), D.prepare("UPDATE credits SET note=? WHERE invoice_id=?").bind(no2, x.id)]); }
       const st = x.paid > 0 ? (x.paid + 0.009 >= total ? "paid" : "partial") : "pending";
       await D.prepare("UPDATE invoices SET client_email=?, project_id=?, title=?, period=?, items=?, currency=?, discount=?, total=?, status=?, issue_date=?, due_date=?, note=?, reminded_at=CASE WHEN due_date IS ? THEN reminded_at ELSE NULL END, updated_at=? WHERE id=?")
         .bind(email, pid, title, period, JSON.stringify(items), cur, disc, total, st, issue, due, note, due, at, x.id).run();
