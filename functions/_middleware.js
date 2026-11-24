@@ -18,18 +18,20 @@ const SECURITY = {
   "Referrer-Policy": "strict-origin-when-cross-origin",      // private links (/d/…, workspace) never leak to other sites in full
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",   // nothing on the site uses these
 };
-// What a page may load, written down (Content-Security-Policy). In "report only" for now: nothing is blocked, the browser
-// tells /api/csp what would have been, and once a quiet week shows the list is complete it becomes the enforced policy.
+// What a page may load, written down (Content-Security-Policy), and enforced: anything else is blocked, and the browser
+// tells /api/csp (kept in D1). A week in report-only (18 to 25 Nov) showed the list complete; the one host it lacked was
+// Cloudflare Web Analytics, which Cloudflare adds to every page by itself.
 // The outside hosts: three.js (cdnjs, the sky), Google sign-in, Vimeo (oEmbed, thumbnails, player, files), YouTube
-// embeds and thumbnails, and R2 for direct client uploads. 'unsafe-inline' stays until the inline scripts get hashes.
+// embeds and thumbnails, R2 for direct client uploads, Cloudflare Web Analytics. 'unsafe-inline' stays until the inline
+// scripts get hashes.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com",
+  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://i.vimeocdn.com https://i.ytimg.com https://*.googleusercontent.com https://accounts.google.com",
   "media-src 'self' blob: https://*.vimeocdn.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://vimeo.com https://accounts.google.com https://*.r2.cloudflarestorage.com",
+  "connect-src 'self' https://vimeo.com https://accounts.google.com https://*.r2.cloudflarestorage.com https://cloudflareinsights.com",
   "frame-src 'self' https://player.vimeo.com https://www.youtube-nocookie.com https://accounts.google.com",
   "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
   "frame-ancestors 'self'", "report-uri /api/csp",
@@ -37,7 +39,9 @@ const CSP = [
 function secure(res) {
   const r = new Response(res.body, res);
   for (const k in SECURITY) if (!r.headers.has(k)) r.headers.set(k, SECURITY[k]);
-  if ((r.headers.get("content-type") || "").includes("text/html") && !r.headers.has("Content-Security-Policy-Report-Only")) r.headers.set("Content-Security-Policy-Report-Only", CSP);
+  // pages get the whole policy (it includes frame-ancestors); everything else keeps the frame rule from SECURITY above.
+  // (Not in _headers: a header there replaces the one set here.)
+  if ((r.headers.get("content-type") || "").includes("text/html")) r.headers.set("Content-Security-Policy", CSP);
   return r;
 }
 export async function onRequest(ctx) {

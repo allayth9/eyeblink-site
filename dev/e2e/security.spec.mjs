@@ -13,10 +13,12 @@ test("security headers on pages and API", async ({ request }) => {
   }
 });
 
-test("pages carry the report-only policy; reports are kept, bounded, and readable by the panel only", async ({ request }) => {
-  const page = (await request.get("/")).headers()["content-security-policy-report-only"];
+test("pages carry the enforced policy; reports are kept, bounded, and readable by the panel only", async ({ request }) => {
+  const page = (await request.get("/")).headers()["content-security-policy"];
+  expect(page).toContain("frame-ancestors 'self'"); expect(page).toContain("default-src 'self'"); expect(page).toContain("static.cloudflareinsights.com");
+  expect((await request.get("/")).headers()["content-security-policy-report-only"], "no longer report-only").toBeUndefined();
   expect(page).toContain("default-src 'self'"); expect(page).toContain("report-uri /api/csp");
-  expect((await request.get("/api/health")).headers()["content-security-policy-report-only"], "not on API answers").toBeUndefined();
+  expect((await request.get("/api/health")).headers()["content-security-policy"], "not on API answers").not.toContain("default-src");
   const report = { "csp-report": { "document-uri": "http://localhost/work", "effective-directive": "script-src-elem", "blocked-uri": "https://evil.example/x.js" } };
   for (let i = 0; i < 8; i++) expect((await request.post("/api/csp", { data: report, headers: { "content-type": "application/csp-report" } })).status()).toBe(204);
   expect((await request.post("/api/csp", { data: { "csp-report": { "blocked-uri": "chrome-extension://abc" } } })).status()).toBe(204);

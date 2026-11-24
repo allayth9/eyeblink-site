@@ -16,6 +16,6 @@ for (const path of PAGES) {
     const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(over, "no sideways scroll").toBeLessThanOrEqual(1);
     expect(errors, "no script errors").toEqual([]);
-    expect(csp, "nothing outside the page policy (report-only CSP)").toEqual([]);
+    expect(csp, "nothing blocked by the page policy (CSP)").toEqual([]);
   });
 }
