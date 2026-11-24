@@ -1304,7 +1304,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","taskMove","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1980,6 +1980,16 @@ async function adminPost(ctx, d){
     if (d.deliverable) { const r = await D.prepare("UPDATE deliverables SET title=? WHERE id=?").bind(title, clip(d.deliverable, 40)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
     if (!title) return json({ ok: false, error: "title" }, 400);
     const r = await D.prepare("UPDATE tasks SET title=?, updated_at=? WHERE ref=?").bind(title, at, clip(d.task, 20)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
+  // a task filed under the wrong project: move it (with its deliveries) to another project of the same client, or to a new one named here
+  if (d.action === "taskMove") { const t = await D.prepare("SELECT id, client_email, project_id FROM tasks WHERE ref=?").bind(clip(d.task, 20)).first(); if (!t) return json({ ok: false, error: "task" }, 404);
+    let pid = clip(d.project, 40);
+    if (d.newName !== undefined) { const name = clip(String(d.newName || "").trim(), 140); if (!name) return json({ ok: false, error: "name" }, 400);
+      const src = (await D.prepare("SELECT type, in_pkg, single FROM projects WHERE id=?").bind(t.project_id).first()) || {};
+      pid = "p_" + randHex(6); await D.prepare("INSERT INTO projects (id, client_email, name, type, status, in_pkg, created_at, updated_at) VALUES (?,?,?,?,'active',?,?,?)")
+        .bind(pid, t.client_email, name, src.single ? "custom" : (src.type || "custom"), src.in_pkg === 0 ? 0 : 1, at, at).run(); }
+    else if (!(await D.prepare("SELECT 1 FROM projects WHERE id=? AND client_email=?").bind(pid, t.client_email).first())) return json({ ok: false, error: "project" }, 404);
+    await D.batch([D.prepare("UPDATE tasks SET project_id=?, updated_at=? WHERE id=?").bind(pid, at, t.id), D.prepare("UPDATE deliverables SET project_id=? WHERE task_id=?").bind(pid, t.id)]);
+    return json({ ok: true, project: pid }); }
   if (d.action === "taskUnit" || d.action === "taskExtras") {
     const t = parse(await D.prepare("SELECT * FROM tasks WHERE ref=?").bind(clip(d.task, 20)).first()); if (!t) return json({ ok: false, error: "task" }, 404);
     const p = await D.prepare("SELECT in_pkg FROM projects WHERE id=?").bind(t.project_id).first(), ag = p && p.in_pkg !== 0 ? await agreementOf(D, t.client_email) : null, terms = ag && ag.terms;
