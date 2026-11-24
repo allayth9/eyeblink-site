@@ -167,6 +167,8 @@ const MIGRATIONS = [
   "UPDATE report_cfg SET projects=json_insert(projects,'$[#]',(SELECT x.id FROM projects x WHERE x.client_email=report_cfg.email AND x.name='أزميل' LIMIT 1)) WHERE json_valid(projects) AND json_type(projects)='array' AND EXISTS (SELECT 1 FROM projects x WHERE x.client_email=report_cfg.email AND x.name='أزميل') AND NOT EXISTS (SELECT 1 FROM json_each(report_cfg.projects) j JOIN projects x ON x.id=j.value WHERE x.client_email=report_cfg.email AND x.name='أزميل')",
   // 20 Nov, once: the work an older invoice lists by name is linked to that invoice (only names used once by the client)
   "UPDATE tasks SET invoice_id=(SELECT i.id FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title ORDER BY i.created_at LIMIT 1) WHERE invoice_id IS NULL AND status NOT IN ('cancelled','rejected') AND (SELECT COUNT(*) FROM tasks t2 WHERE t2.client_email=tasks.client_email AND t2.title=tasks.title AND t2.status NOT IN ('cancelled','rejected'))=1 AND EXISTS (SELECT 1 FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND i.annex IS NOT NULL AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title)",
+  // 25 Nov: an invoice imported from an earlier PDF keeps that file ({pdf})
+  "ALTER TABLE invoices ADD COLUMN source TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -480,7 +482,7 @@ async function sendReport(ctx, env, D, p, month){
 // ==== billing (phase 6) ====
 const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
-function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
+function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.source = x.source ? JSON.parse(x.source) : null; } catch { x.source = null; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
 function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40), ...(i && i.group === "pkg" ? { group: "pkg" } : {}) })).filter(i => i.desc); }
 // lines under their project's heading when an invoice spans more than one
@@ -557,6 +559,19 @@ function annexTicket(annex, en){ const R = annexRows(annex, en); if (!R.length) 
 <table role="presentation" ${D} width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:8px"><tr><td style="${ah}text-align:${s}">${en ? "Work" : "العمل"}</td><td style="${ah}text-align:${s}">${en ? "Project" : "البرنامج"}</td><td style="${ah}text-align:${e}">${en ? "Delivered" : "التسليم"}</td></tr>
 ${R.slice(0, 8).map(r => `<tr><td style="${ad}color:#EEF2F6;text-align:${s}">${h(r.t)}</td><td style="${ad}color:#9FB0CC;text-align:${s}">${h(r.k)}</td><td style="${ad}color:#9FB0CC;text-align:${e};white-space:nowrap">${h(r.date)}</td></tr>`).join("")}
 <tr><td colspan="3" style="${F}padding:8px 0 0;font-size:12px;color:#9FB0CC;text-align:${s}">${more > 0 ? (en ? `and ${more} more · the full list is on the invoice` : `و${annexCount(more, false)} أخرى · القائمة كاملة في الفاتورة`) : annexCount(R.length, en)}</td></tr></table>`; }
+// ---- past invoices (sent as PDF before the workspace): the file is kept, read, and the studio reviews what was read before it is saved ----
+const IMP_PROMPT = `You read one invoice and return ONLY a JSON object, no prose:
+{"no":"invoice number as printed","issue_date":"YYYY-MM-DD","currency":"$ or the code/symbol printed","items":[{"desc":"line text as printed","qty":1,"unit":0}],"total":0,"paid":true|false,"paid_date":"YYYY-MM-DD or empty","method":"payment method as printed or empty","unsure":["names of fields you are not sure about"]}
+Dates printed as DD/MM/YYYY are day first. Keep Arabic text as written. Never invent a line; if a field is not printed leave it empty.`;
+async function readInvoicePdf(env, bytes, name){
+  let text = ""; try { const r = await env.AI.toMarkdown([{ name: name || "invoice.pdf", blob: new Blob([bytes], { type: "application/pdf" }) }]); text = String((r && r[0] && r[0].data) || "").trim(); } catch {}
+  if (text.replace(/\s/g, "").length < 20) return { text: false, fields: null };   // a scanned picture with no text: filled by hand
+  try { const r = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", { messages: [{ role: "system", content: IMP_PROMPT }, { role: "user", content: text.slice(0, 12000) }], temperature: 0, max_tokens: 1500 });
+    const t = typeof r?.response === "string" ? r.response : JSON.stringify(r?.response ?? ""), m = t.match(/\{[\s\S]*\}/); const f = m ? JSON.parse(m[0]) : null;
+    if (!f) return { text: true, fields: null };
+    return { text: true, fields: { no: clip(f.no, 40), issue_date: isDate(f.issue_date) ? f.issue_date : "", currency: clip(f.currency, 8) || "$", total: amt(f.total), paid: !!f.paid, paid_date: isDate(f.paid_date) ? f.paid_date : "", method: clip(f.method, 60),
+      items: (Array.isArray(f.items) ? f.items : []).slice(0, 40).map(x => ({ desc: clip(x && x.desc, 200), qty: Math.max(0.01, +(x && x.qty) || 1), unit: amt(x && x.unit) })).filter(x => x.desc), unsure: (Array.isArray(f.unsure) ? f.unsure : []).map(x => clip(x, 30)).slice(0, 12) } };
+  } catch { return { text: true, fields: null }; } }
 function billTicket(x, lang, intro, link){
   const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], c = x.currency || "$", st = x.state || x.status;
   const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
@@ -1254,6 +1269,9 @@ export async function onRequestGet(ctx) {
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=? AND email=? AND sent_at IS NOT NULL").bind(clip(q.get("creportDoc"), 20), e).first(); if (!r) return htmlRes("not found", 404);
     return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
   if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
+  if (q.get("invoicePdf")) { const x = await invoiceOf(D, q.get("invoicePdf")); const k = x && x.client_email === e && x.sent_at && x.source && x.source.pdf;
+    const v = k && /^imp:[a-f0-9]{16}$/.test(k) ? await env.EB.get(k, "arrayBuffer") : null; if (!v) return htmlRes("not found", 404);
+    return new Response(v, { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store" } }); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
     return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
   if (q.get("view") === "prefs") { const cfg = await waConfig(env), tg = await tgConf(env), link = await D.prepare("SELECT username, linked_at FROM tg_links WHERE email=?").bind(e).first();
@@ -1304,7 +1322,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","taskMove","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","taskMove","invoiceImportRead","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1599,6 +1617,9 @@ async function adminGet(request, env, q){
     return brandZip(env, await brandKit(D, em), (c && (c.company || c.name)) || (uu && uu.name) || em.split("@")[0]); }
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=?").bind(clip(q.get("creportDoc"), 20)).first(); if (!r) return htmlRes("not found", 404);
     const u = (await userOf(env, r.email)) || { email: r.email, name: "" }; return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
+  if (q.get("importPdf") || q.get("invoicePdf")) { let k = q.get("importPdf"); if (!k) { const x = await invoiceOf(D, q.get("invoicePdf")); k = x && x.source && x.source.pdf; }
+    const v = /^imp:[a-f0-9]{16}$/.test(k || "") ? await env.EB.get(k, "arrayBuffer") : null; if (!v) return htmlRes("not found", 404);
+    return new Response(v, { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store" } }); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x) return htmlRes("not found", 404);
     const u = (await userOf(env, x.client_email)) || { email: x.client_email, name: "" };
     return htmlRes(billPage(x, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"), { project: x.project_name, email: (await siteSettings(env)).email })); }
@@ -1714,10 +1735,15 @@ async function adminPost(ctx, d){
       if (d.send) { await D.prepare("UPDATE invoices SET sent_at=? WHERE id=?").bind(at, x.id).run(); later(ctx, invoiceMail(env, await invoiceOf(D, x.id), "invoice", ctx)); }
       return json({ ok: true, id: x.id, no: x.no });
     }
-    const n = await newInvoice(env, "bill", total), id = "i_" + randHex(6);
+    const imp = d.imported && typeof d.imported === "object" && /^imp:[a-f0-9]{16}$/.test(d.imported.key || "") ? { key: d.imported.key, no: clip(String(d.imported.no || "").trim(), 40) } : null;
+    if (imp && !imp.no) return json({ ok: false, error: "no" }, 400);
+    if (imp && (await D.prepare("SELECT 1 FROM invoices WHERE no=?").bind(imp.no).first())) return json({ ok: false, error: "no taken" }, 409);
+    if (imp) d.send = false;
+    const n = imp ? { no: imp.no } : await newInvoice(env, "bill", total), id = "i_" + randHex(6);
     await D.prepare("INSERT INTO invoices (id, no, client_email, project_id, title, period, items, currency, discount, total, paid, refunded, status, issue_date, due_date, note, payments, sent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,'pending',?,?,?,'[]',?,?,?)")
       .bind(id, n.no, email, pid, title, period, JSON.stringify(items), cur, disc, total, issue, due, note, d.send ? at : null, at, at).run();
     await D.prepare("UPDATE invoices SET scope=? WHERE id=?").bind(JSON.stringify(scope), id).run();
+    if (imp) await D.prepare("UPDATE invoices SET source=?, sent_at=? WHERE id=?").bind(JSON.stringify({ pdf: imp.key }), issue + "T12:00:00.000Z", id).run();   // already sent, back then
     // built from the work: the tasks and package months it covers can never be billed again; the annex lists the work inside the package
     const L = d.links && typeof d.links === "object" ? d.links : {}, tids = (Array.isArray(L.tasks) ? L.tasks : []).map(x => clip(x, 40)).slice(0, 400), months = (Array.isArray(L.months) ? L.months : []).filter(m => /^\d{4}-\d{2}$/.test(m)).slice(0, 60);
     for (const tid of tids) await D.prepare("UPDATE tasks SET invoice_id=? WHERE id=? AND client_email=? AND invoice_id IS NULL").bind(id, tid, email).run();
@@ -1980,6 +2006,11 @@ async function adminPost(ctx, d){
     if (d.deliverable) { const r = await D.prepare("UPDATE deliverables SET title=? WHERE id=?").bind(title, clip(d.deliverable, 40)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
     if (!title) return json({ ok: false, error: "title" }, 400);
     const r = await D.prepare("UPDATE tasks SET title=?, updated_at=? WHERE ref=?").bind(title, at, clip(d.task, 20)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
+  if (d.action === "invoiceImportRead") { const b64 = String(d.data || ""); if (b64.length > 14e6) return json({ ok: false, error: "size" }, 413);
+    let bytes; try { bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); } catch { return json({ ok: false, error: "file" }, 400); }
+    if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) return json({ ok: false, error: "pdf" }, 400);   // %PDF
+    const key = "imp:" + randHex(8); await env.EB.put(key, bytes, { metadata: { name: clip(d.name, 120), at } });
+    return json({ ok: true, key, ...(await readInvoicePdf(env, bytes, d.name)) }); }
   // a task filed under the wrong project: move it (with its deliveries) to another project of the same client, or to a new one named here
   if (d.action === "taskMove") { const t = await D.prepare("SELECT id, client_email, project_id FROM tasks WHERE ref=?").bind(clip(d.task, 20)).first(); if (!t) return json({ ok: false, error: "task" }, 404);
     let pid = clip(d.project, 40);

@@ -348,13 +348,16 @@ export async function newInvoice(env, kind, amount){
   // one counter in D1, raised in a single statement, so two invoices made at the same moment never share a number.
   // The first time it carries on from the old KV counter; KV keeps a copy (for the backup, and the counter where there is no D1).
   // If D1 fails the invoice is not made (an error, tried again) rather than risk a number that D1 would hand out again.
-  let seq = +(await env.EB.get("invseq") || 0) + 1;
-  if (env.DB) {
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
-    seq = (await env.DB.prepare("INSERT INTO seq (name, n) VALUES ('inv', ?) ON CONFLICT(name) DO UPDATE SET n = n + 1 RETURNING n").bind(seq).first()).n;
+  let seq = +(await env.EB.get("invseq") || 0) + 1, no;
+  if (env.DB) await env.DB.prepare("CREATE TABLE IF NOT EXISTS seq (name TEXT PRIMARY KEY, n INTEGER NOT NULL)").run();
+  // a number an imported (earlier) invoice already carries is skipped
+  for (let k = 0; k < 50; k++) {
+    if (env.DB) seq = (await env.DB.prepare("INSERT INTO seq (name, n) VALUES ('inv', ?) ON CONFLICT(name) DO UPDATE SET n = n + 1 RETURNING n").bind(seq).first()).n;
+    no = "INV-" + new Date().getFullYear() + "-" + String(seq).padStart(4, "0");
+    if (!env.DB || !(await env.DB.prepare("SELECT 1 FROM invoices WHERE no=?").bind(no).first().catch(() => null))) break;
   }
-  await env.EB.put("invseq", String(seq));
-  return { no: "INV-" + new Date().getFullYear() + "-" + String(seq).padStart(4, "0"), at: new Date().toISOString(), kind, amount };
+  await env.EB.put("invseq", String(seq));
+  return { no, at: new Date().toISOString(), kind, amount };
 }
 // payment details sent 48 h ago and no receipt yet → one friendly reminder (checked at most once an hour, on site traffic)
 export async function sweepReminders(env){

@@ -2453,7 +2453,8 @@ nav.dock{view-transition-name:eb-dock}
 
 /* the client's "new project" */
 .wph-acts{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.wnp-btn,.wnp-acts .eb-metal{padding:11px 20px;font-size:15px;white-space:nowrap}
+.wnp-btn,.wnp-acts .wprev{display:inline-block;margin-inline-start:6px;padding:1px 8px;border-radius:999px;border:1px solid rgba(var(--k-light-rgb),.2);font-size:11px;font-weight:400;color:var(--k-mist)}
+.eb-metal{padding:11px 20px;font-size:15px;white-space:nowrap}
 .wnp-btn svg{width:17px;height:17px;stroke-width:2.2;stroke-linecap:round}
 .wnp{display:grid;gap:14px;padding:20px;border-radius:24px;margin:0 0 16px}
 .wnp[hidden]{display:none}
