@@ -1253,7 +1253,7 @@ export async function onRequestGet(ctx) {
   const e = u.email, open = OPEN.map(s => `'${s}'`).join(",");
   const unreadN = async () => (await D.prepare("SELECT COUNT(*) AS n FROM notifications WHERE recipient=? AND read_at IS NULL").bind(e).first()).n;
   if (q.get("view") === "unread") return json({ ok: true, unread: await unreadN() });
-  if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY t.updated_at DESC LIMIT 500`).bind(e).all()).results.map(cparse),
+  if (q.get("view") === "tasks") return json({ ok: true, tasks: (await D.prepare(`SELECT t.*, p.name AS project_name, p.type AS project_type FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.project_id IN ${MINE} ORDER BY COALESCE(t.confirmed_date, t.requested_date, substr(t.created_at,1,10)) DESC, t.created_at DESC LIMIT 500`).bind(e).all()).results.map(cparse),
     projects: (await D.prepare(`SELECT id, name, type, status FROM projects WHERE id IN ${MINE} ORDER BY name`).bind(e).all()).results,
     recurring: (await D.prepare(`SELECT r.id, r.title, r.every, r.dow, r.dom, r.due_days, r.next_run, r.project_id, p.name AS project_name FROM recurring r JOIN projects p ON p.id=r.project_id WHERE r.project_id IN ${MINE} AND r.active=1`).bind(e).all()).results });
   if (q.get("view") === "brand") return json({ ok: true, brand: await brandOf(D, e) });
@@ -1268,7 +1268,7 @@ export async function onRequestGet(ctx) {
     .map(r => { let R = {}; try { R = JSON.parse(r.data); } catch {} return { id: r.id, from: r.from_d, to: r.to_d, nums: R.nums || {}, projects: (R.projects || []).map(p => p.name) }; }) });
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=? AND email=? AND sent_at IS NOT NULL").bind(clip(q.get("creportDoc"), 20), e).first(); if (!r) return htmlRes("not found", 404);
     return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
-  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
+  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
   if (q.get("invoicePdf")) { const x = await invoiceOf(D, q.get("invoicePdf")); const k = x && x.client_email === e && x.sent_at && x.source && x.source.pdf;
     const v = k && /^imp:[a-f0-9]{16}$/.test(k) ? await env.EB.get(k, "arrayBuffer") : null; if (!v) return htmlRes("not found", 404);
     return new Response(v, { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store" } }); }
@@ -1281,7 +1281,7 @@ export async function onRequestGet(ctx) {
       tg: { available: !!(tg && tg.bot && tgTok(env)), bot: tg && tg.bot, linked: !!link, username: link && link.username, since: link && link.linked_at } }); }
   if (q.get("project")) {
     const p = parseP(await myProject(D, e, q.get("project"))); if (!p) return json({ ok: false }, 404);
-    const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY updated_at DESC").bind(p.id).all()).results.map(cparse);
+    const tasks = (await D.prepare("SELECT * FROM tasks WHERE project_id=? ORDER BY COALESCE(confirmed_date, requested_date, substr(created_at,1,10)) DESC, created_at DESC").bind(p.id).all()).results.map(cparse);
     const activity = (await D.prepare("SELECT * FROM activity WHERE project_id=? ORDER BY id DESC LIMIT 40").bind(p.id).all()).results.map(parseA);
     const recurring = (await D.prepare("SELECT id, title, every, dow, dom, due_days, next_run, active FROM recurring WHERE project_id=? AND active=1 ORDER BY next_run").bind(p.id).all()).results;
     return json({ ok: true, me: e, project: await forClientP(D, p, u.lang === "en"), agreement: await clientAgreement(D, e), tasks, activity, quota_used: await quotaUse(D, p.id), recurring, ...(await spaceOf(D, p.id)) });
@@ -1604,12 +1604,12 @@ async function adminGet(request, env, q){
   if (STATUSES.includes(q.get("status"))) { where.push("t.status=?"); args.push(q.get("status")); }
   if (q.get("client")) { where.push("t.client_email=?"); args.push(q.get("client").toLowerCase()); }
   if (q.get("project")) { where.push("t.project_id=?"); args.push(q.get("project")); }
-  const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY t.updated_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
+  const tasks = (await D.prepare(`SELECT t.*, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY COALESCE(t.confirmed_date, t.requested_date, substr(t.created_at,1,10)) DESC, t.created_at DESC LIMIT 500`).bind(...args).all()).results.map(parse);
   const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(s => `'${s}'`).join(",")})) AS open_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=? AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p ORDER BY p.updated_at DESC`).bind(monthOf(now())).all()).results.map(parseP);
   if (q.get("view") === "billing") {
-    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY i.issue_date DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
+    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
     const projects = (await D.prepare("SELECT id, name, client_email, status, in_pkg FROM projects ORDER BY updated_at DESC").all()).results;
     return json({ ok: true, invoices, projects, agreements: await agreementsAll(D), clients: await clientsList(env), today: today() });
   }
@@ -1638,10 +1638,10 @@ async function adminGet(request, env, q){
     const u = u0 || { name: cr.name, email: em, role: "none", lang: "ar" };
     const projects = (await D.prepare(`SELECT p.*, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks, (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status='completed') AS done_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND t.status IN (${OPEN.map(x => `'${x}'`).join(",")})) AS open_tasks FROM projects p WHERE p.client_email=? ORDER BY p.updated_at DESC`).bind(em).all()).results.map(parseP);
-    const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.type, t.description, t.status, t.priority, t.requested_date, t.confirmed_date, t.completed_at, t.created_at, t.updated_at, t.created_by, t.over_quota, t.recurring, t.assignee, t.project_id, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY t.updated_at DESC LIMIT 400").bind(em).all()).results;
+    const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.type, t.description, t.status, t.priority, t.requested_date, t.confirmed_date, t.completed_at, t.created_at, t.updated_at, t.created_by, t.over_quota, t.recurring, t.assignee, t.project_id, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY COALESCE(t.confirmed_date, t.requested_date, substr(t.created_at,1,10)) DESC, t.created_at DESC LIMIT 400").bind(em).all()).results;
     const files = (await D.prepare("SELECT f.id, f.project_id, f.task_id, f.category, f.title, f.url, f.note, f.added_by, f.added_name, f.created_at, p.name AS project_name FROM files f JOIN projects p ON p.id=f.project_id WHERE f.client_email=? AND f.deleted_at IS NULL ORDER BY f.created_at DESC LIMIT 400").bind(em).all()).results;
     const delivered = (await D.prepare("SELECT d.id, d.project_id, d.label, d.is_final, d.title, d.url, d.status, d.created_at, t.ref, t.title AS task_title, p.name AS project_name FROM deliverables d JOIN tasks t ON t.id=d.task_id JOIN projects p ON p.id=d.project_id WHERE d.client_email=? ORDER BY d.created_at DESC LIMIT 400").bind(em).all()).results;
-    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY i.issue_date DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x));
+    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x));
     const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);

@@ -993,6 +993,7 @@ html{-webkit-tap-highlight-color:transparent}
 .bow-g{display:grid;gap:4px}.bow{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:0}.bow input[type=checkbox]{width:auto;flex:none}.bow span{flex:1;min-width:0}
 .bow b{font-family:Oswald,sans-serif;font-weight:400;flex:none}.bow-p{width:110px;flex:none}
 .snd-img{display:block;width:100%;max-width:220px;aspect-ratio:4/5;object-fit:cover;border-radius:10px;margin-bottom:8px}
+.bno{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content}.bno span{padding:0 10px;font-family:Oswald,sans-serif;color:var(--k-mist)}.bno input{width:110px;border:0;border-radius:0;font-family:Oswald,sans-serif}
 .bimpp{display:grid;gap:12px}.bdrop{display:grid;gap:2px;justify-items:center;padding:26px 16px;border:1.5px dashed rgba(var(--k-horizon-rgb),.45);border-radius:16px;background:rgba(var(--k-horizon-rgb),.04);cursor:pointer;text-align:center}
 .bdrop input{position:absolute;opacity:0;width:1px;height:1px}.bdrop small{color:var(--k-mist)}.bdrop.off{opacity:.5;cursor:not-allowed}.bdrop:focus-within{outline:2px solid var(--k-horizon);outline-offset:2px}
 .bimq{display:grid;gap:6px}.bimi{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border:1px solid var(--line);border-radius:12px;font-size:13.5px}.bimi span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}.bimi small{font-family:Oswald,sans-serif;color:var(--k-mist)}
