@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, unreadFor, cleanFiles, mail, notifyStudio, notifyClient, num, curOf, fmt, stageOf, stageAmount, STAGE, mailReceived, mailInvoice, newInvoice, sweepReminders, later } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, limited, unreadFor, cleanFiles, mail, notifyStudio, notifyClient, num, curOf, fmt, stageOf, stageAmount, STAGE, mailReceived, mailInvoice, newInvoice, sweepReminders, later } from "../_lib/shared.js";
 // POST   /api/orders — signed-in client: sends a request (it then lives in their account with a chat thread)
 // GET    /api/orders — admin: list requests (newest first)
 // POST   /api/orders { action:"manual", name, contact, email?, details, source, value?, nextStep?, followUp? } — admin: an opportunity that came from outside the site (CRM)
@@ -22,9 +22,7 @@ export async function onRequestPost(ctx) {
   const user = await currentUser(request, env);
   if (!user) return json({ ok: false, error: "login" }, 401);
   const ip = request.headers.get("cf-connecting-ip") || "x";
-  const rl = "rl:" + ip, n = +(await env.EB.get(rl) || 0);
-  if (n >= 6) return json({ ok: false, error: "too many requests" }, 429);
-  await env.EB.put(rl, String(n + 1), { expirationTtl: 3600 });
+  if (await limited(env, "rl:" + ip, 6, 3600)) return json({ ok: false, error: "too many requests" }, 429);
   const clip = (v, m) => String(v ?? "").slice(0, m);
   const name = clip(user.name, 120), contact = clip(d.contact, 200), details = clip(d.details, 4000);
   if (!details) return json({ ok: false, error: "missing fields" }, 400);

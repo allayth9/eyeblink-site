@@ -1,5 +1,6 @@
 // Security headers, closed developer files, and panel-only routes that refuse anyone without the panel session
 import { test, expect } from "@playwright/test";
+import { ADMIN_PASSWORD } from "../playwright.config.mjs";
 
 test("security headers on pages and API", async ({ request }) => {
   for (const path of ["/", "/api/health"]) {
@@ -20,6 +21,8 @@ test("pages carry the report-only policy; reports are kept, bounded, and readabl
   for (let i = 0; i < 8; i++) expect((await request.post("/api/csp", { data: report, headers: { "content-type": "application/csp-report" } })).status()).toBe(204);
   expect((await request.post("/api/csp", { data: { "csp-report": { "blocked-uri": "chrome-extension://abc" } } })).status()).toBe(204);
   expect((await request.get("/api/csp")).status(), "the report list is the panel's").toBe(401);
+  const days = (await (await request.get("/api/csp", { headers: { authorization: "Bearer " + ADMIN_PASSWORD } })).json()).days;
+  expect(Object.values(days).map(d => d["script-src-elem https://evil.example · /work"]).find(Boolean), "kept in D1, counted up to 5").toBe(5);
 });
 
 test("developer and dot files are not served", async ({ request }) => {
@@ -32,4 +35,10 @@ test("panel routes need the panel session", async ({ request }) => {
     ["GET", "/api/team?admin=1"], ["PATCH", "/api/orders"], ["PUT", "/api/content"], ["POST", "/api/translate"]])
     expect((await request.fetch(path, { method, data: method === "GET" ? undefined : {} })).status(), method + " " + path).toBe(401);
   expect((await request.get("/api/orders", { headers: { authorization: "Bearer wrong-password" } })).status()).toBe(401);
+});
+
+// last in the run on purpose: it locks this address out of the panel for the rest of the hour
+test("ten wrong panel passwords lock the address (counted in D1, not KV)", async ({ request }) => {
+  for (let i = 0; i < 10; i++) expect((await request.get("/api/auth", { headers: { authorization: "Bearer wrong-" + i } })).status()).toBe(401);
+  expect((await request.get("/api/auth", { headers: { authorization: "Bearer " + ADMIN_PASSWORD } })).status(), "even the right password waits").toBe(401);
 });

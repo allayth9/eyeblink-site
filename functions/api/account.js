@@ -1,4 +1,4 @@
-import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, unreadFor, sendMail, mail, later, SITE, accountMail, deviceInfo, seenDevice, withCookie, setAvatar } from "../_lib/shared.js";
+import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, hits, unreadFor, sendMail, mail, later, SITE, accountMail, deviceInfo, seenDevice, withCookie, setAvatar } from "../_lib/shared.js";
 // GET  /api/account — the signed-in client and a summary of their orders (401 if not signed in)
 // POST /api/account — { action: "register", name, email, password } | { action: "login", email, password }
 //                     | { action: "google", credential } | { action: "logout" }
@@ -95,7 +95,7 @@ export async function onRequestPost(ctx) {
     const rec = JSON.parse(r);
     if (rec.tries >= 5) { await env.EB.delete("reset:" + email); return json({ ok: false, error: "code" }, 400); }
     // ten wrong guesses an hour per address across all its codes (asking for a new code does not reset this)
-    const over = +(await env.EB.get("rtry:" + email) || 0) >= 10;
+    const over = (await hits(env, "rtry:" + email)) >= 10;
     if (over || String(d.code || "").trim() !== rec.code) { if (!over) await limited(env, "rtry:" + email, 10, 3600); rec.tries++; await env.EB.put("reset:" + email, JSON.stringify(rec), { expirationTtl: 900 }); return json({ ok: false, error: "code" }, 400); }
     if (pw.length < 8 || pw.length > 200) return json({ ok: false, error: "password" }, 400);
     const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "code" }, 400);

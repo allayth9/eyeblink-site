@@ -16,11 +16,11 @@ export async function isAdmin(req, env){
 }
 // the panel password itself (sign-in step one, and the "current password" checks), with the lockout per address
 export async function adminPwOk(req, env, pw){
-  const ip=req.headers.get("cf-connecting-ip")||"x", fk="fail:"+ip, fails=+(await env.EB.get(fk)||0);
+  const ip=req.headers.get("cf-connecting-ip")||"x", fk="fail:"+ip, fails=await hits(env, fk);
   if(fails>=10) return false;
   const stored=await env.EB.get("auth:hash");
   const ok= !!pw && (stored ? await adminPwCheck(pw, stored) : (!!env.ADMIN_PASSWORD && same(pw, env.ADMIN_PASSWORD)));
-  if(!ok) { await env.EB.put(fk, String(fails+1), { expirationTtl: 3600 }); if(fails+1===10) await adminAlert(env, req, "lock"); }
+  if(!ok) { if((await bump(env, fk, 3600))===10) await adminAlert(env, req, "lock"); }
   else if(stored && !stored.startsWith("pbkdf2$")) await env.EB.put("auth:hash", await adminPwHash(pw));   // old plain SHA-256 → salted PBKDF2
   return ok;
 }
@@ -78,7 +78,24 @@ export async function pbkdf2(pw, salt){
   const b=await crypto.subtle.deriveBits({ name:"PBKDF2", hash:"SHA-256", salt:new TextEncoder().encode(salt), iterations:100000 }, k, 256);
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
-export async function limited(env, key, max, ttl){ const n=+(await env.EB.get(key)||0); if(n>=max) return true; await env.EB.put(key,String(n+1),{expirationTtl:ttl}); return false; }
+// Attempt counters (sign-in tries, codes, messages an hour…) live in D1: one statement each, exact under load, and they never
+// spend KV's daily writes (on the free plan a burst of bad sign-ins could otherwise use them all and stop everyone's sign-in
+// for the rest of the day). Without D1 (local tests) they fall back to KV.
+let LIM = false;
+async function limTable(env){ if (!LIM) { await env.DB.prepare("CREATE TABLE IF NOT EXISTS limits (k TEXT PRIMARY KEY, n INTEGER NOT NULL, exp INTEGER NOT NULL)").run(); LIM = true; } }
+export async function hits(env, key){
+  if (!env.DB) return +(await env.EB.get(key) || 0);
+  await limTable(env); const r = await env.DB.prepare("SELECT n FROM limits WHERE k=? AND exp>=?").bind(key, Date.now()).first(); return r ? r.n : 0;
+}
+export async function bump(env, key, ttl){   // +1, the window starting at the first try; returns the new count
+  if (!env.DB) { const n = +(await env.EB.get(key) || 0) + 1; await env.EB.put(key, String(n), { expirationTtl: ttl }); return n; }
+  await limTable(env); const now = Date.now();
+  const r = await env.DB.prepare("INSERT INTO limits (k, n, exp) VALUES (?1, 1, ?2) ON CONFLICT(k) DO UPDATE SET n = CASE WHEN exp < ?3 THEN 1 ELSE n + 1 END, exp = CASE WHEN exp < ?3 THEN ?2 ELSE exp END RETURNING n")
+    .bind(key, now + ttl * 1000, now).first();
+  if (Math.random() < 0.01) await env.DB.prepare("DELETE FROM limits WHERE exp < ?").bind(now).run();
+  return r.n;
+}
+export async function limited(env, key, max, ttl){ if ((await hits(env, key)) >= max) return true; await bump(env, key, ttl); return false; }
 export function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 export function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,

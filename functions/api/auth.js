@@ -1,4 +1,4 @@
-import { isAdmin, adminPwOk, adminPwHash, adminAlert, json, cookie, randHex } from "../_lib/shared.js";
+import { isAdmin, adminPwOk, adminPwHash, adminAlert, json, cookie, randHex, bump } from "../_lib/shared.js";
 import { load, save, newSecret, totpCheck, otpauth, newBackup, useBackup, verifyRegistration, verifyAssertion, randB64u } from "../_lib/twofa.js";
 // The panel's sign-in. With two-step sign-in off it is one step (the password); with it on, two:
 //   GET  /api/auth  (Authorization: Bearer <password>, ?remember=1) → { ok:true } and a session
@@ -73,8 +73,7 @@ export async function onRequestPost({ request, env }) {
       tk.tries++;
       if (tk.tries >= 5) await env.EB.delete("a2t:" + d.ticket); else await env.EB.put("a2t:" + d.ticket, JSON.stringify(tk), { expirationTtl: 300 });
       // wrong second steps count toward the same lockout as wrong passwords
-      const fk = "fail:" + (request.headers.get("cf-connecting-ip") || "x"), n = +(await env.EB.get(fk) || 0) + 1;
-      await env.EB.put(fk, String(n), { expirationTtl: 3600 }); if (n === 10) await adminAlert(env, request, "lock");
+      if ((await bump(env, "fail:" + (request.headers.get("cf-connecting-ip") || "x"), 3600)) === 10) await adminAlert(env, request, "lock");
       return json({ ok: false, error: tk.tries >= 5 ? "expired" : "code" }, 401);
     }
     await env.EB.delete("a2t:" + d.ticket); await save(env, cfg);
