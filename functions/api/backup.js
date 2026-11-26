@@ -1,4 +1,4 @@
-import { isAdmin, json } from "../_lib/shared.js";
+import { isAdmin, json, secLog } from "../_lib/shared.js";
 // The studio's backup (panel only).
 // GET  /api/backup                → the full backup as a file: site content, private settings, requests, clients and their
 //                                   workspaces, tasks and deliveries, invoices, quotes and agreements, the team and its fees.
@@ -11,7 +11,7 @@ import { isAdmin, json } from "../_lib/shared.js";
 const SKIP = /^(sess:|asess:|tsess:|code:|reset:|invite:|tglink:|auth:|adev:|a2t:|a2c:|a2s:|fail:|backup:|csp:|sweep:|rl:|lim:|file:|media:)/;
 const BINARY = /^(file:|media:)/;
 const SECRET = /^(hash|salt|sv|pw|pass|password|token|secret|tmp\w*|temp\w*)$/i;
-const NO_TABLES = /^(sqlite_|_cf_|d1_)|^(view_hits|like_hits|interest|push_subs|tg_links)$/;
+const NO_TABLES = /^(sqlite_|_cf_|d1_)|^(view_hits|like_hits|interest|push_subs|tg_links|security_log|limits|csp)$/;   // logs and counters, not business data
 const KEEP = 8;
 
 function strip(v) {
@@ -59,8 +59,10 @@ export async function onRequestGet({ request, env }) {
   if (snap) {
     if (!env.R2 || !/^backups\/[\w.-]+\.json$/.test(snap)) return json({ ok: false }, 404);
     const o = await env.R2.get(snap); if (!o) return json({ ok: false }, 404);
+    await secLog(env, request, "backup", { snap: snap.slice(8, 40) });
     return download(o.body, snap.slice(8));
   }
+  await secLog(env, request, "backup", { full: true });
   return download(JSON.stringify(await build(env)), "eyeblink-backup-" + stamp() + ".json");
 }
 

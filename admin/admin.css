@@ -1028,3 +1028,25 @@ html{-webkit-tap-highlight-color:transparent}
 .bth img{max-width:100%;max-height:100%;object-fit:contain}
 .bfi.clear .bth{background-color:var(--k-light);background-image:linear-gradient(45deg,rgba(var(--k-mist-rgb),.45) 25%,transparent 25%,transparent 75%,rgba(var(--k-mist-rgb),.45) 75%),linear-gradient(45deg,rgba(var(--k-mist-rgb),.45) 25%,transparent 25%,transparent 75%,rgba(var(--k-mist-rgb),.45) 75%);background-size:10px 10px;background-position:0 0,5px 5px}
 .bmeta{font-variant-numeric:tabular-nums}
+
+/* security log (settings → security): the same colour for the same meaning as the rest of the panel */
+.sl{display:grid;gap:14px}
+.sl-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.sl-head .hint{flex:1 1 280px;margin:0}
+.sl-chips{display:flex;flex-wrap:wrap;gap:6px}
+.sl-chip{font:inherit;font-size:13px;padding:3px 12px;border-radius:999px;border:1px solid var(--line);color:var(--mist);background:transparent;cursor:pointer}
+.sl-chip.on{color:var(--light);border-color:rgba(var(--k-horizon-rgb),.5);background:rgba(var(--k-horizon-rgb),.08)}
+.sl-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.sl-kpi{border-radius:14px;padding:12px 14px;box-shadow:inset 0 0 0 1px var(--line)}
+.sl-kpi b{display:block;font-size:26px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums}
+.sl-kpi span{font-size:12.5px;color:var(--mist)}
+.sl-kpi.ok b{color:var(--f-ok)} .sl-kpi.wait b{color:var(--f-wait)} .sl-kpi.bad b{color:var(--f-bad)}
+.sl-list{list-style:none;margin:0;padding:0;border-radius:14px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.sl-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.sl-row:last-child{border-bottom:0}
+.sl-row b{font-weight:600}
+.sl-meta{font-size:12.5px;color:var(--dim);overflow-wrap:anywhere}
+.sl-row time{font-size:12.5px;color:var(--mist);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sl-dot{width:10px;height:10px;border-radius:50%;background:var(--f-info)}
+.sl-dot.ok{background:var(--f-ok)} .sl-dot.wait{background:var(--f-wait)} .sl-dot.bad{background:var(--f-bad)}
+@media (max-width:640px){.sl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.sl-row{grid-template-columns:10px minmax(0,1fr)}.sl-row time{grid-column:2}}

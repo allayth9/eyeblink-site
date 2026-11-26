@@ -1,4 +1,4 @@
-import { isAdmin, adminPwOk, adminPwHash, adminAlert, json, cookie, randHex, bump } from "../_lib/shared.js";
+import { isAdmin, adminPwOk, adminPwHash, adminAlert, secLog, json, cookie, randHex, bump } from "../_lib/shared.js";
 import { load, save, newSecret, totpCheck, otpauth, newBackup, useBackup, verifyRegistration, verifyAssertion, randB64u } from "../_lib/twofa.js";
 // The panel's sign-in. With two-step sign-in off it is one step (the password); with it on, two:
 //   GET  /api/auth  (Authorization: Bearer <password>, ?remember=1) → { ok:true } and a session
@@ -18,13 +18,14 @@ const SESSION = /(?:^|;\s*)eb_a=([a-f0-9]{48})(?:;|$)/;
 const H = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const where = req => { const u = new URL(req.url); return { origin: u.origin, rpId: u.hostname }; };
 
-async function openSession(env, request, remember, body = { ok: true }){
+async function openSession(env, request, remember, method, body = { ok: true }){
   const ttl = remember ? 30 * 86400 : 12 * 3600, t = randHex(24), h = new Headers(H);
   await env.EB.put("asess:" + t, "1", { expirationTtl: ttl });
   h.append("set-cookie", "eb_a=" + t + "; Path=/api/; HttpOnly; Secure; SameSite=Strict; Max-Age=" + ttl);
   // a device the panel has not seen before: a note on Telegram (a long-lived device mark, separate from the session)
-  let dev = cookie(request, "eb_d"); if (!/^[a-f0-9]{32}$/.test(dev) || !(await env.EB.get("adev:" + dev))) {
-    dev = randHex(16); await env.EB.put("adev:" + dev, "1", { expirationTtl: 400 * 86400 }); await adminAlert(env, request, "device"); }
+  let dev = cookie(request, "eb_d"), fresh = false; if (!/^[a-f0-9]{32}$/.test(dev) || !(await env.EB.get("adev:" + dev))) {
+    dev = randHex(16); fresh = true; await env.EB.put("adev:" + dev, "1", { expirationTtl: 400 * 86400 }); await adminAlert(env, request, "device"); }
+  await secLog(env, request, "login", { method, fresh, dev: dev.slice(0, 8) });
   h.append("set-cookie", "eb_d=" + dev + "; Path=/api/; HttpOnly; Secure; SameSite=Strict; Max-Age=" + 400 * 86400);
   return new Response(JSON.stringify(body), { headers: h });
 }
@@ -44,12 +45,13 @@ export async function onRequestGet({ request, env }) {
   if (auth.startsWith("Bearer ")) {   // sign-in, step one
     if (!(await adminPwOk(request, env, auth.slice(7)))) return json({ ok: false }, 401);
     const cfg = await load(env), remember = !!q.get("remember");
-    if (!cfg) return openSession(env, request, remember);
+    if (!cfg) return openSession(env, request, remember, "password");
     const ticket = randHex(24), challenge = randB64u(32);
     await env.EB.put("a2t:" + ticket, JSON.stringify({ remember, challenge, tries: 0 }), { expirationTtl: 300 });
     return json({ ok: false, need2fa: true, ticket, totp: !!cfg.totp, passkey: passkeyRequest(cfg, challenge, where(request).rpId) });
   }
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
+  if (q.get("log")) return securityLog(env, request, q);
   if (!q.get("status")) return json({ ok: true, session: true });
   const cfg = await load(env); let sessions = 0, cursor;
   do { const r = await env.EB.list({ prefix: "asess:", cursor }); sessions += r.keys.length; cursor = r.list_complete ? null : r.cursor; } while (cursor);
@@ -73,11 +75,13 @@ export async function onRequestPost({ request, env }) {
       tk.tries++;
       if (tk.tries >= 5) await env.EB.delete("a2t:" + d.ticket); else await env.EB.put("a2t:" + d.ticket, JSON.stringify(tk), { expirationTtl: 300 });
       // wrong second steps count toward the same lockout as wrong passwords
-      if ((await bump(env, "fail:" + (request.headers.get("cf-connecting-ip") || "x"), 3600)) === 10) await adminAlert(env, request, "lock");
+      const n = await bump(env, "fail:" + (request.headers.get("cf-connecting-ip") || "x"), 3600);
+      await secLog(env, request, "fail", { step: d.passkey ? "passkey" : "code" });
+      if (n === 10) { await secLog(env, request, "lock"); await adminAlert(env, request, "lock"); }
       return json({ ok: false, error: tk.tries >= 5 ? "expired" : "code" }, 401);
     }
     await env.EB.delete("a2t:" + d.ticket); await save(env, cfg);
-    return openSession(env, request, tk.remember);
+    return openSession(env, request, tk.remember, d.passkey ? "passkey" : /^\D*\d{3}\D*\d{3}\D*$/.test(String(d.code || "")) ? "code" : "backup");
   }
 
   if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
@@ -100,7 +104,7 @@ export async function onRequestPost({ request, env }) {
   if (d.action === "totpConfirm") {
     const secret = await env.EB.get("a2s:pending"); if (!secret) return json({ ok: false, error: "expired" }, 400);
     const s = await totpCheck(secret, d.code); if (!s) return json({ ok: false, error: "code" }, 400);
-    await env.EB.delete("a2s:pending"); cfg.totp = secret; cfg.lastStep = s; return enable();
+    await env.EB.delete("a2s:pending"); cfg.totp = secret; cfg.lastStep = s; await secLog(env, request, "2fa_add", { method: "totp" }); return enable();
   }
   if (d.action === "passkeyStart" || d.action === "stepStart") {
     const challenge = randB64u(32); await env.EB.put("a2c:" + challenge, d.action === "passkeyStart" ? "add" : "step", { expirationTtl: 300 });
@@ -119,25 +123,45 @@ export async function onRequestPost({ request, env }) {
     if ((cfg.passkeys || []).some(p => p.id === pk.id)) return json({ ok: false, error: "exists" }, 409);
     (cfg.passkeys ||= []).push({ ...pk, name: String(d.name || "").trim().slice(0, 40) || "Passkey", at: new Date().toISOString() });
     if (cfg.passkeys.length > 10) return json({ ok: false, error: "too many" }, 400);
+    await secLog(env, request, "2fa_add", { method: "passkey", name: cfg.passkeys[cfg.passkeys.length - 1].name });
     return enable();
   }
   if (d.action === "remove" || d.action === "backupNew") {
     if (!cfg.since) return json({ ok: false }, 400);
     const bad = await stepUp(); if (bad) return json({ ok: false, error: bad }, 403);
-    if (d.action === "backupNew") { const b = await newBackup(); cfg.backup = b.hashes; await save(env, cfg); return json({ ok: true, codes: b.codes }); }
+    if (d.action === "backupNew") { const b = await newBackup(); cfg.backup = b.hashes; await save(env, cfg); await secLog(env, request, "codes"); return json({ ok: true, codes: b.codes }); }
+    const gone = d.what === "totp" ? { method: "totp" } : { method: "passkey", name: ((cfg.passkeys || []).find(p => p.id === d.what) || {}).name || "" };
     if (d.what === "totp") cfg.totp = null; else cfg.passkeys = (cfg.passkeys || []).filter(p => p.id !== d.what);
-    await save(env, cfg);
-    if (!cfg.totp && !cfg.passkeys.length) await adminAlert(env, request, "off");
+    await save(env, cfg); await secLog(env, request, "2fa_remove", gone);
+    if (!cfg.totp && !cfg.passkeys.length) { await secLog(env, request, "2fa_off"); await adminAlert(env, request, "off"); }
     return json({ ok: true, enabled: !!(cfg.totp || cfg.passkeys.length) });
   }
-  if (d.action === "logoutAll") { await endSessions(env); return json({ ok: true }); }
+  if (d.action === "logoutAll") { await secLog(env, request, "logout_all"); await endSessions(env); return json({ ok: true }); }
 
   // change the password: the current one is checked too (same lockout as signing in)
   if (!d.current || !(await adminPwOk(request, env, String(d.current)))) return json({ ok: false, error: "current" }, 403);
   if (!d.newPassword || d.newPassword.length < 10) return json({ ok: false, error: "min 10 characters" }, 400);
-  await env.EB.put("auth:hash", await adminPwHash(d.newPassword));
+  await env.EB.put("auth:hash", await adminPwHash(d.newPassword)); await secLog(env, request, "password");
   await endSessions(env);   // from now on only the new password gets in…
   const t = randHex(24); await env.EB.put("asess:" + t, "1", { expirationTtl: 12 * 3600 });   // …and this panel stays signed in
   return new Response(JSON.stringify({ ok: true }), { headers: { ...H, "set-cookie": "eb_a=" + t + "; Path=/api/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200" } });
+}
+// GET /api/auth?log=1[&group=login|fail|change][&before=<id>] — the security log, 50 at a time, newest first,
+// with the last 7 days' totals, the sessions open now, and which device is asking (to mark «هذا الجهاز»)
+const GROUP = { login: ["login"], fail: ["fail", "lock"], change: ["password", "2fa_add", "2fa_remove", "2fa_off", "codes", "logout_all", "backup"] };
+async function securityLog(env, request, q){
+  if (!env.DB) return json({ ok: true, events: [], stats: { login: 0, fail: 0, lock: 0 }, sessions: 0 });
+  const D = env.DB;
+  await D.prepare("CREATE TABLE IF NOT EXISTS security_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, ip TEXT, city TEXT, country TEXT, agent TEXT, data TEXT)").run();
+  const kinds = GROUP[q.get("group")] || null, before = parseInt(q.get("before")) || 0, args = [];
+  let where = "1=1";
+  if (kinds) { where += " AND kind IN (" + kinds.map(() => "?").join(",") + ")"; args.push(...kinds); }
+  if (before) { where += " AND id < ?"; args.push(before); }
+  const events = ((await D.prepare("SELECT * FROM security_log WHERE " + where + " ORDER BY id DESC LIMIT 50").bind(...args).all()).results || [])
+    .map(r => { let data = null; try { data = JSON.parse(r.data || "null"); } catch {} return { ...r, data }; });
+  const week = new Date(Date.now() - 7 * 86400e3).toISOString(), stats = { login: 0, fail: 0, lock: 0 };
+  for (const r of (await D.prepare("SELECT kind, COUNT(*) AS n FROM security_log WHERE at >= ? AND kind IN ('login','fail','lock') GROUP BY kind").bind(week).all()).results || []) stats[r.kind] = r.n;
+  let sessions = 0, cursor; do { const r = await env.EB.list({ prefix: "asess:", cursor }); sessions += r.keys.length; cursor = r.list_complete ? null : r.cursor; } while (cursor);
+  return json({ ok: true, events, stats, sessions, dev: (cookie(request, "eb_d") || "").slice(0, 8), more: events.length === 50 });
 }
 async function endSessions(env){ let cursor; do { const r = await env.EB.list({ prefix: "asess:", cursor }); for (const k of r.keys) await env.EB.delete(k.name); cursor = r.list_complete ? null : r.cursor; } while (cursor); }

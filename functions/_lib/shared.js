@@ -20,21 +20,37 @@ export async function adminPwOk(req, env, pw){
   if(fails>=10) return false;
   const stored=await env.EB.get("auth:hash");
   const ok= !!pw && (stored ? await adminPwCheck(pw, stored) : (!!env.ADMIN_PASSWORD && same(pw, env.ADMIN_PASSWORD)));
-  if(!ok) { if((await bump(env, fk, 3600))===10) await adminAlert(env, req, "lock"); }
+  if(!ok) { const n=await bump(env, fk, 3600); await secLog(env, req, "fail", { step: "password" }); if(n===10) { await secLog(env, req, "lock"); await adminAlert(env, req, "lock"); } }
   else if(stored && !stored.startsWith("pbkdf2$")) await env.EB.put("auth:hash", await adminPwHash(pw));   // old plain SHA-256 → salted PBKDF2
   return ok;
 }
 // Telegram notes about the panel's own security (new device, lockout, two-step turned off)
-export async function adminAlert(env, req, kind){
-  const cf=req.cf||{}, ua=req.headers.get("user-agent")||"";
+// browser and system in a few words (the Telegram notes and the security log)
+export function uaShort(ua){ ua=String(ua||"");
   const br=/Edg\//.test(ua)?"Edge":/OPR\//.test(ua)?"Opera":/Chrome\//.test(ua)?"Chrome":/Firefox\//.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":"متصفح آخر";
   const os=/iPhone|iPad/.test(ua)?"iOS":/Android/.test(ua)?"Android":/Windows/.test(ua)?"Windows":/Mac OS/.test(ua)?"macOS":/Linux/.test(ua)?"Linux":"نظام آخر";
+  return br+" على "+os; }
+// The panel's security log (settings → security): D1 table security_log, kept 90 days. Never a password, a code or a full IP.
+// kind: login | fail | lock | password | 2fa_add | 2fa_remove | 2fa_off | codes | logout_all | backup;  data: a small object
+export async function secLog(env, req, kind, data){
+  if(!env.DB) return;
+  try {
+    const D=env.DB, cf=req.cf||{}, ip=req.headers.get("cf-connecting-ip")||"";
+    const masked=ip.includes(":")?ip.split(":").slice(0,3).join(":")+":…":ip.replace(/\.\d+$/,".xxx");
+    await D.prepare("CREATE TABLE IF NOT EXISTS security_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, ip TEXT, city TEXT, country TEXT, agent TEXT, data TEXT)").run();
+    await D.prepare("INSERT INTO security_log (at, kind, ip, city, country, agent, data) VALUES (?,?,?,?,?,?,?)")
+      .bind(new Date().toISOString(), kind, masked.slice(0,48), String(cf.city||"").slice(0,60), String(cf.country||"").slice(0,4), uaShort(req.headers.get("user-agent")), data?JSON.stringify(data).slice(0,300):null).run();
+    if(Math.random()<0.02) await D.prepare("DELETE FROM security_log WHERE at < ?").bind(new Date(Date.now()-90*86400e3).toISOString()).run();
+  } catch {}
+}
+export async function adminAlert(env, req, kind){
+  const cf=req.cf||{}, ua=req.headers.get("user-agent")||"";
   const where=[cf.city,cf.country].filter(Boolean).join("، ")||"غير معروف";
   const when=new Date().toLocaleString("ar-u-nu-latn",{timeZone:"Asia/Damascus",day:"numeric",month:"long",hour:"numeric",minute:"2-digit"});
   const T={ device:["🔐 دخول جديد إلى لوحة التحكم","تمّ الدخول من جهاز جديد."],
             lock:["⚠️ أُوقف الدخول إلى لوحة التحكم مؤقتاً","عشر محاولات خاطئة لكلمة السر من العنوان نفسه، فأُوقف الدخول منه لمدة ساعة."],
             off:["🔓 أُوقف التحقق بخطوتين","أصبح الدخول إلى لوحة التحكم بكلمة السر وحدها."] }[kind];
-  return telegram(env, T[0]+"\n"+T[1]+"\nالمتصفح: "+br+" على "+os+"\nالموقع التقريبي: "+where+"\nالوقت: "+when+
+  return telegram(env, T[0]+"\n"+T[1]+"\nالمتصفح: "+uaShort(ua)+"\nالموقع التقريبي: "+where+"\nالوقت: "+when+
     "\n\nإن لم يكن هذا أنت، سجّل الخروج من كل الأجهزة وغيّر كلمة السر:\n"+SITE+"/admin/settings");
 }
 // Panel password, stored like client passwords: "pbkdf2$<iterations>$<salt>$<hash>" (salted PBKDF2-SHA256).

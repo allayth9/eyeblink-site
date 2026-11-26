@@ -22,6 +22,7 @@
         ['confirm','paid','delivered'].map(function(k){ var lab={confirm:'تأكيد + تفاصيل الدفع',paid:'وصل الدفع',delivered:'تم التسليم'}[k];
           return '<div class="field"><label>'+lab+'</label><div class="bi"><div><small>عربي</small><textarea data-tpl="ar.'+k+'">'+esc((T.ar||{})[k]||'')+'</textarea></div><div><small>ENGLISH</small><textarea data-tpl="en.'+k+'" dir="ltr">'+esc((T.en||{})[k]||'')+'</textarea></div></div></div>'; }).join('')+'</section>'+
       (LIVE?'<section class="sec" id="tfaSec"><h3>التحقق بخطوتين</h3><div class="tfa" id="tfaBox"><p class="hint">…</p></div></section>':'')+
+      (LIVE?'<section class="sec" id="slSec"><h3>سجل الأمان</h3><div class="sl" id="slBox"><p class="hint">…</p></div></section>':'')+
       '<section class="sec"><h3>كلمة سر اللوحة</h3>'+(LIVE?'<p class="hint">10 أحرف على الأقل. ستُطلب منك عند الدخول القادم.</p><div class="field"><label>كلمة السر الحالية</label><input type="password" id="np0" autocomplete="current-password"></div><div class="row"><div class="field"><label>كلمة السر الجديدة</label><input type="password" id="np1" autocomplete="new-password"></div><div class="field"><label>أعد كتابتها</label><input type="password" id="np2" autocomplete="new-password"></div></div><div><button class="btn primary" type="button" id="pwChange">تغيير كلمة السر</button></div>'
         :'<p class="hint">تغيير كلمة السر يعمل بعد نشر الموقع على Cloudflare. الدخول الأول يكون بكلمة السر التي تضعها في إعدادات Cloudflare (ADMIN_PASSWORD).</p>')+'</section>';
     var nt=$('#notifyTest'); if(nt) nt.onclick=function(){ var out=$('#notifyOut'); out.hidden=false;
@@ -38,7 +39,58 @@
         .catch(function(){ toast('تعذّر التغيير',true); });
     };
     if($('#tfaBox')) loadTfa();
+    if($('#slBox')) { SL={group:'',events:[],more:false}; loadSecLog(); }
   }
+
+  /* ---------------- security log (settings → security): who signed in, from where, wrong tries, sensitive changes ---------------- */
+  var SL=null, SLCC=null;
+  function slCountry(cc){ if(!cc) return ''; try{ SLCC=SLCC||new Intl.DisplayNames(['ar'],{type:'region'}); return SLCC.of(cc)||cc; }catch(_){ return cc; } }
+  function slWhen(s){ var d=new Date(s); return d.toLocaleDateString('ar-u-nu-latn',{day:'numeric',month:'long'})+' · '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+  function loadSecLog(before){
+    var u=API+'/auth?log=1'+(SL.group?'&group='+SL.group:'')+(before?'&before='+before:'');
+    fetch(u,{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok) throw 0;
+      SL.events=before?SL.events.concat(j.events):j.events; SL.more=j.more; SL.stats=j.stats; SL.sessions=j.sessions; SL.dev=j.dev; drawSecLog(); })
+      .catch(function(){ var b=$('#slBox'); if(b) b.innerHTML='<p class="hint">تعذّر تحميل السجل.</p>'; });
+  }
+  // wrong tries in a row from the same address (within 15 minutes) read as one line: «…(×10)»
+  function slGroup(list){ var out=[];
+    list.forEach(function(e){ var p=out[out.length-1];
+      if(p&&e.kind==='fail'&&p.kind==='fail'&&p.ip===e.ip&&((p.data||{}).step||'')===((e.data||{}).step||'')&&Date.parse(p.first)-Date.parse(e.at)<15*60e3){ p.n++; p.first=e.at; return; }
+      out.push(Object.assign({},e,{n:1,first:e.at})); });
+    return out; }
+  function slLine(e){
+    var d=e.data||{}, place=[e.city,slCountry(e.country)].filter(Boolean).join('، '), from=[e.agent,place].filter(Boolean).join(' · '), ipp=[e.ip&&('من '+e.ip),place].filter(Boolean).join(' · ');
+    var M={password:'بكلمة السر',passkey:'بالبصمة',code:'بالرمز',backup:'برمز احتياطي'};
+    switch(e.kind){
+      case 'login': return {c:'ok',t:'دخول ناجح '+(M[d.method]||''),m:from+(d.dev&&d.dev===SL.dev?' · هذا الجهاز':d.fresh?' · جهاز جديد':'')};
+      case 'fail': return {c:'wait',t:(d.step==='password'?'محاولة خاطئة لكلمة السر':'رمز تحقق خاطئ')+(e.n>1?' (×'+e.n+')':''),m:ipp};
+      case 'lock': return {c:'bad',t:'أُوقف الدخول مؤقتاً',m:'عشر محاولات خاطئة'+(ipp?' '+ipp:'')};
+      case 'password': return {c:'info',t:'تغيّرت كلمة السر',m:from};
+      case '2fa_add': return {c:'info',t:d.method==='totp'?'رُبط Google Authenticator':'أُضيفت بصمة: '+(d.name||''),m:from};
+      case '2fa_remove': return {c:'info',t:d.method==='totp'?'أُزيل Google Authenticator':'أُزيلت بصمة: '+(d.name||''),m:from};
+      case '2fa_off': return {c:'bad',t:'أُوقف التحقق بخطوتين',m:from};
+      case 'codes': return {c:'info',t:'أُنشئت رموز احتياطية جديدة',m:from};
+      case 'logout_all': return {c:'info',t:'سُجّل الخروج من كل الأجهزة',m:from};
+      case 'backup': return {c:'info',t:d.full?'نُزّلت نسخة احتياطية كاملة':'نُزّلت نسخة احتياطية محفوظة',m:from};
+    } return {c:'info',t:e.kind,m:from}; }
+  function drawSecLog(){
+    var b=$('#slBox'); if(!b||!SL) return; var s=SL.stats||{};
+    var chip=function(g,l){ return '<button type="button" class="sl-chip'+(SL.group===g?' on':'')+'" data-slg="'+g+'">'+l+'</button>'; };
+    var kpi=function(n,l,c){ return '<div class="sl-kpi '+c+'"><b>'+n+'</b><span>'+l+'</span></div>'; };
+    var rows=slGroup(SL.events).map(function(e){ var L=slLine(e);
+      return '<li class="sl-row"><i class="sl-dot '+L.c+'"></i><div><b>'+esc(L.t)+'</b><div class="sl-meta">'+esc(L.m)+'</div></div><time>'+esc(slWhen(e.at))+'</time></li>'; }).join('');
+    b.innerHTML='<div class="sl-head"><p class="hint">من دخل اللوحة ومن أين، والمحاولات الخاطئة، والتغييرات الحساسة. يُحفظ 90 يوماً، دون كلمات سر أو رموز أو عناوين كاملة.</p>'+
+      '<div class="sl-chips">'+chip('','الكل')+chip('login','الدخول')+chip('fail','محاولات خاطئة')+chip('change','تغييرات')+'</div></div>'+
+      '<div class="sl-kpis">'+kpi(s.login||0,'دخول ناجح · 7 أيام','ok')+kpi(s.fail||0,'محاولة خاطئة · 7 أيام','wait')+kpi(s.lock||0,'قفل دخول · 7 أيام','bad')+kpi(SL.sessions||0,'أجهزة مسجّل دخولها الآن','')+'</div>'+
+      (rows?'<ul class="sl-list">'+rows+'</ul>':'<p class="hint">لا شيء في السجل بعد.</p>')+
+      '<div class="row">'+(SL.more?'<button class="btn sm" type="button" data-slmore>عرض المزيد</button>':'')+'<button class="btn sm danger" type="button" data-sllogout>تسجيل الخروج من كل الأجهزة</button></div>';
+  }
+  document.addEventListener('click',function(e){
+    var box=$('#slBox'), t=e.target.closest('[data-slg],[data-slmore],[data-sllogout]'); if(!box||!t||!box.contains(t)) return;
+    if(t.hasAttribute('data-slg')){ SL.group=t.dataset.slg; SL.events=[]; loadSecLog(); }
+    else if(t.hasAttribute('data-slmore')){ var last=SL.events[SL.events.length-1]; if(last) loadSecLog(last.id); }
+    else { tfaPost({action:'logoutAll'}).then(function(){ location.reload(); }).catch(function(){ toast('تعذّر ذلك، حاول مرة أخرى.',true); }); }
+  });
 
   /* ---------------- two-step sign-in (settings → security) ---------------- */
   var TFS=null, TFX={};   // the status from the server, and what the section is in the middle of (setup, codes, a check)
