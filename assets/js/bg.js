@@ -120,10 +120,16 @@
   var t0=performance.now(), cx=0, cy=0, cs=1, visible=true;
   document.addEventListener('visibilitychange',function(){ visible=!document.hidden; if(visible) requestAnimationFrame(frame); });
 
+  // positions are read when the page scrolls (nothing has changed yet, so reading costs nothing), not inside the frame,
+  // where the scroll code has already written styles and a read would make the browser lay out the whole page again
+  var SY=scrollY, RA=null, RE=null, fresh=false;
+  function grab(){ SY=scrollY; RA=anchor&&anchor.getBoundingClientRect(); RE=endAnchor&&endAnchor.getBoundingClientRect(); fresh=true; }
+  addEventListener('scroll',grab,{passive:true}); addEventListener('resize',grab);
   function place(){
-    var y=scrollY;
+    if(!fresh) grab(); fresh=false;   // no scroll since the last frame: read now, as before
+    var y=SY;
     if(anchor){
-      var r=anchor.getBoundingClientRect();
+      var r=RA;
       var w=screenToWorld(r.left+r.width/2, r.top+r.height/2);
       var rad=(r.width/2)/(H/2)*halfH*1.42;
       return {x:w.x,y:w.y,s:rad,a:1,sx:r.left+r.width/2,sy:r.top+r.height/2};
@@ -153,7 +159,7 @@
     uniforms.uTime.value=reduce?8:t; uniforms.uMouse.value.set(mouse.x,mouse.y);
     uniforms.uPress.value=reduce?0:press; uniforms.uAlpha.value=p.a;
     if(endAnchor){
-      var er=endAnchor.getBoundingClientRect(), vis=er.top<H && er.bottom>0;
+      var er=RE||endAnchor.getBoundingClientRect(), vis=er.top<H && er.bottom>0;
       pts2.visible=vis;
       if(vis){
         // the second field sits on the opposite side of the first, and fades while they would meet (short pages)
