@@ -447,7 +447,7 @@
     var close=function(){ m.classList.remove('show'); document.body.style.overflow=''; setTimeout(function(){ m.remove(); },350); };
     m.querySelector('.x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); };
     m.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); }); setTimeout(function(){ m.querySelector('.x').focus(); },50);
-    m.querySelector('.sv').onclick=function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } };
+    m.querySelector('.sv').onclick=function(){ var t0=document.title; try{ document.title=f.contentDocument.title||t0; f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ window.open(f.src,'_blank'); } setTimeout(function(){ document.title=t0; },1500); };   // the saved PDF is named after the invoice
   }
   function pill(o){ return '<span class="pill '+esc(o.status)+'">'+esc(T.st[o.status]||o.status)+'</span>'; }
   function track(o){

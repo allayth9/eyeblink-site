@@ -531,7 +531,7 @@ function billHTML(x, cl, lang, opt){
 .ebi table{width:100%;border-collapse:collapse;margin-top:22px}
 .ebi th{font-size:11px;font-weight:600;color:#6b7286;padding:0 0 10px;border-bottom:1.5px solid #14172b;text-align:start;white-space:nowrap}
 .ebi td{padding:12px 0;border-bottom:1px solid #eef0f5;vertical-align:top}
-.ebi .q{width:64px;text-align:center}.ebi .u,.ebi .a{width:110px;text-align:end}.ebi td.q,.ebi td.u,.ebi td.a{font:400 14px "EB Osw",Arial,sans-serif;white-space:nowrap}.ebi td.u{color:#6b7286}
+.ebi .q,.ebi .u,.ebi .a{text-align:center}.ebi .q{width:96px}.ebi .u,.ebi .a{width:128px}.ebi td.q,.ebi td.u,.ebi td.a{font:400 14px "EB Osw",Arial,sans-serif;white-space:nowrap}.ebi td.u{color:#6b7286}
 .ebi .g td{padding:18px 0 4px;border:0;font-size:11.5px;font-weight:700;color:#1C45E6}
 .ebi .sm{width:300px;max-width:100%;margin-inline-start:auto;margin-top:14px}.ebi .sm div{display:flex;justify-content:space-between;padding:6px 0}.ebi .sm span:last-child{font:400 14px "EB Osw",Arial,sans-serif}
 .ebi .sm .tot{border-top:1.5px solid #14172b;margin-top:6px;padding-top:12px;font-weight:700;font-size:16px}.ebi .sm .tot span:last-child{font-size:20px;font-weight:500}
@@ -541,8 +541,8 @@ function billHTML(x, cl, lang, opt){
 .ebi .nt{margin-top:18px;font-size:12.5px;line-height:1.75}
 .ebi .ax{margin-top:26px}.ebi .ax h4{margin:0;font-size:11.5px;color:#1C45E6}.ebi .ax table{margin-top:8px}.ebi .ax th{border-bottom-width:1px}.ebi .ax td{padding:8px 0;font-size:12.5px}.ebi .ax .k{color:#6b7286}.ebi .ax .d{width:120px;text-align:end;color:#6b7286}.ebi .ax .n{font-size:11px;color:#6b7286;margin-top:8px}
 .ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .no{font:400 12px "EB Osw",Arial,sans-serif;letter-spacing:.04em}
-@media (max-width:620px){.ebi{padding:26px 18px 20px}.ebi .pt{grid-template-columns:1fr}.ebi .mt{gap:22px}.ebi .u,.ebi .a{width:84px}}
-@media print{.ebi{padding:0;max-width:none}}
+@media (max-width:620px){.ebi{padding:26px 18px 20px}.ebi .mt{gap:22px}.ebi .q{width:56px}.ebi .u,.ebi .a{width:86px}}@media (max-width:400px){.ebi .pt{grid-template-columns:1fr}}
+@media print{.ebi{padding:14mm 15mm 12mm;max-width:none}}
 </style>
 <div class="ebi" dir="${en ? "ltr" : "rtl"}" lang="${en ? "en" : "ar"}">
 <div class="hd"><div class="br"><img src="${SITE}/assets/img/invoice-logo.png" alt="Eyeblink Studio"><bdi dir="ltr">www.eyeblinkstudio.com</bdi>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
@@ -604,8 +604,8 @@ function billTicket(x, lang, intro, link){
     note: (x.note ? h(x.note).replace(/\n/g, "<br>") + "<br>" : "") + h(L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]) });
 }
 function billPage(x, cl, lang, opt){
-  return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(x.no)} · Eyeblink Studio</title>
-<style>@page{size:A4;margin:14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:#fff}body{padding:0}</style></head><body>${billHTML(x, cl, lang, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
+  return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h((lang === "en" ? "Invoice " : "فاتورة ") + x.no + (cl && cl.name ? " · " + cl.name : ""))} · Eyeblink Studio</title>
+<style>@page{size:A4;margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:#fff}body{padding:0}</style></head><body>${billHTML(x, cl, lang, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
 }
 const htmlRes = (t, st) => new Response(t, { status: st || 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "SAMEORIGIN" } });
 async function invoiceOf(D, id){ return parseI(await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=?").bind(clip(id, 40)).first()); }
