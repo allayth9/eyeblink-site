@@ -27,6 +27,22 @@ test("pages carry the enforced policy; reports are kept, bounded, and readable b
   expect(Object.values(days).map(d => d["script-src-elem https://evil.example · /work"]).find(Boolean), "kept in D1, counted up to 5").toBe(5);
 });
 
+test("inline scripts run only with the response's nonce (no 'unsafe-inline')", async ({ request }) => {
+  const seen = new Set();
+  for (const path of ["/", "/work", "/account", "/admin/", "/en/pricing"]) {
+    const r = await request.get(path), csp = r.headers()["content-security-policy"], html = await r.text();
+    const script = csp.split("; ").find(d => d.startsWith("script-src"));
+    expect(script, path).not.toContain("unsafe-inline");
+    const nonce = (script.match(/'nonce-([^']+)'/) || [])[1];
+    expect(nonce, path + " has a nonce").toBeTruthy();
+    expect(seen.has(nonce), "a fresh nonce for every response").toBe(false); seen.add(nonce);
+    const tags = html.match(/<script[\s>][^>]*>/g) || [];
+    expect(tags.length, path).toBeGreaterThan(0);
+    for (const tag of tags) expect(tag, path).toContain('nonce="' + nonce + '"');
+    expect(html, path + ": no inline event attributes").not.toMatch(/<[^>]+\son(click|load|error|submit|change|input)=/i);
+  }
+});
+
 test("developer and dot files are not served", async ({ request }) => {
   for (const path of ["/.env", "/.dev.vars", "/.gitignore", "/.github/workflows/tests.yml", "/dev/README.md", "/dev/package.json", "/dev/test-orders.mjs"])
     expect((await request.get(path)).status(), path).toBe(404);

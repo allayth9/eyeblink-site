@@ -604,7 +604,7 @@
       upload(f,typeof meta==='function'?meta():meta,row.set).then(function(){ okN++; row.done(); step(); },function(){ row.fail(BR.st.fail); bad.push(f.name); step(); }); };
     step(); }
   function dropZone(){ return '<div class="wdrop form" tabindex="0" role="button" aria-label="'+(CANDROP?BR.drop:BR.pick)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'+
-    '<p><b class="wd-d">'+BR.drop+'</b> <span class="muted wd-d">'+BR.dropOr+'</span> <u>'+BR.pick+'</u></p><label class="wdrop-c" onclick="event.stopPropagation()">'+BR.dropCat+' <select>'+['raw','brand','reference','document'].map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label>'+
+    '<p><b class="wd-d">'+BR.drop+'</b> <span class="muted wd-d">'+BR.dropOr+'</span> <u>'+BR.pick+'</u></p><label class="wdrop-c">'+BR.dropCat+' <select>'+['raw','brand','reference','document'].map(function(c){ return '<option value="'+c+'">'+T.fl.cats[c]+'</option>'; }).join('')+'</select></label>'+
     '<input type="file" multiple hidden></div><ul class="wupl"></ul>'; }
   function bindDrop(box,meta,after){ var z=box.querySelector('.wdrop'); if(!z) return; var inp=z.querySelector('input'), sel=z.querySelector('select'), list=box.querySelector('.wupl');
     var go=function(files){ if(files&&files.length) sendFiles(files,function(){ return Object.assign({category:sel.value},meta); },list,function(){ setTimeout(after,600); }); };

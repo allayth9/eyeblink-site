@@ -22,11 +22,13 @@ const SECURITY = {
 // tells /api/csp (kept in D1). A week in report-only (18 to 25 Nov) showed the list complete; the one host it lacked was
 // Cloudflare Web Analytics, which Cloudflare adds to every page by itself.
 // The outside hosts: three.js (cdnjs, the sky), Google sign-in, Vimeo (oEmbed, thumbnails, player, files), YouTube
-// embeds and thumbnails, R2 for direct client uploads, Cloudflare Web Analytics. 'unsafe-inline' stays until the inline
-// scripts get hashes.
-const CSP = [
+// embeds and thumbnails, R2 for direct client uploads, Cloudflare Web Analytics.
+// Scripts written inside a page run only with this response's nonce (a fresh random value each time, added to the page's
+// own <script> tags on the way out), so a script slipped into a page by someone else does not run: no 'unsafe-inline'.
+// Inline event attributes (onclick="…") are therefore not allowed: use addEventListener.
+const CSP = nonce => [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com",
+  "script-src 'self' 'nonce-" + nonce + "' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://i.vimeocdn.com https://i.ytimg.com https://*.googleusercontent.com https://accounts.google.com",
   "media-src 'self' blob: https://*.vimeocdn.com",
@@ -37,11 +39,15 @@ const CSP = [
   "frame-ancestors 'self'", "report-uri /api/csp",
 ].join("; ");
 function secure(res) {
-  const r = new Response(res.body, res);
+  let r = new Response(res.body, res);
   for (const k in SECURITY) if (!r.headers.has(k)) r.headers.set(k, SECURITY[k]);
   // pages get the whole policy (it includes frame-ancestors); everything else keeps the frame rule from SECURITY above.
   // (Not in _headers: a header there replaces the one set here.)
-  if ((r.headers.get("content-type") || "").includes("text/html")) r.headers.set("Content-Security-Policy", CSP);
+  if ((r.headers.get("content-type") || "").includes("text/html")) {
+    const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+    r = new HTMLRewriter().on("script", { element(e) { e.setAttribute("nonce", nonce); } }).transform(r);
+    r.headers.set("Content-Security-Policy", CSP(nonce));
+  }
   return r;
 }
 export async function onRequest(ctx) {

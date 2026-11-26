@@ -429,7 +429,7 @@
       '<h4>الملفات</h4><div class="cp-bup"><select data-bkind aria-label="نوع الملف">'+Object.keys(BKIND).map(function(k){ return '<option value="'+k+'">'+BKIND[k]+'</option>'; }).join('')+'</select>'+
         '<button class="btn sm" type="button" data-bpick>+ رفع ملفات</button><input type="file" multiple hidden data-bfile><span class="small muted" data-bprog></span></div>'+
       (B.assets.length?'<div class="cp-bfiles">'+B.assets.map(function(a){ var img=/^image\/(png|jpeg|webp|gif)$/.test(a.type||'');
-          return '<div class="wfi bfi'+(a.kind==='logo_clear'?' clear':'')+'">'+(img?'<span class="bth"><img src="'+esc(rel(a.url))+'" alt="" loading="lazy" onload="var m=this.closest(\'.bfi\').querySelector(\'[data-dim]\');if(m)m.textContent=this.naturalWidth+\'×\'+this.naturalHeight"></span>':'')+
+          return '<div class="wfi bfi'+(a.kind==='logo_clear'?' clear':'')+'">'+(img?'<span class="bth"><img src="'+esc(rel(a.url))+'" alt="" loading="lazy" data-dimimg></span>':'')+
             '<span class="tag">'+esc(BKIND[a.kind]||a.kind)+'</span> <a href="'+esc(rel(a.url))+'?dl=1">'+esc(a.title)+'</a> <span class="small muted bmeta" dir="ltr">'+esc((a.title.split('.').pop()||'').toUpperCase().slice(0,5))+(img?' · <span data-dim></span>':'')+(a.size?' · '+fsize(a.size):'')+'</span> <button class="btn sm danger" type="button" data-bdel="'+esc(a.id)+'">حذف</button></div>'; }).join('')+'</div>'+
           '<p><a class="btn sm" href="'+API+'/work?admin=1&brandZip='+encodeURIComponent(PROF.email)+'">تحميل المكتبة كاملة (ZIP)</a></p>'
         :'<div class="empty small">لا توجد ملفات بعد.</div>')+'</section>'; }
@@ -537,3 +537,5 @@
   document.addEventListener('change',function(e){ if(TAB!=='clients'||PSEC!=='reports'||!RPC||!RPC.cfg) return; var el=e.target;
     if(el.hasAttribute('data-rpd')){ RPC.cfg.dow=+el.value; rpSave(); }
     if(el.dataset.rpi){ RPC.cfg.inc[el.dataset.rpi]=el.checked?1:0; rpSave(); } });
+  // a brand file's real size under its thumbnail (load events do not bubble: caught on the way down; no inline onload, the page CSP forbids it)
+  document.addEventListener('load',function(e){ var i=e.target; if(!i||!i.matches||!i.matches('img[data-dimimg]')) return; var b=i.closest('.bfi'), m=b&&b.querySelector('[data-dim]'); if(m) m.textContent=i.naturalWidth+'×'+i.naturalHeight; },true);
