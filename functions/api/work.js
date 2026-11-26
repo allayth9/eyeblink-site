@@ -482,7 +482,9 @@ async function sendReport(ctx, env, D, p, month){
 // ==== billing (phase 6) ====
 const money = n => Math.round((+n || 0) * 100) / 100;
 const effStatus = (x, td) => ((x.status === "pending" || x.status === "partial") && x.due_date && x.due_date < td) ? "overdue" : x.status;
-function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; } try { x.source = x.source ? JSON.parse(x.source) : null; } catch { x.source = null; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
+function parseI(x, td){ if (!x) return x; try { x.items = JSON.parse(x.items || "[]"); } catch { x.items = []; }
+  // an invoice's «project» is what its own lines name (one, several, or none for the package), never the project it happened to be created from
+  x.project_name = [...new Set(x.items.map(i => i.pname).filter(Boolean))].join(" · "); try { x.source = x.source ? JSON.parse(x.source) : null; } catch { x.source = null; } try { x.annex = x.annex ? JSON.parse(x.annex) : []; } catch { x.annex = []; } try { x.payments = JSON.parse(x.payments || "[]"); } catch { x.payments = []; }
   x.state = effStatus(x, td || today()); x.balance = x.status === "cancelled" || x.status === "refunded" ? 0 : Math.max(0, money(x.total - x.paid)); return x; }
 function cleanItems(list){ return (Array.isArray(list) ? list : []).slice(0, 60).map(i => ({ desc: clip(i && i.desc, 200), qty: Math.max(0.01, Math.min(9999, +(i && i.qty) || 1)), unit: money(i && i.unit), project: clip(i && i.project, 40), ...(i && i.group === "pkg" ? { group: "pkg" } : {}) })).filter(i => i.desc); }
 // lines under their project's heading when an invoice spans more than one
@@ -550,7 +552,7 @@ function billHTML(x, cl, lang, opt){
 <div class="rl"></div>
 <div class="mt"><div><small>${L.issued}</small><b>${dt(x.issue_date)}</b></div>${x.due_date ? `<div><small>${L.due}</small><b>${dt(x.due_date)}</b></div>` : ""}${x.period ? `<div><small>${L.period}</small><b>${h(x.period)}</b></div>` : ""}</div>
 <div class="pt"><div><small>${L.from}</small><b>Eyeblink Studio</b>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
- <div><small>${L.to}</small><b>${h(cl.name || "")}</b><bdi dir="ltr">${h(cl.email || x.client_email)}</bdi>${opt.project ? `<small style="margin-top:4px">${L.project}: ${h(opt.project)}</small>` : ""}</div></div>
+ <div><small>${L.to}</small><b>${h(cl.name || "")}</b><bdi dir="ltr">${h(cl.email || x.client_email)}</bdi></div></div>
 ${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
 <table><thead><tr><th>${L.desc}</th><th class="q">${L.qty}</th><th class="u">${L.unit}</th><th class="a">${L.amount}</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="sm">${x.discount ? sumRow(L.sub, fmt(sub, c)) + sumRow(L.disc, "−" + fmt(x.discount, c)) : ""}${sumRow(L.total, fmt(x.total, c), "tot")}${x.paid ? sumRow(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? sumRow(L.refunded, "−" + fmt(x.refunded, c)) : ""}${st !== "paid" && st !== "cancelled" && st !== "refunded" ? sumRow(L.bal, fmt(x.balance, c)) : ""}</div>
