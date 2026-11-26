@@ -93,7 +93,10 @@
     box.innerHTML='<div class="bowe"><div class="ph"><b>غير مفوتر حتى الآن</b>'+(o.credit>0?'<span class="tag ok">رصيد مقدّم '+esc($(o.credit))+'</span>':'')+'</div>'+
       (o.pkg&&o.price>0?'<div class="bow-g"><span class="small muted">دفعة من الباقة</span><div class="bow-m"><div class="bow"><span>سعر الباقة</span><b dir="ltr">'+esc($(o.price))+'</b></div>'+
         '<div class="bow-a" role="radiogroup" aria-label="المبلغ من الباقة">'+[['half','50% · '+$(o.price/2)],['full','كاملة · '+$(o.price)],['other','مبلغ آخر'],['none','لا شيء']].map(function(x){ return '<label><input type="radio" name="owa0" value="'+x[0]+'"'+(x[0]==='full'?' checked':'')+'><span>'+esc(x[1])+'</span></label>'; }).join('')+
-        '<input type="number" min="0" step="any" class="bow-p" data-owx="0" placeholder="المبلغ" dir="ltr" hidden></div></div></div>':'')+
+        '<input type="number" min="0" step="any" class="bow-p" data-owx="0" placeholder="المبلغ" dir="ltr" hidden></div></div>'+
+        // the units this payment covers: filled from the package by the share chosen above, editable
+        ((o.pkgUnits||[]).length?'<div class="bow-cv"><span class="small muted">ما تغطيه هذه الدفعة</span>'+o.pkgUnits.map(function(u){ return '<label class="bow"><span>'+esc(u.name)+' <small class="muted">· في الباقة '+u.inc+'</small></span><input type="number" min="0" max="999" step="1" class="bow-p" data-owu="'+esc(u.id)+'" value="'+u.inc+'" dir="ltr"></label>'; }).join('')+
+          '<span class="small muted">ما لم يُنفَّذ منها بعد يظهر في الفاتورة «متبقياً»، ويُحتسب كل عمل منها عند تسليمه</span></div>':'')+'</div>':'')+
       (o.pkgTasks&&o.pkgTasks.length?'<div class="bow-g"><span class="small muted">الشغل الذي تغطيه هذه الدفعة (ضمن الباقة، لم تذكره فاتورة بعد)</span>'+o.pkgTasks.map(function(x,i){ return ck('p'+i,x.done,esc(x.title)+' <small class="muted">· '+esc(x.pname)+' · '+(x.done?esc(wd(x.date)):'قيد التنفيذ')+'</small>'); }).join('')+'</div>':'')+
       (o.extras.length?'<div class="bow-g"><span class="small muted">إضافات وافق عليها العميل</span>'+o.extras.map(function(e,i){ var sum=e.items.reduce(function(a,x){ return a+x.amount; },0);
           return ck('x'+i,true,esc(e.title)+' <small class="muted">· '+esc(e.pname)+' · '+esc(e.items.map(function(x){ return x.name; }).join('، '))+'</small>','<b dir="ltr">'+esc($(sum))+'</b>'); }).join('')+'</div>':'')+
@@ -104,6 +107,10 @@
             (o.pkg?'<div class="bow-a" role="radiogroup" aria-label="طريقة احتساب '+esc(x.title)+'"><label><input type="radio" name="owr'+i+'" value="pkg" checked><span>ضمن الباقة</span></label><label><input type="radio" name="owr'+i+'" value="price"><span>بسعر</span></label>'+pr+'</div>':pr)+'</div>'; }).join('')+'</div>':'')+
       (o.open.filter(function(x){ return !x.pkg; }).length?'<div class="bow-g"><span class="small muted">قيد التنفيذ (لا تُفوتر الآن، وتظهر في الفاتورة التالية)</span><div class="small">'+esc(o.open.filter(function(x){ return !x.pkg; }).slice(0,12).map(function(x){ return x.title+(x.pname?' · '+x.pname:''); }).join('، '))+(o.open.filter(function(x){ return !x.pkg; }).length>12?'…':'')+'</div></div>':'')+
       (any?'<div class="actions"><button class="btn sm primary" type="button" data-bowe>ضع المحدد في الفاتورة</button></div>':'<p class="hint">لا يوجد شغل غير مفوتر لهذا العميل. يمكنك كتابة بنود حرة كالمعتاد.</p>')+'</div>'; }
+  // the units a share of the package covers: all of them, half, or in proportion to another amount
+  function bOweUnits(f){ var em=f.elements.email.value, o=OWE[em]; if(!o||!o.pkgUnits) return; var r=f.querySelector('input[name="owa0"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="0"]');
+    var k=w==='full'?1:w==='half'?.5:w==='other'?Math.min(1,(+(x&&x.value)||0)/o.price):0;
+    o.pkgUnits.forEach(function(u){ var i=f.querySelector('[data-owu="'+u.id+'"]'); if(i) i.value=Math.round(u.inc*k); }); }
   function bOweApply(f){ var em=f.elements.email.value, o=OWE[em]; if(!o) return; var on=function(k){ var i=f.querySelector('[data-ow="'+k+'"]'); return i&&i.checked; };
     var items=[], tasks=[], pkg=[], annex={}, miss=false, parts=[];
     if(o.pkg&&o.price>0){ var r=f.querySelector('input[name="owa0"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="0"]');
@@ -111,6 +118,7 @@
       if(w==='other'&&!(a>0)){ miss=true; if(x) x.focus(); }
       else if(a>0){ items.push({desc:a===o.price?'الباقة كاملة':a===o.price/2?'دفعة الباقة · 50%':'دفعة من الباقة',qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:new Date().toISOString().slice(0,7),amount:a,kind:'pkg'}); } }
     if(miss) return toast('اكتب المبلغ من الباقة',true);
+    var cover={}; if(pkg.length) [].forEach.call(f.querySelectorAll('[data-owu]'),function(i){ var v=Math.round(+i.value); if(v>0) cover[i.dataset.owu]=Math.min(999,v); });
     (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push({t:x.title,d:x.done?x.date:''}); });
     if(pkg.length) parts.push('دفعة من الباقة');
     o.extras.forEach(function(e,i){ if(!on('x'+i)) return; tasks.push(e.id); e.items.forEach(function(x){ items.push({desc:e.title+' · '+x.name+(x.detail?' ('+x.detail+')':''),qty:1,unit:x.amount,project:e.pid||''}); }); });
@@ -125,7 +133,7 @@
     if(!items.length) return toast('لم تحدد شيئاً',true);
     var n=tasks.length; if(n) parts.push(n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام');
     var tot=items.reduce(function(a,i){ return a+i.qty*i.unit; },0);
-    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,pkg:pkg},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
+    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,pkg:pkg,cover:Object.keys(cover).length?cover:undefined},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
     renderBilling(); }
   function bGroups(f,first){ var P=bPN(f), sc=f._sc, nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
     var keys=P.filter(function(p){ return sc.all||sc.keys[p.id]; }).map(function(p){ return p.id; }).concat(sc.keys['']?['']:[]); if(!keys.length){ sc.keys['']=1; keys=['']; }
@@ -168,12 +176,22 @@
         (x.status!=='cancelled'?'<button class="btn sm" type="button" data-bsend="'+esc(x.id)+'">'+(x.sent_at?'أعد الإرسال':'أرسل للعميل')+'</button>':'')+
         (x.sent_at&&(x.status==='pending'||x.status==='partial')&&x.balance>0?'<button class="btn sm" type="button" data-bremind="'+esc(x.id)+'"'+(x.reminded_at?' title="آخر تذكير: '+esc(wd(x.reminded_at))+'"':'')+'>تذكير لطيف</button>':'')+
         (!closed?'<button class="btn sm" type="button" data-bedit="'+esc(x.id)+'">تعديل</button>':'')+
+        (x.status!=='cancelled'?'<button class="btn sm'+(BCOV[x.id]?' primary':'')+'" type="button" data-bcov="'+esc(x.id)+'">+ أضف أعمالاً مشمولة</button>':'')+
         (!closed&&!x.paid?'<button class="btn sm danger" type="button" data-bst="cancelled" data-id="'+esc(x.id)+'">إلغاء الفاتورة</button>':'')+
         (x.paid>0&&x.status!=='refunded'?'<span class="brf"><input data-ramt type="number" min="0" step="any" value="'+x.paid+'" hidden aria-label="المبلغ المسترد"><button class="btn sm" type="button" data-bst="refunded" data-id="'+esc(x.id)+'">تسجيل استرداد</button></span>':'')+
         (closed?'<button class="btn sm" type="button" data-bst="reopen" data-id="'+esc(x.id)+'">إعادة فتح</button>':'')+
         (!x.sent_at&&!x.paid?'<button class="btn sm danger" type="button" data-bdel="'+esc(x.id)+'">حذف المسودة</button>':'')+
-      '</div><div class="small muted">'+(x.sent_at?'أُرسلت '+esc(new Date(x.sent_at).toLocaleString('ar')):'مسودة — لم تُرسل للعميل ولا تظهر له')+(x.reminded_at?' · أُرسل تذكير الاستحقاق':'')+'</div>'+
+      '</div>'+bcovPick(x.id)+'<div class="small muted">'+(x.sent_at?'أُرسلت '+esc(new Date(x.sent_at).toLocaleString('ar')):'مسودة — لم تُرسل للعميل ولا تظهر له')+(x.reminded_at?' · أُرسل تذكير الاستحقاق':'')+'</div>'+
       (BPREV[x.id]?'<iframe class="bprev" title="معاينة" srcdoc="'+esc(BPREV[x.id])+'"></iframe>':'')+'</div></div></div>'; }
+  // the work an existing invoice covers: tick to link, untick to unlink (the amount stays, nothing is re-sent)
+  var BCOV={};
+  function workTag(x){ var w=x&&x.work; return w?'<span class="tag '+(w.complete?'ok':'wait')+'">'+(w.complete?'اكتمل الشغل':'الشغل '+w.done+' من '+w.n)+'</span>':''; }
+  function bcovPick(id){ var P=BCOV[id]; if(!P) return ''; if(!P.linked) return '<p class="hint">جارٍ التحميل…</p>';
+    var it=function(r){ return '<label class="bow"><input type="checkbox" data-bcv="'+esc(r.id)+'"'+(P.sel[r.id]?' checked':'')+'><span>'+esc(r.title)+' <small class="muted">· '+esc(r.pname)+'</small></span><span class="tag '+(r.done?'ok':'wait')+'">'+(r.done?'سُلّمت':'قيد التنفيذ')+'</span></label>'; };
+    return '<div class="bcov" data-bcid="'+esc(id)+'">'+(P.linked.length?'<span class="small muted">مشمولة الآن</span>'+P.linked.map(it).join(''):'')+
+      (P.open.length?'<span class="small muted">يمكن إضافتها (لم تربطها أي فاتورة)</span>'+P.open.map(it).join(''):'<p class="hint">لا توجد أعمال أخرى غير مربوطة بفاتورة.</p>')+
+      '<div class="actions"><button class="btn sm primary" type="button" data-bcvs="'+esc(id)+'">احفظ الأعمال المشمولة</button><button class="btn sm" type="button" data-bcov="'+esc(id)+'">إلغاء</button></div>'+
+      '<span class="small muted">المبلغ لا يتغيّر، والفاتورة لا تُرسل من جديد</span></div>'; }
   // a billing state → its colour family (the panel's colour language)
   var BFAM={pending:'wait',partial:'fix',paid:'ok',overdue:'bad',cancelled:'off',refunded:'off',draft:'off'};
   function billRow(r,td){ var fam=BFAM[r.state]||'off', open=['pending','partial'].indexOf(r.state)>=0, soon=open&&r.due&&r.due>=td&&(new Date(r.due)-new Date(td))/864e5<=3;
@@ -182,7 +200,7 @@
       '<span class="orow-v" dir="ltr">'+esc(mny(r.total,r.currency))+'</span>'+
       '<span class="orow-p">'+esc(r.title||'')+(r.project?' · '+esc(r.project):'')+(r.src==='order'?' · طلب '+esc(r.code):'')+'</span>'+
       '<span class="tag">'+esc(BST[r.state]||r.state)+'</span>'+
-      '<span class="orow-x">'+(r.due&&open?'<span class="'+(soon?'c-soon':'')+'">يستحق '+esc(wd(r.due))+'</span>':r.state==='overdue'&&r.due?'<em class="lt">استحقت '+esc(wd(r.due))+'</em>':'')+(r.balance&&r.balance!==r.total?'<span>متبقٍ <span dir="ltr">'+esc(mny(r.balance,r.currency))+'</span></span>':'')+'</span></button></li>'; }
+      '<span class="orow-x">'+(r.x&&r.x.work?'<span class="'+(r.x.work.complete?'c-ok':'c-soon')+'">'+(r.x.work.complete?'اكتمل الشغل':'الشغل '+r.x.work.done+' من '+r.x.work.n)+'</span>':'')+(r.due&&open?'<span class="'+(soon?'c-soon':'')+'">يستحق '+esc(wd(r.due))+'</span>':r.state==='overdue'&&r.due?'<em class="lt">استحقت '+esc(wd(r.due))+'</em>':'')+(r.balance&&r.balance!==r.total?'<span>متبقٍ <span dir="ltr">'+esc(mny(r.balance,r.currency))+'</span></span>':'')+'</span></button></li>'; }
   function renderBilling(){ var B=BILL;
     if(!B){ $('#panel').innerHTML='<section class="sec"><div class="empty">…</div></section>'; loadBilling(); return; }
     if(B.err){ $('#panel').innerHTML='<section class="sec"><h3>الفوترة</h3><div class="empty">'+(B.err==='db'?'قاعدة البيانات غير مربوطة.':B.err==='live'?'يعمل هذا القسم على الموقع المنشور.':'تعذّر التحميل.')+'</div></section>'; return; }
@@ -212,11 +230,12 @@
       '<p class="hint bhint">الفوترة يدوية: لا بوابة دفع. تُصدر فاتورة للعميل المتعاقد، وتسجّل كل دفعة عند وصولها، فتتغيّر الحالة تلقائياً: بانتظار الدفع ← مدفوعة جزئياً ← مدفوعة، وتصبح «متأخرة» بعد تاريخ الاستحقاق ويصل العميلَ تذكير واحد. طلبات الموقع تظهر هنا للاطلاع فقط، ودفعاتها من تبويب الطلبات كما هي.</p>';
     var f=$('#panel').querySelector('.bform'); if(f){ if(!f.querySelector('.btk')){ var tk=document.createElement('aside'); tk.className='btk'; tk.setAttribute('aria-live','polite'); f.appendChild(tk); } bInit(f,BFORM&&BFORM.id?BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]:null); }
   }
-  document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f) bformSync(f); });
+  document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f&&e.target.hasAttribute('data-owx')) return bOweUnits(f); if(f&&e.target.hasAttribute('data-owu')) return; if(f) bformSync(f); });
   document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.hasAttribute('data-impc')){ IMP.email=s.value; IMP.files=[]; renderBilling(); return; } if(s.hasAttribute('data-impf')){ impRead(s.files); return; } if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; }
+    if(s.dataset.bcv){ var bp=BCOV[s.closest('.bcov').dataset.bcid]; if(bp) bp.sel[s.dataset.bcv]=s.checked; return; }
     if(s.name==='rcv'){ s.closest('.brcv').querySelector('.row').hidden=!s.checked; return; }
     if(/^owr\d+$/.test(s.name)){ var px=s.closest('.bow-a').querySelector('[data-owp]'); px.hidden=s.value!=='price'; var cb=s.closest('.bow-r').querySelector('[data-ow]'); cb.checked=true; if(!px.hidden) px.focus(); return; }
-    if(/^owa\d+$/.test(s.name)){ var ox=s.closest('.bow-a').querySelector('[data-owx]'); ox.hidden=s.value!=='other'; if(!ox.hidden) ox.focus(); return; }
+    if(/^owa\d+$/.test(s.name)){ var ox=s.closest('.bow-a').querySelector('[data-owx]'); ox.hidden=s.value!=='other'; if(!ox.hidden) ox.focus(); bOweUnits(s.closest('.bform')); return; }
     var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ if(BFORM) BFORM.items=null; f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;
     var items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:nn(r.children[1].value)||1,unit:nn(r.children[2].value),project:r.closest('.bgrp').dataset.proj||'',group:r.dataset.grp||undefined}; }).filter(function(i){ return i.desc; });
@@ -255,6 +274,12 @@
     if(b.dataset.bopen){ BOPEN=b.dataset.bopen; BFORM=null; route(); renderBilling(); if(!matchMedia('(min-width:1001px)').matches) scrollTo(0,0); return; }
     if(b.dataset.bord){ var ob=ORDERS.filter(function(o){ return o.code===b.dataset.bord; })[0]; if(ob){ OOPEN=ob.key; OPICK=true; } OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     if(b.dataset.bedit){ BFORM={id:b.dataset.bedit}; renderBilling(); return; }
+    if(b.dataset.bcov){ var cid=b.dataset.bcov; if(BCOV[cid]){ delete BCOV[cid]; renderBilling(); return; } BCOV[cid]={sel:{}}; renderBilling();
+      fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({action:'invoiceCover',id:cid})}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok||!BCOV[cid]) return; BCOV[cid]={linked:j.linked,open:j.open,sel:{}}; j.linked.forEach(function(r){ BCOV[cid].sel[r.id]=true; }); renderBilling(); }); return; }
+    if(b.dataset.bcvs){ var sid=b.dataset.bcvs, P=BCOV[sid]; if(!P||!P.linked) return; var add=[], rem=[];
+      P.open.forEach(function(r){ if(P.sel[r.id]) add.push(r.id); }); P.linked.forEach(function(r){ if(!P.sel[r.id]) rem.push(r.id); });
+      if(!add.length&&!rem.length){ delete BCOV[sid]; renderBilling(); return; }
+      bpost({action:'invoiceCover',id:sid,add:add,remove:rem},b,'حُدّثت الأعمال المشمولة').then(function(j){ if(j.ok) delete BCOV[sid]; }); return; }
     if(b.dataset.bprev){ var id=b.dataset.bprev; if(BPREV[id]){ delete BPREV[id]; renderBilling(); return; }
       fetch(API+'/work?admin=1&invoiceDoc='+encodeURIComponent(id),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.text(); }).then(function(t){ BPREV[id]=t.replace(/src="\/assets\//g,'src="../assets/'); renderBilling(); }); return; }
     if(b.dataset.bsend){ bpost({action:'invoiceSend',id:b.dataset.bsend},b,'أُرسلت الفاتورة إلى العميل'); return; }

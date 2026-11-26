@@ -253,7 +253,7 @@ async function unbilledOf(D, email){
       FROM tasks k JOIN projects p ON p.id=k.project_id WHERE p.client_email=? AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at`).bind(email).all()).results.map(parse);
   const pn = r => r.single ? "أعمال منفردة" : r.pname, inPkg = r => t && r.in_pkg !== 0 && r.unit && t.units.some(u => u.id === r.unit), out = { cur, pkg: !!(t && t.mode === "package"), months: [], pkgTasks: [], extras: [], others: [], units: [], open: [], credit: await creditOf(D, email) };
   // a package is paid toward as the work goes (one can take three weeks or two months): no calendar months here, just its price
-  if (t && t.mode === "package") out.price = t.price;
+  if (t && t.mode === "package") { out.price = t.price; out.pkgUnits = t.units.map(u => ({ id: u.id, name: u.name, inc: +u.inc || 0 })).filter(u => u.inc > 0); }
   // work an earlier invoice already lists in its annex, even one made before tasks were linked to invoices
   const covered = new Map(); for (const x of (await D.prepare("SELECT annex FROM invoices WHERE client_email=? AND status!='cancelled' AND annex IS NOT NULL").bind(email).all()).results) {
     try { for (const g of JSON.parse(x.annex)) for (const i of g.items) { const k = (typeof i === "string" ? i : i.t) + "|" + (g.k || ""); covered.set(k, (covered.get(k) || 0) + 1); } } catch {} }
@@ -516,7 +516,7 @@ function billHTML(x, cl, lang, opt){
   const rows = invGroups(x.items, en).flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (en ? "Other items" : "بنود أخرى") }] : []).concat(g.items))
     .map(i => i.head ? `<tr class="g"><td colspan="4">${h(i.head)}</td></tr>` : `<tr><td>${h(i.desc)}</td><td class="q">${N(i.qty)}</td><td class="u">${N(fmt(i.unit, c))}</td><td class="a">${N(fmt(i.unit * i.qty, c))}</td></tr>`).join("");
   const sumRow = (k, v, cls) => `<div${cls ? ` class="${cls}"` : ""}><span>${k}</span><span>${N(v)}</span></div>`;
-  const R = (x.annex || []).length ? annexRows(x.annex, en) : [];
+  const R = (x.annex || []).length ? annexRows(x.annex, en) : [], W = opt.work && (opt.work.rows.length || opt.work.cover) ? opt.work : null, RW = W ? W.rows : R;   // live work when the page has it
   return `<style>
 @font-face{font-family:"EB Hay";src:url(/assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400}@font-face{font-family:"EB Hay";src:url(/assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:600 700}
 @font-face{font-family:"EB Man";src:url(/assets/fonts/manrope-400.woff2) format("woff2");font-weight:400}@font-face{font-family:"EB Man";src:url(/assets/fonts/manrope-600.woff2) format("woff2");font-weight:600 700}
@@ -549,6 +549,12 @@ function billHTML(x, cl, lang, opt){
 /* text typed in the other language (an Arabic line on an English invoice, or the reverse) keeps its own direction; the column keeps its edge */
 .ebi td,.ebi .ti,.ebi .pt b,.ebi .mt b,.ebi .st small{unicode-bidi:plaintext}
 .ebi[dir=ltr] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:left}.ebi[dir=rtl] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:right}
+.ebi .cvx{margin-top:26px}.ebi .cvx h4{margin:0 0 10px;font-size:11.5px;color:#1C45E6}.ebi .cvr{display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:center;font-size:12.5px;padding:4px 0}
+.ebi .sg{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#eef0f5}.ebi .sg .a{background:#13794a}.ebi .sg .b{background:#F5C26B}.ebi .cn{font-size:12.5px;white-space:nowrap;color:#14172b}.ebi .cn b{font:400 13px "EB Osw",Arial,sans-serif}
+.ebi .lg{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#6b7286}.ebi .lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-inline-end:5px;background:#eef0f5;vertical-align:middle}.ebi .lg i.a{background:#13794a}.ebi .lg i.b{background:#F5C26B}
+.ebi .pb{height:4px;border-radius:2px;background:#eef0f5;margin:6px 0 12px;overflow:hidden}.ebi .pb i{display:block;height:100%;background:#13794a}
+.ebi .cleft{margin-top:10px;padding:10px 12px;border-radius:10px;background:#f6f7fa;font-size:12.5px}.ebi .cdone{display:inline-flex;margin-top:10px;padding:6px 12px;border-radius:999px;background:#E7F8EF;color:#13794a;font-size:12.5px;font-weight:700}
+.ebi .sd{color:#13794a;font-weight:600}.ebi .sw{color:#B45309;font-weight:600}.ebi .ax td.d small{display:block;margin:0;font-size:11px;color:#6b7286}
 .ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .ct{display:inline-flex;align-items:center;gap:14px;direction:ltr;font:400 11.5px "EB Man",Arial,sans-serif;letter-spacing:.01em}
 @media (max-width:620px){.ebi .br img{height:22px}.ebi .tt b{font-size:24px}.ebi .dts i{display:none}.ebi .dts{gap:4px 18px}.ebi{padding:26px 18px 20px}.ebi .mt{gap:22px}.ebi .q{width:56px}.ebi .u,.ebi .a{width:86px}}@media (max-width:400px){.ebi .pt{grid-template-columns:1fr}}
 @media print{.ebi{padding:14mm 15mm 12mm;max-width:none}}
@@ -565,14 +571,53 @@ ${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
 <div class="sm">${x.discount ? sumRow(L.sub, fmt(sub, c)) + sumRow(L.disc, "−" + fmt(x.discount, c)) : ""}${sumRow(L.total, fmt(x.total, c), "tot")}${x.paid ? sumRow(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? sumRow(L.refunded, "−" + fmt(x.refunded, c)) : ""}${st !== "paid" && st !== "cancelled" && st !== "refunded" ? sumRow(L.bal, fmt(x.balance, c)) : ""}</div>
 <div class="st"><span class="pl ${tone}">${state}</span><small>${side}</small></div>
 ${x.note ? `<div class="nt">${h(x.note).replace(/\n/g, "<br>")}</div>` : ""}
-${R.length ? `<div class="ax"><h4>${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</h4><table><thead><tr><th>${en ? "Work" : "العمل"}</th><th>${en ? "Project" : "البرنامج"}</th><th class="d">${en ? "Delivered" : "التسليم"}</th></tr></thead>
-<tbody>${R.map(r => `<tr><td>${h(r.t)}</td><td class="k">${h(r.k)}</td><td class="d">${h(r.date)}</td></tr>`).join("")}</tbody></table><div class="n">${annexCount(R.length, en)}</div></div>` : ""}
+${W && W.cover ? `<div class="cvx"><h4>${en ? "What this payment covers" : "ما تغطيه هذه الدفعة"}</h4>${W.cover.map(c => `<div class="cvr"><span>${h(c.name)}</span><div class="sg"><i class="a" style="width:${(c.done * 100 / c.n).toFixed(1)}%"></i><i class="b" style="width:${(c.wip * 100 / c.n).toFixed(1)}%"></i></div><span class="cn">${[c.done ? "<b>" + c.done + "</b>" + (en ? " delivered" : " سُلّم") : "", c.wip ? "<b>" + c.wip + "</b>" + (en ? " under way" : " جارٍ") : "", c.left ? "<b>" + c.left + "</b>" + (en ? " not started" : " متبقٍ") : ""].filter(Boolean).join(" · ") || "—"}</span></div>`).join("")}<div class="lg"><span><i class="a"></i>${en ? "Delivered" : "سُلّم"}</span><span><i class="b"></i>${en ? "Under way" : "قيد التنفيذ"}</span><span><i></i>${en ? "Not started" : "لم يبدأ بعد"}</span></div>
+${W.complete ? `<div class="cdone">${en ? "✓ All the work this payment covers is delivered" : "✓ اكتمل كل الشغل المشمول بهذه الدفعة"}</div>` : W.cover.some(c => c.left) ? `<div class="cleft">${en ? "Still to come from this payment: " : "المتبقي من هذه الدفعة: "}<b>${unitsLeft(W.cover.filter(c => c.left), en)}</b></div>` : ""}</div>` : ""}
+${RW.length ? `<div class="ax"><h4>${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</h4>${W && W.rows.length ? `<div class="n" style="margin:0">${en ? W.rows.filter(r => r.done).length + " of " + W.rows.length + " delivered" : W.rows.filter(r => r.done).length + " من " + annexCount(W.rows.length, false) + " سُلّمت"}</div><div class="pb"><i style="width:${(W.rows.filter(r => r.done).length * 100 / W.rows.length).toFixed(1)}%"></i></div>` : ""}<table><thead><tr><th>${en ? "Work" : "العمل"}</th><th>${en ? "Project" : "البرنامج"}</th><th class="d">${W ? (en ? "Status" : "الحالة") : (en ? "Delivered" : "التسليم")}</th></tr></thead>
+<tbody>${RW.map(r => `<tr><td>${h(r.t)}</td><td class="k">${h(r.k)}</td><td class="d">${W ? (r.done ? `<span class="sd">${en ? "Delivered" : "سُلّمت"}</span>${r.date ? `<small>${h(r.date)}</small>` : ""}` : `<span class="sw">${en ? "Under way" : "قيد التنفيذ"}</span>`) : h(r.date)}</td></tr>`).join("")}</tbody></table>${W && W.rows.length ? "" : `<div class="n">${annexCount(RW.length, en)}</div>`}</div>` : ""}
 <div class="ft"><span>${en ? "Thank you for working with Eyeblink Studio" : "شكراً لتعاملك مع <bdi>Eyeblink Studio</bdi>"}</span><span class="ct"><bdi>www.eyeblinkstudio.com</bdi>${opt.email ? `<i></i><bdi>${h(opt.email)}</bdi>` : ""}</span></div>
 </div>`;
 }
 // the invoice inside an e-mail: the cinema ticket (shared ticketHTML); the printable page (billPage) keeps the white document above
 const BILL_TCOL = { pending:"#F0B43C", partial:"#F0B43C", paid:"#3DDC97", overdue:"#FF6B6B", cancelled:"#9AA6BF", refunded:"#8FA2FF" };
 // «the work covered by this invoice» as rows: the work, its project, and when it was delivered
+// ---- the work an invoice covers, read live: the tasks linked to it (each with its state), the units a package payment
+// covers (videos, posters …) with how many were delivered, are under way, or have not started, and whether all of it is done ----
+async function invoiceWork(D, x, en){
+  let L = {}; try { L = x.links ? (typeof x.links === "string" ? JSON.parse(x.links) : x.links) : {}; } catch {}
+  const T = (await D.prepare("SELECT k.title, k.status, k.unit, k.completed_at, p.name AS pname, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.invoice_id=? ORDER BY COALESCE(k.completed_at, k.created_at)").bind(x.id).all()).results;
+  const dd = v => v ? new Date(String(v).slice(0, 10) + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : "";
+  const pn = r => r.single ? (en ? "One-off work" : "أعمال منفردة") : r.pname;
+  const rows = T.map(r => ({ t: r.title, k: pn(r), done: r.status === "completed", date: dd(r.completed_at) }));
+  // works an older invoice lists by name only (not linked): shown as delivered, as they were when it was issued
+  const seen = new Set(T.map(r => r.title));
+  for (const g of x.annex || []) for (const i of g.items) { const t = typeof i === "string" ? i : i.t; if (!seen.has(t)) rows.push({ t, k: g.k || "", done: true, date: typeof i === "string" ? "" : dd(i.d) }); }
+  let cover = null;
+  if (L.cover && Object.keys(L.cover).length) { const ag = await agreementOf(D, x.client_email), U = (ag && ag.terms.units) || [];
+    cover = Object.entries(L.cover).map(([id, n]) => { const u = U.find(v => v.id === id), mine = T.filter(r => r.unit === id), done = mine.filter(r => r.status === "completed").length, wip = mine.length - done;
+      return { name: u ? u.name : id, n: +n, done: Math.min(done, +n), wip: Math.max(0, Math.min(wip, +n - done)), left: Math.max(0, +n - done - wip) }; }).filter(c => c.n > 0); }
+  const n = cover ? cover.reduce((a, c) => a + c.n, 0) : 0, done = cover ? cover.reduce((a, c) => a + c.done, 0) : 0;
+  return { rows, cover, n, done, complete: !!cover && n > 0 && done >= n && rows.every(r => r.done) };
+}
+// the lists: a small work state for each invoice that covers package units («work 10 of 18» / «work complete»)
+// «two videos and 5 posters»: Arabic number agreement for the usual unit names, «name: n» for any other
+const UNF = { "فيديو": ["فيديوان", "فيديوهات"], "بوستر": ["بوستران", "بوسترات"], "ستوري": ["ستوريان", "ستوريات"], "تصميم": ["تصميمان", "تصاميم"], "حلقة": ["حلقتان", "حلقات"], "ريل": ["ريلان", "ريلز"], "صورة": ["صورتان", "صور"], "إعلان": ["إعلانان", "إعلانات"], "منشور": ["منشوران", "منشورات"] };
+function unitsLeft(L, en){ const one = c => { if (en) return "<bdi>" + c.left + " " + h(c.name) + "</bdi>"; const f = UNF[String(c.name).trim()];
+    if (!f) return h(c.name) + ": " + c.left; return c.left === 1 ? h(c.name) + (/ة$/.test(c.name) ? " واحدة" : " واحد") : c.left === 2 ? f[0] : c.left + " " + (c.left <= 10 ? f[1] : h(c.name)); };
+  const p = L.map(one); return p.length < 2 ? p.join("") : en ? p.slice(0, -1).join(", ") + " and " + p[p.length - 1] : p.slice(0, -1).join("، ") + " و" + p[p.length - 1]; }
+// the units a payment covers, kept only for units of the client's package (0–999 each)
+async function coverOf(D, email, c){ if (!c || typeof c !== "object") return undefined; const ag = await agreementOf(D, email), U = (ag && ag.terms.units) || [], out = {};
+  for (const u of U) { const n = Math.round(+c[u.id]); if (n > 0) out[u.id] = Math.min(999, n); } return Object.keys(out).length ? out : undefined; }
+async function workBadges(D, list){
+  const withCover = list.filter(x => { if (x.status === "cancelled" || x.status === "refunded") return false; try { const L = typeof x.links === "string" ? JSON.parse(x.links || "{}") : (x.links || {}); x._cover = L.cover; return L.cover && Object.keys(L.cover).length; } catch { return false; } });
+  if (!withCover.length) return list;
+  const ids = withCover.map(x => x.id), R = (await D.prepare(`SELECT invoice_id, unit, status FROM tasks WHERE invoice_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results;
+  for (const x of withCover) { const mine = R.filter(r => r.invoice_id === x.id); let n = 0, done = 0;
+    for (const [id, c] of Object.entries(x._cover)) { n += +c; done += Math.min(+c, mine.filter(r => r.unit === id && r.status === "completed").length); }
+    x.work = { n, done, complete: n > 0 && done >= n && mine.every(r => r.status === "completed") }; }
+  for (const x of list) delete x._cover;
+  return list;
+}
 function annexRows(annex, en){ const dd = v => v ? new Date(v + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : "—";
   return [].concat(...(annex || []).map(g => g.items.map(i => typeof i === "string" ? { t: i, k: g.k || "", date: "—" } : { t: i.t, k: g.k || "", date: dd(i.d) }))); }
 const annexCount = (n, en) => en ? n + (n === 1 ? " work" : " works") : n === 1 ? "عمل واحد" : n === 2 ? "عملان" : n <= 10 ? n + " أعمال" : n + " عملاً";
@@ -1290,12 +1335,12 @@ export async function onRequestGet(ctx) {
     .map(r => { let R = {}; try { R = JSON.parse(r.data); } catch {} return { id: r.id, from: r.from_d, to: r.to_d, nums: R.nums || {}, projects: (R.projects || []).map(p => p.name) }; }) });
   if (q.get("creportDoc")) { const r = await D.prepare("SELECT * FROM client_reports WHERE id=? AND email=? AND sent_at IS NOT NULL").bind(clip(q.get("creportDoc"), 20), e).first(); if (!r) return htmlRes("not found", 404);
     return htmlRes(periodPage(JSON.parse(r.data), u, u.lang === "en" ? "en" : "ar", r.note)); }
-  if (q.get("view") === "invoices") return json({ ok: true, invoices: (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x)), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
+  if (q.get("view") === "invoices") return json({ ok: true, invoices: await workBadges(D, (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? AND i.sent_at IS NOT NULL ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 200").bind(e).all()).results.map(x => parseI(x))), credit: await creditOf(D, e), creditCur: ((await D.prepare("SELECT currency FROM credits WHERE email=? ORDER BY created_at DESC LIMIT 1").bind(e).first()) || {}).currency || "$" });
   if (q.get("invoicePdf")) { const x = await invoiceOf(D, q.get("invoicePdf")); const k = x && x.client_email === e && x.sent_at && x.source && x.source.pdf;
     const v = k && /^imp:[a-f0-9]{16}$/.test(k) ? await env.EB.get(k, "arrayBuffer") : null; if (!v) return htmlRes("not found", 404);
     return new Response(v, { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store" } }); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x || x.client_email !== e || !x.sent_at) return htmlRes("not found", 404);
-    return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email })); }
+    return htmlRes(billPage(x, u, u.lang === "en" ? "en" : "ar", { project: x.project_name, email: (await siteSettings(env)).email, work: await invoiceWork(D, x, u.lang === "en") })); }
   if (q.get("view") === "prefs") { const cfg = await waConfig(env), tg = await tgConf(env), link = await D.prepare("SELECT username, linked_at FROM tg_links WHERE email=?").bind(e).first();
     const subs = (await D.prepare("SELECT endpoint FROM push_subs WHERE email=?").bind(e).all()).results;
     return json({ ok: true, prefs: await prefsOf(D, e), cats: CATS, wa: { available: waReady(env, cfg) },
@@ -1344,7 +1389,7 @@ export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   if (new URL(request.url).searchParams.get("tg") === "hook") return tgHook(ctx);
   const d = await request.json().catch(() => ({}));
-  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","taskMove","invoiceImportRead","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
+  if (["project","review","status","date","dateDecision","deliver","point","pointAdd","studioComment","removeComment","studioFile","removeFile","studioRead","retryNotif","waConfig","waTest","invoice","invoicePay","invoiceUnpay","invoiceStatus","invoiceSend","invoiceRemind","invoiceDelete","notifyPreview","scheduledCancel","rulesGet","rulesSave","pendingSend","pendingSkip","rulesRun","reportCfgGet","reportCfgSave","reportBuild","reportSend","purgePreview","clientPurge","projectPurge","logView","scheduledNow","tplPreview","digestPreview","digestNow","recurring","recurringDelete","recurringRun","sendReport","brandSave","brandAssetDel","clientSave","clientAvatar","taskUnit","taskExtras","taskRename","taskMove","invoiceImportRead","invoiceCover","monthBill","clientTerms","unbilled","creditAdd","creditDel","invoicesPurge","carryInfo","carrySave","clientArchive","studioTask","taskEdit","taskDelete","tgSetup"].includes(d.action)) {
     if (!(await isAdmin(request, env))) return json({ ok: false }, 401);
     ctx.notify = cleanNotify(d.notify);   // the send sheet: channels and time for whatever this action tells the client
     return adminPost(ctx, d);
@@ -1631,7 +1676,7 @@ async function adminGet(request, env, q){
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) AS all_tasks,
       (SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id AND substr(t.created_at,1,7)=? AND t.status NOT IN ('cancelled','rejected')) AS month_tasks FROM projects p ORDER BY p.updated_at DESC`).bind(monthOf(now())).all()).results.map(parseP);
   if (q.get("view") === "billing") {
-    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x));
+    const invoices = await workBadges(D, (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 1000").all()).results.map(x => parseI(x)));
     const projects = (await D.prepare("SELECT id, name, client_email, status, in_pkg FROM projects ORDER BY updated_at DESC").all()).results;
     return json({ ok: true, invoices, projects, agreements: await agreementsAll(D), clients: await clientsList(env), today: today() });
   }
@@ -1644,7 +1689,7 @@ async function adminGet(request, env, q){
     return new Response(v, { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store" } }); }
   if (q.get("invoiceDoc")) { const x = await invoiceOf(D, q.get("invoiceDoc")); if (!x) return htmlRes("not found", 404);
     const u = (await userOf(env, x.client_email)) || { email: x.client_email, name: "" };
-    return htmlRes(billPage(x, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"), { project: x.project_name, email: (await siteSettings(env)).email })); }
+    return htmlRes(billPage(x, u, q.get("lang") === "en" ? "en" : q.get("lang") === "ar" ? "ar" : (u.lang === "en" ? "en" : "ar"), { project: x.project_name, email: (await siteSettings(env)).email, work: await invoiceWork(D, x, (q.get("lang") || u.lang) === "en") })); }
   if (q.get("view") === "reports") {
     const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.client_email, t.project_id, t.status, t.created_at, t.completed_at, t.confirmed_date, t.requested_date, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id").all()).results;
     const deliverables = (await D.prepare("SELECT task_id, status, is_final, created_at FROM deliverables").all()).results;
@@ -1663,7 +1708,7 @@ async function adminGet(request, env, q){
     const tasks = (await D.prepare("SELECT t.id, t.ref, t.title, t.type, t.description, t.status, t.priority, t.requested_date, t.confirmed_date, t.completed_at, t.created_at, t.updated_at, t.created_by, t.over_quota, t.recurring, t.assignee, t.project_id, p.name AS project_name FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.client_email=? ORDER BY COALESCE(t.confirmed_date, t.requested_date, substr(t.created_at,1,10)) DESC, t.created_at DESC LIMIT 400").bind(em).all()).results;
     const files = (await D.prepare("SELECT f.id, f.project_id, f.task_id, f.category, f.title, f.url, f.note, f.added_by, f.added_name, f.created_at, p.name AS project_name FROM files f JOIN projects p ON p.id=f.project_id WHERE f.client_email=? AND f.deleted_at IS NULL ORDER BY f.created_at DESC LIMIT 400").bind(em).all()).results;
     const delivered = (await D.prepare("SELECT d.id, d.project_id, d.label, d.is_final, d.title, d.url, d.status, d.created_at, t.ref, t.title AS task_title, p.name AS project_name FROM deliverables d JOIN tasks t ON t.id=d.task_id JOIN projects p ON p.id=d.project_id WHERE d.client_email=? ORDER BY d.created_at DESC LIMIT 400").bind(em).all()).results;
-    const invoices = (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x));
+    const invoices = await workBadges(D, (await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.client_email=? ORDER BY COALESCE((SELECT MAX(json_extract(value,'$.date')) FROM json_each(i.payments)), i.issue_date) DESC, i.created_at DESC LIMIT 100").bind(em).all()).results.map(x => parseI(x)));
     const activity = (await D.prepare("SELECT a.*, t.ref AS task_ref, p.name AS project_name FROM activity a LEFT JOIN tasks t ON t.id=a.task_id LEFT JOIN projects p ON p.id=a.project_id WHERE a.client_email=? ORDER BY a.id DESC LIMIT 250").bind(em).all()).results.map(parseA);
     const sends = (await D.prepare("SELECT channel, status, COUNT(*) AS n FROM notify_log WHERE recipient=? GROUP BY channel, status").bind(em).all()).results;
     const P = await prefsOf(D, em);
@@ -1777,7 +1822,7 @@ async function adminPost(ctx, d){
     for (const x of pk) await D.prepare("INSERT INTO pkg_pay (invoice_id, email, month, amount, kind, created_at) VALUES (?,?,?,?,?,?)").bind(id, email, x.month, x.amount, x.kind, at).run();
     const annex = (Array.isArray(d.annex) ? d.annex : []).slice(0, 40).map(g => ({ k: clip(g.k, 80), items: (Array.isArray(g.items) ? g.items : []).slice(0, 200).map(x => x && typeof x === "object" ? { t: clip(x.t, 140), d: isDate(x.d) ? x.d : "" } : clip(x, 140)).filter(x => x && (x.t || typeof x === "string")) })).filter(g => g.items.length);
     let credit = Math.min(amt(d.credit), await creditOf(D, email), total); credit = credit > 0.009 ? amt(credit) : 0;
-    await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, pkg: pk, credit }), id).run();
+    await D.prepare("UPDATE invoices SET annex=?, links=? WHERE id=?").bind(annex.length ? JSON.stringify(annex) : null, JSON.stringify({ tasks: tids, months, pkg: pk, credit, cover: await coverOf(D, email, L.cover) }), id).run();
     const pays0 = [], rc = d.received && typeof d.received === "object" ? d.received : null, rest = amt(total - credit);
     if (credit) { const en0 = u && u.lang === "en";
       await D.prepare("INSERT INTO credits (id, email, amount, currency, method, note, date, invoice_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind("cr_" + randHex(6), email, -credit, cur, "invoice", n.no, issue, id, at).run();
@@ -2031,6 +2076,15 @@ async function adminPost(ctx, d){
     if (d.deliverable) { const r = await D.prepare("UPDATE deliverables SET title=? WHERE id=?").bind(title, clip(d.deliverable, 40)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
     if (!title) return json({ ok: false, error: "title" }, 400);
     const r = await D.prepare("UPDATE tasks SET title=?, updated_at=? WHERE ref=?").bind(title, at, clip(d.task, 20)).run(); return json({ ok: !!r.meta.changes }, r.meta.changes ? 200 : 404); }
+  // the work an invoice covers, after it was made: list what is linked and what could be, add or remove links (the amount stays)
+  if (d.action === "invoiceCover") { const x = await invoiceOf(D, d.id); if (!x) return json({ ok: false }, 404);
+    const add = (Array.isArray(d.add) ? d.add : []).map(v => clip(v, 40)).slice(0, 200), rem = (Array.isArray(d.remove) ? d.remove : []).map(v => clip(v, 40)).slice(0, 200);
+    for (const t of add) await D.prepare("UPDATE tasks SET invoice_id=? WHERE id=? AND client_email=? AND invoice_id IS NULL").bind(x.id, t, x.client_email).run();
+    for (const t of rem) await D.prepare("UPDATE tasks SET invoice_id=NULL WHERE id=? AND invoice_id=?").bind(t, x.id).run();
+    const Q = "SELECT k.id, k.title, k.status, k.completed_at, p.name AS pname, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE ";
+    const pick = r => ({ id: r.id, title: r.title, pname: r.single ? "أعمال منفردة" : r.pname, done: r.status === "completed", date: String(r.completed_at || "").slice(0, 10) });
+    return json({ ok: true, linked: (await D.prepare(Q + "k.invoice_id=? ORDER BY k.created_at").bind(x.id).all()).results.map(pick),
+      open: (await D.prepare(Q + "k.client_email=? AND k.invoice_id IS NULL AND k.status NOT IN ('cancelled','rejected') ORDER BY k.created_at").bind(x.client_email).all()).results.map(pick) }); }
   if (d.action === "invoiceImportRead") { const b64 = String(d.data || ""); if (b64.length > 14e6) return json({ ok: false, error: "size" }, 413);
     let bytes; try { bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); } catch { return json({ ok: false, error: "file" }, 400); }
     if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) return json({ ok: false, error: "pdf" }, 400);   // %PDF

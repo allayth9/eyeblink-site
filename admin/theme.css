@@ -233,7 +233,7 @@ input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--horizon
 .k-fix{--g:linear-gradient(45deg,#97401C,#C96A36);--gs:#B05529}.k-sign{--g:linear-gradient(45deg,#6E2A78,#A452AE);--gs:#893E93}
 .orow.st{box-shadow:inset -3px 0 0 color-mix(in srgb,var(--c) 75%,transparent)}
 .orow.st.on{box-shadow:inset 0 0 0 1px var(--line),inset -3px 0 0 var(--c)}
-.orow .c-bad{color:var(--f-bad)}.orow .c-soon{color:var(--f-wait)}
+.orow .c-bad{color:var(--f-bad)}.orow .c-soon{color:var(--f-wait)}.orow .c-ok{color:var(--f-ok)}
 .orow-x em.lt{background:var(--f-bad);color:#3A0A16;padding:1px 9px;border-radius:99px;font-weight:500}
 :root[data-theme="light"] .orow-x em.lt{color:var(--k-white)}
 .odetail[class*="tf-"] .odh{box-shadow:inset 0 3px 0 var(--c)}.odetail[class*="tf-"] .odh .tag{color:var(--c)}
