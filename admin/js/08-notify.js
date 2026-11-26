@@ -109,7 +109,10 @@
     ['[data-rrun]',function(b){ var r=((WSPACE&&WSPACE.d&&WSPACE.d.recurring)||[]).filter(function(x){ return x.id===b.dataset.rrun; })[0]; if(!r) return null;
       return {title:'تشغيل المهمة الدورية الآن',rows:[['المهمة',r.title]],pv:{kind:'recurring',client:r.client_email,title:r.title}}; }],
     ['.bform [type=submit]',function(b){ var E=b.form.elements; if(!E.send.checked||!E.email.value) return null;
-      return {title:'حفظ الفاتورة وإرسالها',rows:[['البيان',E.title.value.trim()]],pv:{kind:'invoice',client:E.email.value},nopv:true}; }] ];
+      var f=b.form, items=[].map.call(f.querySelectorAll('.bitem'),function(r){ return {desc:r.children[0].value.trim(),qty:+r.children[1].value||1,unit:+r.children[2].value||0,project:r.closest('.bgrp').dataset.proj||'',group:r.dataset.grp||undefined}; }).filter(function(i){ return i.desc; });
+      var nw=!f.dataset.bid;
+      return {title:'حفظ الفاتورة وإرسالها',rows:[['البيان',E.title.value.trim()]],pv:{kind:'invoice',client:E.email.value,draft:{id:f.dataset.bid||undefined,title:E.title.value.trim(),period:E.period.value.trim(),currency:E.currency.value.trim()||'$',items:items,discount:E.discount.value,issue_date:E.issue.value,due_date:E.due.value,credit:E.credit?E.credit.value:0,
+        links:nw&&BFORM&&BFORM.links||undefined,annex:nw&&BFORM&&BFORM.annex||undefined}},doc:true}; }] ];
   function sndWa(t){ return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(INV-\d{4}-\d{4}|T-[A-Z0-9]{4,})/g,'<bdi style="white-space:nowrap">$1</bdi>').replace(/\n/g,'<br>'); }
   var SNDIC={email:'<path d="M3 6.5h18v11H3z"/><path d="M3.5 7l8.5 6.5L20.5 7"/>',push:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',wa:'<path d="M4 20l1.2-3.6A8 8 0 1 1 8 19z"/><path d="M9.5 9.5c.3 2 1.9 3.8 4 4.4"/>',app:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>'};
   function sendSheet(o){ return new Promise(function(res){ var last=document.activeElement, ov=document.createElement('div'), PV=null, WHEN='now'; ov.className='snd-ov';
@@ -125,7 +128,8 @@
         '<div class="snd-l">التوقيت</div><div class="snd-seg" role="radiogroup"><button type="button" role="radio" aria-checked="true" data-when="now" class="on">الآن</button><button type="button" role="radio" aria-checked="false" data-when="later">لاحقاً</button><button type="button" role="radio" aria-checked="false" data-when="none">دون إشعار</button></div>'+
         '<input type="datetime-local" class="snd-at" data-at hidden aria-label="موعد الإرسال">'+
       '</div>'+
-      (o.nopv?'':'<div class="snd-pv"><div class="snd-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-pv="mail" class="on">البريد</button><button type="button" role="tab" aria-selected="false" data-pv="wa">واتساب</button></div>'+
+      (o.nopv?'':'<div class="snd-pv"><div class="snd-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-pv="mail" class="on">البريد</button><button type="button" role="tab" aria-selected="false" data-pv="wa">واتساب</button>'+(o.doc?'<button type="button" role="tab" aria-selected="false" data-pv="doc">الفاتورة</button>':'')+'</div>'+
+        (o.doc?'<div class="snd-fr" data-pvdoc hidden><div class="snd-load">جارٍ تجهيز الفاتورة…</div></div>':'')+
         '<div class="snd-fr" data-pvmail><div class="snd-load">جارٍ تجهيز المعاينة…</div></div>'+
         '<div class="snd-wa" data-pvwa hidden><div class="snd-bub" data-wtxt></div><p class="snd-nt">للإرسال اليدوي ريثما يُفعَّل واتساب تلقائياً: انسخها وأرسلها من رقم الاستوديو</p><div class="snd-wact"><button type="button" class="btn sm" data-wcopy>انسخ الرسالة</button><a class="btn sm" data-wopen target="_blank" rel="noopener" hidden>افتح المحادثة</a></div></div></div>')+
       '</div><div class="snd-ft"><button type="button" class="btn primary" data-sok>أرسل الآن</button><button type="button" class="btn" data-sno>إلغاء</button></div></div>';
@@ -147,6 +151,8 @@
       if(!o.nopv){ var fr=document.createElement('iframe'); fr.title='معاينة البريد'; fr.setAttribute('sandbox','allow-same-origin allow-popups'); fr.srcdoc=j.html.replace('<head>','<head><base target="_blank"><style>body{margin:0!important}</style>');
         fr.onload=function(){ try{ fr.style.height=fr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var box=Q('[data-pvmail]'); box.innerHTML=''; box.appendChild(fr);
         Q('[data-wtxt]').innerHTML=sndWa(j.wa); var ph=String(j.phone||'').replace(/\D/g,''); if(ph){ var a=Q('[data-wopen]'); a.href='https://wa.me/'+ph+'?text='+encodeURIComponent(j.wa); a.hidden=false; } }
+      if(o.doc&&j.doc){ var dfr=document.createElement('iframe'); dfr.title='معاينة الفاتورة'; dfr.className='snd-doc'; dfr.setAttribute('sandbox','allow-same-origin'); dfr.srcdoc=j.doc;
+        dfr.onload=function(){ try{ dfr.style.height=dfr.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} }; var dbx=Q('[data-pvdoc]'); dbx.innerHTML=''; dbx.appendChild(dfr); }
       waCardMount(ov,j); sync(); }).catch(function(){ Q('[data-to]').textContent='تعذّر تجهيز المعاينة، ويمكنك الإرسال كالمعتاد'; });
     function done(v){ removeEventListener('keydown',key,true); ov.classList.remove('on'); setTimeout(function(){ ov.remove(); },220); if(last&&last.focus) last.focus(); res(v); }
     function go(){ var c={}; ov.querySelectorAll('[data-ch]').forEach(function(x){ c[x.dataset.ch]=x.checked&&!x.disabled; });
@@ -160,7 +166,7 @@
       if(t.closest('[data-sok]')){ go(); return; }
       var w=t.closest('[data-when]'); if(w){ WHEN=w.dataset.when; ov.querySelectorAll('[data-when]').forEach(function(x){ x.classList.toggle('on',x===w); x.setAttribute('aria-checked',x===w); });
         at.hidden=WHEN!=='later'; if(WHEN==='later'){ if(!at.value){ var d=new Date(Date.now()+864e5); d.setHours(10,0,0,0); at.value=new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16); } at.focus(); } sync(); return; }
-      var p=t.closest('[data-pv]'); if(p){ ov.querySelectorAll('[data-pv]').forEach(function(x){ x.classList.toggle('on',x===p); x.setAttribute('aria-selected',x===p); }); Q('[data-pvmail]').hidden=p.dataset.pv!=='mail'; Q('[data-pvwa]').hidden=p.dataset.pv!=='wa'; return; }
+      var p=t.closest('[data-pv]'); if(p){ ov.querySelectorAll('[data-pv]').forEach(function(x){ x.classList.toggle('on',x===p); x.setAttribute('aria-selected',x===p); }); Q('[data-pvmail]').hidden=p.dataset.pv!=='mail'; Q('[data-pvwa]').hidden=p.dataset.pv!=='wa'; var pd=Q('[data-pvdoc]'); if(pd){ pd.hidden=p.dataset.pv!=='doc'; var df=pd.querySelector('iframe'); if(df&&!pd.hidden) try{ df.style.height=df.contentDocument.documentElement.scrollHeight+'px'; }catch(_){} } return; }
       if(t.closest('[data-wshare]')&&PV&&PV.blob){ navigator.share({files:[new File([PV.blob],'eyeblink.png',{type:'image/png'})],text:PV.wa}).catch(function(){}); return; }
       if(t.closest('[data-wimg]')&&PV&&PV.blob){ var fail=function(){ toast('تعذّر نسخ الصورة، نزّلها بدلاً من ذلك',true); };
         try{ navigator.clipboard.write([new ClipboardItem({'image/png':PV.blob})]).then(function(){ toast('نُسخت الصورة، الصقها في المحادثة ثم انسخ الرسالة'); },fail); }catch(_){ fail(); } return; }

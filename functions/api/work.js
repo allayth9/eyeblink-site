@@ -585,7 +585,7 @@ const BILL_TCOL = { pending:"#F0B43C", partial:"#F0B43C", paid:"#3DDC97", overdu
 // covers (videos, posters …) with how many were delivered, are under way, or have not started, and whether all of it is done ----
 async function invoiceWork(D, x, en){
   let L = {}; try { L = x.links ? (typeof x.links === "string" ? JSON.parse(x.links) : x.links) : {}; } catch {}
-  const T = (await D.prepare("SELECT k.id, k.title, k.status, k.unit, k.completed_at, p.name AS pname, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE k.invoice_id=? ORDER BY COALESCE(k.completed_at, k.created_at)").bind(x.id).all()).results;
+  const T = (await D.prepare("SELECT k.id, k.title, k.status, k.unit, k.completed_at, p.name AS pname, p.single FROM tasks k JOIN projects p ON p.id=k.project_id WHERE " + (x.id ? "k.invoice_id=?" : "k.id IN (SELECT value FROM json_each(?))") + " ORDER BY COALESCE(k.completed_at, k.created_at)").bind(x.id || JSON.stringify((L.tasks || []).slice(0, 400))).all()).results;
   const dd = v => v ? new Date(String(v).slice(0, 10) + "T12:00:00Z").toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long" }) : "";
   const pn = r => r.single ? (en ? "One-off work" : "أعمال منفردة") : r.pname;
   const rows = T.map(r => ({ t: r.title, k: pn(r), done: r.status === "completed", date: dd(r.completed_at) }));
@@ -1889,6 +1889,19 @@ async function adminPost(ctx, d){
     else if (d.project) { const p = await D.prepare("SELECT * FROM projects WHERE id=?").bind(clip(d.project, 40)).first(); if (!p) return json({ ok: false }, 404);
       t = { client_email: p.client_email, ref: "", title: p.name }; extra = { id: p.id, name: p.name, file: clip(d.file, 120), note: clip(d.note, 4000), hash: "#w/p/" + p.id + (kind === "file" ? "/files" : kind === "comment" ? "/talk" : "") };
       if (kind === "report") { const month = isMonth(d.month) ? d.month : prevMonth(); Object.assign(extra, { report: await monthReport(D, p, month), month, hash: "#w/p/" + p.id + "/report/" + month }); } }
+    else if (d.client && kind === "invoice" && d.draft && typeof d.draft === "object") { const g = d.draft, email = String(d.client).toLowerCase().trim();
+      const items = cleanItems(g.items), PN = Object.fromEntries((await D.prepare("SELECT id, name FROM projects WHERE client_email=?").bind(email).all()).results.map(p => [p.id, p.name]));
+      for (const i of items) { i.pname = PN[i.project] || ""; if (!i.pname) { delete i.project; delete i.pname; } }
+      const cur = clip(g.currency, 8) || "$", total = Math.max(0, money(money(items.reduce((a, i) => a + i.unit * i.qty, 0)) - Math.max(0, money(g.discount)))), paid = Math.min(total, Math.max(0, money(g.credit)));
+      let n = +((await D.prepare("SELECT n FROM seq WHERE name='inv'").first().catch(() => null)) || {}).n || +(await env.EB.get("invseq") || 0), no;
+      for (let k = 0; k < 50; k++) { no = "INV-" + new Date().getFullYear() + "-" + String(++n).padStart(4, "0"); if (!(await D.prepare("SELECT 1 FROM invoices WHERE no=?").bind(no).first())) break; }
+      const ex = g.id ? await invoiceOf(D, clip(g.id, 40)) : null; if (ex) no = ex.no;   // an edit keeps its number, links and what was paid
+      const issue = isDate(g.issue_date) ? g.issue_date : today();
+      const x = { id: "", no, client_email: email, title: clip(g.title, 140), period: clip(g.period, 60), items, currency: cur, discount: Math.max(0, money(g.discount)), total, paid, payments: [], issue_date: issue, due_date: isDate(g.due_date) ? g.due_date : null,
+        status: paid + 0.009 >= total && total > 0 ? "paid" : paid > 0 ? "partial" : "pending", annex: Array.isArray(g.annex) ? g.annex.slice(0, 40) : [], links: ex ? (typeof ex.links === "string" ? JSON.parse(ex.links || "{}") : ex.links || {}) : g.links && typeof g.links === "object" ? g.links : {} };
+      if (ex) { x.paid = Math.min(total, ex.paid); x.annex = ex.annex || []; x.status = x.paid + 0.009 >= total && total > 0 ? "paid" : x.paid > 0 ? "partial" : "pending"; }
+      x.state = effStatus(x, today()); x.balance = money(total - paid); x.project_name = [...new Set(items.map(i => i.pname).filter(Boolean))].join(" · ");
+      ({ t, extra } = invoiceArgs(x, kind)); extra.hash = "#w/invoices"; extra.draft = x; }
     else if (d.client) {   // something not created yet (a new project, task, invoice): the form's own values
       t = { client_email: String(d.client).toLowerCase().trim(), ref: "", title: clip(d.title, 120), confirmed_date: isDate(d.date) ? d.date : null, status: "accepted" }; extra = { name: clip(d.name, 120), id: "" }; }
     else return json({ ok: false }, 400);
@@ -1898,13 +1911,14 @@ async function adminPost(ctx, d){
     if (!extra.to && (d.pid || t.ref)) extra = { ...extra, ...(await projWhere(D, d.pid, t.ref, en)) };
     if (+d.count > 1) extra.count = Math.min(30, Math.round(+d.count));
     t = { ...t, where: extra.w ? h(extra.w) : "" };
-    const m = d.client && /^invoice/.test(kind) ? { subject: "", html: "" } : composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
+    const m = d.client && /^invoice/.test(kind) && !extra.draft ? { subject: "", html: "" } : composeMail(u, t, kind, extra, hash); if (!m) return json({ ok: false, error: "kind" }, 400);
     if (d.client && / · $/.test(m.subject)) { const s2 = m.subject.slice(0, -3); m.html = m.html.split(h(m.subject)).join(h(s2)); m.subject = s2; }   // no task number before it exists
     const P = await prefsOf(D, u.email).catch(() => null), cfg = await waConfig(env), cl = await D.prepare("SELECT phone FROM clients WHERE email=?").bind(u.email).first();
     const devices = (await D.prepare("SELECT (SELECT COUNT(*) FROM push_subs WHERE email=?) + (SELECT COUNT(*) FROM tg_links WHERE email=?) AS n").bind(u.email, u.email).first()).n;
     const line = shortText(lang, kind, tellData(t, extra), ST_LABEL[lang], 700), link = SITE + (en ? "/en" : "") + "/workspace" + hash, first = String(u.name || "").trim().split(/\s+/)[0];
     const wa = (en ? "Hello" + (first ? " " + first : "") + "," : "مرحباً" + (first ? " " + first : "") + "،") + "\n\n*" + m.subject.replace(/\*/g, "") + "*\n" + line + "\n\n" + link + "\n\n" + (en ? "With our regards,\n*Eyeblink Studio*" : "مع خالص التقدير،\n*Eyeblink Studio*");
-    return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, card: waCard(kind, t, extra, m.subject, line, en), phone: (P && P.wa_phone) || (cl && cl.phone) || "",
+    const doc = extra.draft ? billPage({ ...extra.draft, links: JSON.stringify(extra.draft.links) }, u, lang, { project: extra.draft.project_name, email: (await siteSettings(env)).email, work: await invoiceWork(D, { ...extra.draft, links: JSON.stringify(extra.draft.links) }, en) }) : undefined;
+    return json({ ok: true, account: true, lang, name: u.name || "", subject: m.subject, html: m.html, wa, doc, card: waCard(kind, t, extra, m.subject, line, en), phone: (P && P.wa_phone) || (cl && cl.phone) || "",
       channels: { email: !!(P ? (P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) : true), push: devices > 0, wa: !!(P && P.consent && P.wa_phone && waReady(env, cfg)) },
       why: { email: P && !(P.email_cats[CAT[kind] || "tasks"] || ESSENTIAL.includes(CAT[kind] || "tasks")) ? "off" : "", push: devices > 0 ? "" : "none", wa: !waReady(env, cfg) ? "meta" : !(P && P.consent && P.wa_phone) ? "consent" : "" } });
   }
