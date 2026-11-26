@@ -542,6 +542,9 @@ function billHTML(x, cl, lang, opt){
 .ebi .ok{color:#13794a}.ebi .part{color:#B45309}.ebi .late{color:#b42318}.ebi .off{color:#6b7286}.ebi .st small{margin:0;font-size:12px}
 .ebi .nt{margin-top:18px;font-size:12.5px;line-height:1.75}
 .ebi .ax{margin-top:26px}.ebi .ax h4{margin:0;font-size:11.5px;color:#1C45E6}.ebi .ax table{margin-top:8px}.ebi .ax th{border-bottom-width:1px}.ebi .ax td{padding:8px 0;font-size:12.5px}.ebi .ax .k{color:#6b7286}.ebi .ax .d{width:120px;text-align:end;color:#6b7286}.ebi .ax .n{font-size:11px;color:#6b7286;margin-top:8px}
+/* text typed in the other language (an Arabic line on an English invoice, or the reverse) keeps its own direction; the column keeps its edge */
+.ebi td,.ebi .ti,.ebi .pt b,.ebi .mt b,.ebi .st small{unicode-bidi:plaintext}
+.ebi[dir=ltr] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:left}.ebi[dir=rtl] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:right}
 .ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .no{font:400 12px "EB Osw",Arial,sans-serif;letter-spacing:.04em}
 @media (max-width:620px){.ebi{padding:26px 18px 20px}.ebi .mt{gap:22px}.ebi .q{width:56px}.ebi .u,.ebi .a{width:86px}}@media (max-width:400px){.ebi .pt{grid-template-columns:1fr}}
 @media print{.ebi{padding:14mm 15mm 12mm;max-width:none}}
