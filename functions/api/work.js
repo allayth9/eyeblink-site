@@ -545,7 +545,7 @@ function billHTML(x, cl, lang, opt){
 .ebi .pl{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700}.ebi .pl::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
 .ebi .ok{color:#13794a}.ebi .part{color:#B45309}.ebi .late{color:#b42318}.ebi .off{color:#6b7286}.ebi .st small{margin:0;font-size:12px}
 .ebi .nt{margin-top:18px;font-size:12.5px;line-height:1.75}
-.ebi .ax{margin-top:26px}.ebi .ax h4{margin:0;font-size:11.5px;color:#1C45E6}.ebi .ax table{margin-top:8px}.ebi .ax th{border-bottom-width:1px}.ebi .ax td{padding:8px 0;font-size:12.5px}.ebi .ax .k{color:#6b7286}.ebi .ax .d{width:120px;text-align:end;color:#6b7286}.ebi .ax .n{font-size:11px;color:#6b7286;margin-top:8px}
+.ebi .ax{margin-top:26px}.ebi .ax h4{margin:0;font-size:11.5px;color:#1C45E6}.ebi .ax table{margin-top:8px}.ebi .ax th{border-bottom-width:1px}.ebi .ax td{padding:8px 0;font-size:12.5px}.ebi .ax .k{color:#1C45E6}.ebi .ax .d{width:120px;text-align:end;color:#6b7286}.ebi .ax .n{font-size:11px;color:#6b7286;margin-top:8px}
 /* text typed in the other language (an Arabic line on an English invoice, or the reverse) keeps its own direction; the column keeps its edge */
 .ebi td,.ebi .ti,.ebi .pt b,.ebi .mt b,.ebi .st small{unicode-bidi:plaintext}
 .ebi[dir=ltr] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:left}.ebi[dir=rtl] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:right}
@@ -559,7 +559,7 @@ function billHTML(x, cl, lang, opt){
 <div class="dts"><span><small>${L.issued}</small><b>${dt(x.issue_date)}</b></span>${x.due_date && ["pending", "partial", "overdue"].includes(st) ? `<i></i><span><small>${L.due}</small><b>${dt(x.due_date)}</b></span>` : ""}${x.period ? `<i></i><span><small>${L.period}</small><b>${h(x.period)}</b></span>` : ""}</div>
 <div class="rl"></div>
 <div class="pt"><div><small>${L.from}</small><b>Eyeblink Studio</b></div>
- <div><small>${L.to}</small><b>${h(cl.name || "")}</b><bdi dir="ltr">${h(cl.email || x.client_email)}</bdi></div></div>
+ <div><small>${L.to}</small><b>${h(cl.name || x.client_email)}</b></div></div>
 ${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
 <table><thead><tr><th>${L.desc}</th><th class="q">${L.qty}</th><th class="u">${L.unit}</th><th class="a">${L.amount}</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="sm">${x.discount ? sumRow(L.sub, fmt(sub, c)) + sumRow(L.disc, "−" + fmt(x.discount, c)) : ""}${sumRow(L.total, fmt(x.total, c), "tot")}${x.paid ? sumRow(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? sumRow(L.refunded, "−" + fmt(x.refunded, c)) : ""}${st !== "paid" && st !== "cancelled" && st !== "refunded" ? sumRow(L.bal, fmt(x.balance, c)) : ""}</div>
