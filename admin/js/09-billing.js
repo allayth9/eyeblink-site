@@ -95,8 +95,9 @@
         '<div class="bow-a" role="radiogroup" aria-label="المبلغ من الباقة">'+[['half','50% · '+$(o.price/2)],['full','كاملة · '+$(o.price)],['other','مبلغ آخر'],['none','لا شيء']].map(function(x){ return '<label><input type="radio" name="owa0" value="'+x[0]+'"'+(x[0]==='full'?' checked':'')+'><span>'+esc(x[1])+'</span></label>'; }).join('')+
         '<input type="number" min="0" step="any" class="bow-p" data-owx="0" placeholder="المبلغ" dir="ltr" hidden></div></div>'+
         // the units this payment covers: filled from the package by the share chosen above, editable
-        ((o.pkgUnits||[]).length?'<div class="bow-cv"><span class="small muted">ما تغطيه هذه الدفعة</span>'+o.pkgUnits.map(function(u){ return '<label class="bow"><span>'+esc(u.name)+' <small class="muted">· في الباقة '+u.inc+'</small></span><input type="number" min="0" max="999" step="1" class="bow-p" data-owu="'+esc(u.id)+'" value="'+u.inc+'" dir="ltr"></label>'; }).join('')+
-          '<span class="small muted">ما لم يُنفَّذ منها بعد يظهر في الفاتورة «متبقياً»، ويُحتسب كل عمل منها عند تسليمه</span></div>':'')+'</div>':'')+
+        ((o.pkgUnits||[]).length?'<div class="bow-cv"><h5>ما تغطيه هذه الدفعة</h5><div class="cv-rows">'+o.pkgUnits.map(function(u){ return '<label class="cv-u"><span>'+esc(u.name)+' <small>· في الباقة '+u.inc+'</small></span><input type="number" min="0" max="999" step="1" data-owu="'+esc(u.id)+'" value="'+u.inc+'" dir="ltr" aria-label="عدد '+esc(u.name)+'"></label>'; }).join('')+'</div>'+
+          '<div class="cv-xs" data-owxs></div><button class="cv-add" type="button" data-owxadd>+ بند آخر ضمن الدفعة</button>'+
+          '<p class="cv-cap">ما لم يُنفَّذ بعد يظهر في الفاتورة «متبقياً»، ويُحتسب كل عمل عند تسليمه. البند الآخر (كشعار البرنامج) بلا سعر، ولا يغيّر المبلغ.</p></div>':'')+'</div>':'')+
       (o.pkgTasks&&o.pkgTasks.length?'<div class="bow-g"><span class="small muted">الشغل الذي تغطيه هذه الدفعة (ضمن الباقة، لم تذكره فاتورة بعد)</span>'+o.pkgTasks.map(function(x,i){ return ck('p'+i,x.done,esc(x.title)+' <small class="muted">· '+esc(x.pname)+' · '+(x.done?esc(wd(x.date)):'قيد التنفيذ')+'</small>'); }).join('')+'</div>':'')+
       (o.extras.length?'<div class="bow-g"><span class="small muted">إضافات وافق عليها العميل</span>'+o.extras.map(function(e,i){ var sum=e.items.reduce(function(a,x){ return a+x.amount; },0);
           return ck('x'+i,true,esc(e.title)+' <small class="muted">· '+esc(e.pname)+' · '+esc(e.items.map(function(x){ return x.name; }).join('، '))+'</small>','<b dir="ltr">'+esc($(sum))+'</b>'); }).join('')+'</div>':'')+
@@ -111,6 +112,15 @@
   function bOweUnits(f){ var em=f.elements.email.value, o=OWE[em]; if(!o||!o.pkgUnits) return; var r=f.querySelector('input[name="owa0"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="0"]');
     var k=w==='full'?1:w==='half'?.5:w==='other'?Math.min(1,(+(x&&x.value)||0)/o.price):0;
     o.pkgUnits.forEach(function(u){ var i=f.querySelector('[data-owu="'+u.id+'"]'); if(i) i.value=Math.round(u.inc*k); }); }
+  var XST=[['todo','لم يبدأ'],['wip','قيد التنفيذ'],['done','سُلّم']];
+  function bExtraRow(o,e,k){ var T=(o.pkgTasks||[]).concat(o.others||[]);
+    return '<div class="cv-x" data-owxi="'+k+'"><div class="cv-xh"><input data-xn dir="auto" placeholder="مثلاً: شعار البرنامج" value="'+esc(e.name||'')+'" aria-label="اسم البند"><input data-xc type="number" min="1" max="99" step="1" value="'+(e.n||1)+'" dir="ltr" aria-label="العدد"><button class="cv-del" type="button" data-owxdel="'+k+'" aria-label="احذف البند">×</button></div>'+
+      '<div class="bow-a" role="radiogroup" aria-label="حالة البند">'+XST.map(function(s){ return '<label><input type="radio" name="owxs'+k+'" value="'+s[0]+'"'+((e.st||'todo')===s[0]?' checked':'')+'><span>'+s[1]+'</span></label>'; }).join('')+'</div>'+
+      (T.length?'<select data-xt aria-label="مهمة البند"><option value="">بلا مهمة (الحالة تختارها أنت)</option>'+T.map(function(t){ return '<option value="'+esc(t.id)+'"'+(e.task===t.id?' selected':'')+'>'+esc(t.title+' · '+t.pname)+'</option>'; }).join('')+'</select>':'')+'</div>'; }
+  function bExtraRead(f){ return [].map.call(f.querySelectorAll('[data-owxi]'),function(r){ var s=r.querySelector('input[type=radio]:checked'), t=r.querySelector('[data-xt]');
+    return {name:r.querySelector('[data-xn]').value.trim(),n:Math.max(1,Math.round(+r.querySelector('[data-xc]').value)||1),st:s?s.value:'todo',task:t&&t.value||undefined}; }); }
+  function bExtraDraw(f,list){ var o=OWE[f.elements.email.value], box=f.querySelector('[data-owxs]'); if(!o||!box) return;
+    box.innerHTML=list.map(function(e,k){ return bExtraRow(o,e,k); }).join(''); }
   function bOweApply(f){ var em=f.elements.email.value, o=OWE[em]; if(!o) return; var on=function(k){ var i=f.querySelector('[data-ow="'+k+'"]'); return i&&i.checked; };
     var items=[], tasks=[], pkg=[], annex={}, miss=false, parts=[];
     if(o.pkg&&o.price>0){ var r=f.querySelector('input[name="owa0"]:checked'), w=r?r.value:'none', x=f.querySelector('[data-owx="0"]');
@@ -118,9 +128,11 @@
       if(w==='other'&&!(a>0)){ miss=true; if(x) x.focus(); }
       else if(a>0){ items.push({desc:a===o.price?'الباقة كاملة':a===o.price/2?'دفعة الباقة · 50%':'دفعة من الباقة',qty:1,unit:a,project:'',group:'pkg'}); pkg.push({month:new Date().toISOString().slice(0,7),amount:a,kind:'pkg'}); } }
     if(miss) return toast('اكتب المبلغ من الباقة',true);
+    var extra=bExtraRead(f).filter(function(e){ return e.name; });
     var cover={}; if(pkg.length) [].forEach.call(f.querySelectorAll('[data-owu]'),function(i){ var v=Math.round(+i.value); if(v>0) cover[i.dataset.owu]=Math.min(999,v); });
     (o.pkgTasks||[]).forEach(function(x,i){ if(!on('p'+i)) return; tasks.push(x.id); (annex[x.pname]=annex[x.pname]||[]).push({t:x.title,d:x.done?x.date:''}); });
     if(pkg.length) parts.push('دفعة من الباقة');
+    bExtraRead(f).forEach(function(e){ if(e.name&&e.task&&tasks.indexOf(e.task)<0) tasks.push(e.task); });
     o.extras.forEach(function(e,i){ if(!on('x'+i)) return; tasks.push(e.id); e.items.forEach(function(x){ items.push({desc:e.title+' · '+x.name+(x.detail?' ('+x.detail+')':''),qty:1,unit:x.amount,project:e.pid||''}); }); });
     o.units.forEach(function(u,i){ if(!on('u'+i)) return; tasks.push(u.id); items.push({desc:u.title+' · '+u.unit,qty:1,unit:u.price,project:u.pid||''}); });
     o.others.forEach(function(x,i){ if(!on('r'+i)) return; var w=f.querySelector('input[name="owr'+i+'"]:checked');
@@ -133,7 +145,7 @@
     if(!items.length) return toast('لم تحدد شيئاً',true);
     var n=tasks.length; if(n) parts.push(n===1?'مهمة واحدة':n===2?'مهمتان':n+' مهام');
     var tot=items.reduce(function(a,i){ return a+i.qty*i.unit; },0);
-    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,pkg:pkg,cover:Object.keys(cover).length?cover:undefined},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
+    BFORM={email:em,items:items,title:'',currency:o.cur||'$',links:{tasks:tasks,pkg:pkg,cover:Object.keys(cover).length?cover:undefined,extra:extra.length?extra:undefined},annex:Object.keys(annex).map(function(k){ return {k:k,items:annex[k]}; }),credit:Math.min(o.credit||0,tot),built:parts.join(' · ')};
     renderBilling(); }
   function bGroups(f,first){ var P=bPN(f), sc=f._sc, nm={}; P.forEach(function(p){ nm[p.id]=p.name; });
     var keys=P.filter(function(p){ return sc.all||sc.keys[p.id]; }).map(function(p){ return p.id; }).concat(sc.keys['']?['']:[]); if(!keys.length){ sc.keys['']=1; keys=['']; }
@@ -188,7 +200,9 @@
   function workTag(x){ var w=x&&x.work; return w?'<span class="tag '+(w.complete?'ok':'wait')+'">'+(w.complete?'اكتمل الشغل':'الشغل '+w.done+' من '+w.n)+'</span>':''; }
   function bcovPick(id){ var P=BCOV[id]; if(!P) return ''; if(!P.linked) return '<p class="hint">جارٍ التحميل…</p>';
     var it=function(r){ return '<label class="bow"><input type="checkbox" data-bcv="'+esc(r.id)+'"'+(P.sel[r.id]?' checked':'')+'><span>'+esc(r.title)+' <small class="muted">· '+esc(r.pname)+'</small></span><span class="tag '+(r.done?'ok':'wait')+'">'+(r.done?'سُلّمت':'قيد التنفيذ')+'</span></label>'; };
-    return '<div class="bcov" data-bcid="'+esc(id)+'">'+(P.linked.length?'<span class="small muted">مشمولة الآن</span>'+P.linked.map(it).join(''):'')+
+    var xs=(P.extra||[]).map(function(e,k){ return '<div class="cv-x"><div class="cv-xh2"><b>'+esc(e.name)+'</b><small class="muted">· '+e.n+'</small></div>'+(e.task?'<span class="small muted">حالته تتبع مهمته</span>':
+      '<div class="bow-a" role="radiogroup" aria-label="حالة '+esc(e.name)+'">'+XST.map(function(s){ return '<label><input type="radio" name="bcx'+k+'" data-bcx="'+k+'" value="'+s[0]+'"'+(e.st===s[0]?' checked':'')+'><span>'+s[1]+'</span></label>'; }).join('')+'</div>')+'</div>'; }).join('');
+    return '<div class="bcov" data-bcid="'+esc(id)+'">'+(xs?'<span class="small muted">بنود أخرى ضمن الدفعة</span>'+xs:'')+(P.linked.length?'<span class="small muted">مشمولة الآن</span>'+P.linked.map(it).join(''):'')+
       (P.open.length?'<span class="small muted">يمكن إضافتها (لم تربطها أي فاتورة)</span>'+P.open.map(it).join(''):'<p class="hint">لا توجد أعمال أخرى غير مربوطة بفاتورة.</p>')+
       '<div class="actions"><button class="btn sm primary" type="button" data-bcvs="'+esc(id)+'">احفظ الأعمال المشمولة</button><button class="btn sm" type="button" data-bcov="'+esc(id)+'">إلغاء</button></div>'+
       '<span class="small muted">المبلغ لا يتغيّر، والفاتورة لا تُرسل من جديد</span></div>'; }
@@ -230,11 +244,13 @@
       '<p class="hint bhint">الفوترة يدوية: لا بوابة دفع. تُصدر فاتورة للعميل المتعاقد، وتسجّل كل دفعة عند وصولها، فتتغيّر الحالة تلقائياً: بانتظار الدفع ← مدفوعة جزئياً ← مدفوعة، وتصبح «متأخرة» بعد تاريخ الاستحقاق ويصل العميلَ تذكير واحد. طلبات الموقع تظهر هنا للاطلاع فقط، ودفعاتها من تبويب الطلبات كما هي.</p>';
     var f=$('#panel').querySelector('.bform'); if(f){ if(!f.querySelector('.btk')){ var tk=document.createElement('aside'); tk.className='btk'; tk.setAttribute('aria-live','polite'); f.appendChild(tk); } bInit(f,BFORM&&BFORM.id?BILL.invoices.filter(function(x){return x.id===BFORM.id})[0]:null); }
   }
-  document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f&&e.target.hasAttribute('data-owx')) return bOweUnits(f); if(f&&e.target.hasAttribute('data-owu')) return; if(f) bformSync(f); });
+  document.addEventListener('input',function(e){ if(TAB!=='billing') return; var f=e.target.closest&&e.target.closest('.bform'); if(f&&e.target.hasAttribute('data-owx')) return bOweUnits(f); if(f&&e.target.closest('[data-owu],[data-owxi]')) return; if(f) bformSync(f); });
   document.addEventListener('change',function(e){ if(TAB!=='billing') return; var s=e.target; if(s.hasAttribute('data-impc')){ IMP.email=s.value; IMP.files=[]; renderBilling(); return; } if(s.hasAttribute('data-impf')){ impRead(s.files); return; } if(s.dataset.bf){ BF[s.dataset.bf]=s.value; renderBilling(); return; }
     if(s.dataset.bcv){ var bp=BCOV[s.closest('.bcov').dataset.bcid]; if(bp) bp.sel[s.dataset.bcv]=s.checked; return; }
+    if(s.dataset.bcx){ var bq=BCOV[s.closest('.bcov').dataset.bcid]; if(bq){ bq.extra[+s.dataset.bcx].st=s.value; bq.xdirty=true; } return; }
     if(s.name==='rcv'){ s.closest('.brcv').querySelector('.row').hidden=!s.checked; return; }
     if(/^owr\d+$/.test(s.name)){ var px=s.closest('.bow-a').querySelector('[data-owp]'); px.hidden=s.value!=='price'; var cb=s.closest('.bow-r').querySelector('[data-ow]'); cb.checked=true; if(!px.hidden) px.focus(); return; }
+    if(s.closest&&s.closest('[data-owxi]')) return;
     if(/^owa\d+$/.test(s.name)){ var ox=s.closest('.bow-a').querySelector('[data-owx]'); ox.hidden=s.value!=='other'; if(!ox.hidden) ox.focus(); bOweUnits(s.closest('.bform')); return; }
     var f=s.closest&&s.closest('.bform'); if(f){ if(s.name==='email'){ if(BFORM) BFORM.items=null; f._sc={all:false,keys:{}}; f._init=[]; f.querySelector('.bgroups').innerHTML=''; bInit(f,null); return; } bformSync(f); } });
   document.addEventListener('submit',function(e){ var f=e.target; if(!f.classList||!f.classList.contains('bform')) return; e.preventDefault(); var E=f.elements;
@@ -248,6 +264,8 @@
         if(IM&&IMP){ IMP.files[IM.i].st='saved'; loadBilling(); renderBilling(); return; } BOPEN='ws:'+j.id; route(true); } }).catch(function(e){ if(/no taken/.test(String(e&&e.message))) toast('هذا الرقم مستخدم لفاتورة أخرى',true); }); });
   document.addEventListener('click',function(e){ if(TAB!=='billing') return; var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-bowe')){ bOweApply(b.closest('.bform')); return; }
+    if(b.hasAttribute('data-owxadd')){ var fx=b.closest('.bform'), lx=bExtraRead(fx); if(lx.length>=10) return; lx.push({}); bExtraDraw(fx,lx); var ins=fx.querySelectorAll('[data-xn]'); ins[ins.length-1].focus(); return; }
+    if(b.dataset.owxdel){ var fd=b.closest('.bform'), ld=bExtraRead(fd); ld.splice(+b.dataset.owxdel,1); bExtraDraw(fd,ld); return; }
     if(b.hasAttribute('data-bowe-redo')){ var em2=BFORM&&BFORM.email; BFORM={email:em2}; if(em2) delete OWE[em2]; renderBilling(); return; }
     if(b.dataset.bmb){ wpost({action:'monthBill',email:b.dataset.bmb}).then(function(j){ if(!j.ok) return toast('تعذّر التحميل',true); if(!j.items.length) return toast('لا بنود لهذا الشهر بعد',true);
         BFORM={email:j.email,project:j.project,items:j.items,title:j.title,currency:j.cur}; renderBilling(); toast('عُبّئت فاتورة الشهر من الاتفاق، راجعها قبل الإرسال'); }); return; }
@@ -275,11 +293,11 @@
     if(b.dataset.bord){ var ob=ORDERS.filter(function(o){ return o.code===b.dataset.bord; })[0]; if(ob){ OOPEN=ob.key; OPICK=true; } OFILTER='all'; TAB='orders'; render(); scrollTo(0,0); return; }
     if(b.dataset.bedit){ BFORM={id:b.dataset.bedit}; renderBilling(); return; }
     if(b.dataset.bcov){ var cid=b.dataset.bcov; if(BCOV[cid]){ delete BCOV[cid]; renderBilling(); return; } BCOV[cid]={sel:{}}; renderBilling();
-      fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({action:'invoiceCover',id:cid})}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok||!BCOV[cid]) return; BCOV[cid]={linked:j.linked,open:j.open,sel:{}}; j.linked.forEach(function(r){ BCOV[cid].sel[r.id]=true; }); renderBilling(); }); return; }
+      fetch(API+'/work',{method:'POST',headers:headers({'content-type':'application/json'}),body:JSON.stringify({action:'invoiceCover',id:cid})}).then(function(r){ return r.json(); }).then(function(j){ if(!j.ok||!BCOV[cid]) return; BCOV[cid]={linked:j.linked,open:j.open,extra:j.extra||[],sel:{}}; j.linked.forEach(function(r){ BCOV[cid].sel[r.id]=true; }); renderBilling(); }); return; }
     if(b.dataset.bcvs){ var sid=b.dataset.bcvs, P=BCOV[sid]; if(!P||!P.linked) return; var add=[], rem=[];
       P.open.forEach(function(r){ if(P.sel[r.id]) add.push(r.id); }); P.linked.forEach(function(r){ if(!P.sel[r.id]) rem.push(r.id); });
-      if(!add.length&&!rem.length){ delete BCOV[sid]; renderBilling(); return; }
-      bpost({action:'invoiceCover',id:sid,add:add,remove:rem},b,'حُدّثت الأعمال المشمولة').then(function(j){ if(j.ok) delete BCOV[sid]; }); return; }
+      if(!add.length&&!rem.length&&!P.xdirty){ delete BCOV[sid]; renderBilling(); return; }
+      bpost({action:'invoiceCover',id:sid,add:add,remove:rem,extra:P.xdirty?P.extra:undefined},b,'حُدّثت الأعمال المشمولة').then(function(j){ if(j.ok) delete BCOV[sid]; }); return; }
     if(b.dataset.bprev){ var id=b.dataset.bprev; if(BPREV[id]){ delete BPREV[id]; renderBilling(); return; }
       fetch(API+'/work?admin=1&invoiceDoc='+encodeURIComponent(id),{headers:headers({}),cache:'no-store'}).then(function(r){ return r.text(); }).then(function(t){ BPREV[id]=t.replace(/src="\/assets\//g,'src="../assets/'); renderBilling(); }); return; }
     if(b.dataset.bsend){ bpost({action:'invoiceSend',id:b.dataset.bsend},b,'أُرسلت الفاتورة إلى العميل'); return; }
