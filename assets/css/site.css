@@ -670,7 +670,8 @@ select{cursor:pointer}
 .acct-link:hover,.acct-link[aria-current]{background:rgba(var(--k-white-rgb),.12)}
 .acct-link svg{width:19px;height:19px;fill:none;stroke:var(--light);stroke-width:1.6;stroke-linecap:round}
 .acct-link .acct-img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}.acct-link.has-pic svg{visibility:hidden}
-.acct-link.in::after{z-index:1;content:"";position:absolute;top:8px;inset-inline-end:8px;width:7px;height:7px;border-radius:50%;background:var(--horizon);box-shadow:0 0 8px var(--horizon)}
+/* signed in: a thin brand ring around the picture instead of a dot */
+.acct-link.in{outline:1.5px solid var(--k-horizon);outline-offset:2px}
 /* ===== sign-in box + modal ===== */
 .auth{display:grid;gap:14px;max-width:440px;margin-inline:auto;text-align:start}
 .auth h2{font-size:clamp(24px,3vw,32px);margin:0}
@@ -1625,6 +1626,7 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
 .wproj .wnew{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;border-radius:999px;color:var(--k-white);text-decoration:none;background:color-mix(in srgb,var(--k) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 40%,transparent);transition:background .25s}
 .wproj .wnew svg{width:15px;height:15px;fill:none;stroke:var(--k);stroke-width:2.2;stroke-linecap:round}
 .wproj .wnew:hover{background:color-mix(in srgb,var(--k) 28%,transparent)}
+.wproj{position:relative}.wnew.ic{position:absolute;top:14px;inset-inline-end:14px;width:34px;height:34px;padding:0;justify-content:center}.wnew.ic svg{width:16px;height:16px}
 .wproj .wq i b{background:linear-gradient(90deg,var(--k),color-mix(in srgb,var(--k) 45%,var(--k-white)))}
 .wprojects-lg{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .wtoggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--mist)}.wtoggle input{width:17px;height:17px;accent-color:var(--ac)}

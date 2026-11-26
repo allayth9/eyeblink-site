@@ -287,7 +287,7 @@
           '<small class="muted">'+esc(HM.left)+' <bdi dir="ltr">'+esc(money((+b.total||0)-(+b.paid||0),b.currency))+'</bdi>'+(b.due_date?' · '+esc(HM.dueOn)+' '+esc(d8(b.due_date)):'')+'</small></div>'+
           '<a class="btn btn-primary wz-go" href="#w/invoices/'+esc(b.id)+'">'+esc(HM.act.bill)+'</a></li>'; }));
     var z1=!j.projects.length?'':wait.length?'<section class="wz1 glass" aria-labelledby="wz1h"><div class="wz-h"><h3 id="wz1h">'+HM.z1+' <span class="wz-n">'+wait.length+'</span></h3><p class="muted small">'+HM.z1P+'</p></div><ul class="wz-l">'+wait.join('')+'</ul></section>'
-      :'<section class="wz1 calm glass"><span class="wz-ok" aria-hidden="true">'+ICO.done+'</span><div><h3>'+HM.calm+'</h3><p class="muted small">'+HM.calmP+'</p></div>'+(act.length?'<a class="btn btn-glass glass" href="#w/new">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</section>';
+      :'<section class="wz1 calm glass"><span class="wz-ok" aria-hidden="true">'+ICO.done+'</span><div><h3>'+HM.calm+'</h3><p class="muted small">'+HM.calmP+'</p></div>'+'</section>';
     var vers=(j.delivered||[]).map(function(d){ return '<li><a href="#w/t/'+esc(d.ref)+'"><span class="wver'+(d.is_final?' fin':'')+'" dir="ltr">'+esc(d.is_final?'Final':d.label)+'</span><span class="wz-t"><b><bdi>'+esc(d.title)+'</bdi></b><small class="muted"><bdi>'+esc(d.project_name)+'</bdi> · '+esc(d8(d.created_at))+'</small></span>'+
         '<span class="dst s-'+esc(d.status)+'">'+esc(T.dl.st[d.status]||d.status)+'</span><span class="wz-rv">'+HM.act.review+' '+ar+'</span></a></li>'; });
     var dates=(j.upcoming||[]).map(function(u){ return {d:u.confirmed_date,h:'<li><a href="#w/t/'+esc(u.ref)+'"><b class="wz-d">'+esc(d8(u.confirmed_date))+'</b><span class="wz-t"><b><bdi>'+esc(u.title)+'</bdi></b><small class="muted"><bdi>'+esc(u.project_name)+'</bdi></small></span></a></li>'}; })
@@ -312,7 +312,7 @@
   function projCard(p){ if(p.single&&!(p.open_tasks||p.done_tasks)) return ''; var open=p.status==='active', k=TYPEC[p.type]||'#3FE0E8';
     return '<article class="wproj glass" style="--k:'+k+'"><a class="wproj-main" href="#w/p/'+esc(p.id)+'"><span class="k">'+esc(p.single?SGK:(T.types[p.type]||p.type))+esc(cadOf(p))+(p.status!=='active'?' · '+esc(T.pst[p.status]||p.status):'')+'</span><h4>'+esc(p.name)+'</h4>'+
       '<p class="muted small">'+(p.open_tasks||0)+' '+T.openTasks+' · '+(p.done_tasks||0)+' '+T.doneTasks+'</p>'+(p.next_date?'<p class="wnext small"><span class="muted">'+HM.next+'</span> <b>'+esc(d8(p.next_date))+'</b></p>':'')+(agPull(p)||(p.quota&&!(DASH&&DASH.agreement)?quotaBar(p.month_tasks||0,p.quota):''))+'</a>'+
-      (open?'<a class="wnew" href="#w/new/'+esc(p.id)+'">'+ICO.plus+'<span>'+T.newTask+'</span></a>':'')+'</article>'; }
+      (open?'<a class="wnew ic" href="#w/new/'+esc(p.id)+'" aria-label="'+esc(T.newTask+' · '+(p.single?SGK:p.name))+'" title="'+esc(T.newTask+' · '+(p.single?SGK:p.name))+'">'+ICO.plus+'</a>':'')+'</article>'; }
   function quotaBar(used,q){ var pc=Math.min(100,Math.round(used*100/q)); return '<div class="wq'+(used>=q?' full':'')+'"><span>'+T.x.quota+': <b>'+used+T.x.quotaOf+q+'</b>'+T.x.thisMonth+'</span><i><b style="width:'+pc+'%"></b></i></div>'; }
   function taskTable(list,withProject){
     if(!list||!list.length) return '<p class="muted small">'+T.noTasks+'</p>';

@@ -501,51 +501,65 @@ const BILL_T = {
         sub:"Subtotal", disc:"Discount", total:"Total", paid:"Paid", bal:"Balance due", refunded:"Refunded", status:"Status", method:"Payment method", paidOn:"Last payment", project:"Project", svc:"Video editing · Motion graphics · Film",
         note:{ open:"Please pay before the due date; the studio will share the payment details.", paid:"Thank you for working with Eyeblink Studio.", cancelled:"This invoice was cancelled and nothing is due.", refunded:"The amount shown above was refunded." } } };
 const BILL_COL = { pending:"#9a6700", partial:"#9a6700", paid:"#127a3a", overdue:"#b42318", cancelled:"#6b7286", refunded:"#3949ab" };
+// the printable invoice (26 Nov): the studio on the right and «invoice» on the left in both languages, one rule under the contact lines,
+// the dates on top, each figure once (amounts in the totals, the state at the foot), every figure on the same edge as its column's head
 function billHTML(x, cl, lang, opt){
-  opt = opt || {}; const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], dir = en ? "ltr" : "rtl", s = en ? "left" : "right", e = en ? "right" : "left", c = x.currency || "$";
-  const F = "font-family:Arial,Helvetica,sans-serif;", ink = "#14172b", grey = "#6b7286", rule = "#e7e9f0";
-  const lab = `${F}font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${grey};`, val = `${F}font-size:12.5px;color:${ink};`, nb = `direction:ltr;unicode-bidi:isolate;white-space:nowrap;`;
-  const th = `padding:0 0 8px;border-bottom:1px solid ${ink};${lab}`, td = `padding:11px 0;border-bottom:1px solid ${rule};${val}vertical-align:top;`;
-  const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year:"numeric", month:"long", day:"numeric" }) : "—";
-  const tot = (k, v, strong, col) => `<tr><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${strong?ink:grey};font-weight:${strong?"bold":"normal"};text-align:${s}">${k}</td><td style="padding:5px 0;${F}font-size:${strong?13:12}px;color:${col||ink};font-weight:${strong?"bold":"normal"};text-align:${e};${nb}">${v}</td></tr>`;
-  const sub = x.items.reduce((a, i) => a + i.unit * i.qty, 0), last = x.payments.length ? x.payments[x.payments.length - 1] : null, st = x.state || x.status;
-  const meta = [[L.no, `<span style="${nb}">${h(x.no)}</span>`], [L.issued, dt(x.issue_date)], [L.due, dt(x.due_date)]].concat(x.period ? [[L.period, h(x.period)]] : []);
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid ${rule};border-radius:10px;text-align:${s};-webkit-print-color-adjust:exact;print-color-adjust:exact">
-<tr><td style="height:3px;line-height:3px;font-size:0;background:#2E62FF;background-image:linear-gradient(90deg,#3FE0E8,#2E62FF,#8B5CFF);border-radius:10px 10px 0 0">&nbsp;</td></tr>
-<tr><td style="padding:26px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
- <td style="vertical-align:middle;text-align:${s}"><img src="${SITE}/assets/img/invoice-logo.png" width="184" height="20" alt="Eyeblink Studio" style="display:inline-block;width:184px;height:20px;border:0"></td>
- <td style="vertical-align:middle;text-align:${e};${F}font-size:20px;font-weight:bold;color:${ink}">${L.title}</td></tr></table></td></tr>
-<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
- ${meta.map(m => `<td style="vertical-align:top;text-align:${s};padding-${e}:8px"><div style="${lab}">${m[0]}</div><div style="${val}margin-top:4px">${m[1]}</div></td>`).join("")}</tr></table></td></tr>
-<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
- <td style="vertical-align:top;width:50%;text-align:${s};padding-${e}:12px"><div style="${lab}">${L.from}</div><div style="${val}margin-top:5px;font-weight:bold">Eyeblink Studio</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey}">${L.svc}<br><span style="${nb}">eyeblinkstudio.com</span>${opt.email ? `<br><span style="${nb}">${h(opt.email)}</span>` : ""}</div></td>
- <td style="vertical-align:top;width:50%;text-align:${s}"><div style="${lab}">${L.to}</div><div style="${val}margin-top:5px;font-weight:bold">${h(cl.name || "")}</div><div style="${F}font-size:11.5px;line-height:1.65;color:${grey};${nb}">${h(cl.email || x.client_email)}</div>${opt.project ? `<div style="${F}font-size:11.5px;color:${grey}">${L.project}: ${h(opt.project)}</div>` : ""}</td>
-</tr></table></td></tr>
-${x.title ? `<tr><td style="padding:20px 30px 0;${F}font-size:14px;font-weight:bold;color:${ink};text-align:${s}">${h(x.title)}</td></tr>` : ""}
-<tr><td style="padding:${x.title ? 12 : 26}px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
- <tr><td style="${th}text-align:${s}">${L.desc}</td><td style="${th}text-align:center;width:52px">${L.qty}</td><td style="${th}text-align:${e};width:92px">${L.unit}</td><td style="${th}text-align:${e};width:92px">${L.amount}</td></tr>
- ${invGroups(x.items, lang === "en").flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (lang === "en" ? "Other items" : "بنود أخرى") }] : []).concat(g.items)).map(i => i.head ? `<tr><td colspan="4" style="padding:14px 0 4px;${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;text-align:${s}">${h(i.head)}</td></tr>` : `<tr><td style="${td}text-align:${s}">${h(i.desc)}</td><td style="${td}text-align:center;${nb}">${i.qty}</td><td style="${td}text-align:${e};color:${grey};${nb}">${fmt(i.unit, c)}</td><td style="${td}text-align:${e};${nb}">${fmt(i.unit * i.qty, c)}</td></tr>`).join("")}
-</table>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;margin-${s}:auto;width:260px;max-width:100%">
- ${x.discount ? tot(L.sub, fmt(sub, c)) + tot(L.disc, "−" + fmt(x.discount, c)) : ""}
- ${tot(L.total, fmt(x.total, c), 1)}
- <tr><td colspan="2" style="padding:6px 0 0;border-top:1px solid ${ink}"></td></tr>
- ${x.paid ? tot(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? tot(L.refunded, "−" + fmt(x.refunded, c)) : ""}
- ${st !== "cancelled" && st !== "refunded" ? tot(L.bal, fmt(x.balance, c), 1, x.balance > 0 ? BILL_COL[st] : "#127a3a") : ""}
-</table></td></tr>
-<tr><td style="padding:22px 30px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fa;border-radius:8px"><tr>
- <td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.status}</div><div style="${F}font-size:12px;margin-top:4px;color:${BILL_COL[st] || ink};font-weight:bold">● ${S[st] || st}</div></td>
- ${last && last.method ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.method}</div><div style="${val}margin-top:4px">${h(last.method)}</div></td>` : ""}
- ${last ? `<td style="padding:12px 14px;text-align:${s}"><div style="${lab}">${L.paidOn}</div><div style="${val}margin-top:4px">${dt(last.date || last.at)}</div></td>` : ""}
-</tr></table></td></tr>
-${x.note ? `<tr><td style="padding:16px 30px 0;${F}font-size:12px;line-height:1.7;color:${ink};text-align:${s}">${h(x.note).replace(/\n/g, "<br>")}</td></tr>` : ""}
-${(x.annex || []).length ? (() => { const R = annexRows(x.annex, en), ah = `padding:0 0 6px;border-bottom:1px solid ${ink};${F}font-size:10.5px;font-weight:bold;color:${grey};`, ad = `padding:7px 0;border-bottom:1px solid ${rule};${F}font-size:12px;`;
-  return `<tr><td style="padding:20px 30px 0"><div style="${F}font-size:11.5px;font-weight:bold;letter-spacing:.04em;color:#1C45E6;margin-bottom:8px;text-align:${s}">${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr><td style="${ah}text-align:${s}">${en ? "Work" : "العمل"}</td><td style="${ah}text-align:${s}">${en ? "Project" : "البرنامج"}</td><td style="${ah}text-align:${e};width:92px">${en ? "Delivered" : "التسليم"}</td></tr>
-${R.map(r => `<tr><td style="${ad}color:${ink};text-align:${s}">${h(r.t)}</td><td style="${ad}color:${grey};text-align:${s}">${h(r.k)}</td><td style="${ad}color:${grey};text-align:${e};${nb}">${h(r.date)}</td></tr>`).join("")}
-<tr><td colspan="3" style="padding:8px 0 0;${F}font-size:11px;color:${grey};text-align:${s}">${annexCount(R.length, en)}</td></tr></table></td></tr>`; })() : ""}
-<tr><td style="padding:16px 30px 24px;${F}font-size:11px;line-height:1.7;color:${grey};text-align:${s}">${L.note[st === "paid" ? "paid" : st === "cancelled" ? "cancelled" : st === "refunded" ? "refunded" : "open"]}</td></tr>
-</table>`;
+  opt = opt || {}; const en = lang === "en", L = BILL_T[en ? "en" : "ar"], S = BILL_ST[en ? "en" : "ar"], c = x.currency || "$";
+  const dt = v => v ? new Date(v.length === 10 ? v + "T12:00:00Z" : v).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { year: "numeric", month: "long", day: "numeric" }) : "—";
+  const N = v => `<bdi dir="ltr">${v}</bdi>`, sub = x.items.reduce((a, i) => a + i.unit * i.qty, 0), last = x.payments.length ? x.payments[x.payments.length - 1] : null, st = x.state || x.status;
+  const tone = { paid: "ok", partial: "part", pending: "part", overdue: "late", cancelled: "off", refunded: "off" }[st] || "part";
+  const state = st === "paid" ? (en ? "Paid in full" : "مدفوعة بالكامل") : (S[st] || st);
+  const side = st === "paid" && last ? (en ? "Last payment " : "آخر دفعة ") + dt(last.date || last.at) + (last.method ? " · " + h(last.method) : "")
+    : st === "cancelled" || st === "refunded" ? L.note[st] : x.due_date ? (en ? "Due by " : x.paid > 0 ? "المتبقي مستحق حتى " : "مستحقة حتى ") + dt(x.due_date) : L.note.open;
+  const rows = invGroups(x.items, en).flatMap((g, _, all) => (all.length > 1 ? [{ head: g.k || (en ? "Other items" : "بنود أخرى") }] : []).concat(g.items))
+    .map(i => i.head ? `<tr class="g"><td colspan="4">${h(i.head)}</td></tr>` : `<tr><td>${h(i.desc)}</td><td class="q">${N(i.qty)}</td><td class="u">${N(fmt(i.unit, c))}</td><td class="a">${N(fmt(i.unit * i.qty, c))}</td></tr>`).join("");
+  const sumRow = (k, v, cls) => `<div${cls ? ` class="${cls}"` : ""}><span>${k}</span><span>${N(v)}</span></div>`;
+  const R = (x.annex || []).length ? annexRows(x.annex, en) : [];
+  return `<style>
+@font-face{font-family:"EB Hay";src:url(/assets/fonts/hayyakum-regular.woff2) format("woff2");font-weight:400}@font-face{font-family:"EB Hay";src:url(/assets/fonts/hayyakum-medium.woff2) format("woff2");font-weight:600 700}
+@font-face{font-family:"EB Man";src:url(/assets/fonts/manrope-400.woff2) format("woff2");font-weight:400}@font-face{font-family:"EB Man";src:url(/assets/fonts/manrope-600.woff2) format("woff2");font-weight:600 700}
+@font-face{font-family:"EB Osw";src:url(/assets/fonts/oswald-400.woff2) format("woff2");font-weight:400 500}
+.ebi{box-sizing:border-box;max-width:780px;margin:0 auto;background:#fff;color:#14172b;padding:48px 50px 30px;font:13.5px/1.65 "EB Hay","EB Man",Tahoma,Arial,sans-serif;font-variant-ligatures:no-common-ligatures;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ebi[dir=ltr]{font-family:"EB Man",Arial,sans-serif}.ebi *{box-sizing:border-box}
+.ebi .hd{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;direction:ltr}
+.ebi .br{display:grid;gap:3px;justify-items:end;text-align:right}.ebi .br img{height:21px;width:auto;margin-bottom:8px}.ebi .br bdi,.ebi .pt bdi{font-family:"EB Man",Arial,sans-serif;font-size:12px;color:#6b7286}
+.ebi .tt{text-align:left}.ebi .tt b{display:block;font-size:30px;font-weight:700;line-height:1}.ebi .tt span{display:block;font:400 14px "EB Osw",Arial,sans-serif;color:#6b7286;margin-top:10px;letter-spacing:.04em}
+.ebi .rl{height:1.5px;background:#14172b;margin:28px 0 22px}
+.ebi .mt{display:flex;gap:44px;flex-wrap:wrap}.ebi small{display:block;font-size:11px;color:#6b7286;margin-bottom:2px}.ebi .mt b{font-weight:600}
+.ebi .pt{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px;padding:18px 0;border-top:1px solid #e7e9f0;border-bottom:1px solid #e7e9f0}.ebi .pt b{display:block;font-size:14px}.ebi .pt bdi{display:block}.ebi[dir=rtl] .pt bdi{text-align:right}
+.ebi .ti{margin-top:22px;font-size:14.5px;font-weight:700}
+.ebi table{width:100%;border-collapse:collapse;margin-top:22px}
+.ebi th{font-size:11px;font-weight:600;color:#6b7286;padding:0 0 10px;border-bottom:1.5px solid #14172b;text-align:start;white-space:nowrap}
+.ebi td{padding:12px 0;border-bottom:1px solid #eef0f5;vertical-align:top}
+.ebi .q{width:64px;text-align:center}.ebi .u,.ebi .a{width:110px;text-align:end}.ebi td.q,.ebi td.u,.ebi td.a{font:400 14px "EB Osw",Arial,sans-serif;white-space:nowrap}.ebi td.u{color:#6b7286}
+.ebi .g td{padding:18px 0 4px;border:0;font-size:11.5px;font-weight:700;color:#1C45E6}
+.ebi .sm{width:300px;max-width:100%;margin-inline-start:auto;margin-top:14px}.ebi .sm div{display:flex;justify-content:space-between;padding:6px 0}.ebi .sm span:last-child{font:400 14px "EB Osw",Arial,sans-serif}
+.ebi .sm .tot{border-top:1.5px solid #14172b;margin-top:6px;padding-top:12px;font-weight:700;font-size:16px}.ebi .sm .tot span:last-child{font-size:20px;font-weight:500}
+.ebi .st{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px;padding:12px 16px;border-radius:12px;background:#f6f7fa}
+.ebi .pl{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700}.ebi .pl::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.ebi .ok{color:#13794a}.ebi .part{color:#B45309}.ebi .late{color:#b42318}.ebi .off{color:#6b7286}.ebi .st small{margin:0;font-size:12px}
+.ebi .nt{margin-top:18px;font-size:12.5px;line-height:1.75}
+.ebi .ax{margin-top:26px}.ebi .ax h4{margin:0;font-size:11.5px;color:#1C45E6}.ebi .ax table{margin-top:8px}.ebi .ax th{border-bottom-width:1px}.ebi .ax td{padding:8px 0;font-size:12.5px}.ebi .ax .k{color:#6b7286}.ebi .ax .d{width:120px;text-align:end;color:#6b7286}.ebi .ax .n{font-size:11px;color:#6b7286;margin-top:8px}
+.ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .no{font:400 12px "EB Osw",Arial,sans-serif;letter-spacing:.04em}
+@media (max-width:620px){.ebi{padding:26px 18px 20px}.ebi .pt{grid-template-columns:1fr}.ebi .mt{gap:22px}.ebi .u,.ebi .a{width:84px}}
+@media print{.ebi{padding:0;max-width:none}}
+</style>
+<div class="ebi" dir="${en ? "ltr" : "rtl"}" lang="${en ? "en" : "ar"}">
+<div class="hd"><div class="br"><img src="${SITE}/assets/img/invoice-logo.png" alt="Eyeblink Studio"><bdi dir="ltr">www.eyeblinkstudio.com</bdi>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
+ <div class="tt"><b>${L.title}</b><span>${h(x.no)}</span></div></div>
+<div class="rl"></div>
+<div class="mt"><div><small>${L.issued}</small><b>${dt(x.issue_date)}</b></div>${x.due_date ? `<div><small>${L.due}</small><b>${dt(x.due_date)}</b></div>` : ""}${x.period ? `<div><small>${L.period}</small><b>${h(x.period)}</b></div>` : ""}</div>
+<div class="pt"><div><small>${L.from}</small><b>Eyeblink Studio</b>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
+ <div><small>${L.to}</small><b>${h(cl.name || "")}</b><bdi dir="ltr">${h(cl.email || x.client_email)}</bdi>${opt.project ? `<small style="margin-top:4px">${L.project}: ${h(opt.project)}</small>` : ""}</div></div>
+${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
+<table><thead><tr><th>${L.desc}</th><th class="q">${L.qty}</th><th class="u">${L.unit}</th><th class="a">${L.amount}</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="sm">${x.discount ? sumRow(L.sub, fmt(sub, c)) + sumRow(L.disc, "−" + fmt(x.discount, c)) : ""}${sumRow(L.total, fmt(x.total, c), "tot")}${x.paid ? sumRow(L.paid, fmt(x.paid, c)) : ""}${x.refunded ? sumRow(L.refunded, "−" + fmt(x.refunded, c)) : ""}${st !== "paid" && st !== "cancelled" && st !== "refunded" ? sumRow(L.bal, fmt(x.balance, c)) : ""}</div>
+<div class="st"><span class="pl ${tone}">${state}</span><small>${side}</small></div>
+${x.note ? `<div class="nt">${h(x.note).replace(/\n/g, "<br>")}</div>` : ""}
+${R.length ? `<div class="ax"><h4>${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</h4><table><thead><tr><th>${en ? "Work" : "العمل"}</th><th>${en ? "Project" : "البرنامج"}</th><th class="d">${en ? "Delivered" : "التسليم"}</th></tr></thead>
+<tbody>${R.map(r => `<tr><td>${h(r.t)}</td><td class="k">${h(r.k)}</td><td class="d">${h(r.date)}</td></tr>`).join("")}</tbody></table><div class="n">${annexCount(R.length, en)}</div></div>` : ""}
+<div class="ft"><span>${en ? "Thank you for working with Eyeblink Studio" : "شكراً لتعاملك مع <bdi>Eyeblink Studio</bdi>"}</span><span class="no">${h(x.no)}</span></div>
+</div>`;
 }
 // the invoice inside an e-mail: the cinema ticket (shared ticketHTML); the printable page (billPage) keeps the white document above
 const BILL_TCOL = { pending:"#F0B43C", partial:"#F0B43C", paid:"#3DDC97", overdue:"#FF6B6B", cancelled:"#9AA6BF", refunded:"#8FA2FF" };
@@ -591,8 +605,7 @@ function billTicket(x, lang, intro, link){
 }
 function billPage(x, cl, lang, opt){
   return `<!doctype html><html lang="${lang === "en" ? "en" : "ar"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(x.no)} · Eyeblink Studio</title>
-<style>@page{size:A5;margin:9mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:transparent}body{padding:0}
-@media print{html,body{background:#fff}table{max-width:none!important;border:0!important}}</style></head><body>${billHTML(x, cl, lang, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
+<style>@page{size:A4;margin:14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;background:#fff}body{padding:0}</style></head><body>${billHTML(x, cl, lang, opt).replace(SITE + "/assets/img/", "/assets/img/")}</body></html>`;
 }
 const htmlRes = (t, st) => new Response(t, { status: st || 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "SAMEORIGIN" } });
 async function invoiceOf(D, id){ return parseI(await D.prepare("SELECT i.*, p.name AS project_name FROM invoices i LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=?").bind(clip(id, 40)).first()); }

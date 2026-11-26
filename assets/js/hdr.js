@@ -7,9 +7,9 @@
   var BASE=body.getAttribute('data-base')||'', API=BASE+'api/', PAGE=body.getAttribute('data-page'), WS=BASE+'workspace';
   var bar=document.querySelector('.nav .bar'), acct=bar&&bar.querySelector('.acct-link');
   if(!bar||!acct||!/^https?:/.test(location.protocol)) return;
-  var T=AR?{ws:'مساحة العمل',acct:'حسابي وطلباتي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',client:'عميل متعاقد',customer:'حساب عميل',
+  var T=AR?{ws:'مساحة العمل',acct:'حسابي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',client:'عميل متعاقد',customer:'حساب عميل',
       site:'العودة إلى الموقع الرئيسي',lang:'English',setWs:'الإعدادات',cat:{all:'الكل',tasks:'المهام',requests:'طلبات المعلومات',deliveries:'التسليمات',comments:'التعليقات',projects:'المشاريع',billing:'الفواتير'},nt:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',seeAll:'كل الإشعارات',err:'تعذّر التحميل.'}
-    :{ws:'Workspace',acct:'My account & requests',inv:'Invoices',set:'Notification settings',tasks:'All tasks',newTask:'New task',out:'Sign out',client:'Active client',customer:'Client account',
+    :{ws:'Workspace',acct:'My account',inv:'Invoices',set:'Notification settings',tasks:'All tasks',newTask:'New task',out:'Sign out',client:'Active client',customer:'Client account',
       site:'Back to the main site',lang:'العربية',setWs:'Settings',cat:{all:'All',tasks:'Tasks',requests:'Information requests',deliveries:'Deliveries',comments:'Comments',projects:'Projects',billing:'Invoices'},nt:'Notifications',all:'Mark all as read',none:'No notifications yet.',seeAll:'All notifications',err:'Could not load.'};
   var ICON={globe:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5S9.6 5.8 12 3.5z"/></svg>',home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20H14.5v-5h-5v5H4z"/></svg>',ws:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg>',
     bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
@@ -63,13 +63,20 @@
     bell.setAttribute('aria-label',T.nt+(n?' ('+n+')':'')); try{ window.dispatchEvent(new CustomEvent('eb:unread',{detail:n})); }catch(_){} }
 
   /* ---- account menu ---- */
-  acct.addEventListener('click',function(e){ if(!S||!S.u) return; e.preventDefault(); if(menu) return closeAll(); closeAll(); openMenu(); });
+  acct.addEventListener('click',function(e){ if(!S||!S.u) return; e.preventDefault(); clearTimeout(hov); if(menu) return closeAll(); closeAll(); openMenu(); });
+  // with a mouse the menu also opens on resting over the picture (a short wait, so passing over it does nothing) and closes on leaving it
+  var hov=0, mouse=matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if(mouse){ var over=function(){ clearTimeout(hov); if(!menu&&S&&S.u) hov=setTimeout(function(){ if(!menu){ closeAll(); openMenu(true); } },180); };
+    var out=function(e){ if(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest('.hmenu,.acct-link')) return; clearTimeout(hov); hov=setTimeout(function(){ if(menu&&!menu.matches(':hover')&&!acct.matches(':hover')) closeAll(); },260); };
+    acct.addEventListener('mouseenter',over); acct.addEventListener('mouseleave',out);
+    document.addEventListener('mouseover',function(e){ if(menu&&e.target.closest&&e.target.closest('.hmenu')) clearTimeout(hov); });
+    document.addEventListener('mouseout',function(e){ if(menu&&e.target.closest&&e.target.closest('.hmenu')) out(e); }); }
   function item(href,icon,label,cls){ return '<a role="menuitem" class="'+(cls||'')+'" href="'+href+'">'+ICON[icon]+'<span>'+esc(label)+'</span></a>'; }
-  function openMenu(){
+  function openMenu(byHover){
     var u=S.u, cl=u.role==='client';
     menu=document.createElement('div'); menu.className='hmenu'; menu.setAttribute('role','menu');
     menu.innerHTML='<div class="hm-h"><b>'+esc(u.name)+'</b><small dir="ltr">'+esc(u.email)+'</small><span class="hm-role'+(cl?' on':'')+'">'+(cl?T.client:T.customer)+'</span></div>'+
-      (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/new','plus',T.newTask,'c-new')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',PAGE==='workspace'?T.setWs:T.set,'c-set')+'<i class="hm-sep"></i>':'')+(PAGE==='workspace'?item(BASE||'./','home',T.site,'c-site')+(bar.querySelector('.lang')?item(bar.querySelector('.lang').getAttribute('href').split('#')[0],'globe',T.lang,'c-lang'):''):'')+
+      (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',PAGE==='workspace'?T.setWs:T.set,'c-set')+'<i class="hm-sep"></i>':'')+(PAGE==='workspace'?item(BASE||'./','home',T.site,'c-site')+(bar.querySelector('.lang')?item(bar.querySelector('.lang').getAttribute('href').split('#')[0],'globe',T.lang,'c-lang'):''):'')+
       item(BASE+'account','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>';
     bar.appendChild(menu); acct.setAttribute('aria-expanded','true'); requestAnimationFrame(function(){ menu.classList.add('show'); });
     menu.querySelector('.hm-out').onclick=function(){ post('account',{action:'logout'}).then(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} location.href=(BASE||'./'); }); };
@@ -77,7 +84,7 @@
       // the language item works like the bar's switch: same view, and the account's e-mail language follows
       if(a.classList.contains('c-lang')){ a.setAttribute('href',a.getAttribute('href').split('#')[0]+location.hash); try{ navigator.sendBeacon(API+'account',new Blob([JSON.stringify({action:'lang',lang:document.documentElement.lang==='en'?'ar':'en'})],{type:'application/json'})); }catch(_){} return; }
       sameHash(e,a); });
-    var f=menu.querySelector('a,button'); if(f) f.focus({preventScroll:true});
+    var f=!byHover&&menu.querySelector('a,button'); if(f) f.focus({preventScroll:true});   // opened by the mouse: no focus ring on the first item
   }
   // a link to the workspace while on it only changes the hash
   function sameHash(e,a){ var h=a.getAttribute('href'); if(PAGE==='workspace'&&h.indexOf(WS)===0){ e.preventDefault(); var x=h.slice(WS.length)||'#w'; if(location.hash!==x) location.hash=x; else window.dispatchEvent(new HashChangeEvent('hashchange')); closeAll(); } else closeAll(); }
