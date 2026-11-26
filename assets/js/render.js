@@ -751,7 +751,8 @@
       var l=document.createElement('ul'); l.className='dsel-list'; l.setAttribute('role','listbox'); l.hidden=true; w.appendChild(l);
       var open=function(on){ l.hidden=!on; w.classList.toggle('open',on); b.setAttribute('aria-expanded',on); if(on){ var c=l.querySelector('[aria-selected="true"]')||l.firstChild; c&&c.focus(); } };
       b.onclick=function(){ open(l.hidden); };
-      l.onclick=function(e){ var li=e.target.closest('li'); if(!li) return; sel.value=li.dataset.v; sel.dispatchEvent(new Event('change',{bubbles:true})); draw(); open(false); b.focus(); };
+      l.onclick=function(e){ e.preventDefault();   // the list sits inside the field's <label>: without this the click also opens the hidden native list
+        var li=e.target.closest('li'); if(!li) return; sel.value=li.dataset.v; sel.dispatchEvent(new Event('change',{bubbles:true})); draw(); open(false); b.focus(); };
       l.onkeydown=function(e){ var li=document.activeElement; if(e.key==='ArrowDown'&&li.nextSibling){ e.preventDefault(); li.nextSibling.focus(); } else if(e.key==='ArrowUp'&&li.previousSibling){ e.preventDefault(); li.previousSibling.focus(); } else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); li.click(); } else if(e.key==='Escape'){ e.stopPropagation(); open(false); b.focus(); } };
       document.addEventListener('click',function(e){ if(!w.contains(e.target)) open(false); });
       var draw=w._draw=function(){ var o=sel.options[sel.selectedIndex]; b.innerHTML='<span class="dv">'+(o&&icon(o.value)||'')+'<span>'+esc(o?(short?short(o.value):o.text):'')+'</span></span><i aria-hidden="true"></i>';
