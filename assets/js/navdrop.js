@@ -24,16 +24,17 @@
     function measure(target,jump){
       if(!isOn()){ css.style.display='none'; S.ready=false; return false; }
       css.style.display='';
-      var lr=list.getBoundingClientRect(), hr=host.getBoundingClientRect();
-      S.w=lr.width; S.h=lr.height; S.ox=lr.left-hr.left; S.oy=lr.top-hr.top;
+      // the bar shrinks with a CSS scale once the page scrolls: screen sizes are turned back into the bar's own units
+      var lr=list.getBoundingClientRect(), hr=host.getBoundingClientRect(), k=(host.offsetWidth&&hr.width/host.offsetWidth)||1;
+      S.w=lr.width/k; S.h=lr.height/k; S.ox=(lr.left-hr.left)/k; S.oy=(lr.top-hr.top)/k;
       var el=items[target]; if(!el) return true;
-      var B=box(el), T=S.t;
-      T.r=B.h/2; T.q=Math.max(0,B.w/2-T.r); T.cy=PAD+B.cy-lr.top;
-      var nx=PAD+B.cx-lr.left;
+      var B0=box(el), T=S.t, B={cx:(B0.cx-lr.left)/k,cy:(B0.cy-lr.top)/k,w:B0.w/k,h:B0.h/k};
+      T.r=B.h/2; T.q=Math.max(0,B.w/2-T.r); T.cy=PAD+B.cy;
+      var nx=PAD+B.cx;
       S.lo=PAD+2; S.hi=PAD+S.w-2;
       if(!S.ready||!jump){ S.a.x=S.b.x=nx; S.a.v=S.b.v=0; S.q=T.q; S.ready=true; }
       else if(Math.abs(nx-T.x)>.5){ S.lead=Math.abs(nx-S.a.x)<=Math.abs(nx-S.b.x)?0:1; S.lagFrom=performance.now()+70; S.moving=true; S.split=false; }
-      T.x=nx; css.style.height=B.h+'px'; css.style.top=(S.oy+B.cy-lr.top-B.h/2)+'px';
+      T.x=nx; css.style.height=B.h+'px'; css.style.top=(S.oy+B.cy-B.h/2)+'px';
       return true;
     }
     function step(dt,now){

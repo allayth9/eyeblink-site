@@ -1099,6 +1099,7 @@ body[data-page="pricing"] .page-hero h1{max-width:none}
 .dsel-btn>i{width:9px;height:9px;border-inline-end:1.6px solid var(--mist);border-bottom:1.6px solid var(--mist);transform:translateY(-2px) rotate(45deg);transition:transform .3s}
 .dsel.open .dsel-btn>i{transform:translateY(2px) rotate(-135deg)}
 .dsel .bt{width:26px;height:26px;border-radius:8px}
+.dsel-btn .dv img,.dsel-list img{height:24px;width:auto;max-width:52px;object-fit:contain;flex:none;border-radius:6px}
 .dsel-list{position:absolute;z-index:5;inset-inline:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;border-radius:16px;max-height:260px;overflow:auto;
   background:linear-gradient(160deg,rgba(22,30,80,.92),rgba(8,12,40,.95));-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
   box-shadow:inset 0 0 0 1px rgba(170,195,255,.2),inset 0 1px 0 rgba(var(--k-white-rgb),.12),0 24px 50px -14px rgba(var(--k-black-rgb),.8);animation:dsIn .25s cubic-bezier(.22,.9,.24,1)}
