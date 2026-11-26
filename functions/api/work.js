@@ -524,8 +524,11 @@ function billHTML(x, cl, lang, opt){
 .ebi{box-sizing:border-box;max-width:780px;margin:0 auto;background:#fff;color:#14172b;padding:48px 50px 30px;font:13.5px/1.65 "EB Hay","EB Man",Tahoma,Arial,sans-serif;font-variant-ligatures:no-common-ligatures;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .ebi[dir=ltr]{font-family:"EB Man",Arial,sans-serif}.ebi *{box-sizing:border-box}
 .ebi .hd{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;direction:ltr}
-.ebi .br{display:grid;gap:3px;justify-items:end;text-align:right}.ebi .br img{height:21px;width:auto;margin-bottom:8px}.ebi .br bdi,.ebi .pt bdi{font-family:"EB Man",Arial,sans-serif;font-size:12px;color:#6b7286}
+.ebi .br{display:grid;justify-items:end;text-align:right;padding-top:4px}.ebi .br img{height:32px;width:auto}.ebi .br bdi,.ebi .pt bdi{font-family:"EB Man",Arial,sans-serif;font-size:12px;color:#6b7286}
 .ebi .tt{text-align:left}.ebi .tt b{display:block;font-size:30px;font-weight:700;line-height:1}.ebi .tt span{display:block;font:400 14px "EB Osw",Arial,sans-serif;color:#6b7286;margin-top:10px;letter-spacing:.04em}
+.ebi .dl{display:grid;grid-template-columns:auto auto;column-gap:16px;row-gap:3px;margin-top:16px;font-size:12.5px}.ebi[dir=rtl] .dl{justify-content:end}.ebi[dir=ltr] .dl{justify-content:start}
+.ebi .dl small{margin:0;font-size:12px}.ebi .dl b{font-weight:600;font-size:12.5px}
+.ebi .rl+.pt{border-top:0;margin-top:0;padding-top:0}
 .ebi .rl{height:1.5px;background:#14172b;margin:28px 0 22px}
 .ebi .mt{display:flex;gap:44px;flex-wrap:wrap}.ebi small{display:block;font-size:11px;color:#6b7286;margin-bottom:2px}.ebi .mt b{font-weight:600}
 .ebi .pt{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px;padding:18px 0;border-top:1px solid #e7e9f0;border-bottom:1px solid #e7e9f0}.ebi .pt b{display:block;font-size:14px}.ebi .pt bdi{display:block}.ebi[dir=rtl] .pt bdi{text-align:right}
@@ -545,16 +548,15 @@ function billHTML(x, cl, lang, opt){
 /* text typed in the other language (an Arabic line on an English invoice, or the reverse) keeps its own direction; the column keeps its edge */
 .ebi td,.ebi .ti,.ebi .pt b,.ebi .mt b,.ebi .st small{unicode-bidi:plaintext}
 .ebi[dir=ltr] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:left}.ebi[dir=rtl] :is(td:not(.q,.u,.a,.d),.ti,.pt b,.mt b){text-align:right}
-.ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .no{font:400 12px "EB Osw",Arial,sans-serif;letter-spacing:.04em}
+.ebi .ft{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:34px;padding-top:14px;border-top:1px solid #e7e9f0;font-size:11.5px;color:#6b7286}.ebi .ft .ct{font:400 11.5px "EB Man",Arial,sans-serif;letter-spacing:.01em}
 @media (max-width:620px){.ebi{padding:26px 18px 20px}.ebi .mt{gap:22px}.ebi .q{width:56px}.ebi .u,.ebi .a{width:86px}}@media (max-width:400px){.ebi .pt{grid-template-columns:1fr}}
 @media print{.ebi{padding:14mm 15mm 12mm;max-width:none}}
 </style>
 <div class="ebi" dir="${en ? "ltr" : "rtl"}" lang="${en ? "en" : "ar"}">
-<div class="hd"><div class="br"><img src="${SITE}/assets/img/invoice-logo.png" alt="Eyeblink Studio"><bdi dir="ltr">www.eyeblinkstudio.com</bdi>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
- <div class="tt"><b>${L.title}</b><span>${h(x.no)}</span></div></div>
+<div class="hd"><div class="br"><img src="${SITE}/assets/img/invoice-logo.png" alt="Eyeblink Studio"></div>
+ <div class="tt"><b>${L.title}</b><span>${h(x.no)}</span><div class="dl" dir="${en ? "ltr" : "rtl"}"><small>${L.issued}</small><b>${dt(x.issue_date)}</b>${x.due_date && ["pending", "partial", "overdue"].includes(st) ? `<small>${L.due}</small><b>${dt(x.due_date)}</b>` : ""}${x.period ? `<small>${L.period}</small><b>${h(x.period)}</b>` : ""}</div></div></div>
 <div class="rl"></div>
-<div class="mt"><div><small>${L.issued}</small><b>${dt(x.issue_date)}</b></div>${x.due_date ? `<div><small>${L.due}</small><b>${dt(x.due_date)}</b></div>` : ""}${x.period ? `<div><small>${L.period}</small><b>${h(x.period)}</b></div>` : ""}</div>
-<div class="pt"><div><small>${L.from}</small><b>Eyeblink Studio</b>${opt.email ? `<bdi dir="ltr">${h(opt.email)}</bdi>` : ""}</div>
+<div class="pt"><div><small>${L.from}</small><b>Eyeblink Studio</b></div>
  <div><small>${L.to}</small><b>${h(cl.name || "")}</b><bdi dir="ltr">${h(cl.email || x.client_email)}</bdi></div></div>
 ${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
 <table><thead><tr><th>${L.desc}</th><th class="q">${L.qty}</th><th class="u">${L.unit}</th><th class="a">${L.amount}</th></tr></thead><tbody>${rows}</tbody></table>
@@ -563,7 +565,7 @@ ${x.title ? `<div class="ti">${h(x.title)}</div>` : ""}
 ${x.note ? `<div class="nt">${h(x.note).replace(/\n/g, "<br>")}</div>` : ""}
 ${R.length ? `<div class="ax"><h4>${en ? "Work covered by this invoice" : "الأعمال المشمولة بهذه الفاتورة"}</h4><table><thead><tr><th>${en ? "Work" : "العمل"}</th><th>${en ? "Project" : "البرنامج"}</th><th class="d">${en ? "Delivered" : "التسليم"}</th></tr></thead>
 <tbody>${R.map(r => `<tr><td>${h(r.t)}</td><td class="k">${h(r.k)}</td><td class="d">${h(r.date)}</td></tr>`).join("")}</tbody></table><div class="n">${annexCount(R.length, en)}</div></div>` : ""}
-<div class="ft"><span>${en ? "Thank you for working with Eyeblink Studio" : "شكراً لتعاملك مع <bdi>Eyeblink Studio</bdi>"}</span><span class="no">${h(x.no)}</span></div>
+<div class="ft"><span>${en ? "Thank you for working with Eyeblink Studio" : "شكراً لتعاملك مع <bdi>Eyeblink Studio</bdi>"}</span><span class="ct"><bdi dir="ltr">www.eyeblinkstudio.com${opt.email ? " · " + h(opt.email) : ""}</bdi></span></div>
 </div>`;
 }
 // the invoice inside an e-mail: the cinema ticket (shared ticketHTML); the printable page (billPage) keeps the white document above
