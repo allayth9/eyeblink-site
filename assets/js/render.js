@@ -154,6 +154,19 @@
   // under the payment methods: who pays the transfer fees (set in the panel), and the refund policy
   function renderFee(){ var el=document.querySelector('[data-fee]'); if(!el) return; var f=(C.payments||{}).fees, t=f==='client'?UI.feeClient:f==='studio'?UI.feeStudio:'';
     el.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>'+(t?esc(t)+' · ':'')+'<a href="refund">'+UI.refund+'</a></span>'; el.hidden=false; }
+  // the hero's words that take turns on the blink (panel: «كلمات الرمشة»); never set → the studio's four, one word → no change
+  var CUTW={ar:'مشاهد، إعلانات، قصص، تجارب',en:'scenes, ads, stories, experiences'}, cutI=0;
+  function cutWords(){ var h=C.hero||{}, v=h.words==null? CUTW[lang] : L(h.words); return String(v||'').split(/[،,]/).map(function(x){ return x.trim(); }).filter(Boolean); }
+  document.addEventListener('eb:shut',function(){ var g=document.querySelector('.hero h1 .grad'), W=cutWords(); if(!g||W.length<2) return;
+    if(g.dataset.rest==null){ var t=g.textContent.trim(), i=t.search(/\s/); g.dataset.rest=i<0?'':t.slice(i); cutI=0; }
+    cutI=(cutI+1)%W.length; g.textContent=W[cutI]+g.dataset.rest; });
+  // the lead: what follows a blank line is the studio's signature (quieter, a thin line beside it); on phones it folds under «read our view»
+  function heroLead(){ var p=document.querySelector('.hero .lead[data-t="hero.lead"]'); if(!p) return;
+    var parts=String(L(get(C,'hero.lead'))||'').split(/\n\s*\n/), sig=parts.slice(1).join(' ').trim(), s=p.nextElementSibling;
+    if(!s||!s.classList.contains('lead-sig')){ s=document.createElement('div'); s.className='lead-sig'; s.innerHTML='<p></p><button type="button" class="lead-more" aria-expanded="false">'+(AR?'اقرأ رؤيتنا':'Read our view')+' <span aria-hidden="true">↓</span></button>'; p.after(s);
+      s.querySelector('.lead-more').onclick=function(){ var o=s.classList.toggle('open'); p.classList.toggle('open',o); this.setAttribute('aria-expanded',o); }; }
+    s.hidden=!sig; s.querySelector('p').innerHTML=sig;
+    p.innerHTML=parts[0].trim(); }
   function chips(S){ var h='', ig=(C.site&&C.site.instagram)||'eyeblnk';
     h+='<a class="chip glass" href="https://instagram.com/'+esc(ig)+'" target="_blank" rel="noopener">'+brand('instagram')+'<span><small>'+UI.ig+'</small><b class="latin">@'+esc(ig)+'</b></span></a>';
     if(S.email) h+='<a class="chip glass" href="mailto:'+esc(S.email)+'">'+MAILI+'<span><small>'+UI.email+'</small><b class="latin">'+esc(S.email)+'</b></span></a>';
@@ -184,6 +197,7 @@
 
   function renderAll(){
     [].forEach.call(document.querySelectorAll('[data-t]'),function(el){ var v=L(get(C,el.dataset.t)); if(v!==undefined&&v!==null) el.innerHTML=v; });
+    heroLead();   // after the texts are in: the lead splits into its two parts
     var svc=SVC_ID? (C.services||[]).filter(function(s){return s.id===SVC_ID})[0] : null;
     if(svc){ [].forEach.call(document.querySelectorAll('[data-s]'),function(el){ el.innerHTML=esc(L(svc[el.dataset.s])); }); }
     [].forEach.call(document.querySelectorAll('[data-list]'),function(el){ var f=R[el.dataset.list]; if(f) f(el,svc||{}); });

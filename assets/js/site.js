@@ -24,7 +24,8 @@
   if(orb) setTimeout(function(){ orb.classList.remove('opening'); },2000);
   function blink(){ if(reduce||!hero) return; hero.classList.remove('blink'); void hero.getBoundingClientRect(); hero.classList.add('blink'); clearTimeout(hero._bt); hero._bt=setTimeout(function(){hero.classList.remove('blink')},460); }
   if(hero){
-    (function idle(){ setTimeout(function(){ if(!document.hidden){ blink(); if(Math.random()<.22) setTimeout(blink,520); } idle(); },3200+Math.random()*3800); })();
+    // the cut happens on the blink: while the lids are shut (34–52% of the 0.44 s blink) the page may change its word
+    (function idle(){ setTimeout(function(){ if(!document.hidden){ blink(); if(!reduce) setTimeout(function(){ document.dispatchEvent(new Event('eb:shut')); },190); if(Math.random()<.22) setTimeout(blink,520); } idle(); },3200+Math.random()*3800); })();
     hero.closest('.orb').addEventListener('mouseenter',blink);
     var look=hero.querySelector('.look'), top=hero.querySelector('.lid-top'), bot=hero.querySelector('.lid-bot');
     var e={x:0,y:0,vx:0,vy:0,o:0}, K=0.5;                         // K: magnet strength (half of the earlier version)

@@ -72,10 +72,10 @@
     ' gl_Position=projectionMatrix*mv;',
     ' float facing=clamp((mv.z-c.z)*0.9+0.55,0.0,1.0);',
     ' gl_PointSize=uSize*(7.0/-mv.z)*(0.75+d*1.4+push*0.9)*(0.55+0.45*facing);',
-    // colour by original height: pink/violet at the bottom -> blue body -> cyan top
+    // colour by original height, along the identity gradient: deep blue at the bottom -> blue body -> cyan top (was pink/violet below, 27 Nov)
     ' float h=position.y*0.5+0.5;',
-    ' vec3 venus=vec3(0.88,0.48,0.88), dusk=vec3(0.55,0.36,1.0), hour=vec3(0.18,0.42,1.0), horizon=vec3(0.25,0.88,0.93);',
-    ' vec3 col=mix(venus,dusk,smoothstep(0.0,0.22,h));',
+    ' vec3 deep=vec3(0.086,0.22,0.77), blue=vec3(0.11,0.27,0.90), hour=vec3(0.165,0.525,0.90), horizon=vec3(0.25,0.88,0.93);',
+    ' vec3 col=mix(deep,blue,smoothstep(0.0,0.22,h));',
     ' col=mix(col,hour,smoothstep(0.18,0.45,h));',
     ' col=mix(col,horizon,smoothstep(0.55,0.95,h+n*0.15));',
     ' col+=vec3(0.25,0.3,0.35)*push;',
