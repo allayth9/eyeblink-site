@@ -34,7 +34,7 @@ const CSP = nonce => [
   "media-src 'self' blob: https://*.vimeocdn.com",
   "font-src 'self' data:",
   "connect-src 'self' https://vimeo.com https://accounts.google.com https://*.r2.cloudflarestorage.com https://cloudflareinsights.com",
-  "frame-src 'self' https://player.vimeo.com https://www.youtube-nocookie.com https://accounts.google.com",
+  "frame-src 'self' https://player.vimeo.com https://www.youtube-nocookie.com https://accounts.google.com https://drive.google.com",   // Drive: a delivery's «play preview» in the workspace
   "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
   "frame-ancestors 'self'", "report-uri /api/csp",
 ].join("; ");
