@@ -6,12 +6,12 @@
   var BASE=document.body.getAttribute('data-base')||'';
   var SVC_ID=document.body.getAttribute('data-service')||'';
   var UI={
-    ar:{details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.',goAcct:'افتح حسابي',ask:'السعر حسب الطلب',chooseQuote:'اطلب عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
+    ar:{cMail:'للمشاريع والاستفسارات',cIg:'للرسائل السريعة',cWhere:'نعمل عن بُعد',cWhereS:'مع عملاء الخليج والمنطقة العربية',cReply:'خلال 24 ساعة',cReplyS:'في أيام العمل',feeClient:'رسوم التحويل لدى جهة الدفع على العميل، ونوضّح قيمتها قبل الدفع',feeStudio:'نتحمّل رسوم التحويل عنك، فتدفع مبلغ الفاتورة فقط',refund:'سياسة الاسترجاع',details:'التفاصيل',choose:'اطلب',choosePkg:'اطلب الباقة',chosen:'✓ تم الاختيار',save:'وفّر',month:'PACKAGE',signedAs:'سيصل الطلب إلى حسابك: ',needAcct:'بعد الضغط على «أرسل الطلب» تسجّل دخولك بالبريد الإلكتروني أو Google، لتتابع طلبك وتتواصل معنا من حسابك.',goAcct:'افتح حسابي',ask:'السعر حسب الطلب',chooseQuote:'اطلب عرض سعر',from:'يبدأ من',featured:'الأكثر طلباً',watch:'شاهد: ',all:'الكل',
         svc:{editing:'مونتاج',motion:'موشن غرافيك',social:'سوشال ميديا',films:'أفلام'},total:'المجموع التقديري',quote:'حسب المتطلبات',
         sending:'جارٍ الإرسال…',sent:'وصل طلبك',sentP:'رقم طلبك أدناه. سنراجع التفاصيل ونرد عليك خلال 24 ساعة بخطة واضحة.',
         offline:'جهّزنا طلبك',offlineP:'نسخنا تفاصيل الطلب. أرسلها لنا على إنستغرام وسنرد عليك بخطة واضحة.',copy:'نسخ التفاصيل',copied:'تم النسخ',openIG:'افتح إنستغرام',
         pickFirst:'اختر خدمة أولاً',reel:'الشوريل',watchReel:'شاهد الشوريل',brief:'البريف',challenge:'التحدي',idea:'الفكرة',execution:'التنفيذ',result:'النتيجة',wa:'راسلنا على واتساب',draft:'أنت تشاهد مسودة من لوحة التحكم.',exit:'إلغاء المعاينة',pkg:'الباقة',addons:'الإضافات',none:'بدون',qty:'عدد الفيديوهات',platform:'المنصة',payPref:'طريقة الدفع المفضّلة',any:'نحدّدها لاحقاً',next:'ماذا يحدث بعد الإرسال؟',email:'البريد',ig:'إنستغرام',orderT:'طلبك'},
-    en:{details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Priced on request',chooseQuote:'Request a quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
+    en:{cMail:'For projects and questions',cIg:'For quick messages',cWhere:'Working remotely',cWhereS:'With clients across the Gulf and the Arab region',cReply:'Within 24 hours',cReplyS:'On working days',feeClient:'Transfer fees charged by the payment provider are paid by the client, and we state them before you pay',feeStudio:'We cover the transfer fees, so you pay only the invoice amount',refund:'Refund policy',details:'Details',choose:'Order',choosePkg:'Order the package',chosen:'✓ Selected',save:'Save',month:'PACKAGE',signedAs:'This request goes to your account: ',needAcct:'After you press “Send request” you sign in with email or Google, so you can track the request and talk to us from your account.',goAcct:'Open my account',ask:'Priced on request',chooseQuote:'Request a quote',from:'From',featured:'Most requested',watch:'Watch: ',all:'All',
         svc:{editing:'Editing',motion:'Motion',social:'Social',films:'Films'},total:'Estimated total',quote:'Based on brief',
         sending:'Sending…',sent:'Request received',sentP:'Your request number is below. We will review the details and reply within 24 hours with a clear plan.',
         offline:'Your request is ready',offlineP:'We copied your request details. Send them to us on Instagram and we will reply with a clear plan.',copy:'Copy details',copied:'Copied',openIG:'Open Instagram',
@@ -146,6 +146,14 @@
   function payIcon(x){ return x.logo? '<img alt="'+esc(x.name)+'" src="'+esc(url(x.logo))+'">' : (bkey(x.id)? brand(bkey(x.id)) : (PAYI[x.id]||PAYI._)); }
   // contact chips: Instagram, e-mail, WhatsApp (when a number is set) — used by the CTA band and the contact page
   var MAILI='<i class="bt mail"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.6"/><path d="m4 7 8 6 8-6"/></svg></i>';
+  // the contact page: one card with the e-mail (the panel's, else info@), Instagram, how we work and when we reply
+  function contactCard(S){ var ig=(C.site&&C.site.instagram)||'eyeblnk', em=S.email||'info@eyeblinkstudio.com';
+    return '<div class="cinfo glass"><div><small>EMAIL</small><a class="latin" href="mailto:'+esc(em)+'">'+esc(em)+'</a><em>'+UI.cMail+'</em></div>'+
+      '<div><small>INSTAGRAM</small><a class="latin" href="https://instagram.com/'+esc(ig)+'" target="_blank" rel="noopener">@'+esc(ig)+'</a><em>'+UI.cIg+'</em></div>'+
+      '<div><small>STUDIO</small><b>'+UI.cWhere+'</b><em>'+UI.cWhereS+'</em></div><div><small>REPLY</small><b>'+UI.cReply+'</b><em>'+UI.cReplyS+'</em></div></div>'; }
+  // under the payment methods: who pays the transfer fees (set in the panel), and the refund policy
+  function renderFee(){ var el=document.querySelector('[data-fee]'); if(!el) return; var f=(C.payments||{}).fees, t=f==='client'?UI.feeClient:f==='studio'?UI.feeStudio:'';
+    el.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>'+(t?esc(t)+' · ':'')+'<a href="refund">'+UI.refund+'</a></span>'; el.hidden=false; }
   function chips(S){ var h='', ig=(C.site&&C.site.instagram)||'eyeblnk';
     h+='<a class="chip glass" href="https://instagram.com/'+esc(ig)+'" target="_blank" rel="noopener">'+brand('instagram')+'<span><small>'+UI.ig+'</small><b class="latin">@'+esc(ig)+'</b></span></a>';
     if(S.email) h+='<a class="chip glass" href="mailto:'+esc(S.email)+'">'+MAILI+'<span><small>'+UI.email+'</small><b class="latin">'+esc(S.email)+'</b></span></a>';
@@ -186,7 +194,9 @@
     // the studio sets how strongly the live background shows (0–100, from the panel)
     if(S.bgOpacity!=null&&S.bgOpacity!=='') document.documentElement.style.setProperty('--field-op',Math.max(0,Math.min(100,+S.bgOpacity))/100);
     [].forEach.call(document.querySelectorAll('[data-show]'),function(el){ el.hidden = S[el.dataset.show]===false; });
-    [].forEach.call(document.querySelectorAll('[data-contact-extra],[data-cta-links]'),function(el){ el.innerHTML=chips(S); });
+    [].forEach.call(document.querySelectorAll('[data-cta-links]'),function(el){ el.innerHTML=chips(S); });
+    [].forEach.call(document.querySelectorAll('[data-contact-extra]'),function(el){ el.innerHTML=contactCard(S); });
+    renderFee();
     var of=document.getElementById('order'), oc=document.getElementById('orderClosed');
     if(of&&oc){ var open=S.ordersOpen!==false; of.hidden=!open; oc.hidden=open; }
     var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt && tt!=='Eyeblink Studio') document.title=tt;
