@@ -869,7 +869,10 @@
 
   /* ---- deliveries: V1, V2… Final, with approval or timestamped change requests ---- */
   function embedOf(u){ var m;
-    if((m=/drive\.google\.com\/file\/d\/([\w-]{10,})/.exec(u))||(m=/drive\.google\.com\/open\?id=([\w-]{10,})/.exec(u))) return 'https://drive.google.com/file/d/'+m[1]+'/preview';
+    // Google Drive: a file (any of its link shapes), a folder (shown as a grid of its files), or a Docs / Slides / Sheets file
+    if((m=/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([\w-]{10,})/.exec(u))) return 'https://drive.google.com/embeddedfolderview?id='+m[1]+'#grid';
+    if((m=/drive\.google\.com\/file\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(u))||(m=/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]{10,})/.exec(u))) return 'https://drive.google.com/file/d/'+m[1]+'/preview';
+    if((m=/docs\.google\.com\/(document|presentation|spreadsheets)\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(u))) return 'https://docs.google.com/'+m[1]+'/d/'+m[2]+'/preview';
     if((m=/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/.exec(u))) return 'https://www.youtube-nocookie.com/embed/'+m[1];
     if((m=/vimeo\.com\/(?:video\/)?(\d{6,})/.exec(u))) return 'https://player.vimeo.com/video/'+m[1]+'?dnt=1';   // no tracking cookies
     return ''; }
