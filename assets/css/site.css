@@ -297,10 +297,17 @@ footer .c{font-family:var(--latin);font-size:13px;color:var(--dim);direction:ltr
 .ripple-wrap i{position:absolute;border-radius:50%;transform:scale(0);opacity:0;background:radial-gradient(circle,transparent 52%,rgba(220,240,255,.13) 60%,rgba(var(--k-white-rgb),.05) 64%,transparent 70%);animation:drop 1.25s cubic-bezier(.16,.7,.25,1) forwards}
 @keyframes drop{0%{transform:scale(.02);opacity:.95}100%{transform:scale(1);opacity:0}}
 /* ---- stats ---- */
-.stats{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:16px}
-.stat{padding:24px 26px;display:flex;flex-direction:column;gap:4px}
-.stat b{font-family:var(--latin);font-weight:300;font-size:clamp(40px,5vw,62px);line-height:1;letter-spacing:-.02em;direction:ltr;unicode-bidi:isolate;align-self:flex-start;color:transparent;background:linear-gradient(100deg,var(--light),var(--horizon) 55%,var(--dusk));-webkit-background-clip:text;background-clip:text;padding-block:.08em}
-.stat span{color:var(--mist);font-size:15.5px}
+.stats{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:16px}
+/* the eyelid (27 Nov): no boxes; a thin arc from the logo's lid over each number, drawn slowly while it counts */
+.stat{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding-block:6px}
+.stat .lid{width:120px;height:auto;overflow:visible;margin-bottom:2px}
+.stat .lid path{fill:none;stroke-width:1.3;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:140}
+.stat .lid stop{stop-color:var(--k-hour);stop-opacity:.15}.stat .lid stop.m{stop-color:var(--k-horizon);stop-opacity:1}
+.stat.cu .lid path{stroke-dashoffset:140}
+.stat.cu.go .lid path{stroke-dashoffset:0;transition:stroke-dashoffset 3.4s var(--ease)}
+.stat b{font-family:var(--latin);font-weight:300;font-size:clamp(40px,5vw,64px);line-height:1;letter-spacing:-.01em;direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:flex-start;color:transparent;background:linear-gradient(180deg,var(--k-white) 10%,var(--mist) 120%);-webkit-background-clip:text;background-clip:text;padding-block:.06em}
+.stat b i{font-style:normal;font-size:.52em;color:var(--horizon);margin-top:.16em;margin-inline:.06em}
+.stat>span{color:var(--mist);font-size:16px}
 /* ---- service worlds (only inside a service page) ---- */
 .svc-hero{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:center;padding-block:clamp(40px,7vw,96px) clamp(24px,4vw,48px)}
 .svc-hero h1{font-size:clamp(38px,5.6vw,74px);margin-block:14px 18px}
@@ -420,14 +427,14 @@ div.done .code{font-family:var(--latin);font-size:28px;letter-spacing:.12em;dire
   .hero h1{line-height:1.65}
   .actions .btn{flex:1 1 auto;justify-content:center}
   section.block{padding-block:clamp(44px,12vw,72px)}
-  .stats{grid-template-columns:repeat(3,1fr);gap:10px}
-  .stat{padding:16px 14px}
+  .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .stat .lid{width:66px}
   .stat b{font-size:34px}
-  .stat span{font-size:13px}
+  .stat>span{font-size:13px}
   .world{max-width:100%}
   .order{padding:20px}
 }
-@media (max-width:420px){ .stats{grid-template-columns:1fr 1fr 1fr} .stat b{font-size:28px} .dock a{font-size:11px} }
+@media (max-width:420px){ .stats{grid-template-columns:1fr 1fr 1fr} .dock a{font-size:11px} }
 .story{padding:clamp(26px,5vw,56px);display:grid;gap:14px;max-width:880px}
 .story h2{font-size:clamp(28px,3.8vw,46px)}
 .story .prose p{color:var(--mist);margin:0 0 14px;max-width:62ch;font-size:clamp(16px,1.5vw,18px)}
@@ -854,10 +861,21 @@ select{cursor:pointer}
 /* the hero lead's second paragraph: a quiet signature with a thin line beside it; folded on phones */
 .hero .lead-sig{margin:-12px 0 30px}.hero .lead-sig[hidden]{display:none}
 .hero .lead-sig p{margin:0;max-width:56ch;font-size:clamp(14px,1.2vw,15.5px);line-height:1.85;color:var(--dim);padding-inline-start:20px;border-inline-start:1px solid rgba(var(--k-horizon-rgb),.45)}
-.hero .lead-more{display:none;align-items:center;gap:6px;margin:0;padding:6px 0;border:0;background:none;font:inherit;font-size:14px;color:var(--horizon);cursor:pointer}
+.hero .lead-more{display:none;align-items:center;gap:8px;height:32px;margin:0;padding:0 15px;border:0;border-radius:999px;font:inherit;font-size:13px;line-height:1;color:var(--light);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  background:linear-gradient(180deg,rgba(var(--k-white-rgb),.08),rgba(var(--k-white-rgb),.02));box-shadow:inset 0 0 0 1px rgba(var(--k-white-rgb),.15),inset 0 1px 0 rgba(var(--k-white-rgb),.12)}
+.hero .lead-more svg{width:10px;height:10px;fill:none;stroke:var(--horizon);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:rotate .45s var(--ease)}
+.hero .lead-more .t2,.hero .lead-sig.open .lead-more .t1{display:none}.hero .lead-sig.open .lead-more .t2{display:inline}.hero .lead-sig.open .lead-more svg{rotate:180deg}
+@keyframes sigIn{from{opacity:0;translate:0 4px}}@keyframes sigLine{from{transform:scaleY(0)}}
 @media (max-width:640px){.hero .stage{max-width:200px}.hero .ring text{font-size:20px}
   .hero .lead{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}.hero .lead.open{display:block;-webkit-line-clamp:unset;line-clamp:unset}
-  .hero .lead-sig{margin:-18px 0 20px}.hero .lead-more{display:inline-flex}.hero .lead-sig:not(.open) p{display:none}.hero .lead-sig.open .lead-more{display:none}.hero .lead-sig.open p{margin-top:4px}}
+  .hero .lead-sig{margin:-18px 0 20px}.hero .lead-more{display:inline-flex}.hero .lead-sig:not(.open) p{display:none}.hero .lead-sig.open p{margin-top:4px}
+  .hero .lead-sig p{border-inline-start:0;position:relative}
+  .hero .lead-sig p::before{content:"";position:absolute;inset-inline-start:0;top:.35em;bottom:.35em;width:1px;background:rgba(var(--k-horizon-rgb),.45);transform-origin:top}
+  .hero .lead-sig.open p{animation:sigIn .7s var(--ease) both}.hero .lead-sig.open p::before{animation:sigLine 1s var(--ease) both}
+  .hero .lead-sig.open .lead-more{margin-top:12px}}
+@media (prefers-reduced-motion:reduce){ .hero .lead-sig p,.hero .lead-sig p::before{animation:none!important} .stat.cu .lid path{stroke-dashoffset:0} }
+/* phones: 40px between the hero's two buttons and the eyelids over the numbers (the section's own inline padding-top is 0) */
+@media (max-width:860px){ section[data-sec="stats"]{padding-top:22px!important} }
 .legal a{color:var(--horizon);text-decoration:underline;text-decoration-color:rgba(var(--k-horizon-rgb),.35);text-underline-offset:3px}.legal a:hover{text-decoration-color:currentColor}
 .legal ul{margin:0 0 10px;padding-inline-start:20px;display:grid;gap:6px;color:var(--mist);line-height:1.8}.legal li::marker{color:var(--horizon)}
 .legal .ltable{overflow-x:auto;margin:6px 0 14px;border-radius:16px;box-shadow:inset 0 0 0 1px var(--line)}

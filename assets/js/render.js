@@ -64,7 +64,10 @@
   /* ---------------- renderers ---------------- */
   var R={
     stats:function(el){ var s=C.stats||[]; el.style.setProperty('--n',Math.min(s.length,4)||1);
-      el.innerHTML=s.map(function(x){return '<div class="stat glass rv"><b data-count="'+esc(x.value)+'">'+esc(x.value)+'</b><span>'+esc(L(x.label))+'</span></div>'}).join(''); el.hidden=!s.length;
+      // the eyelid: an arc from the logo over each number; the + and any unit sit small beside the digits
+      el.innerHTML=s.map(function(x,i){ var v=String(x.value==null?'':x.value), m=/^(\D*)(\d+(?:[.,]\d+)?)(.*)$/.exec(v),
+          n=m? (m[1]?'<i>'+esc(m[1])+'</i>':'')+'<span class="v">'+esc(m[2])+'</span>'+(m[3]?'<i>'+esc(m[3])+'</i>':'') : esc(v);
+        return '<div class="stat rv"><svg class="lid" viewBox="0 0 120 22" aria-hidden="true"><defs><linearGradient id="ebl'+i+'"><stop offset="0"/><stop class="m" offset=".5"/><stop offset="1"/></linearGradient></defs><path pathLength="140" d="M4 19 Q60 -5 116 19" stroke="url(#ebl'+i+')"/></svg><b data-count="'+esc(v)+'">'+n+'</b><span>'+esc(L(x.label))+'</span></div>'}).join(''); el.hidden=!s.length;
       if((C.layout||{}).countUp!==false) countUp(el); },
     'services-cards':function(el){ var mode=el.dataset.mode||'teaser';
       el.innerHTML=(C.services||[]).map(function(s){
@@ -163,7 +166,7 @@
   // the lead: what follows a blank line is the studio's signature (quieter, a thin line beside it); on phones it folds under «read our view»
   function heroLead(){ var p=document.querySelector('.hero .lead[data-t="hero.lead"]'); if(!p) return;
     var parts=String(L(get(C,'hero.lead'))||'').split(/\n\s*\n/), sig=parts.slice(1).join(' ').trim(), s=p.nextElementSibling;
-    if(!s||!s.classList.contains('lead-sig')){ s=document.createElement('div'); s.className='lead-sig'; s.innerHTML='<p></p><button type="button" class="lead-more" aria-expanded="false">'+(AR?'اقرأ رؤيتنا':'Read our view')+' <span aria-hidden="true">↓</span></button>'; p.after(s);
+    if(!s||!s.classList.contains('lead-sig')){ s=document.createElement('div'); s.className='lead-sig'; s.innerHTML='<p></p><button type="button" class="lead-more" aria-expanded="false"><span class="t1">'+(AR?'اقرأ رؤيتنا':'Read our view')+'</span><span class="t2">'+(AR?'إخفاء':'Hide')+'</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>'; p.after(s);
       s.querySelector('.lead-more').onclick=function(){ var o=s.classList.toggle('open'); p.classList.toggle('open',o); this.setAttribute('aria-expanded',o); }; }
     s.hidden=!sig; s.querySelector('p').innerHTML=sig;
     p.innerHTML=parts[0].trim(); }
@@ -243,10 +246,12 @@
     [].forEach.call(box.querySelectorAll('b[data-count]'),function(b){
       var m=/^(\D*)(\d+(?:[.,]\d+)?)(.*)$/.exec(b.dataset.count); if(!m) return;
       var pre=m[1], num=parseFloat(m[2].replace(',','.')), dec=(m[2].split(/[.,]/)[1]||'').length, suf=m[3];
-      b.textContent=pre+(0).toFixed(dec)+suf; b.style.minWidth=(String(m[2]).length+pre.length+suf.length)*.62+'em';
-      var io=new IntersectionObserver(function(es){ if(!es[0].isIntersecting) return; io.disconnect();
-        var t0=performance.now(), D=1600+Math.min(num,400)*2;
-        (function f(now){ var k=Math.min(1,(now-t0)/D), e=1-Math.pow(1-k,4); b.textContent=pre+(num*e).toFixed(dec)+suf; if(k<1) requestAnimationFrame(f); else { b.textContent=b.dataset.count; b.classList.add('landed'); } })(t0);
+      // the digits live in .v (the + beside them is styled apart); the stat's eyelid hides until the count starts, then draws with it
+      var vv=b.querySelector('.v'), st=b.closest('.stat'), put=function(x){ if(vv) vv.textContent=x; else b.textContent=pre+x+suf; };
+      put((0).toFixed(dec)); b.style.minWidth=(String(m[2]).length+pre.length+suf.length)*.62+'em'; if(st) st.classList.add('cu');
+      var io=new IntersectionObserver(function(es){ if(!es[0].isIntersecting) return; io.disconnect(); if(st) st.classList.add('go');
+        var t0=performance.now(), D=2800+Math.min(num,400)*2;   // slower (27 Nov): about 3 to 3.6 s
+        (function f(now){ var k=Math.min(1,(now-t0)/D), e=1-Math.pow(1-k,4); put((num*e).toFixed(dec)); if(k<1) requestAnimationFrame(f); else { if(vv) vv.textContent=m[2]; else b.textContent=b.dataset.count; b.classList.add('landed'); } })(t0);
       },{threshold:.6}); io.observe(b); });
   }
   /* ---------------- layout + look (admin → التصميم والترتيب) ---------------- */
