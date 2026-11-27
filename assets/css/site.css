@@ -58,7 +58,7 @@ a{color:inherit;text-decoration:none}
 /* ---------- sky + particle field ---------- */
 .sky{position:fixed;inset:0;z-index:-3;background:
   radial-gradient(140% 95% at 8% 125%,rgba(var(--k-g4-rgb),.17) 0%,rgba(var(--k-g3-rgb),.08) 32%,rgba(var(--k-g3-rgb),.025) 58%,transparent 80%),   /* identity blue, soft (was violet, 27 Nov) */
-  radial-gradient(80% 60% at 90% -10%,rgba(var(--k-hour-rgb),.45),transparent 60%),
+  radial-gradient(120% 90% at 92% -18%,rgba(var(--k-hour-rgb),.26) 0%,rgba(var(--k-hour-rgb),.17) 16%,rgba(var(--k-hour-rgb),.09) 34%,rgba(var(--k-hour-rgb),.04) 52%,rgba(var(--k-hour-rgb),.014) 70%,transparent 88%),   /* top light: softer, fading out over a long distance (27 Nov) */
   radial-gradient(120% 80% at 50% 120%,var(--deep) 0%,var(--night) 62%)}
 #field{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:0;transition:opacity 1.6s var(--ease)}
 #field.on{opacity:var(--field-op,1)}
@@ -515,7 +515,7 @@ select{cursor:pointer}
 @media (max-width:860px){
   .sky{background:
     radial-gradient(140% 70% at 6% 120%,rgba(var(--k-g4-rgb),.15) 0%,rgba(var(--k-g3-rgb),.06) 35%,transparent 78%),
-    radial-gradient(90% 55% at 90% -10%,rgba(var(--k-hour-rgb),.4),transparent 60%),
+    radial-gradient(120% 70% at 94% -14%,rgba(var(--k-hour-rgb),.24) 0%,rgba(var(--k-hour-rgb),.15) 18%,rgba(var(--k-hour-rgb),.075) 36%,rgba(var(--k-hour-rgb),.03) 55%,rgba(var(--k-hour-rgb),.01) 72%,transparent 88%),
     radial-gradient(120% 80% at 50% 120%,var(--deep) 0%,var(--night) 62%)}
   #field.on{opacity:calc(var(--field-op,1) * .85)}
   .grid3,.pkgs,.steps,.brief,.deliver{display:flex!important;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;gap:12px;
@@ -905,13 +905,6 @@ footer .c a{color:inherit}
 .qa[open] summary i::after{transform:rotate(0)}
 .qa .a{padding:0 22px 20px;color:var(--mist);line-height:1.85;font-size:15.5px}
 @media (max-width:860px){ .faq,.revs{display:grid!important} .revs{grid-template-columns:1fr} }
-/* ===== floating WhatsApp ===== */
-.wa-float{position:fixed;z-index:60;left:max(18px,env(safe-area-inset-left,0px));bottom:max(22px,env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;
-  display:grid;place-items:center;background:#25D366;box-shadow:0 14px 30px -10px rgba(37,211,102,.7),0 0 0 6px rgba(37,211,102,.12);transition:transform .3s}
-.wa-float:hover{transform:scale(1.07)}
-.wa-float svg{width:28px;height:28px;fill:none;stroke:var(--k-white);stroke-width:1.6;stroke-linejoin:round}
-.wa-float svg .f{fill:var(--k-white);stroke:none}
-@media (max-width:860px){ .wa-float{bottom:calc(92px + env(safe-area-inset-bottom,0px));width:48px;height:48px} }
 /* ===== case study under the film ===== */
 /* the player never scrolls: the film is sized to the screen's height minus the title bar (and the case study, when
    there is one), so a tall 9:16 film fits whole; the moving pattern behind it may overflow without making a scrollbar */
@@ -1967,10 +1960,7 @@ a.wkpi:hover .wk-go{opacity:1;transform:none}
 .help-float:hover{transform:translateY(-2px)}
 .help-float i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:600 13px/1 Manrope,sans-serif;font-style:normal;color:var(--night);background:var(--horizon)}
 @media (max-width:860px){ .help-float{bottom:calc(92px + env(safe-area-inset-bottom,0px))} }
-/* the help pill sits above the WhatsApp bubble instead of under it */
-body:has(.wa-float) .help-float{bottom:calc(max(22px,env(safe-area-inset-bottom,0px)) + 68px)}
-@media (max-width:860px){ body:has(.wa-float) .help-float{bottom:calc(92px + 60px + env(safe-area-inset-bottom,0px))} }
-/* contact card: WhatsApp drawn like the floating bubble — white mark on the WhatsApp green */
+/* contact card: WhatsApp — white mark on the WhatsApp green */
 .chip .bt.soc[data-k="whatsapp"]{background:#25D366!important;box-shadow:none}
 .chip .bt.soc[data-k="whatsapp"] svg circle{display:none}
 .chip .bt.soc[data-k="whatsapp"] svg path{fill:var(--k-white)!important}
@@ -2011,7 +2001,6 @@ footer .row{justify-content:space-between;align-items:center}
 .fbase .copy:hover{color:var(--mist)}
 .fbase .foot2{margin:0;padding:0;border:0}
 @media (max-width:620px){ footer .row{flex-direction:column;align-items:flex-start;gap:18px} .fbase{flex-direction:column-reverse;align-items:flex-start} }
-body:has(.wa-float) .fbase{padding-inline-end:76px}
 /* currency: a compact picker in the order window's title bar; switching fades the numbers instead of reloading */
 .bar2 .curhost.mini{margin-inline-start:auto;margin-inline-end:10px;display:block}
 .curhost.mini .dsel{min-width:0}
@@ -2091,9 +2080,9 @@ html{-webkit-tap-highlight-color:transparent}
 .lb-pre.off{opacity:0}
 /* cinema: while the film plays on its page and is in view, the header, the dock and the floating buttons step aside */
 header.nav,.dock,.help-float{transition:translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
-.wa-float,.help-float{transition:transform .3s,translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
+.help-float{transition:transform .3s,translate .6s cubic-bezier(.22,.9,.24,1),opacity .45s ease}
 body.cine header.nav{translate:0 -140%;opacity:0;pointer-events:none}
-body.cine .dock,body.cine .wa-float,body.cine .help-float{translate:0 170%;opacity:0;pointer-events:none}
+body.cine .dock,body.cine .help-float{translate:0 170%;opacity:0;pointer-events:none}
 /* the work page: the player waits, paused, under the cover; once ready, taps go through the cover to it */
 .case-player>iframe.case-pre{z-index:0}
 .case-player>.case-pre~img{z-index:1}

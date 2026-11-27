@@ -216,12 +216,7 @@
     var pg=document.body.getAttribute('data-page'), tt=pg&&C.titles&&L(C.titles[pg]); if(tt && tt!=='Eyeblink Studio') document.title=tt;
     applyLayout(pg);
     window.EBC=C;
-    // floating WhatsApp button (only when a number is set; not on the account page, nor in the workspace: it has WhatsApp in its help sheet)
-    var wa=String(S.whatsapp||'').replace(/[^0-9]/g,''), wf=document.querySelector('.wa-float');
-    if(wa && !document.querySelector('.acct-page,.ws-page')){ if(!wf){ wf=document.createElement('a'); wf.className='wa-float'; wf.target='_blank'; wf.rel='noopener'; document.body.appendChild(wf); }
-      wf.href='https://wa.me/'+wa; wf.setAttribute('aria-label',UI.wa); wf.title=UI.wa;
-      wf.innerHTML='<svg viewBox="0 0 24 24"><path class="f" d="'+((window.EB_BRANDS&&EB_BRANDS.whatsapp&&EB_BRANDS.whatsapp.p)||'')+'"/></svg>'; }
-    else if(wf) wf.remove();
+    // no floating WhatsApp button (27 Nov): WhatsApp lives in the contact card
     // the account page: one tap to tell support what went wrong (the workspace has its own help button in its top bar)
     var hf=document.querySelector('.help-float');
     if(document.querySelector('.acct-page') ){ if(!hf){ hf=document.createElement('a'); hf.className='help-float'; document.body.appendChild(hf); }
