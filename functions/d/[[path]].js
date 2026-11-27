@@ -98,7 +98,7 @@ function page(status, lang, title, main, doc){
     const clauses = !q ? `<section class="clauses">${(b.clauses || []).map((c, i) => `<article><h3><em class="num">${String(i + 1).padStart(2, "0")}</em>${h(c.h)}</h3><p>${nl(c.p)}</p></article>`).join("")}</section>` : "";
     const ref = doc.accepted ? doc.token.slice(0, 8).toUpperCase() + "-" + doc.accepted.ip.slice(0, 4).toUpperCase() : "";
     const stamp = doc.accepted ? `<div class="stamp"><div class="sh"><i>✓</i>${h(L.done[type])}</div><dl><div><dt>${h(L.by)}</dt><dd>${h(doc.accepted.name)}</dd></div><div><dt>${h(L.at)}</dt><dd>${h(dateOf(doc.accepted.at, en, 1))}</dd></div><div><dt>${h(L.sref)}</dt><dd><bdi class="num">${h(ref)}</bdi></dd></div></dl></div>` : "";
-    const form = !doc.accepted && !expired ? `<form class="accept" id="acc" novalidate><h4>${h(L.accH[type])}</h4><p>${h(L.accP[type])}</p>${!q && !b.client.email ? `<input class="femail" name="email" type="email" autocomplete="email" dir="ltr" placeholder="${h(L.email)}" maxlength="200">` : ""}<div class="frow"><input name="name" autocomplete="name" dir="auto" placeholder="${h(L.name)}" required maxlength="120"><button type="submit">${h(L.btn[type])}</button></div><label class="chk"><input type="checkbox" name="agree"> ${h(L.agree[type])}</label><div class="msg" role="status"></div></form>` : "";
+    const form = !doc.accepted && !expired ? `<form class="accept" id="acc" novalidate><h4>${h(L.accH[type])}</h4><p>${h(L.accP[type])}</p>${!q && !b.client.email ? `<input class="femail" name="email" type="email" autocomplete="email" dir="ltr" placeholder="${h(L.email)}" maxlength="200">` : ""}<div class="frow"><input name="name" autocomplete="name" dir="auto" placeholder="${h(L.name)}" required maxlength="120"><button type="submit">${h(L.btn[type])}</button></div><label class="chk"><input type="checkbox" name="agree"> <span>${h(L.agree[type])}${tm ? "" : en ? `, along with the <a href="/en/terms" target="_blank" rel="noopener">terms</a> and <a href="/en/refund" target="_blank" rel="noopener">refund policy</a>` : ` وعلى <a href="/terms" target="_blank" rel="noopener">الشروط</a> و<a href="/refund" target="_blank" rel="noopener">سياسة الاسترجاع</a>`}</span></label><div class="msg" role="status"></div></form>` : "";
     const exp = expired ? `<div class="expired">${h(L.expired)}</div>` : "";
     const ob = doc.onboard, base = en ? "/en" : "";
     const nextQ = q && doc.accepted ? `<div class="next"><span class="lab">${h(L.next)}</span><p>${h(L.nextQ)}</p></div>` : "";
@@ -248,6 +248,7 @@ html[lang=en] .accept h4{font:600 16px Manrope,sans-serif}
 .frow button:disabled{opacity:.5;cursor:default}
 .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:#3d4257;cursor:pointer}
 .chk input{width:16px;height:16px;accent-color:var(--hour)}
+.chk a{color:var(--hour);text-decoration:underline;text-decoration-color:rgba(46,98,255,.35);text-underline-offset:3px}.chk a:hover{text-decoration-color:currentColor}
 .msg{min-height:0;font-size:12.5px;margin-top:8px}
 .msg.err{color:#c0392b}
 .stamp{border:1px solid rgba(46,98,255,.35);border-radius:14px;padding:16px 20px;background:rgba(46,98,255,.04)}
