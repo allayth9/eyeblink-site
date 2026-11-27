@@ -4,19 +4,12 @@
 // More than 10 wrong attempts from one address locks it for an hour.
 export async function sha256(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 // a client's chosen moment (28 Nov): ISO UTC + their IANA zone; shown to the client in their zone, to the studio in Damascus time
-const TZN = { "Asia/Damascus":["دمشق","Damascus"],"Asia/Dubai":["الإمارات","UAE"],"Asia/Riyadh":["السعودية","Saudi Arabia"],"Asia/Qatar":["قطر","Qatar"],"Asia/Kuwait":["الكويت","Kuwait"],
-  "Asia/Bahrain":["البحرين","Bahrain"],"Asia/Muscat":["عُمان","Oman"],"Asia/Amman":["الأردن","Jordan"],"Asia/Beirut":["لبنان","Lebanon"],"Asia/Baghdad":["العراق","Iraq"],"Asia/Aden":["اليمن","Yemen"],
-  "Africa/Cairo":["مصر","Egypt"],"Africa/Tripoli":["ليبيا","Libya"],"Africa/Tunis":["تونس","Tunisia"],"Africa/Algiers":["الجزائر","Algeria"],"Africa/Casablanca":["المغرب","Morocco"],"Africa/Khartoum":["السودان","Sudan"],
-  "Europe/Istanbul":["تركيا","Türkiye"],"Europe/London":["لندن","London"],
-  "Asia/Jerusalem":["فلسطين","Palestine"],"Asia/Tel_Aviv":["فلسطين","Palestine"],"Israel":["فلسطين","Palestine"],"Asia/Hebron":["فلسطين","Palestine"],"Asia/Gaza":["فلسطين","Palestine"] };
 export function cleanMoment(iso, tz){ const s = String(iso || "").slice(0, 30), d = new Date(s); if (!s || isNaN(d)) return null;
   let z = String(tz || "").slice(0, 40); try { new Intl.DateTimeFormat("en", { timeZone: z }); } catch (e) { z = ""; } return { at: d.toISOString(), tz: z || "Asia/Damascus" }; }
 export function momentText(iso, tz, en){ const d = new Date(iso); if (!iso || isNaN(d)) return ""; tz = tz || "Asia/Damascus";
   try { const day = d.toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { timeZone: tz, day: "numeric", month: "long", year: "numeric" }),
-      t = d.toLocaleTimeString(en ? "en-US" : "ar-u-nu-latn", { timeZone: tz, hour: "numeric", minute: "2-digit" }), n = TZN[tz];
-    let lab = n ? (en ? n[1] + " time" : "بتوقيت " + n[0]) : "";
-    if (!lab) { const o = (new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(d).find(x => x.type === "timeZoneName") || {}).value || "GMT"; lab = en ? o : "بتوقيت " + o.replace("GMT", "غرينتش "); }
-    return day + (en ? ", " : " · ") + t + " (" + lab + ")"; } catch (e) { return d.toISOString().slice(0, 16).replace("T", " ") + " UTC"; } }
+      t = d.toLocaleTimeString(en ? "en-US" : "ar-u-nu-latn", { timeZone: tz, hour: "numeric", minute: "2-digit" });
+    return day + (en ? ", " : " · ") + t; } catch (e) { return d.toISOString().slice(0, 16).replace("T", " ") + " UTC"; } }
 export function same(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }
 export async function isAdmin(req, env){
   // the panel's session (cookie set by GET /api/auth after the password was checked): no hashing on every request

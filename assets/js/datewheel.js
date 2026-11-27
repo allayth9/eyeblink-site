@@ -15,24 +15,17 @@
   var L=EN?{pick:'Choose a date',ok:'Done',today:'Today',clear:'Clear',prev:'Previous year',next:'Next year',day:'Day',month:'Month',time:'Time',am:'AM',pm:'PM'}
           :{pick:'اختر التاريخ',ok:'تم',today:'اليوم',clear:'مسح',prev:'السنة السابقة',next:'السنة التالية',day:'اليوم',month:'الشهر',time:'الوقت',am:'ص',pm:'م'};
 
-  /* ---------- time zones: our own names, so a zone is always called what we want it called ---------- */
-  var TZ={ 'Asia/Damascus':['دمشق','Damascus'],'Asia/Dubai':['الإمارات','UAE'],'Asia/Riyadh':['السعودية','Saudi Arabia'],'Asia/Qatar':['قطر','Qatar'],
-    'Asia/Kuwait':['الكويت','Kuwait'],'Asia/Bahrain':['البحرين','Bahrain'],'Asia/Muscat':['عُمان','Oman'],'Asia/Amman':['الأردن','Jordan'],'Asia/Beirut':['لبنان','Lebanon'],
-    'Asia/Baghdad':['العراق','Iraq'],'Asia/Aden':['اليمن','Yemen'],'Africa/Cairo':['مصر','Egypt'],'Africa/Tripoli':['ليبيا','Libya'],'Africa/Tunis':['تونس','Tunisia'],
-    'Africa/Algiers':['الجزائر','Algeria'],'Africa/Casablanca':['المغرب','Morocco'],'Africa/Khartoum':['السودان','Sudan'],'Europe/Istanbul':['تركيا','Türkiye'],'Europe/London':['لندن','London'],
-    // Palestine: every zone of the land is named Palestine, never anything else
-    'Asia/Jerusalem':['فلسطين','Palestine'],'Asia/Tel_Aviv':['فلسطين','Palestine'],'Israel':['فلسطين','Palestine'],'Asia/Hebron':['فلسطين','Palestine'],'Asia/Gaza':['فلسطين','Palestine'] };
+  /* ---------- time zones ---------- */
+  // the zone is never named on screen (28 Nov): each person simply sees their own time, the panel Damascus time.
+  // If a name ever comes back: every zone of Palestine (Jerusalem, Hebron, Gaza) is «فلسطين / Palestine», never anything else.
   function myTz(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){ return ''; } }
-  function offsetName(tz,at){ try{ var p=new Intl.DateTimeFormat('en-US',{timeZone:tz,timeZoneName:'shortOffset'}).formatToParts(at||new Date()).filter(function(x){ return x.type==='timeZoneName'; })[0];
-      var o=p?p.value.replace('GMT',''):''; return (EN?'GMT ':'غرينتش ')+(o||'+0'); }catch(e){ return ''; } }
-  function tzLabel(tz,at,en){ var e=en==null?EN:en, n=TZ[tz]; if(n) return e? n[1]+' time' : 'بتوقيت '+n[0]; var o=offsetName(tz,at); return o? (e? o : 'بتوقيت '+o) : ''; }
   // a moment shown for whoever is looking: the panel in Damascus time, everyone else in their own
   function viewTz(){ return ADMIN?'Asia/Damascus':myTz(); }
   function fmtMoment(iso,opt){ opt=opt||{}; var at=new Date(iso); if(isNaN(at)) return ''; var tz=opt.tz||viewTz(), en=opt.en==null?EN:opt.en;
     try{ var d=at.toLocaleDateString(en?'en-GB':'ar-u-nu-latn',{timeZone:tz,day:'numeric',month:'long',year:opt.year===false?undefined:'numeric'}),
            t=at.toLocaleTimeString(en?'en-US':'ar-u-nu-latn',{timeZone:tz,hour:'numeric',minute:'2-digit'});
-      return d+(en?', ':' · ')+t+(opt.label===false?'':' '+(en?'('+tzLabel(tz,at,en)+')':'('+tzLabel(tz,at,en)+')')); }catch(e){ return at.toISOString().slice(0,16).replace('T',' '); } }
-  W.EBTime={ label:tzLabel, myTz:myTz, fmt:fmtMoment };
+      return d+(en?', ':' · ')+t; }catch(e){ return at.toISOString().slice(0,16).replace('T',' '); } }
+  W.EBTime={ myTz:myTz, fmt:fmtMoment };
 
   /* ---------- small date helpers ---------- */
   function pad(n){ return (n<10?'0':'')+n; }
@@ -46,7 +39,7 @@
   /* ---------- styles (shared by the site and the panel; colours from the --k- palette) ---------- */
   var css=
   '.dw-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;margin:0!important;padding:0!important;border:0!important;clip-path:inset(50%)}'+
-  '.dw{all:unset;box-sizing:border-box;cursor:pointer;display:flex;width:100%;min-height:62px;border-radius:18px;padding:10px 16px;align-items:center;gap:12px;position:relative;color:var(--k-light,#EEF2F6);font-family:inherit;'+
+  '.dw{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;width:auto;max-width:100%;justify-self:start;align-self:start;min-height:50px;border-radius:16px;padding:7px 14px;align-items:center;gap:10px;position:relative;color:var(--k-light,#EEF2F6);font-family:inherit;'+
     'background:linear-gradient(160deg,rgba(var(--k-white-rgb,255,255,255),.07),rgba(var(--k-white-rgb,255,255,255),.02) 50%,rgba(var(--k-hour-rgb,46,98,255),.05));'+
     'box-shadow:inset 0 1px 0 rgba(var(--k-white-rgb,255,255,255),.13),inset 0 0 0 1px rgba(var(--k-white-rgb,255,255,255),.1);transition:box-shadow .5s cubic-bezier(.22,.9,.24,1)}'+
   '.dw::before{content:"";position:absolute;top:0;inset-inline:26%;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--k-horizon-rgb,63,224,232),.6),transparent);opacity:.45;transition:opacity .5s,inset .6s cubic-bezier(.22,.9,.24,1)}'+
@@ -54,15 +47,15 @@
   '.dw:hover::before,.dw[aria-expanded="true"]::before{opacity:1;inset-inline:14%}'+
   '.dw:focus-visible{outline:1px solid var(--k-horizon,#3FE0E8);outline-offset:4px}'+
   '.dw[disabled]{opacity:.5;cursor:default}'+
-  '.dw-face{display:flex;align-items:center;gap:12px;flex:1;min-width:0;transform-origin:center;transition:transform .17s cubic-bezier(.5,0,.75,0),opacity .17s}'+
+  '.dw-face{display:flex;align-items:center;gap:10px;flex:none;min-width:0;transform-origin:center;transition:transform .17s cubic-bezier(.5,0,.75,0),opacity .17s}'+
   '.dw.blink .dw-face{transform:scaleY(.04);opacity:.15}'+
-  '.dw-day{font:300 32px/1 Oswald,var(--latin,sans-serif);min-width:1.25em;text-align:center;font-variant-numeric:tabular-nums}'+
+  '.dw-day{font:300 26px/1 Oswald,var(--latin,sans-serif);min-width:1.25em;text-align:center;font-variant-numeric:tabular-nums}'+
   '.dw-vr{width:1px;align-self:stretch;margin-block:3px;flex:none;background:linear-gradient(180deg,transparent,rgba(var(--k-horizon-rgb,63,224,232),.42),transparent)}'+
-  '.dw-mid{display:grid;gap:3px;min-width:0;text-align:start}.dw-mon{font-weight:500;font-size:16px;line-height:1.2}'+
+  '.dw-mid{display:grid;gap:2px;min-width:0;text-align:start}.dw-mon{font-weight:500;font-size:15px;line-height:1.2}'+
   '.dw-sub{font-size:12px;line-height:1.2;color:var(--k-dim,#6F7FA0);white-space:nowrap}.dw-sub b{font:300 12px Oswald,sans-serif;color:var(--k-mist,#AEBBD2);margin-inline-start:2px}'+
-  '.dw-tm{margin-inline-start:auto;display:grid;justify-items:end;gap:3px;text-align:end}.dw-tm b{font:300 20px/1 Oswald,sans-serif;font-variant-numeric:tabular-nums}'+
+  '.dw-tm{display:flex;align-items:center;gap:10px}.dw-tm::before{content:"";width:1px;align-self:stretch;margin-block:2px;background:linear-gradient(180deg,transparent,rgba(var(--k-horizon-rgb,63,224,232),.42),transparent)}.dw-tm b{font:300 18px/1 Oswald,sans-serif;font-variant-numeric:tabular-nums}'+
   '.dw-tm i,.dw-col li i{font-size:12px;font-style:normal;font-family:inherit;color:var(--k-mist,#AEBBD2);margin-inline-start:4px}.dw-tm small{font-size:11px;line-height:1;color:var(--k-dim,#6F7FA0);white-space:nowrap}.dw-tm b{white-space:nowrap}'+
-  '.dw-ph{flex:1;text-align:start;color:var(--k-mist,#AEBBD2);font-size:15px}'+
+  '.dw-ph{flex:none;text-align:start;color:var(--k-mist,#AEBBD2);font-size:15px}'+
   '.dw-cal{width:18px;height:18px;flex:none;stroke:var(--k-horizon,#3FE0E8);fill:none;stroke-width:1.4}'+
   '.dw-chev{width:12px;height:12px;flex:none;stroke:var(--k-mist,#AEBBD2);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;transition:rotate .55s cubic-bezier(.22,.9,.24,1)}'+
   '.dw[aria-expanded="true"] .dw-chev{rotate:180deg}'+
@@ -213,7 +206,7 @@
     else { var dt=new Date(v.y,v.m,v.d), tm='';
       if(f.time){ var mins=null, lab='';
         if(inp.type==='datetime-local'&&v.h!=null){ mins=v.h*60+v.mi; }
-        else if(f.at&&inp.dataset.at){ var a=new Date(inp.dataset.at); if(!isNaN(a)){ mins=a.getHours()*60+a.getMinutes(); lab=tzLabel(myTz(),a); } }
+        else if(f.at&&inp.dataset.at){ var a=new Date(inp.dataset.at); if(!isNaN(a)) mins=a.getHours()*60+a.getMinutes(); }
         if(mins!=null) tm='<span class="dw-tm"><b>'+timeHtml(mins)+'</b>'+(lab?'<small>'+lab+'</small>':'')+'</span>'; }
       html='<span class="dw-face"><span class="dw-day">'+v.d+'</span><i class="dw-vr"></i><span class="dw-mid"><span class="dw-mon">'+MON[v.m]+'</span><span class="dw-sub">'+WD.format(dt)+' <b>'+v.y+'</b></span></span>'+tm+'</span>'; }
     f.btn.innerHTML=(v?'':'')+html+ICHEV; f.btn.hidden=inp.hidden; f.btn.disabled=inp.disabled; }
