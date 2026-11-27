@@ -305,8 +305,9 @@ footer .c{font-family:var(--latin);font-size:13px;color:var(--dim);direction:ltr
 .stat .lid stop{stop-color:var(--k-hour);stop-opacity:.15}.stat .lid stop.m{stop-color:var(--k-horizon);stop-opacity:1}
 .stat.cu .lid path{stroke-dashoffset:140}
 .stat.cu.go .lid path{stroke-dashoffset:0;transition:stroke-dashoffset 3.4s var(--ease)}
-.stat b{font-family:var(--latin);font-weight:300;font-size:clamp(40px,5vw,64px);line-height:1;letter-spacing:-.01em;direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:flex-start;color:transparent;background:linear-gradient(180deg,var(--k-white) 10%,var(--mist) 120%);-webkit-background-clip:text;background-clip:text;padding-block:.06em}
-.stat b i{font-style:normal;font-size:.52em;color:var(--horizon);margin-top:.16em;margin-inline:.06em}
+.stat b{font-family:var(--latin);font-weight:300;font-size:clamp(40px,5vw,64px);line-height:1;letter-spacing:-.01em;direction:ltr;unicode-bidi:isolate;position:relative;display:inline-flex;justify-content:center;color:transparent;background:linear-gradient(180deg,var(--k-white) 10%,var(--mist) 120%);-webkit-background-clip:text;background-clip:text;padding-block:.06em}
+.stat b i{position:absolute;top:.2em;font-style:normal;font-weight:300;font-size:.42em;line-height:1;color:var(--horizon)}
+.stat b i:first-child{right:100%;margin-right:.16em}.stat b i:last-child{left:100%;margin-left:.16em}
 .stat>span{color:var(--mist);font-size:16px}
 /* ---- service worlds (only inside a service page) ---- */
 .svc-hero{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:center;padding-block:clamp(40px,7vw,96px) clamp(24px,4vw,48px)}
