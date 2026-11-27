@@ -12,7 +12,8 @@ const SKIP = /^(sess:|asess:|tsess:|code:|reset:|invite:|tglink:|auth:|adev:|a2t
 const BINARY = /^(file:|media:)/;
 const SECRET = /^(hash|salt|sv|pw|pass|password|token|secret|tmp\w*|temp\w*)$/i;
 const NO_TABLES = /^(sqlite_|_cf_|d1_)|^(view_hits|like_hits|interest|push_subs|tg_links|security_log|limits|csp)$/;   // logs and counters, not business data
-const KEEP = 8;
+const KEEP = 8, PURGE_DAYS = 56;   // weekly snapshots kept; a deleted client's safety copy (backups/purge/…) lives 8 weeks
+const weekly = o => /^backups\/[^/]+\.json$/.test(o.key);   // the snapshots themselves, never the purge copies under backups/purge/
 
 function strip(v) {
   if (Array.isArray(v)) return v.map(strip);
@@ -50,7 +51,7 @@ export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   if (q.get("list") === "1") {
     const snaps = [];
-    if (env.R2) try { const l = await env.R2.list({ prefix: "backups/" }); for (const o of l.objects) snaps.push({ key: o.key, size: o.size, at: o.uploaded }); } catch {}
+    if (env.R2) try { const l = await env.R2.list({ prefix: "backups/" }); for (const o of l.objects) if (weekly(o)) snaps.push({ key: o.key, size: o.size, at: o.uploaded }); } catch {}
     snaps.sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const versions = (await kvKeys(env, "backup:")).map(k => ({ key: k.name, at: new Date(+k.name.slice(7)).toISOString() })).sort((a, b) => b.key.localeCompare(a.key));
     return json({ ok: true, r2: !!env.R2, snaps, versions }, 200, { "cache-control": "no-store" });
@@ -73,8 +74,10 @@ export async function onRequestPost({ request, env }) {
     if (!env.R2) return json({ ok: false, error: "r2" }, 400);
     const body = JSON.stringify(await build(env)), key = "backups/" + stamp() + ".json";
     await env.R2.put(key, body, { httpMetadata: { contentType: "application/json" } });
-    const l = await env.R2.list({ prefix: "backups/" }), old = l.objects.sort((a, b) => String(b.uploaded).localeCompare(String(a.uploaded))).slice(KEEP);
+    const l = await env.R2.list({ prefix: "backups/" }), old = l.objects.filter(weekly).sort((a, b) => String(b.uploaded).localeCompare(String(a.uploaded))).slice(KEEP);
     for (const o of old) await env.R2.delete(o.key);
+    const p = await env.R2.list({ prefix: "backups/purge/" }), cut = Date.now() - PURGE_DAYS * 864e5;
+    for (const o of p.objects) if (new Date(o.uploaded).getTime() < cut) await env.R2.delete(o.key);
     return json({ ok: true, key, size: body.length });
   }
   if (typeof d.restore === "string" && /^backup:\d{10,}$/.test(d.restore)) {

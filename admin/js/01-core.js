@@ -106,12 +106,6 @@
   var TABS=[
     {id:'today', title:'اليوم', today:1},
     {id:'home', title:'الرئيسية', grp:'محتوى الموقع', secs:[
-      {h:'شريط الإطلاق (Early Access)', hint:'سطر رفيع تحت القائمة العلوية بكل صفحات الموقع. ويمكن للزائر إغلاقه. يختفي وحده بعد تاريخ الانتهاء أو عند اكتمال العدد. اكتب أرقاماً حقيقية فقط.', fields:[
-        {p:'launch.show', t:'check', l:'إظهار شريط الإطلاق'},
-        {p:'launch.text', t:'bi', l:'النص', hint:'مثال: إطلاق Eyeblink Studio · نستقبل عدداً محدوداً من المشاريع بشروط الإطلاق'},
-        {row:[{p:'launch.cta', t:'bi', l:'نص الرابط'},{p:'launch.link', t:'text', l:'الرابط', ltr:1, hint:'مثال: pricing أو contact'}]},
-        {row:[{p:'launch.total', t:'num', l:'عدد المشاريع الكلي'},{p:'launch.taken', t:'num', l:'المحجوز منها'},{p:'launch.until', t:'date', l:'ينتهي بتاريخ (اختياري)'}]},
-        {p:'launch.counter', t:'check', l:'إظهار العدّاد («تبقّى 3 من 5»)'} ]},
       {h:'العنوان الرئيسي', fields:[
         {p:'hero.eyebrow', t:'text', l:'السطر الصغير فوق العنوان', ltr:1},
         {p:'hero.h1', t:'bi', l:'العنوان', hint:'لتلوين جزء بالتدرّج ضعه بين <span class="grad"> و </span>'},

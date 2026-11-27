@@ -212,38 +212,10 @@
     var hasReel=!!(vid(reel)||(reel.type==='mp4'&&reel.src));
     if(rb){ rb.hidden=!hasReel; rb.onclick=function(){ bindLB(); openLB({title:{ar:UI.reel,en:UI.reel},full:reel,ratio:'16:9',poster:H.reelPoster||''}); }; }
     if(rc){ rc.hidden=!(hasReel&&H.reelPreview); if(!rc.hidden){ var rv=rc.querySelector('video'); if(rv.getAttribute('src')!==url(H.reelPreview)) rv.src=url(H.reelPreview); rc.onclick=function(){ rb&&rb.onclick(); }; } }
-    renderWork(); renderCase(); setupOrder(); renderLaunch();
+    renderWork(); renderCase(); setupOrder();
     // links typed in the admin as «pricing.html» point at the clean address the site serves
     [].forEach.call(document.querySelectorAll('a[href]'),function(a){ var h=a.getAttribute('href'); if(/^[\w\/.-]*\.html(?=[#?]|$)/.test(h)) a.setAttribute('href',h.replace(/(^|\/)index\.html/,'$1').replace(/\.html(?=[#?]|$)/,'')||'./'); });
     if(window.EB&&EB.refresh) EB.refresh();
-  }
-
-  /* ---------------- launch strip (Early Access) ----------------
-     A thin line under the top menu on every page, fully set from the panel (content "launch").
-     Hidden when switched off, empty, past its end date, or when every place is taken; a visitor who
-     closes it does not see it again until its text or numbers change. Folds away while scrolling down. */
-  function renderLaunch(){
-    // right after the sticky menu, in the page flow: it scrolls away with the content (the menu's height never changes)
-    var nav=document.querySelector('header.nav'); if(!nav) return;
-    if(document.body.getAttribute('data-page')==='workspace') return;   // the client workspace is an app, not the marketing site
-    var old=document.querySelector('.launch-wrap'); if(old) old.remove();
-    var Lc=C.launch||{}, text=L(Lc.text), total=+Lc.total||0, taken=Math.max(0,+Lc.taken||0), left=Math.max(0,total-taken);
-    if(!Lc.show||!text) return;
-    if(total>0&&left<=0) return;
-    if(Lc.until && /^\d{4}-\d{2}-\d{2}$/.test(Lc.until) && new Date()>new Date(Lc.until+'T23:59:59')) return;
-    var key='eb-launch-x:'+fp(text+'|'+total+'|'+taken+'|'+(Lc.until||'')), closed='';
-    try{ closed=localStorage.getItem(key); }catch(_){}
-    if(closed) return;
-    var cta=L(Lc.cta), link=String(Lc.link||'').trim();
-    var count= Lc.counter&&total>0 ? (AR? 'تبقّى '+left+' من '+total : left+' of '+total+' left') : '';
-    var el=document.createElement('div'); el.className='launch glass'; el.setAttribute('role','note');
-    el.innerHTML='<span class="ldot" aria-hidden="true"></span><span class="ltext">'+esc(text)+'</span>'+
-      (count?'<span class="lcount">'+esc(count)+'</span>':'')+
-      (cta&&link?'<a class="lcta" href="'+esc(link)+'">'+esc(cta)+' <span class="arr">'+ARW+'</span></a>':'')+
-      '<button type="button" class="lx" aria-label="'+(AR?'إغلاق':'Close')+'">×</button>';
-    var wrap=document.createElement('div'); wrap.className='launch-wrap wrap'; wrap.appendChild(el);
-    el.querySelector('.lx').addEventListener('click',function(){ try{ localStorage.setItem(key,'1'); }catch(_){} wrap.classList.add('gone'); setTimeout(function(){ wrap.remove(); },450); });
-    nav.insertAdjacentElement('afterend',wrap);
   }
 
   // numbers count up from zero the first time they come into view

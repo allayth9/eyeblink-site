@@ -24,6 +24,7 @@ export async function onRequestPut({ request, env }) {
     while (seen.has(k)) k = id + "-" + i++;
     p.id = k; seen.add(k);
   }
+  delete data.launch;   // the launch strip was retired (27 Nov 2026)
   data.updatedAt = new Date().toISOString();
   await env.EB.put("content", JSON.stringify(data));
   return json({ ok: true, updatedAt: data.updatedAt });

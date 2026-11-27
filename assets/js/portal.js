@@ -871,7 +871,7 @@
   function embedOf(u){ var m;
     if((m=/drive\.google\.com\/file\/d\/([\w-]{10,})/.exec(u))||(m=/drive\.google\.com\/open\?id=([\w-]{10,})/.exec(u))) return 'https://drive.google.com/file/d/'+m[1]+'/preview';
     if((m=/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/.exec(u))) return 'https://www.youtube-nocookie.com/embed/'+m[1];
-    if((m=/vimeo\.com\/(?:video\/)?(\d{6,})/.exec(u))) return 'https://player.vimeo.com/video/'+m[1];
+    if((m=/vimeo\.com\/(?:video\/)?(\d{6,})/.exec(u))) return 'https://player.vimeo.com/video/'+m[1]+'?dnt=1';   // no tracking cookies
     return ''; }
   function vname(dl){ return dl.is_final?T.dl.fin:dl.label; }
   // review: our own player for files kept privately (R2); notes carry a time, a kind and a state

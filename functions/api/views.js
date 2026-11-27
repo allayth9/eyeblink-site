@@ -53,8 +53,9 @@ export async function onRequestGet({ request, env }) {
   await seedMissing(D, ids);
   const rows = (await D.prepare(`SELECT id, n FROM work_views WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [];
   const views = {}; for (const r of rows) views[r.id] = r.n;
-  // likes start from 40% of the views the first time a work is seen; real likes add to that
-  await D.batch(rows.map(r => D.prepare("INSERT OR IGNORE INTO like_seed (id, seed) VALUES (?, ?)").bind(r.id, Math.round(r.n * 0.4))));
+  // likes start from 25–30% of the views the first time a work is seen (a work seeded earlier keeps its start); real likes add to that
+  const share = () => 0.25 + (crypto.getRandomValues(new Uint32Array(1))[0] % 501) / 10000;
+  await D.batch(rows.map(r => D.prepare("INSERT OR IGNORE INTO like_seed (id, seed) VALUES (?, ?)").bind(r.id, Math.round(r.n * share()))));
   const likes = {}; for (const r of ((await D.prepare(`SELECT s.id, s.seed + COALESCE(l.n, 0) AS n FROM like_seed s LEFT JOIN work_likes l ON l.id = s.id WHERE s.id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [])) likes[r.id] = r.n;
   return json({ ok: true, views, likes }, 200, { "cache-control": "public, max-age=10" });
 }
