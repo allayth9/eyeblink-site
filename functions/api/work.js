@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail, setAvatar, brandKit, brandZip } from "../_lib/shared.js";
+import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail, setAvatar, brandKit, brandZip, kvEach, purgeClient, unlinkTeam } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -1060,11 +1060,6 @@ function tplSample(kind, lang){
 }
 // ---- clean-up (19 Nov): a client or a project leaves with everything that hangs on it. Counts first; the rows go to R2 as a JSON
 // backup (backups/purge/…) before anything is deleted; the client's uploads in R2 go too. Invoices of a deleted project stay (money), unlinked. ----
-const PURGE = [["deliverables","client_email"],["comments","client_email"],["files","client_email"],["tasks","client_email"],["recurring","client_email"],["invoices","client_email"],
-  ["project_members","email"],["projects","client_email"],["activity","client_email"],["notifications","recipient"],["notify_prefs","email"],["notify_log","recipient"],
-  ["scheduled_sends","recipient"],["pending_sends","recipient"],["rule_log","recipient"],["push_subs","email"],["tg_links","email"],["client_tips","email"],
-  ["brand_kits","email"],["brand_assets","email"],["report_cfg","email"],["client_reports","email"],["clients","email"]];
-async function kvEach(env, prefix, fn){ let c; do { const r = await env.EB.list({ prefix, cursor: c }); for (const k of r.keys) { let v = null; try { v = JSON.parse(await env.EB.get(k.name)); } catch {} if (v) await fn(k.name, v); } c = r.list_complete ? null : r.cursor; } while (c); }
 async function purgeCounts(env, D, email){
   const n = async (sql, ...a) => ((await D.prepare(sql).bind(...a).first()) || {}).n || 0;
   const out = { projects: await n("SELECT COUNT(*) AS n FROM projects WHERE client_email=?", email), tasks: await n("SELECT COUNT(*) AS n FROM tasks WHERE client_email=?", email),
@@ -1075,24 +1070,6 @@ async function purgeCounts(env, D, email){
   await kvEach(env, "sup:", async (k, s) => { if (String(s.email || "").toLowerCase() === email) out.tickets++; });
   return out;
 }
-async function purgeClient(env, D, email){
-  const snap = { email, at: now(), rows: {}, kv: {} };
-  for (const [t, c] of PURGE) snap.rows[t] = (await D.prepare(`SELECT * FROM ${t} WHERE ${c}=?`).bind(email).all()).results;
-  snap.kv.user = await env.EB.get("user:" + email);
-  await setAvatar(env, email, null).catch(() => {});   // the photo is public media: it goes first
-  const refs = new Set(snap.rows.tasks.map(t => t.ref));
-  if (env.R2) { await env.R2.put("backups/purge/" + Date.now() + "-" + email.replace(/[^a-z0-9.@_-]/g, "_") + ".json", JSON.stringify(snap)).catch(() => {});
-    for (const f of snap.rows.files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
-    for (const a of snap.rows.brand_assets) await env.R2.delete(a.key).catch(() => {}); }
-  await D.batch(PURGE.map(([t, c]) => D.prepare(`DELETE FROM ${t} WHERE ${c}=?`).bind(email)));
-  await env.EB.delete("user:" + email); await env.EB.delete("accreq:" + email);
-  await kvEach(env, "order:", async (k, o) => { if (String(o.email || "").toLowerCase() === email) { await env.EB.delete(k); if (o.code) await env.EB.delete("code:" + o.code); } });
-  await kvEach(env, "sup:", async (k, s) => { if (String(s.email || "").toLowerCase() === email) await env.EB.delete(k); });
-  await unlinkTeam(env, refs);
-}
-// team tasks that pointed at client tasks which no longer exist keep their work, without the dead link
-async function unlinkTeam(env, refs){ if (!refs.size) return;
-  await kvEach(env, "ttask:", async (k, t) => { if (t.workTask && refs.has(t.workTask)) { t.workTask = ""; await env.EB.put(k, JSON.stringify(t)); } }); }
 async function purgeProject(env, D, id){
   const tasks = (await D.prepare("SELECT id, ref FROM tasks WHERE project_id=?").bind(id).all()).results, files = (await D.prepare("SELECT url FROM files WHERE project_id=?").bind(id).all()).results;
   if (env.R2) for (const f of files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});

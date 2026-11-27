@@ -456,6 +456,50 @@ export function seenDevice(request, u){
 }
 export function withCookie(res, c){ if (c) res.headers.append("set-cookie", c); return res; }
 // one place for all of them: { subject, html }. x: { link, code, info:{when,device,place} }
+// ---- a client leaves with everything that hangs on them (moved here from work.js, 27 Nov, so a self-deletion can run from any request).
+// The rows go to R2 (backups/purge/…, kept 8 weeks) before anything is deleted; the client's uploads in R2 go too.
+// keepMoney (a client deleting their own account): invoices and paid site orders stay, for the accounts. ----
+export const PURGE = [["deliverables","client_email"],["comments","client_email"],["files","client_email"],["tasks","client_email"],["recurring","client_email"],["invoices","client_email"],
+  ["project_members","email"],["projects","client_email"],["activity","client_email"],["notifications","recipient"],["notify_prefs","email"],["notify_log","recipient"],
+  ["scheduled_sends","recipient"],["pending_sends","recipient"],["rule_log","recipient"],["push_subs","email"],["tg_links","email"],["client_tips","email"],
+  ["brand_kits","email"],["brand_assets","email"],["report_cfg","email"],["client_reports","email"],["clients","email"]];
+export async function kvEach(env, prefix, fn){ let c; do { const r = await env.EB.list({ prefix, cursor: c }); for (const k of r.keys) { let v = null; try { v = JSON.parse(await env.EB.get(k.name)); } catch {} if (v) await fn(k.name, v); } c = r.list_complete ? null : r.cursor; } while (c); }
+export async function purgeClient(env, D, email, keepMoney){
+  const snap = { email, at: new Date().toISOString(), rows: {}, kv: {} }, P = keepMoney ? PURGE.filter(([t]) => t !== "invoices") : PURGE;
+  for (const [t, c] of P) snap.rows[t] = (await D.prepare(`SELECT * FROM ${t} WHERE ${c}=?`).bind(email).all()).results;
+  snap.kv.user = await env.EB.get("user:" + email);
+  await setAvatar(env, email, null).catch(() => {});   // the photo is public media: it goes first
+  const refs = new Set(snap.rows.tasks.map(t => t.ref));
+  if (env.R2) { await env.R2.put("backups/purge/" + Date.now() + "-" + email.replace(/[^a-z0-9.@_-]/g, "_") + ".json", JSON.stringify(snap)).catch(() => {});
+    for (const f of snap.rows.files) if (String(f.url).startsWith(SITE + "/api/up/")) await env.R2.delete(f.url.slice(SITE.length + 8)).catch(() => {});
+    for (const a of snap.rows.brand_assets) await env.R2.delete(a.key).catch(() => {}); }
+  await D.batch(P.map(([t, c]) => D.prepare(`DELETE FROM ${t} WHERE ${c}=?`).bind(email)));
+  await env.EB.delete("user:" + email); await env.EB.delete("accreq:" + email);
+  // a site order that carries a payment is a money record too: it stays when the money is kept
+  await kvEach(env, "order:", async (k, o) => { if (String(o.email || "").toLowerCase() === email && !(keepMoney && (o.paid || (o.deposit && o.deposit.paid) || o.invoice))) { await env.EB.delete(k); if (o.code) await env.EB.delete("code:" + o.code); } });
+  await kvEach(env, "sup:", async (k, s) => { if (String(s.email || "").toLowerCase() === email) await env.EB.delete(k); });
+  await unlinkTeam(env, refs);
+}
+// team tasks that pointed at client tasks which no longer exist keep their work, without the dead link
+export async function unlinkTeam(env, refs){ if (!refs.size) return;
+  await kvEach(env, "ttask:", async (k, t) => { if (t.workTask && refs.has(t.workTask)) { t.workTask = ""; await env.EB.put(k, JSON.stringify(t)); } }); }
+
+// ---- self-deletion (27 Nov): an account the client asked to delete is frozen 14 days (KV «delq:<email>» = until), then deleted
+// for good here, keeping invoices and payments. Checked at most once an hour, on site traffic, like the reminders. ----
+export const DELETE_DAYS = 14;
+export async function sweepDeletions(env){
+  try {
+    if (!env.DB) return;
+    const last = +(await env.EB.get("delsweep:at") || 0); if (Date.now() - last < 3600e3) return; await env.EB.put("delsweep:at", String(Date.now()));
+    const l = await env.EB.list({ prefix: "delq:" });
+    for (const k of l.keys) { const email = k.name.slice(5), u = JSON.parse(await env.EB.get("user:" + email) || "null");
+      if (!u || !u.del) { await env.EB.delete(k.name); continue; }   // restored, or already gone
+      if (Date.parse(u.del.until) > Date.now()) continue;
+      const m = accountMail("deleted", u.lang === "en" ? "en" : "ar", u.name, {}); if (m) await sendMail(env, u.email, m.subject, m.html).catch(() => {});
+      await purgeClient(env, env.DB, email, true); await env.EB.delete(k.name); }
+  } catch {}
+}
+
 export function accountMail(kind, lang, name, x){
   const en = lang === "en", L = en ? "en" : "ar", hi = greet({ name, lang: L }), ws = SITE + (en ? "/en" : "") + "/account";
   const perks = en ? ["Your orders and invoices in one place", "A direct line to the studio team", "A private workspace for your project once we begin"]
@@ -486,6 +530,14 @@ export function accountMail(kind, lang, name, x){
     code: () => [en ? "Your password reset code" : "رمز استعادة كلمة السر", en ? "Your password reset code" : "رمز استعادة كلمة السر",
       amP(en ? "Use this code to choose a new password for your account:" : "استخدم الرمز التالي لاختيار كلمة سر جديدة لحسابك:") + amCode(String(x.code).replace(/^(\d{3})(\d{3})$/, "$1 $2")) +
       amMuted(en ? "The code is valid for 15 minutes and works once. If you did not ask for it, ignore this message and your password stays as it is." : "الرمز صالح لمدة 15 دقيقة ويُستخدم مرة واحدة. إن لم تطلب ذلك، فتجاهل هذه الرسالة، وستبقى كلمة السر كما هي."), "", "", "SECURITY"],
+    deleting: () => [en ? "Your account is set to be deleted" : "طلبتَ حذف حسابك", en ? "Your account is set to be deleted" : "حسابك مجدول للحذف",
+      amP(en ? "We have received your request. Your account is now frozen and will be deleted for good on " + x.until + "." : "استلمنا طلبك. جُمِّد حسابك الآن، وسيُحذف نهائياً في " + x.until + ".") +
+      amP(en ? "Changed your mind? Sign in before that date and restore it in one step; everything will be just as you left it." : "إن غيّرت رأيك، سجّل دخولك قبل هذا التاريخ واستعده بخطوة واحدة، فيعود كل شيء كما تركته.") +
+      amMuted(en ? "Your invoices and payment records are kept for accounting, as our privacy policy explains. If you did not ask for this, sign in now and restore your account, then choose a new password." : "تبقى فواتيرك وسجل مدفوعاتك لأغراض محاسبية كما توضّح سياسة الخصوصية. وإن لم تطلب ذلك، فسجّل دخولك الآن واستعد حسابك، ثم اختر كلمة سر جديدة."),
+      en ? "Restore my account" : "استعد حسابي", ws, "ACCOUNT"],
+    deleted: () => [en ? "Your account has been deleted" : "حُذف حسابك", en ? "Your account has been deleted" : "حُذف حسابك نهائياً",
+      amP(en ? "As you asked, your account and its projects, files and messages have been deleted. Thank you for the time you spent with us; you are always welcome back." : "كما طلبت، حُذف حسابك ومشاريعه وملفاته ورسائله. نشكرك على الوقت الذي قضيته معنا، ويسعدنا دائماً أن نعمل معك من جديد.") +
+      amMuted(en ? "Your invoices and payment records are kept for accounting, as our privacy policy explains." : "تبقى فواتيرك وسجل مدفوعاتك لأغراض محاسبية، كما توضّح سياسة الخصوصية."), "", "", "ACCOUNT"],
   }[kind];
   if (!M) return null;
   const [subject, title, body, cta, link, label] = M();

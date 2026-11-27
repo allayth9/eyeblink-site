@@ -7,9 +7,9 @@
   var BASE=body.getAttribute('data-base')||'', API=BASE+'api/', PAGE=body.getAttribute('data-page'), WS=BASE+'workspace';
   var bar=document.querySelector('.nav .bar'), acct=bar&&bar.querySelector('.acct-link');
   if(!bar||!acct||!/^https?:/.test(location.protocol)) return;
-  var T=AR?{ws:'مساحة العمل',acct:'حسابي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',client:'عميل متعاقد',customer:'حساب عميل',
+  var T=AR?{ws:'مساحة العمل',acct:'حسابي',inv:'الفواتير',set:'إعدادات الإشعارات',tasks:'كل المهام',newTask:'مهمة جديدة',out:'تسجيل الخروج',del:'حذف الحساب',client:'عميل متعاقد',customer:'حساب عميل',
       site:'العودة إلى الموقع الرئيسي',lang:'English',setWs:'الإعدادات',cat:{all:'الكل',tasks:'المهام',requests:'طلبات المعلومات',deliveries:'التسليمات',comments:'التعليقات',projects:'المشاريع',billing:'الفواتير'},nt:'الإشعارات',all:'تعليم الكل كمقروء',none:'لا توجد إشعارات بعد.',seeAll:'كل الإشعارات',err:'تعذّر التحميل.'}
-    :{ws:'Workspace',acct:'My account',inv:'Invoices',set:'Notification settings',tasks:'All tasks',newTask:'New task',out:'Sign out',client:'Active client',customer:'Client account',
+    :{ws:'Workspace',acct:'My account',inv:'Invoices',set:'Notification settings',tasks:'All tasks',newTask:'New task',out:'Sign out',del:'Delete account',client:'Active client',customer:'Client account',
       site:'Back to the main site',lang:'العربية',setWs:'Settings',cat:{all:'All',tasks:'Tasks',requests:'Information requests',deliveries:'Deliveries',comments:'Comments',projects:'Projects',billing:'Invoices'},nt:'Notifications',all:'Mark all as read',none:'No notifications yet.',seeAll:'All notifications',err:'Could not load.'};
   var ICON={globe:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5S9.6 5.8 12 3.5z"/></svg>',home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20H14.5v-5h-5v5H4z"/></svg>',ws:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><rect x="13.5" y="14" width="7" height="6" rx="2"/></svg>',
     bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
@@ -18,6 +18,7 @@
     set:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
     tasks:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="m3.8 6.5 1.3 1.3 2.2-2.6M3.8 12l1.3 1.3 2.2-2.6M3.8 17.5l1.3 1.3 2.2-2.6"/></svg>',
     plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
     out:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4.5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h7"/><path d="M11 12h9M17 8.5 20.5 12 17 15.5"/></svg>'};
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
   function get(p){ return fetch(API+p,{credentials:'same-origin',cache:'no-store'}).then(function(r){ return r.json(); }).catch(function(){ return null; }); }
@@ -77,14 +78,70 @@
     menu=document.createElement('div'); menu.className='hmenu'; menu.setAttribute('role','menu');
     menu.innerHTML='<div class="hm-h"><b>'+esc(u.name)+'</b><small dir="ltr">'+esc(u.email)+'</small><span class="hm-role'+(cl?' on':'')+'">'+(cl?T.client:T.customer)+'</span></div>'+
       (cl?item(WS,'ws',T.ws,'c-ws')+item(WS+'#w/tasks','tasks',T.tasks,'c-tasks')+item(WS+'#w/invoices','inv',T.inv,'c-inv')+item(WS+'#w/settings','set',PAGE==='workspace'?T.setWs:T.set,'c-set')+'<i class="hm-sep"></i>':'')+(PAGE==='workspace'?item(BASE||'./','home',T.site,'c-site')+(bar.querySelector('.lang')?item(bar.querySelector('.lang').getAttribute('href').split('#')[0],'globe',T.lang,'c-lang'):''):'')+
-      item(BASE+'account','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>';
+      item(BASE+'account','user',T.acct,'c-acct')+'<button type="button" role="menuitem" class="hm-out">'+ICON.out+'<span>'+T.out+'</span></button>'+
+      '<i class="hm-sep"></i><button type="button" role="menuitem" class="hm-del">'+ICON.trash+'<span>'+T.del+'</span></button>';
     bar.appendChild(menu); acct.setAttribute('aria-expanded','true'); requestAnimationFrame(function(){ menu.classList.add('show'); });
+    menu.querySelector('.hm-del').onclick=function(){ closeAll(); delSheet(); };
     menu.querySelector('.hm-out').onclick=function(){ post('account',{action:'logout'}).then(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} location.href=(BASE||'./'); }); };
     menu.addEventListener('click',function(e){ var a=e.target.closest('a'); if(!a) return;
       // the language item works like the bar's switch: same view, and the account's e-mail language follows
       if(a.classList.contains('c-lang')){ a.setAttribute('href',a.getAttribute('href').split('#')[0]+location.hash); try{ navigator.sendBeacon(API+'account',new Blob([JSON.stringify({action:'lang',lang:document.documentElement.lang==='en'?'ar':'en'})],{type:'application/json'})); }catch(_){} return; }
       sameHash(e,a); });
     var f=!byHover&&menu.querySelector('a,button'); if(f) f.focus({preventScroll:true});   // opened by the mouse: no focus ring on the first item
+  }
+  /* ---- deleting one's own account: what goes, what stays, open work, the 14 days, then proof (password, or the e-mail for a Google account) ---- */
+  var D=AR?{eye:'ACCOUNT',h:'حذف الحساب',lead:'نأسف لرحيلك. هذا ما سيحدث لبياناتك:',goes:'يُحذف',stays:'يبقى',
+      g:['حسابك وبيانات الدخول','المشاريع والمهام والرسائل','الملفات ومكتبة الهوية','الإشعارات والتفضيلات'],s:['الفواتير وسجل المدفوعات، لأغراض محاسبية'],
+      tasks:function(n){ return n===1?'عمل واحد قيد التنفيذ':n===2?'عملان قيد التنفيذ':n+(n<=10?' أعمال':' عملاً')+' قيد التنفيذ'; },
+      warn:function(t,d){ return 'لديك '+[t,d].filter(Boolean).join(' و')+'. '+(t&&d?'سيتوقف العمل عليها، وتبقى الفاتورة مستحقة':t?'سيتوقف العمل عليها':'تبقى الفاتورة مستحقة'); },
+      due:function(x){ return 'فاتورة غير مسددة بقيمة '+x; },
+      grace:function(d){ return 'يُجمَّد حسابك الآن، ويُحذف نهائياً في <b>'+d+'</b>. إن غيّرت رأيك، سجّل دخولك قبل هذا التاريخ واستعده كما كان'; },
+      pw:'كلمة السر للتأكيد',em:'اكتب بريدك الإلكتروني للتأكيد',agree:'أفهم أن الحذف يصبح نهائياً بعد 14 يوماً',go:'احذف حسابي',cancel:'إلغاء',
+      hint:'يتفعّل الزر حين تكتب {x} وتعلّم المربع',hpw:'كلمة السر',hem:'بريدك الإلكتروني',wait:'لحظة…',load:'جارٍ التحميل…',
+      doneH:'استلمنا طلبك',doneP:function(d){ return 'جُمِّد حسابك، وسيُحذف نهائياً في <b>'+d+'</b>. أرسلنا إليك رسالة فيها طريقة التراجع'; },ok:'حسناً',
+      e:{wrong:'كلمة السر غير صحيحة',email:'البريد لا يطابق بريد حسابك','too many attempts':'محاولات كثيرة، حاول بعد قليل',net:'تعذّر الاتصال، حاول مرة أخرى'}}
+    :{eye:'ACCOUNT',h:'Delete account',lead:'We are sorry to see you go. Here is what happens to your data:',goes:'Deleted',stays:'Kept',
+      g:['Your account and sign-in','Projects, tasks and messages','Files and brand library','Notifications and preferences'],s:['Invoices and payment records, for accounting'],
+      tasks:function(n){ return n===1?'one piece of work in progress':n+' pieces of work in progress'; },
+      warn:function(t,d){ return 'You have '+[t,d].filter(Boolean).join(' and ')+'. '+(t&&d?'Work on it will stop, and the invoice stays due':t?'Work on it will stop':'The invoice stays due'); },
+      due:function(x){ return 'an unpaid invoice of '+x; },
+      grace:function(d){ return 'Your account is frozen now and deleted for good on <b>'+d+'</b>. Changed your mind? Sign in before then and restore it as it was'; },
+      pw:'Your password, to confirm',em:'Type your e-mail to confirm',agree:'I understand the deletion becomes final after 14 days',go:'Delete my account',cancel:'Cancel',
+      hint:'The button turns on once you type {x} and tick the box',hpw:'your password',hem:'your e-mail',wait:'One moment…',load:'Loading…',
+      doneH:'We have your request',doneP:function(d){ return 'Your account is frozen and will be deleted for good on <b>'+d+'</b>. We have e-mailed you the way back'; },ok:'Done',
+      e:{wrong:'That password is not right',email:'That is not your account\'s e-mail','too many attempts':'Too many attempts, try again shortly',net:'Could not connect, try again'}};
+  function day(iso){ return new Date(iso).toLocaleDateString(AR?'ar-u-nu-latn':'en-GB',{day:'numeric',month:'long',year:'numeric'}); }
+  function money(c,a){ return '<bdi dir="ltr">'+esc(c)+a.toLocaleString('en-US',{maximumFractionDigits:2})+'</bdi>'; }
+  function delSheet(){
+    var m=document.createElement('div'); m.className='acct-modal del-modal'; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-labelledby','delH');
+    m.innerHTML='<div class="sheet glass"><button class="x" type="button" aria-label="'+(AR?'إغلاق':'Close')+'">×</button><div class="dm"><p class="muted">'+D.load+'</p></div></div>';
+    document.body.appendChild(m); document.body.style.overflow='hidden'; requestAnimationFrame(function(){ m.classList.add('show'); });
+    var last=document.activeElement, ended=false, close=function(){ if(ended) return; ended=true; m.classList.remove('show'); document.body.style.overflow=''; removeEventListener('keydown',k); setTimeout(function(){ m.remove(); },420); if(last&&last.focus) try{ last.focus(); }catch(_){} };
+    var k=function(e){ if(e.key==='Escape') close(); }; addEventListener('keydown',k);
+    m.querySelector('.x').onclick=close; m.addEventListener('click',function(e){ if(e.target===m) close(); });
+    var box=m.querySelector('.dm');
+    post('account',{action:'deletePreview'}).then(function(j){
+      if(!j||!j.ok){ box.innerHTML='<p class="msg">'+D.e.net+'</p>'; return; }
+      var t=j.tasks?D.tasks(j.tasks):'', d=(j.due||[]).length?D.due(j.due.map(function(x){ return money(x.cur,x.amt); }).join(' + ')):'';
+      var proof=j.password?'<label class="dm-f">'+D.pw+'<input name="pw" type="password" dir="ltr" autocomplete="current-password"></label>':'<label class="dm-f">'+D.em+'<input name="em" type="email" dir="ltr" autocomplete="off" spellcheck="false"></label>';
+      box.innerHTML='<span class="eyebrow dm-eye">'+D.eye+'</span><h2 id="delH">'+D.h+'</h2><p class="muted">'+D.lead+'</p>'+
+        '<div class="dm-cols"><div class="go"><h6>'+D.goes+'</h6><ul>'+D.g.map(function(x){ return '<li>'+x+'</li>'; }).join('')+'</ul></div><div class="st"><h6>'+D.stays+'</h6><ul>'+D.s.map(function(x){ return '<li>'+x+'</li>'; }).join('')+'</ul></div></div>'+
+        (t||d?'<div class="dm-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg><span>'+D.warn(t,d)+'</span></div>':'')+
+        '<div class="dm-grace"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>'+D.grace(esc(day(j.until)))+'</span></div>'+
+        '<form class="form dm-form" novalidate>'+proof+'<label class="dm-chk"><input type="checkbox" name="agree"><span>'+D.agree+'</span></label>'+
+        '<div class="dm-acts"><button type="submit" class="dm-go" disabled>'+D.go+'</button><button type="button" class="dm-no">'+D.cancel+'</button></div>'+
+        '<p class="msg" role="alert"></p><p class="dm-hint">'+D.hint.replace('{x}',j.password?D.hpw:D.hem)+'</p></form>';
+      var f=box.querySelector('form'), E=f.elements, go=f.querySelector('.dm-go'), msg=f.querySelector('.msg'), inp=E.pw||E.em;
+      var ready=function(){ go.disabled=!(E.agree.checked&&(E.pw?E.pw.value.length>0:/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(E.em.value.trim()))); };
+      f.addEventListener('input',ready); f.addEventListener('change',ready); f.querySelector('.dm-no').onclick=close;
+      setTimeout(function(){ inp.focus(); },350);
+      f.onsubmit=function(e){ e.preventDefault(); if(go.disabled) return; var old=go.textContent; go.disabled=true; go.textContent=D.wait; msg.textContent='';
+        post('account',{action:'deleteAccount',agree:true,password:E.pw?E.pw.value:undefined,email:E.em?E.em.value.trim():undefined}).then(function(r){
+          if(!r||!r.ok){ go.textContent=old; ready(); msg.textContent=D.e[r&&r.error]||D.e.net; inp.focus(); return; }
+          try{ sessionStorage.removeItem(KEY); }catch(_){}
+          box.innerHTML='<span class="eyebrow dm-eye">'+D.eye+'</span><h2 id="delH">'+D.doneH+'</h2><p class="muted">'+D.doneP(esc(day(r.until)))+'</p><div class="dm-acts"><button type="button" class="btn btn-primary eb-metal dm-ok">'+D.ok+'</button></div>';
+          var ok=box.querySelector('.dm-ok'); ok.focus(); ok.onclick=function(){ location.href=(BASE||'./'); }; m.querySelector('.x').onclick=ok.onclick; ended=true; }); };
+    });
   }
   // a link to the workspace while on it only changes the hash
   function sameHash(e,a){ var h=a.getAttribute('href'); if(PAGE==='workspace'&&h.indexOf(WS)===0){ e.preventDefault(); var x=h.slice(WS.length)||'#w'; if(location.hash!==x) location.hash=x; else window.dispatchEvent(new HashChangeEvent('hashchange')); closeAll(); } else closeAll(); }

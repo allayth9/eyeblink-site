@@ -819,6 +819,36 @@ select{cursor:pointer}
 .consent a{color:var(--mist);text-decoration:underline;text-decoration-color:rgba(var(--k-mist-rgb),.35);text-underline-offset:3px;transition:color .2s,text-decoration-color .2s}
 .consent a:hover,.consent a:focus-visible{color:var(--light);text-decoration-color:currentColor}
 .olb .consent{order:9;margin:2px 0 0}
+/* account menu: «delete account» under sign-out, quiet until the pointer reaches it */
+.hmenu .hm-del{font-size:13px;color:var(--dim);padding-block:8px;--k:var(--k-dim)}.hmenu .hm-del svg{width:16px;height:16px}
+.hmenu .hm-del:hover,.hmenu .hm-del:focus-visible{color:var(--k-rose);--k:var(--k-rose);background:rgba(var(--k-rose-rgb),.08)}
+/* the delete sheet (in the account window's frame) */
+.del-modal .sheet{width:min(560px,100%)}
+.dm{display:grid;gap:16px}.dm h2{margin:0;font-family:var(--display);font-size:clamp(21px,3vw,25px)}.dm .muted{margin:0}
+.dm-eye{color:var(--k-rose)!important;justify-self:start}
+.dm-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dm-cols>div{padding:14px;border-radius:16px;background:rgba(var(--k-night-rgb),.45);box-shadow:inset 0 0 0 1px var(--line)}
+.dm-cols h6{margin:0 0 8px;font:500 11px var(--mark);letter-spacing:.22em}.dm-cols .go h6{color:var(--k-rose)}.dm-cols .st h6{color:#7ff0c0}
+.dm-cols ul{margin:0;padding:0;list-style:none;display:grid;gap:5px;font-size:13px;color:var(--mist)}
+.dm-warn,.dm-grace{display:flex;gap:10px;font-size:13px;line-height:1.7}
+.dm-warn{padding:12px 14px;border-radius:14px;background:rgba(var(--k-amber-rgb),.07);box-shadow:inset 0 0 0 1px rgba(var(--k-amber-rgb),.25);color:var(--light)}
+.dm-grace{color:var(--mist)}.dm-grace b{color:var(--light);font-weight:600}
+.dm-warn svg,.dm-grace svg{width:18px;height:18px;flex:none;margin-top:3px;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.dm-warn svg{stroke:var(--k-amber)}.dm-grace svg{stroke:var(--horizon)}
+.dm-form{display:grid;gap:14px}.dm-f{display:grid;gap:8px;font-size:14px;color:var(--light)}
+.dm-chk{display:flex!important;align-items:center;gap:10px;font-size:13.5px;color:var(--light);cursor:pointer}
+.dm-chk input[type=checkbox]{appearance:none;-webkit-appearance:none;box-sizing:border-box;width:18px;height:18px;padding:0;margin:0;flex:none;border:0;border-radius:6px;background:none;box-shadow:inset 0 0 0 1.5px var(--horizon);display:grid;place-items:center;cursor:pointer;transition:background .2s}
+.dm-chk input[type=checkbox]::after{content:"";width:8px;height:4px;border:solid var(--night);border-width:0 0 2px 2px;transform:translateY(-1px) rotate(-45deg);opacity:0;transition:opacity .15s}
+.dm-chk input[type=checkbox]:checked{background:var(--horizon)}.dm-chk input[type=checkbox]:checked::after{opacity:1}
+.dm-chk input[type=checkbox]:focus-visible{outline:2px solid var(--horizon);outline-offset:3px}
+.dm-acts{display:flex;flex-wrap:wrap;gap:10px}
+.dm-go,.dm-no{height:44px;padding:0 22px;border-radius:999px;border:0;font:inherit;font-size:14.5px;cursor:pointer;transition:opacity .2s,background .2s}
+.dm-go{background:rgba(var(--k-rose-rgb),.16);box-shadow:inset 0 0 0 1px rgba(var(--k-rose-rgb),.5);color:var(--k-rose);font-weight:600}
+.dm-go:not(:disabled):hover{background:rgba(var(--k-rose-rgb),.24)}.dm-go:disabled{opacity:.42;cursor:not-allowed}
+.dm-no{background:none;box-shadow:inset 0 0 0 1px var(--line);color:var(--light)}.dm-no:hover{background:rgba(var(--k-white-rgb),.05)}
+.dm-hint{margin:0;font-size:12.5px;color:var(--dim)}.dm .msg{margin:0;color:var(--k-rose);font-size:13.5px}.dm .msg:empty{display:none}
+@media (max-width:480px){.dm-cols{grid-template-columns:1fr}}
+/* signing in to an account set to be deleted */
+.auth.frozen .frz-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 .legal a{color:var(--horizon);text-decoration:underline;text-decoration-color:rgba(var(--k-horizon-rgb),.35);text-underline-offset:3px}.legal a:hover{text-decoration-color:currentColor}
 .legal ul{margin:0 0 10px;padding-inline-start:20px;display:grid;gap:6px;color:var(--mist);line-height:1.8}.legal li::marker{color:var(--horizon)}
 .legal .ltable{overflow-x:auto;margin:6px 0 14px;border-radius:16px;box-shadow:inset 0 0 0 1px var(--line)}

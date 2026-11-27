@@ -1,4 +1,4 @@
-import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, hits, unreadFor, sendMail, mail, later, SITE, accountMail, deviceInfo, seenDevice, withCookie, setAvatar } from "../_lib/shared.js";
+import { same, json, cookie, randHex, currentUser, startSession, pbkdf2, limited, hits, unreadFor, sendMail, mail, later, SITE, accountMail, deviceInfo, seenDevice, withCookie, setAvatar, telegram, DELETE_DAYS } from "../_lib/shared.js";
 // GET  /api/account — the signed-in client and a summary of their orders (401 if not signed in)
 // POST /api/account — { action: "register", name, email, password } | { action: "login", email, password }
 //                     | { action: "google", credential } | { action: "logout" }
@@ -47,6 +47,47 @@ export async function onRequestPost(ctx) {
     if (u.verified) return json({ ok: true, already: true });
     if (await limited(env, "rv:" + u.email, 3, 3600)) return json({ ok: false, error: "too many attempts" }, 429);
     tell(u, "verify", { link: await verifyLink(env, u.email, u.lang) }); return json({ ok: true });
+  }
+  // ---- deleting one's own account (27 Nov): frozen now, deleted for good after DELETE_DAYS, invoices and payments kept ----
+  const dayOf = (iso, en) => new Date(iso).toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dubai" });
+  if (d.action === "deletePreview") {
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    let tasks = 0, due = [];
+    if (env.DB) try {
+      tasks = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_email=? AND status NOT IN ('completed','cancelled','rejected')").bind(u.email).first()) || {}).n || 0;
+      const R = (await env.DB.prepare("SELECT currency, total, paid FROM invoices WHERE client_email=? AND sent_at IS NOT NULL AND status IN ('pending','partial')").bind(u.email).all()).results || [], by = {};
+      for (const r of R) { const b = Math.round(((+r.total || 0) - (+r.paid || 0)) * 100) / 100; if (b > 0) by[r.currency || "$"] = (by[r.currency || "$"] || 0) + b; }
+      due = Object.entries(by).map(([cur, amt]) => ({ cur, amt: Math.round(amt * 100) / 100 }));
+    } catch {}
+    return json({ ok: true, password: !!u.hash, tasks, due, until: new Date(Date.now() + DELETE_DAYS * 864e5).toISOString() });
+  }
+  if (d.action === "deleteAccount") {
+    const u = await currentUser(request, env); if (!u) return json({ ok: false }, 401);
+    if (await limited(env, "del:" + u.email, 5, 3600)) return json({ ok: false, error: "too many attempts" }, 429);
+    if (d.agree !== true) return json({ ok: false, error: "agree" }, 400);
+    // proof it is the account's owner at the keyboard: the password, or (an account with no password, e.g. Google) its e-mail typed out
+    if (u.hash) { if (!same(await pbkdf2(String(d.password || ""), u.salt), u.hash)) return json({ ok: false, error: "wrong" }, 403); }
+    else if (String(d.email || "").trim().toLowerCase() !== u.email) return json({ ok: false, error: "email" }, 403);
+    const now = new Date(), until = new Date(now.getTime() + DELETE_DAYS * 864e5).toISOString(), en = u.lang === "en";
+    u.del = { at: now.toISOString(), until }; u.sv = (u.sv || 0) + 1;   // every session on every device ends
+    await env.EB.put("user:" + u.email, JSON.stringify(u));
+    await env.EB.put("delq:" + u.email, until, { expirationTtl: (DELETE_DAYS + 30) * 86400 });
+    const t = cookie(request, "eb_s"); if (t) await env.EB.delete("sess:" + t);
+    tell(u, "deleting", { until: dayOf(until, en) });
+    later(ctx, (async () => {
+      let note = ""; if (env.DB) try { const p = await env.DB.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_email=? AND status NOT IN ('completed','cancelled','rejected')").bind(u.email).first(); if (p && p.n) note = "\nلديه " + p.n + " من الأعمال الجارية."; } catch {}
+      await telegram(env, "🗑 طلب حذف حساب\n" + (u.name || "") + " · " + u.email + "\nيُحذف نهائياً في " + dayOf(until) + "، ويمكنه استعادته قبل ذلك." + note);
+    })());
+    return json({ ok: true, until }, 200, { "set-cookie": "eb_s=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" });
+  }
+  if (d.action === "restore") {   // the sign-in of a frozen account handed out this one-time key (15 minutes)
+    const k = String(d.token || ""); if (!/^[a-f0-9]{48}$/.test(k)) return json({ ok: false, error: "link" }, 400);
+    const email = await env.EB.get("restore:" + k); if (!email) return json({ ok: false, error: "link" }, 400);
+    await env.EB.delete("restore:" + k);
+    const v = await env.EB.get("user:" + email); if (!v) return json({ ok: false, error: "gone" }, 404);
+    const u = JSON.parse(v); delete u.del; await env.EB.put("user:" + email, JSON.stringify(u)); await env.EB.delete("delq:" + email);
+    later(ctx, telegram(env, "↩️ استعاد حسابه\n" + (u.name || "") + " · " + email));
+    return json({ ok: true, user: { email: u.email, name: u.name } }, 200, { "set-cookie": await startSession(env, u.email) });
   }
   const ip = request.headers.get("cf-connecting-ip") || "x";
   if (d.action === "logout") {
@@ -137,6 +178,8 @@ export async function onRequestPost(ctx) {
   const isNew = user._new, wasReset = user._reset; delete user._new; delete user._reset;
   const dev = seenDevice(request, user);   // a browser this account has not been used with
   await env.EB.put("user:" + user.email, JSON.stringify(user));
+  if (user.del) { const k = randHex(24); await env.EB.put("restore:" + k, user.email, { expirationTtl: 900 });
+    return json({ ok: true, frozen: { until: user.del.until }, restore: k }); }
   if (isNew === "welcome") tell(user, "welcome", { link: await verifyLink(env, user.email, user.lang) });
   else if (isNew) tell(user, isNew);
   else if (wasReset) tell(user, "password", { info: deviceInfo(request, user.lang) });

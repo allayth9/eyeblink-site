@@ -1,4 +1,4 @@
-import { isAdmin, json, h, telegram, sweepReminders, later } from "../_lib/shared.js";
+import { isAdmin, json, h, telegram, sweepReminders, sweepDeletions, later } from "../_lib/shared.js";
 // POST /api/track — the site: one anonymous page view (no cookies, no personal data; IP is never stored)
 // GET  /api/track?days=30 — admin: daily totals, sources, pages, countries, devices and the latest visits
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegrambot|discord|headless|lighthouse|pingdom|monitor/i;
@@ -40,7 +40,7 @@ export async function onRequestPost(ctx) {
   s.recent = s.recent.slice(0, 80);
   if (D) await D.prepare("INSERT INTO stats (day, data) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET data=excluded.data").bind(day, JSON.stringify(s)).run();
   else await env.EB.put(key, JSON.stringify(s), { expirationTtl: 400 * 86400 });
-  later(ctx, sweepReminders(env));
+  later(ctx, sweepReminders(env)); later(ctx, sweepDeletions(env));
   return new Response(null, { status: 204 });
 }
 export async function onRequestGet({ request, env }) {
