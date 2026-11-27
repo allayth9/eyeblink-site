@@ -168,16 +168,14 @@
   }
   function kick(){ if(!animating){ animating=true; requestAnimationFrame(paint); } }
 
-  var nav2=document.querySelector('header.nav'), ticking=false, lastY=scrollY, rail=document.querySelector('.rail');
+  var nav2=document.querySelector('header.nav'), ticking=false, lastY=scrollY;
   if(nav2 && scrollY>70) nav2.classList.add('compact');
   function onScroll(){
     ticking=false;
-    var y=scrollY, H=innerHeight, h=root.scrollHeight-H;
+    var y=scrollY, H=innerHeight;
     // header: compacts after 70px going down; starts growing back from 180px going up
     if(nav2){ var dir=y-lastY; if(dir>0 && y>70) nav2.classList.add('compact'); else if(dir<0 && y<180) nav2.classList.remove('compact'); else if(y<8) nav2.classList.remove('compact'); }
     lastY=y;
-    // quiet position marker beside the browser scrollbar, visible only while scrolling
-    if(rail){ rail.style.setProperty('--p',(h>0?y/h:0).toFixed(4)); if(!rail.classList.contains('on')){ rail.classList.remove('pulse'); void rail.offsetWidth; rail.classList.add('pulse'); } rail.classList.add('on'); clearTimeout(rail._t); rail._t=setTimeout(function(){rail.classList.remove('on')},700); }
     if(stage&&!reduce) stage.style.transform='translateY('+(y*0.08).toFixed(1)+'px)';
     if(tl){ var pr=tl.parentNode.getBoundingClientRect(), p=clamp((H*0.75-pr.top)/(pr.height*0.75));
       tl.style.setProperty('--p',p.toFixed(3));

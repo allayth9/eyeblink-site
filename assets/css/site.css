@@ -459,15 +459,6 @@ h1,h2,h3{font-weight:700}
 :lang(en) h3{font-weight:600}
 :lang(en) body,:lang(en) .lead,:lang(en) p,:lang(en) li{font-weight:300}
 :lang(en) .btn,:lang(en) .links a{font-weight:400}
-/* ---- scroll rail: a quiet marker beside the browser scrollbar ---- */
-.rail{position:fixed;top:0;bottom:0;right:0;width:40px;z-index:70;pointer-events:none;opacity:0;transition:opacity .7s var(--ease)}
-.rail.on{opacity:1}
-.rail i{position:absolute;right:-22px;top:calc(var(--p,0) * (100vh - 120px));width:44px;height:120px;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(var(--k-horizon-rgb),.42),rgba(var(--k-dusk-rgb),.18) 55%,transparent);filter:blur(4px);transition:top .35s cubic-bezier(.22,.9,.24,1)}
-.rail i::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 1px rgba(190,230,255,.35);opacity:0;transform:scale(.6)}
-.rail.pulse i::after{animation:railRipple 1s cubic-bezier(.2,.7,.2,1)}
-@keyframes railRipple{0%{opacity:.7;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
-@media (max-width:860px){.rail{display:none}}
 /* ===== payment methods: a row of icons ===== */
 .paylist{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;list-style:none;padding:0;margin:0}
 .paym{flex:0 0 auto;min-width:0;width:auto;height:auto;padding:14px 18px 12px;display:grid;justify-items:center;gap:8px;border-radius:18px}
