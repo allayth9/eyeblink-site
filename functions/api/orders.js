@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, limited, unreadFor, cleanFiles, mail, notifyStudio, notifyClient, num, curOf, fmt, stageOf, stageAmount, STAGE, mailReceived, mailInvoice, newInvoice, sweepReminders, later } from "../_lib/shared.js";
+import { cleanMoment, same, isAdmin, json, randHex, currentUser, limited, unreadFor, cleanFiles, mail, notifyStudio, notifyClient, num, curOf, fmt, stageOf, stageAmount, STAGE, mailReceived, mailInvoice, newInvoice, sweepReminders, later } from "../_lib/shared.js";
 // POST   /api/orders — signed-in client: sends a request (it then lives in their account with a chat thread)
 // GET    /api/orders — admin: list requests (newest first)
 // POST   /api/orders { action:"manual", name, contact, email?, details, source, value?, nextStep?, followUp? } — admin: an opportunity that came from outside the site (CRM)
@@ -29,7 +29,7 @@ export async function onRequestPost(ctx) {
   let code; do { code = "EB-" + randHex(3).toUpperCase().slice(0, 5); } while (await env.EB.get("code:" + code));
   const key = "order:" + new Date().toISOString() + ":" + code;
   const order = { key, code, status: "new", createdAt: new Date().toISOString(), name, contact, details,
-    link: /^https?:\/\/\S+$/i.test(clip(d.link, 500)) ? clip(d.link, 500) : "", deadline: clip(d.deadline, 20), package: clip(d.package, 60), packageName: clip(d.packageName, 120),
+    link: /^https?:\/\/\S+$/i.test(clip(d.link, 500)) ? clip(d.link, 500) : "", deadline: clip(d.deadline, 20), ...((m => m ? { deadlineAt: m.at, deadlineTz: m.tz } : {})(d.deadline ? cleanMoment(d.deadlineAt, d.deadlineTz) : null)), package: clip(d.package, 60), packageName: clip(d.packageName, 120),
     addons: (Array.isArray(d.addons) ? d.addons : []).slice(0, 12).map(a => clip(a, 80)), total: clip(d.total, 40), lang: clip(d.lang, 4),
     items: (Array.isArray(d.items) ? d.items : []).slice(0, 14).map(x => ({ name: clip(x && x.name, 120), qty: Math.max(1, Math.min(50, parseInt(x && x.qty) || 1)), unit: Math.max(0, Math.round((+(x && x.unit) || 0) * 100) / 100) })).filter(x => x.name),
     cur: clip(d.cur, 6), ccy: clip(d.ccy, 6), visit: visitOf(request, d.visit),

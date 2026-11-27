@@ -308,14 +308,14 @@
     return '<div class="omg"><b>'+M.h+'</b><p class="muted small">'+(o.canEdit?M.p:M.pc)+'</p>'+(o.editedAt?'<p class="muted small">'+M.edited+esc(new Date(o.editedAt).toLocaleString(AR?'ar-u-nu-latn':'en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))+'</p>':'')+
       '<div class="actions">'+(o.canEdit?'<button type="button" class="btn btn-glass glass" data-oedit>'+M.edit+'</button>':'')+(o.canCancel?'<button type="button" class="btn btn-glass glass danger" data-ocancel>'+M.cancel+'</button>':'')+'</div>'+
       (o.canEdit?'<form class="form oedit" hidden novalidate><label>'+M.det+'<textarea name="details" rows="5" dir="auto" maxlength="4000">'+esc(o.details||'')+'</textarea></label><label>'+M.link+'<input name="link" type="url" dir="ltr" value="'+esc(o.link||'')+'"></label>'+
-        '<label>'+M.dl+'<input name="deadline" type="date" value="'+esc(/^\d{4}-\d{2}-\d{2}$/.test(o.deadline||'')?o.deadline:'')+'"></label><label>'+M.ct+'<input name="contact" dir="auto" maxlength="200" value="'+esc(o.contact||'')+'"></label>'+
+        '<label>'+M.dl+'<input name="deadline" type="date" data-time value="'+esc(/^\d{4}-\d{2}-\d{2}$/.test(o.deadline||'')?o.deadline:'')+'"'+(o.deadlineAt?' data-at="'+esc(o.deadlineAt)+'"':'')+'></label><label>'+M.ct+'<input name="contact" dir="auto" maxlength="200" value="'+esc(o.contact||'')+'"></label>'+
         '<p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary" type="submit">'+M.save+'</button><button class="btn btn-glass glass" type="button" data-oback>'+M.back+'</button></div></form>':'')+
       (o.canCancel?'<form class="form ocancel" hidden novalidate><label>'+M.why+'<textarea name="reason" rows="2" dir="auto" maxlength="600"></textarea></label><p class="msg" role="alert"></p><div class="actions"><button class="btn btn-primary danger" type="submit">'+M.sure+'</button><button class="btn btn-glass glass" type="button" data-oback>'+M.back+'</button></div></form>':'')+'</div>'; }
   function bindManage(host,o){ var M=T.mg, box=host.querySelector('.omg'); if(!box) return;
     var fe=box.querySelector('.oedit'), fc=box.querySelector('.ocancel'), acts=box.querySelector('.actions');
     var show=function(f){ [fe,fc].forEach(function(x){ if(x) x.hidden=x!==f; }); acts.hidden=!!f; if(f){ var i=f.querySelector('textarea'); if(i) i.focus(); } };
     box.addEventListener('click',function(e){ if(e.target.closest('[data-oedit]')) show(fe); else if(e.target.closest('[data-ocancel]')) show(fc); else if(e.target.closest('[data-oback]')) show(null); });
-    if(fe) fe.onsubmit=function(e){ e.preventDefault(); var E=fe.elements, msg=fe.querySelector('.msg'), d={details:E.details.value.trim(),link:E.link.value.trim(),deadline:E.deadline.value,contact:E.contact.value.trim()};
+    if(fe) fe.onsubmit=function(e){ e.preventDefault(); var E=fe.elements, msg=fe.querySelector('.msg'), d={details:E.details.value.trim(),link:E.link.value.trim(),deadline:E.deadline.value,deadlineAt:E.deadline.dataset.at||'',deadlineTz:E.deadline.dataset.tz||'',contact:E.contact.value.trim()};
       if(!d.details){ msg.textContent=M.need; E.details.focus(); return; } if(d.link&&!/^https?:\/\/\S+$/i.test(d.link)){ msg.textContent=M.badLink; E.link.focus(); return; }
       var b=fe.querySelector('[type=submit]'); b.disabled=true;
       api('thread',{code:o.code,edit:d}).then(function(j){ if(j.ok){ toast(M.saved); detail(j.order,true); } else { b.disabled=false; msg.textContent=M.err; } }); };
@@ -374,7 +374,7 @@
       '</div><aside class="side"><h3>'+T.sum+'</h3><dl>'+
         (o.price?'<dt>'+T.final+'</dt><dd dir="ltr">'+esc(o.price)+(o.paid?' <span class="pill paid">'+T.paid+'</span>':'')+'</dd>':(o.total?'<dt>'+T.est+'</dt><dd dir="ltr">'+esc(o.total)+'</dd>':''))+
         (o.addons&&o.addons.length?'<dt>'+T.adds+'</dt><dd>'+esc(o.addons.join('، '))+'</dd>':'')+
-        (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadline)+'</dd>':'')+
+        (o.deadline?'<dt>'+T.deadline+'</dt><dd>'+esc(o.deadlineAt&&window.EBTime?EBTime.fmt(o.deadlineAt):o.deadline)+'</dd>':'')+
         '<dt>'+T.details+'</dt><dd class="pre">'+linkify(o.details||'')+(o.link?'<br><a href="'+esc(/^https?:\/\//i.test(o.link)?o.link:'#')+'" target="_blank" rel="noopener" dir="ltr">'+esc(o.link)+'</a>':'')+'</dd></dl>'+
         manageHTML(o)+
         paySteps(o)+

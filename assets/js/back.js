@@ -9,6 +9,7 @@
   var esc=function(){ document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); };
   // topmost first: [is it open?, how to close it]
   var OV=[
+    [function(){ return document.querySelector('.dw-ov.on'); }, function(){ if(W.dwClose) W.dwClose(); }],   // the date wheel
     // the panel
     [function(){ return document.querySelector('.avc'); }, click('[data-avno]')],
     [function(){ var m=document.getElementById('avMenu'); return m&&!m.hidden?m:null; }, function(m){ m.hidden=true; }],

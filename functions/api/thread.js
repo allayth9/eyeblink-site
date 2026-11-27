@@ -1,4 +1,4 @@
-import { same, json, currentUser, limited, unreadFor, cleanFiles, siteSettings, notifyStudio, notifyClient, invoicePage, later } from "../_lib/shared.js";
+import { cleanMoment, same, json, currentUser, limited, unreadFor, cleanFiles, siteSettings, notifyStudio, notifyClient, invoicePage, later } from "../_lib/shared.js";
 // GET  /api/thread?code=EB-XXXXX[&invoice=deposit|final] — the signed-in client's order: progress + messages (marks studio messages as read)
 // POST /api/thread — { code, text, files? }: the client writes to the studio (closed once delivered or cancelled)
 //                    { code, review: { stars, text, publish } }: rating after delivery
@@ -48,7 +48,7 @@ export async function onRequestPost(ctx) {
     if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) return json({ ok: false, error: "date" }, 400);
     const changed = [["details", details], ["link", link], ["deadline", deadline], ["contact", contact]].filter(([k, v]) => (o[k] || "") !== v).map(([k]) => k);
     if (!changed.length) return json({ ok: true, order: publicOrder(o), same: true });
-    o.details = details; o.link = link; o.deadline = deadline; o.contact = contact; o.editedAt = at; o.updatedAt = at;
+    o.details = details; o.link = link; o.deadline = deadline; o.contact = contact; { const m = deadline ? cleanMoment(e.deadlineAt, e.deadlineTz) : null; if (m) { o.deadlineAt = m.at; o.deadlineTz = m.tz; } else { delete o.deadlineAt; delete o.deadlineTz; } } o.editedAt = at; o.updatedAt = at;
     (o.history ||= []).push({ at, status: o.status, by: "client", note: "edited", fields: changed });
     await env.EB.put(o.key, JSON.stringify(o));
     const en = o.lang === "en";
@@ -71,5 +71,5 @@ export async function onRequestPost(ctx) {
 function canEdit(o){ return ["new","confirmed"].includes(o.status) && !o.paid && !(o.deposit && o.deposit.paid); }
 function canCancel(o){ return ["new","confirmed","awaiting-payment"].includes(o.status) && !o.paid && !(o.deposit && o.deposit.paid); }
 function publicOrder(o){ return { canEdit:canEdit(o), canCancel:canCancel(o), contact:o.contact||"", editedAt:o.editedAt||null, code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
-  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, deadlineAt:o.deadlineAt, deadlineTz:o.deadlineTz, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
   name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null, invoice:o.invoice||null, deposit:o.deposit||null, plan:o.plan||"full", items:o.items||[], cur:o.cur||"", qty:o.qty||1, platforms:o.platforms||[], payPref:o.payPref||"" }; }

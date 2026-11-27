@@ -80,7 +80,7 @@
   function wtaskBody(t){
     var cr=t.change_request, cn=(WORK.clients||[]).filter(function(c){return c.email===t.client_email})[0];
     return '<div class="wtb">'+teamLinks(t)+'<div class="small muted">'+esc(cn?cn.name:t.client_email)+' · '+esc(t.project_name)+(t.type?' · '+esc(t.type):'')+(t.priority!=='normal'?' · <b class="pr-'+esc(t.priority)+'">أولوية '+esc(WPR[t.priority])+'</b>':'')+'</div>'+
-      '<div class="wdd"><div><span>الموعد المطلوب (من العميل)</span><b>'+esc(wd(t.requested_date))+'</b></div><div class="'+(t.confirmed_date?'ok':'')+'"><span>الموعد المؤكد (منك)</span><b>'+esc(wd(t.confirmed_date))+'</b></div></div>'+
+      '<div class="wdd"><div><span>الموعد المطلوب (من العميل)</span><b>'+esc(t.requested_at&&window.EBTime?EBTime.fmt(t.requested_at):wd(t.requested_date))+'</b></div><div class="'+(t.confirmed_date?'ok':'')+'"><span>الموعد المؤكد (منك)</span><b>'+esc(wd(t.confirmed_date))+'</b></div></div>'+
       (t.recurring||t.over_quota?'<div>'+(t.recurring?'<span class="tag">مهمة دورية</span> ':'')+(t.over_quota?'<span class="tag pr-urgent">خارج الحصة الشهرية</span>':'')+'</div>':'')+
       wterms(t)+
       (t.brief?'<div class="small muted">الموجز الإبداعي</div><div class="wbr">'+Object.keys(t.brief).map(function(k){ return '<div><span class="small muted">'+esc({goal:'الهدف',audience:'الجمهور',format:'المقاس',duration:'المدة',tone:'الأسلوب',message:'الرسالة',cta:'الدعوة لإجراء',music:'الموسيقى'}[k]||k)+'</span><b>'+esc(t.brief[k])+'</b></div>'; }).join('')+'</div>':'')+

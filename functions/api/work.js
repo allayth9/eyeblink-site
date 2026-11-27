@@ -1,4 +1,4 @@
-import { same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail, setAvatar, brandKit, brandZip, kvEach, purgeClient, unlinkTeam } from "../_lib/shared.js";
+import { cleanMoment, momentText, same, isAdmin, json, randHex, currentUser, SITE, h, siteSettings, sendMail, telegram, greet, mail, ticketHTML, notifyStudio, fmt, rows, newInvoice, later, rulesOf, RULES, accountMail, setAvatar, brandKit, brandZip, kvEach, purgeClient, unlinkTeam } from "../_lib/shared.js";
 // Workspace for Active Clients — projects, task requests, requested vs confirmed dates, activity log.
 // Accounts stay where they are (KV "EB"); the workspace lives in Cloudflare D1 (binding "DB"). Tables are created on first use.
 //
@@ -169,6 +169,9 @@ const MIGRATIONS = [
   "UPDATE tasks SET invoice_id=(SELECT i.id FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title ORDER BY i.created_at LIMIT 1) WHERE invoice_id IS NULL AND status NOT IN ('cancelled','rejected') AND (SELECT COUNT(*) FROM tasks t2 WHERE t2.client_email=tasks.client_email AND t2.title=tasks.title AND t2.status NOT IN ('cancelled','rejected'))=1 AND EXISTS (SELECT 1 FROM invoices i, json_each(i.annex) g, json_each(g.value, '$.items') it WHERE i.client_email=tasks.client_email AND i.status!='cancelled' AND i.annex IS NOT NULL AND (CASE it.type WHEN 'text' THEN it.value ELSE json_extract(it.value,'$.t') END)=tasks.title)",
   // 25 Nov: an invoice imported from an earlier PDF keeps that file ({pdf})
   "ALTER TABLE invoices ADD COLUMN source TEXT",
+  // the exact moment a client asks for (28 Nov): appended last, the count in meta "schema" runs only what is new
+  "ALTER TABLE tasks ADD COLUMN requested_at TEXT",
+  "ALTER TABLE tasks ADD COLUMN requested_tz TEXT",
 ];
 const FILE_CATS = ["brand","raw","reference","document","other"];
 const TC = /^(\d{1,2}:)?\d{1,2}:\d{2}$/;
@@ -1477,14 +1480,15 @@ export async function onRequestPost(ctx) {
     const lib = items.some(x => x.brand_lib) ? await brandOf(D, p.client_email) : null, libLinks = lib ? lib.assets.filter(a => a.kind !== "other").map(a => ({ label: (u.lang === "en" ? "Brand library · " : "مكتبة الهوية · ") + a.title, url: a.url })) : [];
     const ag = p.in_pkg !== 0 ? await agreementOf(D, p.client_email) : null;
     for (const x of items) {
-      const title = clip(x.title, 140), rd = clip(x.requested_date, 10), id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief && lib && x.brand_lib ? { ...x.brief, brand: brandBrief(lib, u.lang !== "en") } : lib && x.brand_lib ? { brand: brandBrief(lib, u.lang !== "en") } : x.brief);
+      const title = clip(x.title, 140), rd = clip(x.requested_date, 10), mo = rd ? cleanMoment(x.requested_at, x.requested_tz) : null, id = "t_" + randHex(8), ref = await newRef(D), pr = PRIORITIES.includes(x.priority) ? x.priority : "normal", brief = cleanBrief(x.brief && lib && x.brand_lib ? { ...x.brief, brand: brandBrief(lib, u.lang !== "en") } : lib && x.brand_lib ? { brand: brandBrief(lib, u.lang !== "en") } : x.brief);
       const over = p.quota && used >= p.quota ? 1 : 0; used++;   // flagged for the studio, never blocked
       await D.prepare(`INSERT INTO tasks (id, ref, project_id, client_email, title, type, description, details, notes, priority, requested_date, status, links, brief, over_quota, created_by, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?)`).bind(id, ref, p.id, p.client_email, title, clip(x.type, 60), clip(x.description, 4000), clip(x.details, 6000), clip(x.notes, 3000), pr, rd || null,
         JSON.stringify(cleanLinks((Array.isArray(x.links) ? x.links : []).concat(x.brand_lib ? libLinks : []))), brief ? JSON.stringify(brief) : null, over, u.email, at, at).run();
+      if (mo) await D.prepare("UPDATE tasks SET requested_at=?, requested_tz=? WHERE id=?").bind(mo.at, mo.tz, id).run();
       const un = unitOf(ag && ag.terms, x.type); if (un) await D.prepare("UPDATE tasks SET unit=? WHERE id=?").bind(un.id, id).run();
       await act(D, { ...who, client_email: p.client_email, project_id: p.id, task_id: id, kind: "task_created", data: { ref, title, requested_date: rd || null, priority: pr } });
-      made.push({ id, ref, title, rd, pr, over: !!over });
+      made.push({ id, ref, title, rd: mo ? momentText(mo.at, "Asia/Damascus") : rd, pr, over: !!over });
     }
     await D.prepare("UPDATE projects SET updated_at=? WHERE id=?").bind(at, p.id).run();
     const line = m => m.ref + " — " + m.title + (m.rd ? " · " + m.rd : "") + (m.pr !== "normal" ? " · " + ({ high: "عالية", urgent: "عاجلة" })[m.pr] : "") + (m.over ? " · ⚠️ خارج الحصة" : "");
@@ -1557,10 +1561,10 @@ export async function onRequestPost(ctx) {
     if (!["accepted","progress","feedback","revision"].includes(t.status) || !t.confirmed_date) return json({ ok: false, error: "state" }, 409);
     if (t.change_request && t.change_request.status === "pending") return json({ ok: false, error: "pending" }, 409);
     const date = clip(d.date, 10); if (!isDate(date) || date < today()) return json({ ok: false, error: "date" }, 400);
-    const cr = { date, reason: clip(d.reason, 1500), at, status: "pending" };
+    const mo = cleanMoment(d.date_at, d.date_tz), cr = { date, reason: clip(d.reason, 1500), at, status: "pending", ...(mo ? { date_at: mo.at, date_tz: mo.tz } : {}) };
     await D.prepare("UPDATE tasks SET change_request=?, updated_at=? WHERE id=?").bind(JSON.stringify(cr), at, t.id).run();
     await act(D, { ...tw, kind: "date_change_requested", data: { date, reason: cr.reason, current: t.confirmed_date } });
-    toStudio(ctx, env, "طلب تغيير موعد " + t.ref, u.name + " يطلب تغيير الموعد إلى " + date + " بدلاً من " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref));
+    toStudio(ctx, env, "طلب تغيير موعد " + t.ref, u.name + " يطلب تغيير الموعد إلى " + (mo ? momentText(mo.at, "Asia/Damascus") : date) + " بدلاً من " + t.confirmed_date + (cr.reason ? "\nالسبب: " + cr.reason : "") + "\n\n" + adminLink(t.ref));
     return json({ ok: true });
   }
   if (d.action === "cancel") {

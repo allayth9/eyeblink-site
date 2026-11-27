@@ -3,6 +3,20 @@
 // Password: a hash saved from the admin panel (KV "auth:hash"), or else the ADMIN_PASSWORD secret.
 // More than 10 wrong attempts from one address locks it for an hour.
 export async function sha256(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+// a client's chosen moment (28 Nov): ISO UTC + their IANA zone; shown to the client in their zone, to the studio in Damascus time
+const TZN = { "Asia/Damascus":["دمشق","Damascus"],"Asia/Dubai":["الإمارات","UAE"],"Asia/Riyadh":["السعودية","Saudi Arabia"],"Asia/Qatar":["قطر","Qatar"],"Asia/Kuwait":["الكويت","Kuwait"],
+  "Asia/Bahrain":["البحرين","Bahrain"],"Asia/Muscat":["عُمان","Oman"],"Asia/Amman":["الأردن","Jordan"],"Asia/Beirut":["لبنان","Lebanon"],"Asia/Baghdad":["العراق","Iraq"],"Asia/Aden":["اليمن","Yemen"],
+  "Africa/Cairo":["مصر","Egypt"],"Africa/Tripoli":["ليبيا","Libya"],"Africa/Tunis":["تونس","Tunisia"],"Africa/Algiers":["الجزائر","Algeria"],"Africa/Casablanca":["المغرب","Morocco"],"Africa/Khartoum":["السودان","Sudan"],
+  "Europe/Istanbul":["تركيا","Türkiye"],"Europe/London":["لندن","London"],
+  "Asia/Jerusalem":["فلسطين","Palestine"],"Asia/Tel_Aviv":["فلسطين","Palestine"],"Israel":["فلسطين","Palestine"],"Asia/Hebron":["فلسطين","Palestine"],"Asia/Gaza":["فلسطين","Palestine"] };
+export function cleanMoment(iso, tz){ const s = String(iso || "").slice(0, 30), d = new Date(s); if (!s || isNaN(d)) return null;
+  let z = String(tz || "").slice(0, 40); try { new Intl.DateTimeFormat("en", { timeZone: z }); } catch (e) { z = ""; } return { at: d.toISOString(), tz: z || "Asia/Damascus" }; }
+export function momentText(iso, tz, en){ const d = new Date(iso); if (!iso || isNaN(d)) return ""; tz = tz || "Asia/Damascus";
+  try { const day = d.toLocaleDateString(en ? "en-GB" : "ar-u-nu-latn", { timeZone: tz, day: "numeric", month: "long", year: "numeric" }),
+      t = d.toLocaleTimeString(en ? "en-US" : "ar-u-nu-latn", { timeZone: tz, hour: "numeric", minute: "2-digit" }), n = TZN[tz];
+    let lab = n ? (en ? n[1] + " time" : "بتوقيت " + n[0]) : "";
+    if (!lab) { const o = (new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(d).find(x => x.type === "timeZoneName") || {}).value || "GMT"; lab = en ? o : "بتوقيت " + o.replace("GMT", "غرينتش "); }
+    return day + (en ? ", " : " · ") + t + " (" + lab + ")"; } catch (e) { return d.toISOString().slice(0, 16).replace("T", " ") + " UTC"; } }
 export function same(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }
 export async function isAdmin(req, env){
   // the panel's session (cookie set by GET /api/auth after the password was checked): no hashing on every request
@@ -115,7 +129,7 @@ export async function limited(env, key, max, ttl){ if ((await hits(env, key)) >=
 export function unreadFor(o, who){ const seen = who==="client" ? (o.seenClient||"") : (o.seenAdmin||""); const other = who==="client" ? "studio" : "client";
   return (o.messages||[]).filter(m=>m.from===other && m.at>seen).length; }
 export function publicOrder(o){ return { code:o.code, status:o.status, createdAt:o.createdAt, packageName:o.packageName, package:o.package, addons:o.addons||[], total:o.total, price:o.price,
-  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
+  paid:!!o.paid, details:o.details, link:o.link, deadline:o.deadline, deadlineAt:o.deadlineAt, deadlineTz:o.deadlineTz, history:o.history||[], messages:(o.messages||[]).map(m=>({from:m.from,text:m.text,at:m.at,files:m.files||undefined,kind:m.kind||undefined})), unread:unreadFor(o,"client"),
   name:o.name, email:o.email, method:o.method, review:o.review||null, payInfo:o.payInfo||null, invoice:o.invoice||null, deposit:o.deposit||null, plan:o.plan||"full", items:o.items||[], cur:o.cur||"", qty:o.qty||1, platforms:o.platforms||[], payPref:o.payPref||"" }; }
 // attachments must point at files uploaded through /api/files
 export function cleanFiles(list){ return (Array.isArray(list)?list:[]).slice(0,8).filter(f=>f&&/^\/api\/files\/[a-z0-9][a-z0-9.\-_]{10,120}$/.test(f.url||""))
@@ -350,7 +364,7 @@ export async function mailReceived(env, o){
                : ["رقم الطلب","الخدمة","العدد","الإضافات","المنصات","طريقة الدفع المفضّلة","الموعد المستهدف","المجموع التقديري","الخطوات التالية","شكراً لك، وصلنا طلبك. هذا ملخّصه، واحتفظ برقم الطلب لأي استفسار."];
   const body = `<p style="margin:0 0 10px">${h(T[9])}</p>` +
     rows([[T[0], `<span style="font:bold 16px Arial;letter-spacing:2px;color:#3FE0E8">${h(o.code)}</span>`],[T[1], h(o.packageName)],[T[2], o.qty>1? "×"+o.qty : ""],[T[3], h((o.addons||[]).join(en?", ":"، "))],
-      [T[4], h((o.platforms||[]).join(", "))],[T[5], h(o.payPref)],[T[6], h(o.deadline)],[T[7], `<span dir="ltr">${h(o.total)}</span>`, 1]], rtl) +
+      [T[4], h((o.platforms||[]).join(", "))],[T[5], h(o.payPref)],[T[6], h(o.deadlineAt ? momentText(o.deadlineAt, o.deadlineTz, en) : o.deadline)],[T[7], `<span dir="ltr">${h(o.total)}</span>`, 1]], rtl) +
     `<p style="margin:24px 0 0;color:#fff;font-weight:bold;font-size:15px">${h(T[8])}</p>` + steps(next);
   await sendMail(env, o.email, (en ? "We received your request " : "استلمنا طلبك ") + o.code, mail(en?"en":"ar", (en ? "Request received · " : "وصل طلبك · ") + o.code, body, en ? "Follow my request" : "تابع طلبي", link, greet(o)));
 }

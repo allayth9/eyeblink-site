@@ -796,7 +796,7 @@
       pcts.forEach(function(a){ items.push({name:L(a.name)+' ('+a.price+'%)',qty:1,unit:Math.round(run*a.price)/100}); }); }
     var visit=null; try{ visit=JSON.parse(localStorage.getItem('eb-src')||'null'); }catch(_){}
     var data={package:p.id, packageName:L(p.name), addons:adds, items:items, cur:cur, visit:visit, total:document.getElementById('total').textContent, qty:isPack(p)?1:qty, platforms:plats, payPref:pm, ccy:VC,
-      contact:E.contact.value.trim(), details:E.details.value.trim(), link:E.link.value.trim(), deadline:E.deadline.value, lang:lang, website:E.website?E.website.value:''};
+      contact:E.contact.value.trim(), details:E.details.value.trim(), link:E.link.value.trim(), deadline:E.deadline.value, deadlineAt:E.deadline.dataset.at||'', deadlineTz:E.deadline.dataset.tz||'', lang:lang, website:E.website?E.website.value:''};
     var btn=f.querySelector('button[type=submit]'), old=btn.innerHTML; btn.disabled=true; btn.textContent=UI.sending;
     var summary=[UI.pkg+': '+data.packageName+(data.qty>1?' × '+data.qty:''), UI.addons+': '+(adds.join('، ')||UI.none), plats.length?UI.platform+': '+plats.join('، '):'', UI.total+': '+data.total, '—', data.contact, data.details, data.link, data.deadline].filter(Boolean).join('\n');
     var done=function(ok,code){

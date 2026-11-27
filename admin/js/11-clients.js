@@ -167,7 +167,7 @@
     return '<section class="sec"><h3>الطلبات من الموقع ('+ords.length+')</h3>'+(ords.length?ords.slice().sort(function(a,b){ return a.createdAt<b.createdAt?1:-1; }).map(function(o){
       return '<article class="cp-ord" data-okey="'+esc(o.key)+'"><div class="ph"><div><span class="code">'+esc(o.code)+'</span> <b>'+esc(o.packageName||o.package||'طلب')+'</b> <span class="small muted">'+esc(new Date(o.createdAt).toLocaleDateString('ar-u-nu-latn'))+'</span></div><span class="ostat s-'+esc(o.status)+'">'+esc(ST[o.status]||o.status)+'</span></div>'+
         '<pre class="small">'+esc(o.details||'')+'</pre>'+(o.link?'<div class="small">'+wlinks([{url:o.link}])+'</div>':'')+
-        '<div class="cp-meta small"><span>السعر: <b dir="ltr">'+esc(o.price||o.total||'—')+'</b>'+(o.paid?' ✓ مدفوع':'')+'</span>'+(o.deadline?'<span>الموعد: <b>'+esc(o.deadline)+'</b></span>':'')+(o.editedAt?'<span>عدّله العميل '+esc(ago2(o.editedAt))+'</span>':'')+'</div>'+
+        '<div class="cp-meta small"><span>السعر: <b dir="ltr">'+esc(o.price||o.total||'—')+'</b>'+(o.paid?' ✓ مدفوع':'')+'</span>'+(o.deadline?'<span>الموعد: <b>'+esc(o.deadlineAt&&window.EBTime?EBTime.fmt(o.deadlineAt):o.deadline)+'</b></span>':'')+(o.editedAt?'<span>عدّله العميل '+esc(ago2(o.editedAt))+'</span>':'')+'</div>'+
         '<div class="row cp-orow"><div class="field"><label>الحالة</label><select data-ostat>'+Object.keys(ST).map(function(k){ return '<option value="'+k+'"'+(o.status===k?' selected':'')+'>'+esc(ST[k])+'</option>'; }).join('')+'</select></div>'+
           '<div class="field"><label>مرتبط بمشروع</label><select data-oproj><option value="">— دون مشروع —</option>'+act.map(function(p){ return '<option value="'+esc(p.id)+'"'+(o.projectId===p.id?' selected':'')+'>'+esc(p.name)+'</option>'; }).join('')+'</select></div></div>'+
         '<div class="field"><label>ملاحظات داخلية (لا يراها العميل)</label><textarea data-onote dir="auto" rows="2">'+esc(o.notes||'')+'</textarea></div>'+
@@ -198,7 +198,7 @@
             '<div class="field"><label>تاريخ الاستحقاق'+(late?' <b class="late">متأخرة</b>':'')+'</label><input type="date" data-tdate value="'+esc(t.confirmed_date||'')+'"></div>'+
             '<div class="field"><label>المسؤول</label><input data-tasg dir="auto" value="'+esc(t.assignee||'')+'" placeholder="—"></div></div>'+
           '<div class="actions"><button class="btn sm" type="button" data-tsave>حفظ</button><button class="btn sm" type="button" data-topen="'+esc(t.ref)+'">التفاصيل والتسليمات</button><button class="btn sm danger" type="button" data-tdel>حذف</button>'+
-            (t.requested_date?'<span class="small muted">طلب العميل: '+esc(wd(t.requested_date))+'</span>':'')+'</div></article>'; }).join('')+'</div>'
+            (t.requested_date?'<span class="small muted">طلب العميل: '+esc(t.requested_at&&window.EBTime?EBTime.fmt(t.requested_at):wd(t.requested_date))+'</span>':'')+'</div></article>'; }).join('')+'</div>'
         :'<div class="empty small">'+(D.tasks.length?'لا توجد مهام في هذا الاختيار.':'لا توجد مهام بعد.')+'</div>')+'</section>';
   }
   // money the client sent ahead of the work: added here, taken off the next invoice built for them
